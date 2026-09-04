@@ -4,7 +4,7 @@
 
 ## Stack
 
-| Layer    | Tech                                         |
+| Layer    | Tecch                                         |
 | -------- | --------------------------------------------- |
 | Web      | Next.js 14 (App Router, SSR) + React + TS     |
 | Mobile   | React Native (Expo) — same API as web         |
