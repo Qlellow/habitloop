@@ -1,7 +1,0 @@
-{
-  "name": "habitloop",
-  "private": true,
-  "version": "0.1.0",
-  "description": "습관 트래커 + 소셜 — Next.js SSR web / Expo mobile / NestJS API / MySQL / Docker / CI-CD",
-  "workspaces": ["apps/api", "apps/web", "apps/mobile"]
-}

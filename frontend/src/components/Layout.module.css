@@ -1,0 +1,132 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--header-h);
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 8px 0 20px;
+}
+
+.subHeaderInner {
+  composes: headerInner;
+  padding: 0 8px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-strong);
+}
+
+.logoMark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--primary);
+  display: grid;
+  place-items: center;
+}
+
+.logoMark::after {
+  content: '';
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+}
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: var(--text-sub);
+  transition: background-color 0.15s;
+}
+
+.iconButton:hover {
+  background: var(--surface-pressed);
+}
+
+.subTitle {
+  flex: 1;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.main {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 12px 120px;
+}
+
+.fab {
+  position: fixed;
+  right: max(20px, calc(50% - var(--max-w) / 2 + 20px));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 52px;
+  padding: 0 20px 0 16px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(49, 130, 246, 0.35);
+  transition: transform 0.15s var(--ease);
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: calc(100vw - 40px);
+  padding: 13px 20px;
+  border-radius: 14px;
+  background: rgba(25, 31, 40, 0.92);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  animation: toastIn 0.25s var(--ease);
+}
+
+@media (prefers-color-scheme: dark) {
+  .toast {
+    background: rgba(70, 70, 80, 0.95);
+  }
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}

@@ -1,0 +1,92 @@
+spring:
+  application:
+    name: loop-community
+  profiles:
+    default: local
+  threads:
+    virtual:
+      enabled: true            # Java 21 가상 스레드로 요청 처리 (블로킹 I/O 대비 처리량 ↑)
+  jpa:
+    open-in-view: false        # 커넥션을 뷰 렌더링까지 붙잡지 않음
+    hibernate:
+      ddl-auto: validate       # 스키마는 Flyway가 관리
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
+        jdbc:
+          batch_size: 50
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+        query:
+          in_clause_parameter_padding: true
+          plan_cache_max_size: 2048
+  flyway:
+    enabled: true
+  cache:
+    type: caffeine
+    cache-names: popularPosts
+    caffeine:
+      spec: maximumSize=100,expireAfterWrite=60s
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json,text/plain
+    min-response-size: 1024
+  http2:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:local-dev-secret-please-change-this-to-a-long-random-string}
+    ttl: 7d
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:4173}
+  seed: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:h2:mem:community;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: false
+app:
+  seed: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:community}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true
+    username: ${DB_USER:community}
+    password: ${DB_PASSWORD:community}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: 5
+      connection-timeout: 3000
+      max-lifetime: 1800000

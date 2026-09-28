@@ -1,0 +1,163 @@
+.article {
+  padding: 24px 20px 20px;
+}
+
+.category {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.title {
+  margin: 8px 0 14px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-strong);
+}
+
+.author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--primary-weak);
+  color: var(--primary);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.authorName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.authorMeta {
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+.content {
+  margin: 20px 0 28px;
+  font-size: 17px;
+  line-height: 1.75;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.likeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--text-sub);
+  font-size: 15px;
+  font-weight: 600;
+  transition: transform 0.15s var(--ease), background-color 0.15s, color 0.15s;
+}
+
+.likeButton:active {
+  transform: scale(0.94);
+}
+
+.likeButton[aria-pressed='true'] {
+  background: var(--red-50);
+  color: var(--danger);
+}
+
+@media (prefers-color-scheme: dark) {
+  .likeButton[aria-pressed='true'] {
+    background: rgba(240, 68, 82, 0.16);
+  }
+}
+
+.likeButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+.headerAction {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-sub);
+}
+
+.headerAction:hover {
+  background: var(--surface-pressed);
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.comments {
+  margin-top: 12px;
+}
+
+.comment {
+  padding: 14px 20px;
+}
+
+.comment + .comment {
+  border-top: 1px solid var(--line);
+}
+
+.commentHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.commentAuthor {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.commentTime {
+  color: var(--text-weak);
+  font-size: 13px;
+}
+
+.commentDelete {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+.commentBody {
+  margin: 4px 0 0;
+  font-size: 15px;
+  white-space: pre-wrap;
+}
+
+.composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.composer textarea {
+  flex: 1;
+  min-height: 48px;
+  max-height: 140px;
+  padding: 13px 16px;
+  font-size: 16px;
+}

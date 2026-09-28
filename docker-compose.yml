@@ -1,54 +1,43 @@
-version: "3.9"
-
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
     restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      MYSQL_DATABASE: habitloop
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_USER: habitloop
-      MYSQL_PASSWORD: habitloop
-    ports:
-      - "3306:3306"
+      MYSQL_DATABASE: community
+      MYSQL_USER: community
+      MYSQL_PASSWORD: ${DB_PASSWORD:-community}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpass"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
 
-  api:
-    build:
-      context: ./apps/api
+  backend:
+    build: ./backend
     restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
     environment:
       DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: habitloop
-      DB_PASSWORD: habitloop
-      DB_NAME: habitloop
-      JWT_SECRET: change-me-in-prod
-      PORT: 3001
-    ports:
-      - "3001:3001"
+      DB_NAME: community
+      DB_USER: community
+      DB_PASSWORD: ${DB_PASSWORD:-community}
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret-at-least-32-bytes}
+      # 브라우저가 접속하는 주소 (nginx 가 같은 도메인으로 프록시해도 POST 에는 Origin 이 붙는다)
+      CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost}
 
-  web:
-    build:
-      context: ./apps/web
+  frontend:
+    build: ./frontend
     restart: unless-stopped
     depends_on:
-      - api
-    environment:
-      API_URL: http://api:3001
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-      PORT: 3000
+      - backend
     ports:
-      - "3000:3000"
+      - "80:80"
 
 volumes:
   mysql_data:

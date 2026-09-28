@@ -1,0 +1,36 @@
+.wrap {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 12px 24px 140px;
+}
+
+.heading {
+  margin: 12px 0 32px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-strong);
+  white-space: pre-line;
+}
+
+.switch {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-sub);
+}
+
+.switch a {
+  color: var(--primary);
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.hint {
+  margin-top: 28px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--field);
+  font-size: 14px;
+  color: var(--text-sub);
+}
