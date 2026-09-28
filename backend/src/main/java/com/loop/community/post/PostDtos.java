@@ -1,7 +1,6 @@
 package com.loop.community.post;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 
@@ -10,15 +9,22 @@ public final class PostDtos {
     private PostDtos() {
     }
 
-    public record PostRequest(
-            @NotNull(message = "카테고리를 골라 주세요") Category category,
+    public record CreatePostRequest(
+            @NotBlank(message = "채널을 골라 주세요") String channel,
+            @NotBlank(message = "제목을 입력해 주세요") @Size(max = 100, message = "제목은 100자 이내로 입력해 주세요") String title,
+            @NotBlank(message = "내용을 입력해 주세요") @Size(max = 20000, message = "내용이 너무 길어요") String content) {
+    }
+
+    /** 글을 옮기면 채널 글 수가 꼬이므로 채널은 바꿀 수 없다 */
+    public record UpdatePostRequest(
             @NotBlank(message = "제목을 입력해 주세요") @Size(max = 100, message = "제목은 100자 이내로 입력해 주세요") String title,
             @NotBlank(message = "내용을 입력해 주세요") @Size(max = 20000, message = "내용이 너무 길어요") String content) {
     }
 
     public record PostSummary(
             Long id,
-            Category category,
+            String channelSlug,
+            String channelName,
             String title,
             String excerpt,
             String authorNickname,
@@ -31,9 +37,12 @@ public final class PostDtos {
     public record Author(Long id, String nickname) {
     }
 
+    public record ChannelRef(String slug, String name) {
+    }
+
     public record PostDetail(
             Long id,
-            Category category,
+            ChannelRef channel,
             String title,
             String content,
             Author author,
@@ -47,8 +56,5 @@ public final class PostDtos {
     }
 
     public record LikeResponse(boolean liked, int likeCount) {
-    }
-
-    public record CategoryResponse(Category value, String label) {
     }
 }

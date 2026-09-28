@@ -1,0 +1,154 @@
+/* 홈 인기 채널: 가로 스크롤 카드 */
+.rail {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 20px 20px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.railCard {
+  flex: none;
+  width: 148px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--field);
+  scroll-snap-align: start;
+  transition: transform 0.15s var(--ease);
+}
+
+.railCard:active {
+  transform: scale(0.97);
+}
+
+.railName {
+  display: block;
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.railMeta {
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+.icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 12px;
+}
+
+.more {
+  padding: 8px;
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-sub);
+}
+
+/* 채널 목록 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  transition: background-color 0.15s;
+}
+
+@media (hover: hover) {
+  .row:hover {
+    background: var(--surface-pressed);
+  }
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.rowDesc {
+  font-size: 14px;
+  color: var(--text-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowCount {
+  flex: none;
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+/* 채널 헤더 */
+.hero {
+  padding: 24px 20px 20px;
+}
+
+.heroTop {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.heroIcon {
+  composes: icon;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  font-size: 24px;
+}
+
+.heroName {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.heroSlug {
+  font-size: 14px;
+  color: var(--text-weak);
+}
+
+.heroDesc {
+  margin: 14px 0 0;
+  font-size: 15px;
+  color: var(--text-sub);
+  white-space: pre-wrap;
+}
+
+.heroMeta {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-weak);
+}

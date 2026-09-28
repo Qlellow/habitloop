@@ -8,6 +8,9 @@ export const loaders = {
   login: () => import('../pages/LoginPage'),
   signup: () => import('../pages/SignupPage'),
   me: () => import('../pages/MyPage'),
+  channel: () => import('../pages/ChannelPage'),
+  channels: () => import('../pages/ChannelsPage'),
+  channelForm: () => import('../pages/ChannelFormPage'),
 };
 
 export const preload = Object.fromEntries(

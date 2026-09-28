@@ -1,26 +1,87 @@
-import { useState, type FormEvent } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { usePost, useSavePost } from '../api/queries';
-import type { Category, PostDetail } from '../api/types';
+import { useDeferredValue, useState, type FormEvent } from 'react';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useChannel, useChannels, usePost, useSavePost } from '../api/queries';
+import type { PostDetail } from '../api/types';
+import { ChannelIcon } from '../components/ChannelIcon';
 import { SubHeader } from '../components/Layout';
+import { MarkdownEditor } from '../components/MarkdownEditor';
 import { toast } from '../components/Toast';
-import { CATEGORIES } from '../lib/categories';
+import ch from '../components/Channel.module.css';
 import ui from '../components/ui.module.css';
+import s from './Write.module.css';
 
-function PostForm({ initial }: { initial?: PostDetail }) {
+/** 글을 올릴 채널 고르기. 목록을 펼치면 검색할 수 있다. */
+function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: string) => void }) {
+  const [open, setOpen] = useState(!value);
+  const [input, setInput] = useState('');
+  const q = useDeferredValue(input);
+  const { data: selected } = useChannel(value);
+  const { data: channels } = useChannels(q);
+
+  if (!open && value && !selected) {
+    return <div className={`${s.picked} ${ui.skeleton}`} style={{ height: 64 }} />;
+  }
+
+  if (!open && selected) {
+    return (
+      <button type="button" className={s.picked} onClick={() => setOpen(true)}>
+        <ChannelIcon slug={selected.slug} name={selected.name} />
+        <span className={s.pickedName}>{selected.name}</span>
+        <span className={s.change}>변경</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className={s.picker}>
+      <input
+        type="search"
+        className={ui.input}
+        placeholder="어느 채널에 올릴까요?"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        aria-label="채널 검색"
+      />
+      <ul className={s.pickerList}>
+        {channels?.map((c) => (
+          <li key={c.slug}>
+            <button
+              type="button"
+              className={ch.row}
+              style={{ width: '100%', textAlign: 'left' }}
+              onClick={() => {
+                onChange(c.slug);
+                setOpen(false);
+              }}
+            >
+              <ChannelIcon slug={c.slug} name={c.name} />
+              <div className={ch.rowBody}>
+                <div className={ch.rowName}>{c.name}</div>
+                <div className={ch.rowDesc}>c/{c.slug}</div>
+              </div>
+            </button>
+          </li>
+        ))}
+        {channels?.length === 0 && <li className={ui.empty} style={{ padding: 24 }}>찾는 채널이 없어요</li>}
+      </ul>
+    </div>
+  );
+}
+
+function PostForm({ initial, defaultChannel }: { initial?: PostDetail; defaultChannel?: string }) {
   const navigate = useNavigate();
   const save = useSavePost(initial?.id);
-  const [category, setCategory] = useState<Category>(initial?.category ?? 'FREE');
+  const [channel, setChannel] = useState(initial?.channel.slug ?? defaultChannel);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
 
-  const valid = title.trim().length > 0 && content.trim().length > 0;
+  const valid = !!channel && title.trim().length > 0 && content.trim().length > 0;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!valid) return;
     save.mutate(
-      { category, title: title.trim(), content },
+      { channel, title: title.trim(), content },
       {
         onSuccess: (post) => {
           toast(initial ? '글을 수정했어요' : '글을 올렸어요');
@@ -32,20 +93,15 @@ function PostForm({ initial }: { initial?: PostDetail }) {
   };
 
   return (
-    <form onSubmit={submit} style={{ maxWidth: 'var(--max-w)', margin: '0 auto', padding: '4px 20px 120px' }}>
-      <div className={ui.chips} style={{ padding: '4px 0 20px' }} role="radiogroup" aria-label="카테고리">
-        {CATEGORIES.map((c) => (
-          <button
-            type="button"
-            key={c.value}
-            className={ui.chip}
-            aria-pressed={category === c.value}
-            onClick={() => setCategory(c.value)}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
+    <form onSubmit={submit} className={s.form}>
+      {initial ? (
+        <div className={s.picked} style={{ cursor: 'default' }}>
+          <ChannelIcon slug={initial.channel.slug} name={initial.channel.name} />
+          <span className={s.pickedName}>{initial.channel.name}</span>
+        </div>
+      ) : (
+        <ChannelPicker value={channel} onChange={setChannel} />
+      )}
       <label className={ui.field}>
         <span className="sr-only">제목</span>
         <input
@@ -55,26 +111,13 @@ function PostForm({ initial }: { initial?: PostDetail }) {
           maxLength={100}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          autoFocus={!initial}
+          autoFocus={!!initial || !!defaultChannel}
         />
       </label>
-      <label className={ui.field}>
-        <span className="sr-only">내용</span>
-        <textarea
-          className={ui.textarea}
-          placeholder="자유롭게 이야기를 나눠 보세요"
-          maxLength={20000}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
-      </label>
+      <MarkdownEditor value={content} onChange={setContent} />
       <div className={ui.bottomCta}>
         <div>
-          <button
-            type="submit"
-            className={`${ui.button} ${ui.primary} ${ui.block}`}
-            disabled={!valid || save.isPending}
-          >
+          <button type="submit" className={`${ui.button} ${ui.primary} ${ui.block}`} disabled={!valid || save.isPending}>
             {save.isPending ? '저장 중…' : initial ? '수정하기' : '올리기'}
           </button>
         </div>
@@ -92,11 +135,12 @@ function EditPost({ id }: { id: number }) {
 
 export default function WritePage() {
   const { id } = useParams();
+  const [params] = useSearchParams();
   const editId = id ? Number(id) : undefined;
   return (
     <div className={ui.sheet}>
       <SubHeader title={editId ? '글 수정' : '글쓰기'} />
-      {editId ? <EditPost id={editId} /> : <PostForm />}
+      {editId ? <EditPost id={editId} /> : <PostForm defaultChannel={params.get('channel') ?? undefined} />}
     </div>
   );
 }

@@ -36,7 +36,7 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/actuator/health/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/posts/**", "/api/categories").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/posts/**", "/api/channels/**", "/api/channels").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
                     res.setStatus(HttpStatus.UNAUTHORIZED.value());

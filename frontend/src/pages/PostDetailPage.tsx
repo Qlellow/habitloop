@@ -3,18 +3,20 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import {
   useAddComment,
+  useBestComments,
   useComments,
   useDeleteComment,
   useDeletePost,
   usePost,
+  useToggleCommentLike,
   useToggleLike,
 } from '../api/queries';
-import type { PostDetail, PostSummary } from '../api/types';
+import type { Comment, PostDetail, PostSummary } from '../api/types';
 import { useAuth } from '../auth/authStore';
 import { HeartIcon } from '../components/Icons';
 import { Main, SubHeader } from '../components/Layout';
+import { Markdown } from '../components/Markdown';
 import { toast } from '../components/Toast';
-import { CATEGORY_LABEL } from '../lib/categories';
 import { compact, timeAgo } from '../lib/format';
 import { preload } from '../lib/preload';
 import ui from '../components/ui.module.css';
@@ -37,11 +39,64 @@ function LikeButton({ post }: { post: PostDetail }) {
   );
 }
 
-function Comments({ postId }: { postId: number }) {
+function CommentItem({ comment: c, postId, best }: { comment: Comment; postId: number; best?: boolean }) {
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
+  const like = useToggleCommentLike(postId);
+  const remove = useDeleteComment(postId);
+  const onLike = () => {
+    if (!isLoggedIn) return navigate(`/login?next=/posts/${postId}`);
+    like.mutate({ commentId: c.id, like: !c.liked }, { onError: (e) => toast(e.message) });
+  };
+  return (
+    <li className={`${s.comment} ${best ? s.best : ''}`}>
+      <div className={s.commentHead}>
+        {best && <span className={s.bestBadge}>BEST</span>}
+        <span className={s.commentAuthor}>{c.authorNickname}</span>
+        <time className={s.commentTime} dateTime={c.createdAt}>
+          {timeAgo(c.createdAt)}
+        </time>
+        {c.mine && !best && (
+          <button
+            type="button"
+            className={s.commentDelete}
+            onClick={() => confirm('댓글을 삭제할까요?') && remove.mutate(c.id)}
+          >
+            삭제
+          </button>
+        )}
+      </div>
+      <p className={s.commentBody}>{c.content}</p>
+      <button
+        type="button"
+        className={s.commentLike}
+        aria-pressed={c.liked}
+        aria-label={`좋아요 ${c.likeCount}`}
+        onClick={onLike}
+      >
+        <HeartIcon filled={c.liked} />
+        {c.likeCount > 0 ? compact(c.likeCount) : '좋아요'}
+      </button>
+    </li>
+  );
+}
+
+function BestComments({ postId }: { postId: number }) {
+  const { data } = useBestComments(postId);
+  if (!data || data.length === 0) return null;
+  return (
+    <ul className={s.bestList} aria-label="베스트 댓글">
+      {data.map((c) => (
+        <CommentItem key={c.id} comment={c} postId={postId} best />
+      ))}
+    </ul>
+  );
+}
+
+function Comments({ postId, count }: { postId: number; count?: number }) {
   const { isLoggedIn } = useAuth();
   const query = useComments(postId);
   const add = useAddComment(postId);
-  const remove = useDeleteComment(postId);
   const [text, setText] = useState('');
 
   const submit = (e: FormEvent) => {
@@ -59,8 +114,9 @@ function Comments({ postId }: { postId: number }) {
   return (
     <section className={`${ui.card} ${s.comments}`}>
       <h2 className={ui.sectionTitle} style={{ fontSize: 16 }}>
-        댓글
+        댓글 {count ? <span style={{ color: 'var(--primary)' }}>{count}</span> : null}
       </h2>
+      <BestComments postId={postId} />
       {query.isPending ? (
         <div className={ui.spinner} />
       ) : comments.length === 0 ? (
@@ -70,24 +126,7 @@ function Comments({ postId }: { postId: number }) {
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: '0 0 8px' }}>
           {comments.map((c) => (
-            <li key={c.id} className={s.comment}>
-              <div className={s.commentHead}>
-                <span className={s.commentAuthor}>{c.authorNickname}</span>
-                <time className={s.commentTime} dateTime={c.createdAt}>
-                  {timeAgo(c.createdAt)}
-                </time>
-                {c.mine && (
-                  <button
-                    type="button"
-                    className={s.commentDelete}
-                    onClick={() => confirm('댓글을 삭제할까요?') && remove.mutate(c.id)}
-                  >
-                    삭제
-                  </button>
-                )}
-              </div>
-              <p className={s.commentBody}>{c.content}</p>
-            </li>
+            <CommentItem key={c.id} comment={c} postId={postId} />
           ))}
         </ul>
       )}
@@ -185,7 +224,9 @@ export default function PostDetailPage() {
             </>
           ) : (
             <>
-              <span className={s.category}>{CATEGORY_LABEL[post.category]}</span>
+              <Link to={`/c/${post.channel.slug}`} className={s.category} onPointerEnter={preload.channel}>
+                {post.channel.name} ›
+              </Link>
               <h1 className={s.title}>{post.title}</h1>
               <div className={s.author}>
                 <span className={s.avatar} aria-hidden>
@@ -205,13 +246,15 @@ export default function PostDetailPage() {
                   <div className={ui.skeleton} style={{ width: '60%', height: 18, marginTop: 10 }} />
                 </div>
               ) : (
-                <div className={s.content}>{post.content}</div>
+                <div className={s.content}>
+                  <Markdown source={post.content} />
+                </div>
               )}
               {!isPlaceholderData && <LikeButton post={post} />}
             </>
           )}
         </article>
-        {Number.isInteger(id) && <Comments postId={id} />}
+        {Number.isInteger(id) && <Comments postId={id} count={post?.commentCount} />}
       </Main>
     </>
   );

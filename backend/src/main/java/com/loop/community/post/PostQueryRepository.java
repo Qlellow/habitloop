@@ -8,8 +8,8 @@ public interface PostQueryRepository {
 
     List<PostSummary> findSummaries(PostSearch search, Long cursor, int limit);
 
-    List<PostSummary> findPopular(Instant since, int limit);
+    List<PostSummary> findPopular(String channelSlug, Instant since, int limit);
 
-    record PostSearch(Category category, Long authorId, String keyword) {
+    record PostSearch(String channelSlug, Long authorId, String keyword) {
     }
 }

@@ -1,0 +1,42 @@
+.form {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 4px 20px 120px;
+}
+
+.picked {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--field);
+  text-align: left;
+}
+
+.pickedName {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.change {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.picker {
+  margin-bottom: 20px;
+}
+
+.pickerList {
+  list-style: none;
+  margin: 8px -20px 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}

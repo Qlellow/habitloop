@@ -40,15 +40,22 @@ class CommunityFlowTest {
         String bob = signup("bob@test.dev", "바비");
 
         // 비로그인 글쓰기 불가
-        mvc.perform(json(post("/api/posts"), Map.of("category", "FREE", "title", "t", "content", "c")))
+        mvc.perform(json(post("/api/posts"), Map.of("channel", "free", "title", "t", "content", "c")))
                 .andExpect(status().isUnauthorized());
+
+        // 채널 만들기
+        mvc.perform(auth(json(post("/api/channels"),
+                        Map.of("slug", "cats", "name", "고양이", "description", "냥냥")), alice))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.mine").value(true))
+                .andExpect(jsonPath("$.ownerNickname").value("앨리스"));
 
         // 글 25개 작성 → 커서 페이지네이션 확인
         long lastId = 0;
         for (int i = 1; i <= 25; i++) {
-            String category = i % 2 == 0 ? "INFO" : "FREE";
+            String channel = i % 2 == 0 ? "cats" : "free";
             JsonNode created = body(mvc.perform(auth(json(post("/api/posts"),
-                            Map.of("category", category, "title", "제목 " + i, "content", "본문   \n\n 내용 " + i)), alice))
+                            Map.of("channel", channel, "title", "제목 " + i, "content", "본문   \n\n **내용** " + i)), alice))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.mine").value(true)));
             lastId = created.get("id").asLong();
@@ -65,9 +72,13 @@ class CommunityFlowTest {
                 .andExpect(jsonPath("$.items", hasSize(5)))
                 .andExpect(jsonPath("$.nextCursor").doesNotExist());
 
-        // 카테고리 / 검색 필터
-        mvc.perform(get("/api/posts").param("category", "INFO").param("size", "50"))
-                .andExpect(jsonPath("$.items", hasSize(12)));
+        // 채널 / 검색 필터
+        mvc.perform(get("/api/posts").param("channel", "cats").param("size", "50"))
+                .andExpect(jsonPath("$.items", hasSize(12)))
+                .andExpect(jsonPath("$.items[0].channelName").value("고양이"));
+        mvc.perform(get("/api/channels/cats")).andExpect(jsonPath("$.postCount").value(12));
+        mvc.perform(get("/api/channels").param("q", "고양")).andExpect(jsonPath("$[0].slug").value("cats"));
+        mvc.perform(get("/api/channels")).andExpect(jsonPath("$[0].slug").value("free")); // 글 13개로 1위
         mvc.perform(get("/api/posts").param("q", "제목 2"))
                 .andExpect(jsonPath("$.items", hasSize(7))); // 2, 20~25
         mvc.perform(get("/api/posts").param("q", "%"))
@@ -88,8 +99,10 @@ class CommunityFlowTest {
         mvc.perform(auth(get("/api/posts/" + lastId), bob))
                 .andExpect(jsonPath("$.liked").value(true))
                 .andExpect(jsonPath("$.mine").value(false));
-        mvc.perform(get("/api/posts/popular"))
+        mvc.perform(get("/api/posts/popular").param("channel", "free"))
                 .andExpect(jsonPath("$[0].id").value(lastId));
+        mvc.perform(get("/api/posts/popular").param("channel", "cats"))
+                .andExpect(jsonPath("$[0].likeCount").value(0));
         mvc.perform(auth(delete("/api/posts/" + lastId + "/like"), bob))
                 .andExpect(jsonPath("$.liked").value(false))
                 .andExpect(jsonPath("$.likeCount").value(0));
@@ -102,6 +115,24 @@ class CommunityFlowTest {
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.items[0].authorNickname").value("바비"));
         mvc.perform(get("/api/posts/" + lastId)).andExpect(jsonPath("$.commentCount").value(1));
+
+        // 댓글 좋아요 & 베스트 댓글 (좋아요 2개 이상)
+        String commentLike = "/api/posts/" + lastId + "/comments/" + comment.get("id").asLong() + "/like";
+        mvc.perform(auth(post(commentLike), alice))
+                .andExpect(jsonPath("$.liked").value(true))
+                .andExpect(jsonPath("$.likeCount").value(1));
+        mvc.perform(auth(post(commentLike), alice)).andExpect(jsonPath("$.likeCount").value(1));
+        mvc.perform(get("/api/posts/" + lastId + "/comments/best")).andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(auth(post(commentLike), bob)).andExpect(jsonPath("$.likeCount").value(2));
+        mvc.perform(auth(get("/api/posts/" + lastId + "/comments/best"), alice))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].liked").value(true))
+                .andExpect(jsonPath("$[0].likeCount").value(2));
+        mvc.perform(auth(get("/api/posts/" + lastId + "/comments"), alice))
+                .andExpect(jsonPath("$.items[0].liked").value(true));
+        mvc.perform(get("/api/posts/" + lastId + "/comments"))
+                .andExpect(jsonPath("$.items[0].liked").value(false));
+        mvc.perform(auth(delete(commentLike), bob)).andExpect(jsonPath("$.likeCount").value(1));
         mvc.perform(auth(delete("/api/posts/" + lastId + "/comments/" + comment.get("id").asLong()), alice))
                 .andExpect(status().isForbidden());
         mvc.perform(auth(delete("/api/posts/" + lastId + "/comments/" + comment.get("id").asLong()), bob))
@@ -109,14 +140,42 @@ class CommunityFlowTest {
         mvc.perform(get("/api/posts/" + lastId)).andExpect(jsonPath("$.commentCount").value(0));
 
         // 수정 / 삭제 권한
-        Map<String, String> edit = Map.of("category", "DAILY", "title", "수정됨", "content", "수정 본문");
+        Map<String, String> edit = Map.of("title", "수정됨", "content", "# 수정 본문");
         mvc.perform(auth(json(put("/api/posts/" + lastId), edit), bob)).andExpect(status().isForbidden());
         mvc.perform(auth(json(put("/api/posts/" + lastId), edit), alice))
                 .andExpect(jsonPath("$.title").value("수정됨"))
-                .andExpect(jsonPath("$.category").value("DAILY"));
+                .andExpect(jsonPath("$.channel.slug").value("free"))
+                .andExpect(jsonPath("$.content").value("# 수정 본문"));
         mvc.perform(auth(post("/api/posts/" + lastId + "/like"), bob)).andExpect(status().isOk());
         mvc.perform(auth(delete("/api/posts/" + lastId), alice)).andExpect(status().isNoContent());
         mvc.perform(get("/api/posts/" + lastId)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/channels/free")).andExpect(jsonPath("$.postCount").value(12));
+    }
+
+    @Test
+    void channelRules() throws Exception {
+        String owner = signup("owner@test.dev", "채널주인");
+        String other = signup("other@test.dev", "지나가는사람");
+        Map<String, String> req = Map.of("slug", "books", "name", "독서", "description", "책 이야기");
+
+        mvc.perform(json(post("/api/channels"), req)).andExpect(status().isUnauthorized());
+        mvc.perform(auth(json(post("/api/channels"), req), owner)).andExpect(status().isCreated());
+        mvc.perform(auth(json(post("/api/channels"), req), other)).andExpect(status().isConflict());
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "books2", "name", "독서")), other))
+                .andExpect(status().isConflict());
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "new", "name", "새채널")), other))
+                .andExpect(status().isConflict());
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "Bad Slug!", "name", "잘못된주소")), other))
+                .andExpect(status().isBadRequest());
+        mvc.perform(auth(json(post("/api/posts"), Map.of("channel", "nope", "title", "t", "content", "c")), other))
+                .andExpect(status().isNotFound());
+
+        Map<String, String> edit = Map.of("name", "책과 사람", "description", "바뀐 소개");
+        mvc.perform(auth(json(put("/api/channels/books"), edit), other)).andExpect(status().isForbidden());
+        mvc.perform(auth(json(put("/api/channels/books"), edit), owner))
+                .andExpect(jsonPath("$.name").value("책과 사람"))
+                .andExpect(jsonPath("$.slug").value("books"));
+        mvc.perform(auth(json(put("/api/channels/free"), edit), owner)).andExpect(status().isForbidden());
     }
 
     @Test

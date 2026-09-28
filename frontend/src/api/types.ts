@@ -1,5 +1,3 @@
-export type Category = 'FREE' | 'QUESTION' | 'INFO' | 'DAILY';
-
 export interface User {
   id: number;
   email: string;
@@ -16,9 +14,30 @@ export interface CursorPage<T> {
   nextCursor?: number;
 }
 
+export interface ChannelSummary {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  postCount: number;
+}
+
+export interface ChannelDetail extends ChannelSummary {
+  ownerNickname?: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+export interface ChannelInput {
+  slug?: string;
+  name: string;
+  description: string;
+}
+
 export interface PostSummary {
   id: number;
-  category: Category;
+  channelSlug: string;
+  channelName: string;
   title: string;
   excerpt: string;
   authorNickname: string;
@@ -30,7 +49,7 @@ export interface PostSummary {
 
 export interface PostDetail {
   id: number;
-  category: Category;
+  channel: { slug: string; name: string };
   title: string;
   content: string;
   author: { id: number; nickname: string };
@@ -44,7 +63,8 @@ export interface PostDetail {
 }
 
 export interface PostInput {
-  category: Category;
+  /** 새 글일 때만 필요 (채널은 옮길 수 없음) */
+  channel?: string;
   title: string;
   content: string;
 }
@@ -54,6 +74,8 @@ export interface Comment {
   authorId: number;
   authorNickname: string;
   content: string;
+  likeCount: number;
+  liked: boolean;
   createdAt: string;
   mine: boolean;
 }

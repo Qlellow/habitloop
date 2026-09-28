@@ -19,6 +19,7 @@ export default function MyPage() {
     authStore.signOut();
     qc.removeQueries({ queryKey: ['post'] });
     qc.removeQueries({ queryKey: ['comments'] });
+    qc.removeQueries({ queryKey: ['channel'] });
     navigate('/', { replace: true });
   };
 

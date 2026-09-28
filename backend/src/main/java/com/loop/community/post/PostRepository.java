@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface PostRepository extends JpaRepository<Post, Long>, PostQueryRepository {
 
-    @Query("select p from Post p join fetch p.author where p.id = :id")
+    @Query("select p from Post p join fetch p.author join fetch p.channel where p.id = :id")
     Optional<Post> findWithAuthorById(@Param("id") Long id);
 
     // 카운터는 read-modify-write 대신 DB 에서 원자적으로 증감해 동시성 문제와 락 경합을 피한다

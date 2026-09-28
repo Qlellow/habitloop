@@ -2,14 +2,13 @@ import { memo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 import type { CursorPage, PostSummary } from '../api/types';
-import { CATEGORY_LABEL } from '../lib/categories';
 import { compact, timeAgo } from '../lib/format';
 import { preload } from '../lib/preload';
 import { CommentIcon, HeartIcon } from './Icons';
 import s from './PostList.module.css';
 import ui from './ui.module.css';
 
-export const PostItem = memo(function PostItem({ post }: { post: PostSummary }) {
+export const PostItem = memo(function PostItem({ post, showChannel = true }: { post: PostSummary; showChannel?: boolean }) {
   return (
     <li className={s.item}>
       <Link
@@ -20,8 +19,12 @@ export const PostItem = memo(function PostItem({ post }: { post: PostSummary }) 
         onFocus={preload.post}
       >
         <div className={s.meta}>
-          <span className={s.badge}>{CATEGORY_LABEL[post.category]}</span>
-          <span>·</span>
+          {showChannel && (
+            <>
+              <span className={s.badge}>{post.channelName}</span>
+              <span>·</span>
+            </>
+          )}
           <span>{post.authorNickname}</span>
           <span>·</span>
           <time dateTime={post.createdAt}>{timeAgo(post.createdAt)}</time>
@@ -59,7 +62,7 @@ export function PostListSkeleton({ count = 5 }: { count?: number }) {
 type FeedQuery = UseInfiniteQueryResult<InfiniteData<CursorPage<PostSummary>>>;
 
 /** 무한 스크롤 목록. 끝에 닿기 전에(rootMargin) 다음 페이지를 미리 불러온다. */
-export function PostList({ query, empty }: { query: FeedQuery; empty: string }) {
+export function PostList({ query, empty, showChannel }: { query: FeedQuery; empty: string; showChannel?: boolean }) {
   const { data, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query;
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -96,7 +99,7 @@ export function PostList({ query, empty }: { query: FeedQuery; empty: string }) 
     <>
       <ul className={s.list}>
         {posts.map((post) => (
-          <PostItem key={post.id} post={post} />
+          <PostItem key={post.id} post={post} showChannel={showChannel} />
         ))}
       </ul>
       <div ref={sentinel} className={s.sentinel} />

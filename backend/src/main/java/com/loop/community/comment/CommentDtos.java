@@ -14,16 +14,21 @@ public final class CommentDtos {
     }
 
     public record CommentResponse(Long id, Long authorId, String authorNickname, String content,
-                                  Instant createdAt, boolean mine) {
+                                  int likeCount, boolean liked, Instant createdAt, boolean mine) {
 
-        static CommentResponse of(Comment comment, Long viewerId) {
+        static CommentResponse of(Comment comment, Long viewerId, boolean liked) {
             return new CommentResponse(
                     comment.getId(),
                     comment.getAuthor().getId(),
                     comment.getAuthor().getNickname(),
                     comment.getContent(),
+                    comment.getLikeCount(),
+                    liked,
                     comment.getCreatedAt(),
                     viewerId != null && comment.isWrittenBy(viewerId));
         }
+    }
+
+    public record CommentLikeResponse(boolean liked, int likeCount) {
     }
 }

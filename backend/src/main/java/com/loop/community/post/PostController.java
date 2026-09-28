@@ -1,16 +1,15 @@
 package com.loop.community.post;
 
 import com.loop.community.common.CursorPage;
-import com.loop.community.post.PostDtos.CategoryResponse;
 import com.loop.community.post.PostDtos.LikeResponse;
 import com.loop.community.post.PostDtos.PostDetail;
-import com.loop.community.post.PostDtos.PostRequest;
+import com.loop.community.post.PostDtos.CreatePostRequest;
 import com.loop.community.post.PostDtos.PostSummary;
+import com.loop.community.post.PostDtos.UpdatePostRequest;
 import com.loop.community.post.PostQueryRepository.PostSearch;
 import com.loop.community.security.AuthUser;
 import jakarta.validation.Valid;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -29,38 +28,27 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class PostController {
 
-    private static final List<CategoryResponse> CATEGORIES = Arrays.stream(Category.values())
-            .map(c -> new CategoryResponse(c, c.getLabel()))
-            .toList();
-
     private final PostService postService;
 
     public PostController(PostService postService) {
         this.postService = postService;
     }
 
-    @GetMapping("/api/categories")
-    public ResponseEntity<List<CategoryResponse>> categories() {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(Duration.ofDays(1)).cachePublic())
-                .body(CATEGORIES);
-    }
-
     @GetMapping("/api/posts")
     public CursorPage<PostSummary> list(
-            @RequestParam(required = false) Category category,
+            @RequestParam(required = false) String channel,
             @RequestParam(required = false) Long authorId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int size) {
-        return postService.list(new PostSearch(category, authorId, q), cursor, size);
+        return postService.list(new PostSearch(channel == null || channel.isBlank() ? null : channel, authorId, q), cursor, size);
     }
 
     @GetMapping("/api/posts/popular")
-    public ResponseEntity<List<PostSummary>> popular() {
+    public ResponseEntity<List<PostSummary>> popular(@RequestParam(required = false) String channel) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(Duration.ofSeconds(30)).cachePublic())
-                .body(postService.popular());
+                .body(postService.popular(channel == null || channel.isBlank() ? null : channel));
     }
 
     @GetMapping("/api/posts/{id}")
@@ -70,13 +58,13 @@ public class PostController {
 
     @PostMapping("/api/posts")
     @ResponseStatus(HttpStatus.CREATED)
-    public PostDetail create(@AuthenticationPrincipal AuthUser user, @Valid @RequestBody PostRequest request) {
+    public PostDetail create(@AuthenticationPrincipal AuthUser user, @Valid @RequestBody CreatePostRequest request) {
         return postService.create(user.id(), request);
     }
 
     @PutMapping("/api/posts/{id}")
     public PostDetail update(@AuthenticationPrincipal AuthUser user, @PathVariable Long id,
-                             @Valid @RequestBody PostRequest request) {
+                             @Valid @RequestBody UpdatePostRequest request) {
         return postService.update(user.id(), id, request);
     }
 

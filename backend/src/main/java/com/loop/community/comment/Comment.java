@@ -32,6 +32,10 @@ public class Comment {
     @Column(nullable = false, length = 1000)
     private String content;
 
+    /** 원자적 UPDATE 쿼리로만 변경한다 */
+    @Column(nullable = false, updatable = false)
+    private int likeCount;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -63,6 +67,10 @@ public class Comment {
 
     public String getContent() {
         return content;
+    }
+
+    public int getLikeCount() {
+        return likeCount;
     }
 
     public Instant getCreatedAt() {

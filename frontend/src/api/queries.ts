@@ -9,7 +9,9 @@ import {
 import { api } from './client';
 import type {
   AuthResponse,
-  Category,
+  ChannelDetail,
+  ChannelInput,
+  ChannelSummary,
   Comment,
   CursorPage,
   LikeResponse,
@@ -24,14 +26,15 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000, // 30초 안에 같은 화면으로 돌아오면 요청 없이 캐시로 즉시 렌더
       gcTime: 5 * 60_000,
-      retry: (count, error) => count < 2 && !(error instanceof Error && 'status' in error && (error as { status: number }).status < 500),
+      retry: (count, error) =>
+        count < 2 && !(error instanceof Error && 'status' in error && (error as { status: number }).status < 500),
       refetchOnWindowFocus: false,
     },
   },
 });
 
 export interface FeedFilter {
-  category?: Category;
+  channel?: string;
   q?: string;
   authorId?: number;
 }
@@ -39,9 +42,12 @@ export interface FeedFilter {
 export const keys = {
   posts: ['posts'] as const,
   feed: (f: FeedFilter) => ['posts', 'feed', f] as const,
-  popular: ['posts', 'popular'] as const,
+  popular: (channel?: string) => ['posts', 'popular', channel ?? '*'] as const,
   post: (id: number) => ['post', id] as const,
   comments: (postId: number) => ['comments', postId] as const,
+  bestComments: (postId: number) => ['comments', postId, 'best'] as const,
+  channels: (q = '') => ['channels', q] as const,
+  channel: (slug: string) => ['channel', slug] as const,
 };
 
 const PAGE_SIZE = 20;
@@ -60,13 +66,61 @@ export function useFeed(filter: FeedFilter, enabled = true) {
   });
 }
 
-export function usePopular() {
+export function usePopular(channel?: string) {
   return useQuery({
-    queryKey: keys.popular,
-    queryFn: ({ signal }) => api<PostSummary[]>('/api/posts/popular', { signal }),
+    queryKey: keys.popular(channel),
+    queryFn: ({ signal }) => api<PostSummary[]>('/api/posts/popular', { query: { channel }, signal }),
     staleTime: 60_000,
   });
 }
+
+/* ───────── 채널 ───────── */
+
+export function useChannels(q = '') {
+  const keyword = q.trim();
+  return useQuery({
+    queryKey: keys.channels(keyword),
+    queryFn: ({ signal }) => api<ChannelSummary[]>('/api/channels', { query: { q: keyword }, signal }),
+    staleTime: keyword ? 30_000 : 60_000,
+    placeholderData: (prev) => prev, // 검색어가 바뀌는 동안 이전 결과를 유지해 깜빡임을 없앤다
+  });
+}
+
+export function useChannel(slug: string | undefined) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: keys.channel(slug ?? ''),
+    queryFn: ({ signal }) => api<ChannelDetail>(`/api/channels/${encodeURIComponent(slug!)}`, { signal }),
+    enabled: !!slug,
+    // 채널 목록에서 들어오면 이미 아는 이름·소개로 헤더를 먼저 그린다
+    placeholderData: () => {
+      for (const [, list] of qc.getQueriesData<ChannelSummary[]>({ queryKey: ['channels'] })) {
+        const hit = list?.find((c) => c.slug === slug);
+        if (hit) return { ...hit, createdAt: '', mine: false };
+      }
+      return undefined;
+    },
+  });
+}
+
+export function useSaveChannel(slug?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ChannelInput) =>
+      slug
+        ? api<ChannelDetail>(`/api/channels/${encodeURIComponent(slug)}`, {
+            method: 'PUT',
+            body: { name: input.name, description: input.description },
+          })
+        : api<ChannelDetail>('/api/channels', { method: 'POST', body: input }),
+    onSuccess: (channel) => {
+      qc.setQueryData(keys.channel(channel.slug), channel);
+      qc.invalidateQueries({ queryKey: ['channels'] });
+    },
+  });
+}
+
+/* ───────── 게시글 ───────── */
 
 export function usePost(id: number, placeholder?: PostSummary) {
   return useQuery({
@@ -76,7 +130,7 @@ export function usePost(id: number, placeholder?: PostSummary) {
     placeholderData: placeholder
       ? () => ({
           id: placeholder.id,
-          category: placeholder.category,
+          channel: { slug: placeholder.channelSlug, name: placeholder.channelName },
           title: placeholder.title,
           content: '',
           author: { id: 0, nickname: placeholder.authorNickname },
@@ -92,22 +146,11 @@ export function usePost(id: number, placeholder?: PostSummary) {
   });
 }
 
-export function useComments(postId: number) {
-  return useInfiniteQuery({
-    queryKey: keys.comments(postId),
-    queryFn: ({ pageParam, signal }) =>
-      api<CursorPage<Comment>>(`/api/posts/${postId}/comments`, {
-        query: { cursor: pageParam, size: 30 },
-        signal,
-      }),
-    initialPageParam: undefined as number | undefined,
-    getNextPageParam: (last) => last.nextCursor,
-  });
-}
-
 /** 목록 캐시는 지우지 않고 stale 표시만 해서, 다음에 볼 때 백그라운드로 갱신되게 한다. */
 function markListsStale(qc: QueryClient) {
-  return qc.invalidateQueries({ queryKey: keys.posts, refetchType: 'none' });
+  qc.invalidateQueries({ queryKey: keys.posts, refetchType: 'none' });
+  qc.invalidateQueries({ queryKey: ['channel'], refetchType: 'none' });
+  qc.invalidateQueries({ queryKey: ['channels'], refetchType: 'none' });
 }
 
 export function useSavePost(id?: number) {
@@ -115,7 +158,7 @@ export function useSavePost(id?: number) {
   return useMutation({
     mutationFn: (input: PostInput) =>
       id
-        ? api<PostDetail>(`/api/posts/${id}`, { method: 'PUT', body: input })
+        ? api<PostDetail>(`/api/posts/${id}`, { method: 'PUT', body: { title: input.title, content: input.content } })
         : api<PostDetail>('/api/posts', { method: 'POST', body: input }),
     onSuccess: (post) => {
       qc.setQueryData(keys.post(post.id), post);
@@ -138,7 +181,10 @@ export function useDeletePost() {
           pages: data.pages.map((p) => ({ ...p, items: p.items.filter((it) => it.id !== id) })),
         },
       );
-      qc.setQueryData<PostSummary[]>(keys.popular, (list) => list?.filter((it) => it.id !== id));
+      qc.setQueriesData<PostSummary[]>({ queryKey: ['posts', 'popular'] }, (list) =>
+        list?.filter((it) => it.id !== id),
+      );
+      markListsStale(qc);
     },
   });
 }
@@ -166,14 +212,75 @@ export function useToggleLike(postId: number) {
     },
     onSuccess: (res) => {
       qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, ...res });
-      markListsStale(qc);
+      qc.invalidateQueries({ queryKey: keys.posts, refetchType: 'none' });
+    },
+  });
+}
+
+/* ───────── 댓글 ───────── */
+
+export function useComments(postId: number) {
+  return useInfiniteQuery({
+    queryKey: keys.comments(postId),
+    queryFn: ({ pageParam, signal }) =>
+      api<CursorPage<Comment>>(`/api/posts/${postId}/comments`, {
+        query: { cursor: pageParam, size: 30 },
+        signal,
+      }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.nextCursor,
+  });
+}
+
+export function useBestComments(postId: number) {
+  return useQuery({
+    queryKey: keys.bestComments(postId),
+    queryFn: ({ signal }) => api<Comment[]>(`/api/posts/${postId}/comments/best`, { signal }),
+  });
+}
+
+type CommentPages = InfiniteData<CursorPage<Comment>>;
+
+/** 댓글 목록과 베스트 댓글 캐시에 들어 있는 같은 댓글을 한 번에 고친다 */
+function patchComment(qc: QueryClient, postId: number, commentId: number, patch: (c: Comment) => Comment) {
+  qc.setQueryData<CommentPages>(keys.comments(postId), (data) =>
+    data && {
+      ...data,
+      pages: data.pages.map((p) => ({ ...p, items: p.items.map((c) => (c.id === commentId ? patch(c) : c)) })),
+    },
+  );
+  qc.setQueryData<Comment[]>(keys.bestComments(postId), (list) =>
+    list?.map((c) => (c.id === commentId ? patch(c) : c)),
+  );
+}
+
+export function useToggleCommentLike(postId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentId, like }: { commentId: number; like: boolean }) =>
+      api<LikeResponse>(`/api/posts/${postId}/comments/${commentId}/like`, { method: like ? 'POST' : 'DELETE' }),
+    onMutate: async ({ commentId, like }) => {
+      await qc.cancelQueries({ queryKey: keys.comments(postId) });
+      const prevPages = qc.getQueryData<CommentPages>(keys.comments(postId));
+      const prevBest = qc.getQueryData<Comment[]>(keys.bestComments(postId));
+      patchComment(qc, postId, commentId, (c) => ({ ...c, liked: like, likeCount: c.likeCount + (like ? 1 : -1) }));
+      return { prevPages, prevBest };
+    },
+    onError: (_e, _v, ctx) => {
+      qc.setQueryData(keys.comments(postId), ctx?.prevPages);
+      qc.setQueryData(keys.bestComments(postId), ctx?.prevBest);
+    },
+    onSuccess: (res, { commentId }) => {
+      patchComment(qc, postId, commentId, (c) => ({ ...c, ...res }));
+      // 좋아요 수가 바뀌면 베스트 댓글 순위가 달라질 수 있으니 그것만 다시 받는다
+      qc.invalidateQueries({ queryKey: keys.bestComments(postId) });
     },
   });
 }
 
 function bumpCommentCount(qc: QueryClient, postId: number, delta: number) {
   qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, commentCount: p.commentCount + delta });
-  markListsStale(qc);
+  qc.invalidateQueries({ queryKey: keys.posts, refetchType: 'none' });
 }
 
 export function useAddComment(postId: number) {
@@ -182,11 +289,11 @@ export function useAddComment(postId: number) {
     mutationFn: (content: string) =>
       api<Comment>(`/api/posts/${postId}/comments`, { method: 'POST', body: { content } }),
     onSuccess: (comment) => {
-      const cache = qc.getQueryData<InfiniteData<CursorPage<Comment>>>(keys.comments(postId));
+      const cache = qc.getQueryData<CommentPages>(keys.comments(postId));
       const last = cache?.pages.at(-1);
       // 모든 댓글을 다 불러온 상태면 마지막 페이지에 붙이고, 아니면 다음 페이지 로드 때 자연스럽게 보이게 둔다
       if (cache && last && last.nextCursor == null) {
-        qc.setQueryData<InfiniteData<CursorPage<Comment>>>(keys.comments(postId), {
+        qc.setQueryData<CommentPages>(keys.comments(postId), {
           ...cache,
           pages: [...cache.pages.slice(0, -1), { ...last, items: [...last.items, comment] }],
         });
@@ -202,16 +309,19 @@ export function useDeleteComment(postId: number) {
     mutationFn: (commentId: number) =>
       api<void>(`/api/posts/${postId}/comments/${commentId}`, { method: 'DELETE' }),
     onSuccess: (_, commentId) => {
-      qc.setQueryData<InfiniteData<CursorPage<Comment>>>(keys.comments(postId), (data) =>
+      qc.setQueryData<CommentPages>(keys.comments(postId), (data) =>
         data && {
           ...data,
           pages: data.pages.map((p) => ({ ...p, items: p.items.filter((c) => c.id !== commentId) })),
         },
       );
+      qc.setQueryData<Comment[]>(keys.bestComments(postId), (list) => list?.filter((c) => c.id !== commentId));
       bumpCommentCount(qc, postId, -1);
     },
   });
 }
+
+/* ───────── 인증 ───────── */
 
 export function useAuthMutation(mode: 'login' | 'signup') {
   const qc = useQueryClient();
@@ -223,6 +333,7 @@ export function useAuthMutation(mode: 'login' | 'signup') {
       // liked / mine 같은 사용자별 필드가 바뀌므로 상세 캐시는 버린다
       qc.removeQueries({ queryKey: ['post'] });
       qc.removeQueries({ queryKey: ['comments'] });
+      qc.removeQueries({ queryKey: ['channel'] });
     },
   });
 }

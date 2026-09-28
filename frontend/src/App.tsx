@@ -12,6 +12,9 @@ const SearchPage = lazy(loaders.search);
 const LoginPage = lazy(loaders.login);
 const SignupPage = lazy(loaders.signup);
 const MyPage = lazy(loaders.me);
+const ChannelPage = lazy(loaders.channel);
+const ChannelsPage = lazy(loaders.channels);
+const ChannelFormPage = lazy(loaders.channelForm);
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -42,6 +45,10 @@ const router = createBrowserRouter([
       { path: '/posts/:id', element: <PostDetailPage /> },
       { path: '/posts/:id/edit', element: <RequireAuth><WritePage /></RequireAuth> },
       { path: '/write', element: <RequireAuth><WritePage /></RequireAuth> },
+      { path: '/channels', element: <ChannelsPage /> },
+      { path: '/channels/new', element: <RequireAuth><ChannelFormPage /></RequireAuth> },
+      { path: '/c/:slug', element: <ChannelPage /> },
+      { path: '/c/:slug/edit', element: <RequireAuth><ChannelFormPage /></RequireAuth> },
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
       { path: '/me', element: <RequireAuth><MyPage /></RequireAuth> },

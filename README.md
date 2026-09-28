@@ -1,7 +1,11 @@
 # 루프 커뮤니티
 
 토스처럼 군더더기 없는 디자인의 커뮤니티 서비스입니다.
-글쓰기 · 카테고리 · 검색 · 좋아요 · 댓글 · 인기글 · 내 글 모아보기를 지원하고, 라이트/다크 모드를 모두 지원합니다.
+
+- **채널**: DC 갤러리나 아카라이브 채널처럼 누구나 주제별 공간(`/c/{주소}`)을 만들 수 있습니다. 만든 사람은 이름과 소개를 관리할 수 있습니다.
+- **마크다운 글쓰기**: 서식 툴바와 미리보기를 제공합니다. 렌더링 결과는 sanitize 해서 XSS 를 막습니다.
+- **좋아요**: 글과 댓글 모두 누를 수 있습니다. 좋아요 2개 이상 받은 댓글 중 상위 3개는 **베스트 댓글**로 맨 위에 올라갑니다.
+- 검색, 인기글(전체/채널별), 무한 스크롤, 내 글 모아보기, 라이트/다크 모드를 지원합니다.
 
 | 영역     | 기술                                                                 |
 | -------- | -------------------------------------------------------------------- |
@@ -56,12 +60,17 @@ cd frontend && npm run build  # 타입 체크 + 프로덕션 빌드
 | ------ | -------------------------------------- | ---- | -------------------------------------- |
 | POST   | `/api/auth/signup`, `/api/auth/login`  |      | 가입 / 로그인 → `{ token, user }`      |
 | GET    | `/api/me`                              | ✓    | 내 정보                                |
-| GET    | `/api/posts?category=&q=&authorId=&cursor=&size=` | | 목록 (커서 페이지네이션)           |
-| GET    | `/api/posts/popular`                   |      | 최근 7일 인기글 5개                     |
+| GET    | `/api/channels?q=`                     |      | 인기 채널 (q 가 있으면 검색)            |
+| GET    | `/api/channels/{slug}`                 |      | 채널 정보                              |
+| POST / PUT | `/api/channels`, `/api/channels/{slug}` | ✓ | 채널 만들기 / 수정 (만든 사람만)      |
+| GET    | `/api/posts?channel=&q=&authorId=&cursor=&size=` | | 목록 (커서 페이지네이션)            |
+| GET    | `/api/posts/popular?channel=`          |      | 최근 7일 인기글 5개 (전체 또는 채널별)  |
 | GET    | `/api/posts/{id}`                      |      | 상세                                   |
 | POST / PUT / DELETE | `/api/posts`, `/api/posts/{id}` | ✓ | 작성 / 수정 / 삭제 (본인만)            |
 | POST / DELETE | `/api/posts/{id}/like`          | ✓    | 좋아요 / 취소 (여러 번 호출해도 결과가 같음) |
 | GET    | `/api/posts/{id}/comments?cursor=`     |      | 댓글 목록                              |
+| GET    | `/api/posts/{id}/comments/best`        |      | 베스트 댓글                             |
+| POST / DELETE | `/api/posts/{id}/comments/{commentId}/like` | ✓ | 댓글 좋아요 / 취소               |
 | POST / DELETE | `/api/posts/{id}/comments[/{commentId}]` | ✓ | 댓글 작성 / 삭제                  |
 
 ## 최적화 포인트
@@ -71,11 +80,13 @@ cd frontend && npm run build  # 타입 체크 + 프로덕션 빌드
 - **커서(키셋) 페이지네이션**: `OFFSET` 대신 `id < :cursor` 로 조회합니다. 5만 건 기준으로 첫 페이지와 깊은 페이지 모두 약 12ms입니다.
 - **DTO 프로젝션 + 미리보기 컬럼**: 목록은 엔티티 대신 필요한 컬럼만 DTO로 읽습니다. 본문(TEXT) 대신 저장 시 잘라 둔 `excerpt` 를 사용합니다.
 - **동적 JPQL**: `(:p is null or ...)` 패턴을 쓰지 않고, 조건이 있을 때만 WHERE 절을 붙여 인덱스를 제대로 타게 합니다.
-- **복합 인덱스**: `(category, id)`, `(author_id, id)`, `(post_id, id)`, `created_at`, 좋아요 `(post_id, user_id)` unique 인덱스를 둡니다.
-- **카운터 비정규화 + 원자적 UPDATE**: 좋아요/댓글 수는 `count(*)` 없이 `SET like_count = like_count + 1` 로 갱신합니다. 엔티티에서는 `updatable=false` 로 두어 덮어쓰기를 막습니다.
+- **복합 인덱스**: `(channel_id, id)`, `(author_id, id)`, `(post_id, id)`, 베스트 댓글용 `(post_id, like_count)`, `created_at`, 좋아요 `(post_id, user_id)`·`(comment_id, user_id)` unique 인덱스를 둡니다.
+- **댓글 좋아요 여부 한 번에 조회**: 한 페이지 댓글의 "내가 눌렀는지" 여부를 `IN` 쿼리 한 번으로 가져옵니다 (N+1 없음).
+- **마크다운 미리보기 텍스트**: 목록에 쓸 미리보기를 저장할 때 마크다운 기호를 미리 걷어 두어, 목록 조회 시 파싱 비용이 들지 않습니다.
+- **카운터 비정규화 + 원자적 UPDATE**: 글·댓글 좋아요 수, 댓글 수, 채널 글 수는 `count(*)` 없이 `SET like_count = like_count + 1` 로 갱신합니다. 엔티티에서는 `updatable=false` 로 두어 덮어쓰기를 막습니다.
 - **조회수 write-behind**: 조회마다 UPDATE 하지 않습니다. 메모리(`LongAdder`)에 모아 5초마다 반영하므로 인기글에 락 경합이 생기지 않습니다. 종료 시에도 flush 합니다.
 - **N+1 방지**: fetch join, `default_batch_fetch_size`, `open-in-view: false` 를 적용했습니다.
-- **인기글 캐시**: Caffeine에 60초 동안 캐시하고, 글을 삭제하면 캐시를 비웁니다. `Cache-Control` 헤더도 함께 보냅니다.
+- **인기글·인기 채널 캐시**: Caffeine에 60초 동안 캐시합니다(인기글은 채널별로 따로 캐시). 글을 삭제하거나 채널을 만들고 수정하면 캐시를 비웁니다.
 - **Stateless JWT**: 토큰에 닉네임을 담아 요청마다 사용자를 DB에서 조회하지 않습니다. JWT 파서는 한 번만 만들어 재사용합니다.
 - **런타임**: Java 21 가상 스레드, gzip 응답 압축(20개 목록 4.8KB → 0.5KB), HTTP/2, HikariCP 튜닝, MySQL `rewriteBatchedStatements` 와 prepared statement 캐시를 사용합니다.
 - **레이어드 Docker 이미지**: 의존성 레이어와 앱 레이어를 분리해, 코드만 바뀌면 작은 레이어만 다시 배포합니다.
@@ -83,10 +94,11 @@ cd frontend && npm run build  # 타입 체크 + 프로덕션 빌드
 ### 프론트엔드
 
 - **라우트 단위 코드 스플리팅**: 첫 화면(홈)만 메인 번들에 넣고 나머지 화면은 `React.lazy` 로 필요할 때 받습니다. react / router / query 는 별도 vendor 청크로 분리해 배포 후에도 캐시가 유지됩니다.
+- **마크다운 파서 지연 로딩**: `marked` + `DOMPurify`(gzip 25KB)는 별도 청크로 분리했습니다. 글 상세를 열거나 미리보기를 누를 때만 받습니다. 같은 본문은 다시 파싱하지 않도록 memo 로 감쌉니다.
 - **호버 프리로드**: 링크에 마우스를 올리거나 포커스하면 다음 화면의 JS 청크를 미리 받아, 클릭하면 바로 전환됩니다.
 - **목록 데이터로 상세 먼저 그리기**: 목록에서 이미 알고 있는 제목·작성자 정보로 상세 화면을 즉시 그리고, 본문만 이어서 로드합니다.
 - **TanStack Query 캐싱**: 30초 동안 캐시를 재사용합니다. 무한 스크롤은 끝에 닿기 800px 전에 다음 페이지를 미리 요청합니다.
-- **낙관적 업데이트**: 좋아요는 누르는 즉시 반영하고 실패하면 되돌립니다. 댓글 작성·삭제와 글 삭제는 다시 요청하지 않고 캐시만 수정합니다.
+- **낙관적 업데이트**: 글·댓글 좋아요는 누르는 즉시 반영하고 실패하면 되돌립니다. 댓글 좋아요는 목록과 베스트 댓글 캐시를 함께 고칩니다. 댓글 작성·삭제와 글 삭제는 다시 요청하지 않고 캐시만 수정합니다.
 - **렌더링 비용 절감**: 긴 목록에 `content-visibility: auto` 를 적용하고, 목록 항목은 `memo` 로 감쌉니다. 인증 상태는 Context 대신 `useSyncExternalStore` 로 구독해 필요한 컴포넌트만 다시 렌더링합니다.
 - **폰트**: Pretendard dynamic subset을 직접 호스팅해 화면에 쓰인 글자 조각만 받습니다. 외부 CDN 연결이 없고 `font-display: swap` 을 적용했습니다.
 - **가벼운 의존성**: axios, 날짜 라이브러리, UI 킷을 쓰지 않습니다. `fetch` 와 `Intl` 포매터(한 번만 생성)를 쓰고, 스타일은 CSS Modules로 런타임 비용이 없습니다.

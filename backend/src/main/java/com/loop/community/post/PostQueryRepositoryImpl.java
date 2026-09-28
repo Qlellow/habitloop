@@ -16,9 +16,9 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
 
     private static final String SELECT_SUMMARY = """
             select new com.loop.community.post.PostDtos$PostSummary(
-                p.id, p.category, p.title, p.excerpt, a.nickname,
+                p.id, c.slug, c.name, p.title, p.excerpt, a.nickname,
                 p.likeCount, p.commentCount, p.viewCount, p.createdAt)
-            from Post p join p.author a
+            from Post p join p.author a join p.channel c
             """;
 
     private final EntityManager em;
@@ -33,8 +33,9 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
         if (cursor != null) {
             jpql.append(" and p.id < :cursor");
         }
-        if (search.category() != null) {
-            jpql.append(" and p.category = :category");
+        if (search.channelSlug() != null) {
+            // slug 는 unique 라 채널 1건을 찾은 뒤 (channel_id, id) 인덱스로 범위 스캔한다
+            jpql.append(" and c.slug = :channel");
         }
         if (search.authorId() != null) {
             jpql.append(" and a.id = :authorId");
@@ -49,8 +50,8 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
         if (cursor != null) {
             query.setParameter("cursor", cursor);
         }
-        if (search.category() != null) {
-            query.setParameter("category", search.category());
+        if (search.channelSlug() != null) {
+            query.setParameter("channel", search.channelSlug());
         }
         if (search.authorId() != null) {
             query.setParameter("authorId", search.authorId());
@@ -62,14 +63,14 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
     }
 
     @Override
-    public List<PostSummary> findPopular(Instant since, int limit) {
-        return em.createQuery(SELECT_SUMMARY + """
-                        where p.createdAt >= :since
-                        order by p.likeCount desc, p.commentCount desc, p.id desc
-                        """, PostSummary.class)
-                .setParameter("since", since)
-                .setMaxResults(limit)
-                .getResultList();
+    public List<PostSummary> findPopular(String channelSlug, Instant since, int limit) {
+        String where = channelSlug == null ? " where p.createdAt >= :since" : " where c.slug = :channel and p.createdAt >= :since";
+        TypedQuery<PostSummary> query = em.createQuery(SELECT_SUMMARY + where
+                + " order by p.likeCount desc, p.commentCount desc, p.id desc", PostSummary.class);
+        if (channelSlug != null) {
+            query.setParameter("channel", channelSlug);
+        }
+        return query.setParameter("since", since).setMaxResults(limit).getResultList();
     }
 
     private static String escapeLike(String value) {

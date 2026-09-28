@@ -1,12 +1,17 @@
 package com.loop.community.post;
 
+import com.loop.community.channel.Channel;
+import com.loop.community.channel.ChannelRepository;
+import com.loop.community.channel.ChannelService;
 import com.loop.community.common.ApiException;
 import com.loop.community.common.CursorPage;
 import com.loop.community.post.PostDtos.Author;
+import com.loop.community.post.PostDtos.ChannelRef;
+import com.loop.community.post.PostDtos.CreatePostRequest;
 import com.loop.community.post.PostDtos.LikeResponse;
 import com.loop.community.post.PostDtos.PostDetail;
-import com.loop.community.post.PostDtos.PostRequest;
 import com.loop.community.post.PostDtos.PostSummary;
+import com.loop.community.post.PostDtos.UpdatePostRequest;
 import com.loop.community.post.PostQueryRepository.PostSearch;
 import com.loop.community.user.User;
 import com.loop.community.user.UserRepository;
@@ -28,13 +33,18 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final UserRepository userRepository;
+    private final ChannelService channelService;
+    private final ChannelRepository channelRepository;
     private final ViewCountBuffer viewCountBuffer;
 
     public PostService(PostRepository postRepository, PostLikeRepository postLikeRepository,
-                       UserRepository userRepository, ViewCountBuffer viewCountBuffer) {
+                       UserRepository userRepository, ChannelService channelService,
+                       ChannelRepository channelRepository, ViewCountBuffer viewCountBuffer) {
         this.postRepository = postRepository;
         this.postLikeRepository = postLikeRepository;
         this.userRepository = userRepository;
+        this.channelService = channelService;
+        this.channelRepository = channelRepository;
         this.viewCountBuffer = viewCountBuffer;
     }
 
@@ -45,11 +55,11 @@ public class PostService {
         return CursorPage.of(rows, pageSize, PostSummary::id);
     }
 
-    /** 인기글은 모든 방문자가 같은 결과를 보므로 짧게 캐시해 DB 정렬 쿼리를 줄인다. */
-    @Cacheable("popularPosts")
+    /** 인기글은 모든 방문자가 같은 결과를 보므로 (전체/채널별로) 짧게 캐시해 DB 정렬 쿼리를 줄인다. */
+    @Cacheable(value = "popularPosts", key = "#channelSlug == null ? '*' : #channelSlug")
     @Transactional(readOnly = true)
-    public List<PostSummary> popular() {
-        return postRepository.findPopular(Instant.now().minus(POPULAR_WINDOW), POPULAR_SIZE);
+    public List<PostSummary> popular(String channelSlug) {
+        return postRepository.findPopular(channelSlug, Instant.now().minus(POPULAR_WINDOW), POPULAR_SIZE);
     }
 
     @Transactional(readOnly = true)
@@ -61,19 +71,21 @@ public class PostService {
     }
 
     @Transactional
-    public PostDetail create(Long userId, PostRequest request) {
+    public PostDetail create(Long userId, CreatePostRequest request) {
+        Channel channel = channelService.getBySlug(request.channel());
         User author = userRepository.getReferenceById(userId);
-        Post post = postRepository.save(new Post(author, request.category(), request.title(), request.content()));
+        Post post = postRepository.save(new Post(author, channel, request.title(), request.content()));
+        channelRepository.addPostCount(channel.getId(), 1);
         return toDetail(findWithAuthor(post.getId()), userId, false);
     }
 
     @Transactional
-    public PostDetail update(Long userId, Long postId, PostRequest request) {
+    public PostDetail update(Long userId, Long postId, UpdatePostRequest request) {
         Post post = findWithAuthor(postId);
         if (!post.isWrittenBy(userId)) {
             throw ApiException.forbidden();
         }
-        post.update(request.category(), request.title(), request.content());
+        post.update(request.title(), request.content());
         return toDetail(post, userId, postLikeRepository.existsByPostIdAndUserId(postId, userId));
     }
 
@@ -84,7 +96,9 @@ public class PostService {
         if (!post.isWrittenBy(userId)) {
             throw ApiException.forbidden();
         }
+        Long channelId = post.getChannel().getId();
         postRepository.delete(post); // 댓글·좋아요는 FK ON DELETE CASCADE 로 함께 삭제
+        channelRepository.addPostCount(channelId, -1);
         viewCountBuffer.discard(postId);
     }
 
@@ -96,7 +110,7 @@ public class PostService {
             postLikeRepository.saveAndFlush(new PostLike(postId, userId));
             postRepository.addLikeCount(postId, 1);
         }
-        return new LikeResponse(true, currentLikeCount(postId));
+        return new LikeResponse(true, postRepository.findLikeCount(postId));
     }
 
     @Transactional
@@ -105,11 +119,7 @@ public class PostService {
         if (postLikeRepository.deleteByPostIdAndUserId(postId, userId) > 0) {
             postRepository.addLikeCount(postId, -1);
         }
-        return new LikeResponse(false, currentLikeCount(postId));
-    }
-
-    private int currentLikeCount(Long postId) {
-        return postRepository.findLikeCount(postId);
+        return new LikeResponse(false, postRepository.findLikeCount(postId));
     }
 
     private void ensureExists(Long postId) {
@@ -124,9 +134,10 @@ public class PostService {
 
     private PostDetail toDetail(Post post, Long viewerId, boolean liked) {
         User author = post.getAuthor();
+        Channel channel = post.getChannel();
         return new PostDetail(
                 post.getId(),
-                post.getCategory(),
+                new ChannelRef(channel.getSlug(), channel.getName()),
                 post.getTitle(),
                 post.getContent(),
                 new Author(author.getId(), author.getNickname()),
