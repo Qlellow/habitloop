@@ -15,6 +15,7 @@ const MyPage = lazy(loaders.me);
 const ChannelPage = lazy(loaders.channel);
 const ChannelsPage = lazy(loaders.channels);
 const ChannelFormPage = lazy(loaders.channelForm);
+const ChannelManagePage = lazy(loaders.channelManage);
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -49,6 +50,7 @@ const router = createBrowserRouter([
       { path: '/channels/new', element: <RequireAuth><ChannelFormPage /></RequireAuth> },
       { path: '/c/:slug', element: <ChannelPage /> },
       { path: '/c/:slug/edit', element: <RequireAuth><ChannelFormPage /></RequireAuth> },
+      { path: '/c/:slug/manage', element: <RequireAuth><ChannelManagePage /></RequireAuth> },
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
       { path: '/me', element: <RequireAuth><MyPage /></RequireAuth> },

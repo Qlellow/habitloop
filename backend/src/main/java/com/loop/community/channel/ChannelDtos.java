@@ -1,9 +1,11 @@
 package com.loop.community.channel;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.util.List;
 
 public final class ChannelDtos {
 
@@ -27,12 +29,28 @@ public final class ChannelDtos {
     }
 
     public record ChannelDetail(Long id, String slug, String name, String description, int postCount,
-                                String ownerNickname, Instant createdAt, boolean mine) {
+                                String ownerNickname, Instant createdAt, boolean mine,
+                                List<CategoryResponse> categories) {
 
-        static ChannelDetail of(Channel c, Long viewerId) {
+        static ChannelDetail of(Channel c, Long viewerId, List<ChannelCategory> categories) {
             return new ChannelDetail(c.getId(), c.getSlug(), c.getName(), c.getDescription(), c.getPostCount(),
                     c.getOwner() == null ? null : c.getOwner().getNickname(), c.getCreatedAt(),
-                    viewerId != null && c.isOwnedBy(viewerId));
+                    viewerId != null && c.isOwnedBy(viewerId),
+                    categories.stream().map(CategoryResponse::from).toList());
+        }
+    }
+
+    public record CategoryRequest(
+            @NotBlank(message = "카테고리 이름을 입력해 주세요") @Size(max = 20, message = "카테고리 이름은 20자 이내로 입력해 주세요") String name,
+            boolean ownerOnly) {
+    }
+
+    public record CategoryOrderRequest(@NotNull(message = "순서를 보내 주세요") List<Long> ids) {
+    }
+
+    public record CategoryResponse(Long id, String name, boolean ownerOnly) {
+        static CategoryResponse from(ChannelCategory c) {
+            return new CategoryResponse(c.getId(), c.getName(), c.isOwnerOnly());
         }
     }
 }

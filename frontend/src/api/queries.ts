@@ -9,6 +9,7 @@ import {
 import { api } from './client';
 import type {
   AuthResponse,
+  ChannelCategory,
   ChannelDetail,
   ChannelInput,
   ChannelSummary,
@@ -35,6 +36,7 @@ export const queryClient = new QueryClient({
 
 export interface FeedFilter {
   channel?: string;
+  category?: number;
   q?: string;
   authorId?: number;
 }
@@ -96,7 +98,7 @@ export function useChannel(slug: string | undefined) {
     placeholderData: () => {
       for (const [, list] of qc.getQueriesData<ChannelSummary[]>({ queryKey: ['channels'] })) {
         const hit = list?.find((c) => c.slug === slug);
-        if (hit) return { ...hit, createdAt: '', mine: false };
+        if (hit) return { ...hit, createdAt: '', mine: false, categories: [] };
       }
       return undefined;
     },
@@ -120,6 +122,55 @@ export function useSaveChannel(slug?: string) {
   });
 }
 
+/** 카테고리 관리. 서버가 바뀐 뒤의 전체 목록을 돌려주므로 채널 캐시에 그대로 덮어쓴다. */
+export function useCategoryMutation(slug: string) {
+  const qc = useQueryClient();
+  const base = `/api/channels/${encodeURIComponent(slug)}/categories`;
+  const setCategories = (categories: ChannelCategory[]) =>
+    qc.setQueryData<ChannelDetail>(keys.channel(slug), (c) => c && { ...c, categories });
+
+  return useMutation({
+    mutationFn: (
+      action:
+        | { type: 'create'; name: string; ownerOnly: boolean }
+        | { type: 'update'; id: number; name: string; ownerOnly: boolean }
+        | { type: 'delete'; id: number }
+        | { type: 'reorder'; ids: number[] },
+    ) => {
+      switch (action.type) {
+        case 'create':
+          return api<ChannelCategory[]>(base, { method: 'POST', body: action });
+        case 'update':
+          return api<ChannelCategory[]>(`${base}/${action.id}`, { method: 'PUT', body: action });
+        case 'delete':
+          return api<ChannelCategory[]>(`${base}/${action.id}`, { method: 'DELETE' });
+        case 'reorder':
+          return api<ChannelCategory[]>(`${base}/order`, { method: 'PUT', body: { ids: action.ids } });
+      }
+    },
+    // 순서 바꾸기는 누르는 즉시 화면에 반영한다
+    onMutate: (action) => {
+      const prev = qc.getQueryData<ChannelDetail>(keys.channel(slug));
+      if (action.type === 'reorder' && prev) {
+        const byId = new Map(prev.categories.map((c) => [c.id, c]));
+        setCategories(action.ids.map((id) => byId.get(id)!).filter(Boolean));
+      }
+      return { prev };
+    },
+    onError: (_e, _a, ctx) => {
+      if (ctx?.prev) qc.setQueryData(keys.channel(slug), ctx.prev);
+    },
+    onSuccess: (categories, action) => {
+      setCategories(categories);
+      // 이름이 바뀌거나 지워지면 목록의 카테고리 표시도 달라진다
+      if (action.type !== 'create' && action.type !== 'reorder') {
+        qc.invalidateQueries({ queryKey: keys.posts });
+        qc.removeQueries({ queryKey: ['post'] });
+      }
+    },
+  });
+}
+
 /* ───────── 게시글 ───────── */
 
 export function usePost(id: number, placeholder?: PostSummary) {
@@ -131,6 +182,7 @@ export function usePost(id: number, placeholder?: PostSummary) {
       ? () => ({
           id: placeholder.id,
           channel: { slug: placeholder.channelSlug, name: placeholder.channelName },
+          category: undefined,
           title: placeholder.title,
           content: '',
           author: { id: 0, nickname: placeholder.authorNickname },
@@ -158,7 +210,10 @@ export function useSavePost(id?: number) {
   return useMutation({
     mutationFn: (input: PostInput) =>
       id
-        ? api<PostDetail>(`/api/posts/${id}`, { method: 'PUT', body: { title: input.title, content: input.content } })
+        ? api<PostDetail>(`/api/posts/${id}`, {
+            method: 'PUT',
+            body: { categoryId: input.categoryId ?? null, title: input.title, content: input.content },
+          })
         : api<PostDetail>('/api/posts', { method: 'POST', body: input }),
     onSuccess: (post) => {
       qc.setQueryData(keys.post(post.id), post);

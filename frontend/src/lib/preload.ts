@@ -11,6 +11,7 @@ export const loaders = {
   channel: () => import('../pages/ChannelPage'),
   channels: () => import('../pages/ChannelsPage'),
   channelForm: () => import('../pages/ChannelFormPage'),
+  channelManage: () => import('../pages/ChannelManagePage'),
 };
 
 export const preload = Object.fromEntries(

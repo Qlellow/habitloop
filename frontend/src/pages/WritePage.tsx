@@ -68,10 +68,57 @@ function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: s
   );
 }
 
-function PostForm({ initial, defaultChannel }: { initial?: PostDetail; defaultChannel?: string }) {
+/** 채널 안 카테고리 고르기. 관리자 전용 카테고리는 채널 관리자에게만 보인다. */
+function CategoryPicker({
+  channel,
+  value,
+  onChange,
+}: {
+  channel: string;
+  value: number | null;
+  onChange: (id: number | null) => void;
+}) {
+  const { data, isPlaceholderData } = useChannel(channel);
+  if (!data || isPlaceholderData) return null;
+  const selectable = data.categories.filter((c) => !c.ownerOnly || data.mine);
+  if (selectable.length === 0) return null;
+  return (
+    <div className={ui.chips} style={{ padding: '0 0 16px' }} role="radiogroup" aria-label="카테고리">
+      <button type="button" className={ui.chip} aria-pressed={value == null} onClick={() => onChange(null)}>
+        선택 안 함
+      </button>
+      {selectable.map((c) => (
+        <button
+          type="button"
+          key={c.id}
+          className={ui.chip}
+          aria-pressed={value === c.id}
+          onClick={() => onChange(c.id)}
+        >
+          {c.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PostForm({
+  initial,
+  defaultChannel,
+  defaultCategory,
+}: {
+  initial?: PostDetail;
+  defaultChannel?: string;
+  defaultCategory?: number;
+}) {
   const navigate = useNavigate();
   const save = useSavePost(initial?.id);
   const [channel, setChannel] = useState(initial?.channel.slug ?? defaultChannel);
+  const [categoryId, setCategoryId] = useState<number | null>(initial ? (initial.category?.id ?? null) : (defaultCategory ?? null));
+  const pickChannel = (slug: string) => {
+    setChannel(slug);
+    setCategoryId(null); // 카테고리는 채널마다 다르다
+  };
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
 
@@ -81,7 +128,7 @@ function PostForm({ initial, defaultChannel }: { initial?: PostDetail; defaultCh
     e.preventDefault();
     if (!valid) return;
     save.mutate(
-      { channel, title: title.trim(), content },
+      { channel, categoryId, title: title.trim(), content },
       {
         onSuccess: (post) => {
           toast(initial ? '글을 수정했어요' : '글을 올렸어요');
@@ -100,8 +147,9 @@ function PostForm({ initial, defaultChannel }: { initial?: PostDetail; defaultCh
           <span className={s.pickedName}>{initial.channel.name}</span>
         </div>
       ) : (
-        <ChannelPicker value={channel} onChange={setChannel} />
+        <ChannelPicker value={channel} onChange={pickChannel} />
       )}
+      {channel && <CategoryPicker channel={channel} value={categoryId} onChange={setCategoryId} />}
       <label className={ui.field}>
         <span className="sr-only">제목</span>
         <input
@@ -140,7 +188,14 @@ export default function WritePage() {
   return (
     <div className={ui.sheet}>
       <SubHeader title={editId ? '글 수정' : '글쓰기'} />
-      {editId ? <EditPost id={editId} /> : <PostForm defaultChannel={params.get('channel') ?? undefined} />}
+      {editId ? (
+        <EditPost id={editId} />
+      ) : (
+        <PostForm
+          defaultChannel={params.get('channel') ?? undefined}
+          defaultCategory={Number(params.get('category')) || undefined}
+        />
+      )}
     </div>
   );
 }

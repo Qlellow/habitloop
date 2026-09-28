@@ -37,11 +37,12 @@ public class PostController {
     @GetMapping("/api/posts")
     public CursorPage<PostSummary> list(
             @RequestParam(required = false) String channel,
+            @RequestParam(required = false) Long category,
             @RequestParam(required = false) Long authorId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int size) {
-        return postService.list(new PostSearch(channel == null || channel.isBlank() ? null : channel, authorId, q), cursor, size);
+        return postService.list(new PostSearch(channel == null || channel.isBlank() ? null : channel, category, authorId, q), cursor, size);
     }
 
     @GetMapping("/api/posts/popular")

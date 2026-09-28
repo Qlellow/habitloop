@@ -64,9 +64,12 @@ export function PopularSection({ channel }: { channel?: string }) {
   );
 }
 
-export function WriteFab({ channel }: { channel?: string }) {
+export function WriteFab({ channel, category }: { channel?: string; category?: number }) {
   const { isLoggedIn } = useAuth();
-  const to = channel ? `/write?channel=${encodeURIComponent(channel)}` : '/write';
+  const params = new URLSearchParams();
+  if (channel) params.set('channel', channel);
+  if (category) params.set('category', String(category));
+  const to = params.size ? `/write?${params}` : '/write';
   return (
     <Link
       to={isLoggedIn ? to : `/login?next=${encodeURIComponent(to)}`}

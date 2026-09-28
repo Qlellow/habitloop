@@ -1,6 +1,8 @@
 package com.loop.community.config;
 
 import com.loop.community.channel.Channel;
+import com.loop.community.channel.ChannelCategory;
+import com.loop.community.channel.ChannelCategoryRepository;
 import com.loop.community.channel.ChannelRepository;
 import com.loop.community.comment.Comment;
 import com.loop.community.comment.CommentLike;
@@ -63,16 +65,18 @@ public class DataSeeder implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final ChannelRepository channelRepository;
+    private final ChannelCategoryRepository categoryRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(UserRepository userRepository, ChannelRepository channelRepository,
-                      PostRepository postRepository, CommentRepository commentRepository,
+                      ChannelCategoryRepository categoryRepository, PostRepository postRepository, CommentRepository commentRepository,
                       CommentLikeRepository commentLikeRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.channelRepository = channelRepository;
+        this.categoryRepository = categoryRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.commentLikeRepository = commentLikeRepository;
@@ -104,7 +108,7 @@ public class DataSeeder implements ApplicationRunner {
                 Channel channel = channels.get(s[0]);
                 User author = users.get((i + round) % users.size());
                 String title = round == 0 ? s[1] : s[1] + " (" + (round + 1) + ")";
-                Post post = postRepository.save(new Post(author, channel, title, s[2]));
+                Post post = postRepository.save(new Post(author, channel, null, title, s[2]));
                 channelRepository.addPostCount(channel.getId(), 1);
 
                 int comments = (i + round) % 4 + 1;
@@ -122,5 +126,26 @@ public class DataSeeder implements ApplicationRunner {
                 postRepository.addLikeCount(post.getId(), (i * 7 + round * 3) % 20);
             }
         }
+        seedCreativeChannel(users);
+    }
+
+    /** 채널 안 카테고리 예시: 공지사항(관리자 전용) / 소설 / 일러스트 */
+    private void seedCreativeChannel(List<User> users) {
+        User owner = users.get(0);
+        Channel creative = channelRepository.save(new Channel("creative", "창작", "직접 쓴 소설과 그린 그림을 나눠요", owner));
+        ChannelCategory notice = categoryRepository.save(new ChannelCategory(creative, "공지사항", true, 0));
+        ChannelCategory novel = categoryRepository.save(new ChannelCategory(creative, "소설", false, 1));
+        ChannelCategory art = categoryRepository.save(new ChannelCategory(creative, "일러스트", false, 2));
+
+        List<Object[]> posts = List.of(
+                new Object[]{owner, notice, "창작 채널 이용 안내", "## 환영해요!\n\n- 직접 만든 작품만 올려 주세요\n- 소설은 **소설**, 그림은 **일러스트** 카테고리에 올려 주세요"},
+                new Object[]{users.get(1), novel, "[단편] 새벽 세 시의 편의점", "> 형광등 아래에서 우리는 모두 조금씩 외로웠다.\n\n새벽 세 시, 편의점 문이 열렸다…"},
+                new Object[]{users.get(2), art, "봄 풍경 수채화 그려 봤어요", "처음 그려 본 수채화예요. 벚꽃 색 내기가 어렵네요 🌸"},
+                new Object[]{users.get(1), novel, "[연재] 달의 도서관 1화", "도서관은 보름달이 뜨는 밤에만 문을 열었다."},
+                new Object[]{users.get(2), null, "다들 작업할 때 뭐 들으세요?", "저는 주로 로파이 틀어 놔요."});
+        for (Object[] p : posts) {
+            postRepository.save(new Post((User) p[0], creative, (ChannelCategory) p[1], (String) p[2], (String) p[3]));
+        }
+        channelRepository.addPostCount(creative.getId(), posts.size());
     }
 }

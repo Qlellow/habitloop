@@ -20,7 +20,11 @@ public class ApiException extends RuntimeException {
     }
 
     public static ApiException forbidden() {
-        return new ApiException(HttpStatus.FORBIDDEN, "권한이 없어요");
+        return forbidden("권한이 없어요");
+    }
+
+    public static ApiException forbidden(String message) {
+        return new ApiException(HttpStatus.FORBIDDEN, message);
     }
 
     public static ApiException badRequest(String message) {

@@ -2,6 +2,14 @@
   padding: 24px 20px 20px;
 }
 
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-weak);
+}
+
 .category {
   font-size: 14px;
   font-weight: 600;

@@ -16,9 +16,9 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
 
     private static final String SELECT_SUMMARY = """
             select new com.loop.community.post.PostDtos$PostSummary(
-                p.id, c.slug, c.name, p.title, p.excerpt, a.nickname,
+                p.id, c.slug, c.name, cat.name, p.title, p.excerpt, a.nickname,
                 p.likeCount, p.commentCount, p.viewCount, p.createdAt)
-            from Post p join p.author a join p.channel c
+            from Post p join p.author a join p.channel c left join p.category cat
             """;
 
     private final EntityManager em;
@@ -37,6 +37,10 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
             // slug 는 unique 라 채널 1건을 찾은 뒤 (channel_id, id) 인덱스로 범위 스캔한다
             jpql.append(" and c.slug = :channel");
         }
+        if (search.categoryId() != null) {
+            // (category_id, id) 인덱스로 카테고리 탭 목록을 바로 읽는다
+            jpql.append(" and p.category.id = :categoryId");
+        }
         if (search.authorId() != null) {
             jpql.append(" and a.id = :authorId");
         }
@@ -52,6 +56,9 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
         }
         if (search.channelSlug() != null) {
             query.setParameter("channel", search.channelSlug());
+        }
+        if (search.categoryId() != null) {
+            query.setParameter("categoryId", search.categoryId());
         }
         if (search.authorId() != null) {
             query.setParameter("authorId", search.authorId());

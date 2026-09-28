@@ -179,6 +179,81 @@ class CommunityFlowTest {
     }
 
     @Test
+    void channelCategories() throws Exception {
+        String owner = signup("cat-owner@test.dev", "창작주인");
+        String member = signup("cat-member@test.dev", "창작회원");
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "art", "name", "그림방")), owner))
+                .andExpect(jsonPath("$.categories", hasSize(0)));
+        String base = "/api/channels/art/categories";
+
+        // 소유자만 카테고리를 만들 수 있다
+        mvc.perform(auth(json(post(base), Map.of("name", "공지사항", "ownerOnly", true)), member))
+                .andExpect(status().isForbidden());
+        mvc.perform(auth(json(post(base), Map.of("name", "공지사항", "ownerOnly", true)), owner))
+                .andExpect(jsonPath("$", hasSize(1)));
+        mvc.perform(auth(json(post(base), Map.of("name", "소설", "ownerOnly", false)), owner));
+        JsonNode cats = body(mvc.perform(auth(json(post(base), Map.of("name", "일러스트", "ownerOnly", false)), owner))
+                .andExpect(jsonPath("$[*].name").value(org.hamcrest.Matchers.contains("공지사항", "소설", "일러스트"))));
+        long notice = cats.get(0).get("id").asLong();
+        long novel = cats.get(1).get("id").asLong();
+        long art = cats.get(2).get("id").asLong();
+        mvc.perform(auth(json(post(base), Map.of("name", "소설", "ownerOnly", false)), owner))
+                .andExpect(status().isConflict());
+
+        // 순서 바꾸기 (일부만 보내면 거절)
+        mvc.perform(auth(json(put(base + "/order"), Map.of("ids", java.util.List.of(art, notice))), owner))
+                .andExpect(status().isBadRequest());
+        mvc.perform(auth(json(put(base + "/order"), Map.of("ids", java.util.List.of(notice, art, novel))), owner))
+                .andExpect(jsonPath("$[*].name").value(org.hamcrest.Matchers.contains("공지사항", "일러스트", "소설")));
+        mvc.perform(get("/api/channels/art"))
+                .andExpect(jsonPath("$.categories[1].name").value("일러스트"))
+                .andExpect(jsonPath("$.categories[0].ownerOnly").value(true));
+
+        // 관리자 전용 카테고리: 회원은 못 쓰고 소유자는 쓸 수 있다
+        mvc.perform(auth(json(post("/api/posts"),
+                        Map.of("channel", "art", "categoryId", notice, "title", "공지", "content", "c")), member))
+                .andExpect(status().isForbidden());
+        mvc.perform(auth(json(post("/api/posts"),
+                        Map.of("channel", "art", "categoryId", notice, "title", "공지", "content", "c")), owner))
+                .andExpect(jsonPath("$.category.name").value("공지사항"));
+        JsonNode novelPost = body(mvc.perform(auth(json(post("/api/posts"),
+                        Map.of("channel", "art", "categoryId", novel, "title", "소설 1화", "content", "c")), member))
+                .andExpect(jsonPath("$.category.name").value("소설")));
+        mvc.perform(auth(json(post("/api/posts"), Map.of("channel", "art", "title", "잡담", "content", "c")), member))
+                .andExpect(status().isCreated());
+        // 다른 채널의 카테고리는 쓸 수 없다
+        mvc.perform(auth(json(post("/api/posts"),
+                        Map.of("channel", "free", "categoryId", novel, "title", "t", "content", "c")), member))
+                .andExpect(status().isBadRequest());
+
+        // 카테고리 탭 목록
+        mvc.perform(get("/api/posts").param("channel", "art").param("category", String.valueOf(novel)))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].categoryName").value("소설"));
+        mvc.perform(get("/api/posts").param("channel", "art")).andExpect(jsonPath("$.items", hasSize(3)));
+
+        // 글의 카테고리 바꾸기
+        long postId = novelPost.get("id").asLong();
+        mvc.perform(auth(json(put("/api/posts/" + postId),
+                        Map.of("categoryId", art, "title", "그림으로 바꿈", "content", "c")), member))
+                .andExpect(jsonPath("$.category.name").value("일러스트"));
+        mvc.perform(auth(json(put("/api/posts/" + postId),
+                        Map.of("categoryId", notice, "title", "t", "content", "c")), member))
+                .andExpect(status().isForbidden());
+
+        // 이름 변경 / 삭제 → 글은 남고 카테고리만 빈다
+        mvc.perform(auth(json(put(base + "/" + art), Map.of("name", "그림", "ownerOnly", false)), owner))
+                .andExpect(jsonPath("$[1].name").value("그림"));
+        mvc.perform(get("/api/posts/" + postId)).andExpect(jsonPath("$.category.name").value("그림"));
+        mvc.perform(auth(delete(base + "/" + art), member)).andExpect(status().isForbidden());
+        mvc.perform(auth(delete(base + "/" + art), owner)).andExpect(jsonPath("$", hasSize(2)));
+        mvc.perform(get("/api/posts/" + postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").doesNotExist());
+        mvc.perform(get("/api/channels/art")).andExpect(jsonPath("$.postCount").value(3));
+    }
+
+    @Test
     void authValidation() throws Exception {
         signup("dup@test.dev", "중복");
         mvc.perform(json(post("/api/auth/signup"),

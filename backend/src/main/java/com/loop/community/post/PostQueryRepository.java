@@ -10,6 +10,6 @@ public interface PostQueryRepository {
 
     List<PostSummary> findPopular(String channelSlug, Instant since, int limit);
 
-    record PostSearch(String channelSlug, Long authorId, String keyword) {
+    record PostSearch(String channelSlug, Long categoryId, Long authorId, String keyword) {
     }
 }

@@ -224,9 +224,23 @@ export default function PostDetailPage() {
             </>
           ) : (
             <>
-              <Link to={`/c/${post.channel.slug}`} className={s.category} onPointerEnter={preload.channel}>
-                {post.channel.name} ›
-              </Link>
+              <div className={s.crumbs}>
+                <Link to={`/c/${post.channel.slug}`} className={s.category} onPointerEnter={preload.channel}>
+                  {post.channel.name}
+                </Link>
+                {post.category && (
+                  <>
+                    <span aria-hidden>›</span>
+                    <Link
+                      to={`/c/${post.channel.slug}?category=${post.category.id}`}
+                      className={s.category}
+                      onPointerEnter={preload.channel}
+                    >
+                      {post.category.name}
+                    </Link>
+                  </>
+                )}
+              </div>
               <h1 className={s.title}>{post.title}</h1>
               <div className={s.author}>
                 <span className={s.avatar} aria-hidden>

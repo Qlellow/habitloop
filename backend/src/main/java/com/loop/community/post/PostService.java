@@ -1,11 +1,14 @@
 package com.loop.community.post;
 
 import com.loop.community.channel.Channel;
+import com.loop.community.channel.ChannelCategory;
+import com.loop.community.channel.ChannelCategoryService;
 import com.loop.community.channel.ChannelRepository;
 import com.loop.community.channel.ChannelService;
 import com.loop.community.common.ApiException;
 import com.loop.community.common.CursorPage;
 import com.loop.community.post.PostDtos.Author;
+import com.loop.community.post.PostDtos.CategoryRef;
 import com.loop.community.post.PostDtos.ChannelRef;
 import com.loop.community.post.PostDtos.CreatePostRequest;
 import com.loop.community.post.PostDtos.LikeResponse;
@@ -35,16 +38,19 @@ public class PostService {
     private final UserRepository userRepository;
     private final ChannelService channelService;
     private final ChannelRepository channelRepository;
+    private final ChannelCategoryService categoryService;
     private final ViewCountBuffer viewCountBuffer;
 
     public PostService(PostRepository postRepository, PostLikeRepository postLikeRepository,
                        UserRepository userRepository, ChannelService channelService,
-                       ChannelRepository channelRepository, ViewCountBuffer viewCountBuffer) {
+                       ChannelRepository channelRepository, ChannelCategoryService categoryService,
+                       ViewCountBuffer viewCountBuffer) {
         this.postRepository = postRepository;
         this.postLikeRepository = postLikeRepository;
         this.userRepository = userRepository;
         this.channelService = channelService;
         this.channelRepository = channelRepository;
+        this.categoryService = categoryService;
         this.viewCountBuffer = viewCountBuffer;
     }
 
@@ -73,8 +79,9 @@ public class PostService {
     @Transactional
     public PostDetail create(Long userId, CreatePostRequest request) {
         Channel channel = channelService.getBySlug(request.channel());
+        ChannelCategory category = categoryService.resolveForPost(channel, request.categoryId(), userId);
         User author = userRepository.getReferenceById(userId);
-        Post post = postRepository.save(new Post(author, channel, request.title(), request.content()));
+        Post post = postRepository.save(new Post(author, channel, category, request.title(), request.content()));
         channelRepository.addPostCount(channel.getId(), 1);
         return toDetail(findWithAuthor(post.getId()), userId, false);
     }
@@ -85,7 +92,10 @@ public class PostService {
         if (!post.isWrittenBy(userId)) {
             throw ApiException.forbidden();
         }
-        post.update(request.title(), request.content());
+        ChannelCategory category = sameCategory(post.getCategory(), request.categoryId())
+                ? post.getCategory() // 이미 들어 있던 카테고리는 (관리자 전용이 됐더라도) 그대로 둘 수 있다
+                : categoryService.resolveForPost(post.getChannel(), request.categoryId(), userId);
+        post.update(category, request.title(), request.content());
         return toDetail(post, userId, postLikeRepository.existsByPostIdAndUserId(postId, userId));
     }
 
@@ -122,6 +132,10 @@ public class PostService {
         return new LikeResponse(false, postRepository.findLikeCount(postId));
     }
 
+    private static boolean sameCategory(ChannelCategory current, Long requestedId) {
+        return current == null ? requestedId == null : current.getId().equals(requestedId);
+    }
+
     private void ensureExists(Long postId) {
         if (!postRepository.existsById(postId)) {
             throw notFound();
@@ -135,9 +149,11 @@ public class PostService {
     private PostDetail toDetail(Post post, Long viewerId, boolean liked) {
         User author = post.getAuthor();
         Channel channel = post.getChannel();
+        ChannelCategory category = post.getCategory();
         return new PostDetail(
                 post.getId(),
                 new ChannelRef(channel.getSlug(), channel.getName()),
+                category == null ? null : new CategoryRef(category.getId(), category.getName()),
                 post.getTitle(),
                 post.getContent(),
                 new Author(author.getId(), author.getNickname()),

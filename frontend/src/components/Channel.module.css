@@ -152,3 +152,9 @@
   font-size: 13px;
   color: var(--text-weak);
 }
+
+/* 채널 헤더 아래 카테고리 탭: 카드 좌우 끝까지 스크롤 */
+.heroTabs {
+  margin: 16px -20px -6px;
+  padding-bottom: 0;
+}

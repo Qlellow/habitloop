@@ -1,6 +1,7 @@
 package com.loop.community.post;
 
 import com.loop.community.channel.Channel;
+import com.loop.community.channel.ChannelCategory;
 import com.loop.community.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -41,6 +42,11 @@ public class Post {
     @JoinColumn(name = "channel_id", nullable = false, updatable = false)
     private Channel channel;
 
+    /** 채널 안의 카테고리 (없을 수 있음). 카테고리가 지워지면 DB 가 NULL 로 바꾼다. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private ChannelCategory category;
+
     @Column(nullable = false, length = 100)
     private String title;
 
@@ -71,14 +77,15 @@ public class Post {
     protected Post() {
     }
 
-    public Post(User author, Channel channel, String title, String content) {
+    public Post(User author, Channel channel, ChannelCategory category, String title, String content) {
         this.author = author;
         this.channel = channel;
         this.createdAt = Instant.now();
-        update(title, content);
+        update(category, title, content);
     }
 
-    public void update(String title, String content) {
+    public void update(ChannelCategory category, String title, String content) {
+        this.category = category;
         this.title = title.trim();
         this.content = content;
         this.excerpt = makeExcerpt(content);
@@ -112,6 +119,10 @@ public class Post {
 
     public Channel getChannel() {
         return channel;
+    }
+
+    public ChannelCategory getCategory() {
+        return category;
     }
 
     public String getTitle() {

@@ -3,6 +3,7 @@
 토스처럼 군더더기 없는 디자인의 커뮤니티 서비스입니다.
 
 - **채널**: DC 갤러리나 아카라이브 채널처럼 누구나 주제별 공간(`/c/{주소}`)을 만들 수 있습니다. 만든 사람은 이름과 소개를 관리할 수 있습니다.
+- **채널 카테고리**: 채널 소유자가 채널 안에 공지사항·소설·일러스트 같은 카테고리를 최대 20개까지 만들고, 이름 변경·삭제·순서 변경을 할 수 있습니다. **관리자만 글쓰기**로 설정한 카테고리(공지사항 등)는 소유자만 글을 올릴 수 있습니다. 카테고리를 지워도 글은 남고 '카테고리 없음'이 됩니다.
 - **마크다운 글쓰기**: 서식 툴바와 미리보기를 제공합니다. 렌더링 결과는 sanitize 해서 XSS 를 막습니다.
 - **좋아요**: 글과 댓글 모두 누를 수 있습니다. 좋아요 2개 이상 받은 댓글 중 상위 3개는 **베스트 댓글**로 맨 위에 올라갑니다.
 - 검색, 인기글(전체/채널별), 무한 스크롤, 내 글 모아보기, 라이트/다크 모드를 지원합니다.
@@ -63,7 +64,9 @@ cd frontend && npm run build  # 타입 체크 + 프로덕션 빌드
 | GET    | `/api/channels?q=`                     |      | 인기 채널 (q 가 있으면 검색)            |
 | GET    | `/api/channels/{slug}`                 |      | 채널 정보                              |
 | POST / PUT | `/api/channels`, `/api/channels/{slug}` | ✓ | 채널 만들기 / 수정 (만든 사람만)      |
-| GET    | `/api/posts?channel=&q=&authorId=&cursor=&size=` | | 목록 (커서 페이지네이션)            |
+| POST / PUT / DELETE | `/api/channels/{slug}/categories[/{id}]` | ✓ | 카테고리 추가 / 수정 / 삭제 (소유자만) |
+| PUT    | `/api/channels/{slug}/categories/order` | ✓   | 카테고리 순서 변경 `{ ids: [...] }`     |
+| GET    | `/api/posts?channel=&category=&q=&authorId=&cursor=&size=` | | 목록 (커서 페이지네이션)  |
 | GET    | `/api/posts/popular?channel=`          |      | 최근 7일 인기글 5개 (전체 또는 채널별)  |
 | GET    | `/api/posts/{id}`                      |      | 상세                                   |
 | POST / PUT / DELETE | `/api/posts`, `/api/posts/{id}` | ✓ | 작성 / 수정 / 삭제 (본인만)            |
@@ -80,7 +83,8 @@ cd frontend && npm run build  # 타입 체크 + 프로덕션 빌드
 - **커서(키셋) 페이지네이션**: `OFFSET` 대신 `id < :cursor` 로 조회합니다. 5만 건 기준으로 첫 페이지와 깊은 페이지 모두 약 12ms입니다.
 - **DTO 프로젝션 + 미리보기 컬럼**: 목록은 엔티티 대신 필요한 컬럼만 DTO로 읽습니다. 본문(TEXT) 대신 저장 시 잘라 둔 `excerpt` 를 사용합니다.
 - **동적 JPQL**: `(:p is null or ...)` 패턴을 쓰지 않고, 조건이 있을 때만 WHERE 절을 붙여 인덱스를 제대로 타게 합니다.
-- **복합 인덱스**: `(channel_id, id)`, `(author_id, id)`, `(post_id, id)`, 베스트 댓글용 `(post_id, like_count)`, `created_at`, 좋아요 `(post_id, user_id)`·`(comment_id, user_id)` unique 인덱스를 둡니다.
+- **복합 인덱스**: `(channel_id, id)`, 카테고리 탭용 `(category_id, id)`, 카테고리 순서용 `(channel_id, position)`, `(author_id, id)`, `(post_id, id)`, 베스트 댓글용 `(post_id, like_count)`, `created_at`, 좋아요 `(post_id, user_id)`·`(comment_id, user_id)` unique 인덱스를 둡니다.
+- **채널 정보 한 번에 조회**: 채널 정보를 불러올 때 카테고리 목록도 함께 받아서, 탭을 그리려고 요청을 한 번 더 보내지 않습니다. 카테고리를 수정하면 서버가 바뀐 전체 목록을 돌려주고, 프론트는 그 목록으로 캐시를 바로 덮어씁니다.
 - **댓글 좋아요 여부 한 번에 조회**: 한 페이지 댓글의 "내가 눌렀는지" 여부를 `IN` 쿼리 한 번으로 가져옵니다 (N+1 없음).
 - **마크다운 미리보기 텍스트**: 목록에 쓸 미리보기를 저장할 때 마크다운 기호를 미리 걷어 두어, 목록 조회 시 파싱 비용이 들지 않습니다.
 - **카운터 비정규화 + 원자적 UPDATE**: 글·댓글 좋아요 수, 댓글 수, 채널 글 수는 `count(*)` 없이 `SET like_count = like_count + 1` 로 갱신합니다. 엔티티에서는 `updatable=false` 로 두어 덮어쓰기를 막습니다.

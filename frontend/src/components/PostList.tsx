@@ -8,7 +8,11 @@ import { CommentIcon, HeartIcon } from './Icons';
 import s from './PostList.module.css';
 import ui from './ui.module.css';
 
-export const PostItem = memo(function PostItem({ post, showChannel = true }: { post: PostSummary; showChannel?: boolean }) {
+/** badge: 홈에서는 채널 이름, 채널 안에서는 카테고리 이름을 보여 준다 */
+export type Badge = 'channel' | 'category';
+
+export const PostItem = memo(function PostItem({ post, badge = 'channel' }: { post: PostSummary; badge?: Badge }) {
+  const label = badge === 'channel' ? post.channelName : post.categoryName;
   return (
     <li className={s.item}>
       <Link
@@ -19,9 +23,9 @@ export const PostItem = memo(function PostItem({ post, showChannel = true }: { p
         onFocus={preload.post}
       >
         <div className={s.meta}>
-          {showChannel && (
+          {label && (
             <>
-              <span className={s.badge}>{post.channelName}</span>
+              <span className={s.badge}>{label}</span>
               <span>·</span>
             </>
           )}
@@ -62,7 +66,7 @@ export function PostListSkeleton({ count = 5 }: { count?: number }) {
 type FeedQuery = UseInfiniteQueryResult<InfiniteData<CursorPage<PostSummary>>>;
 
 /** 무한 스크롤 목록. 끝에 닿기 전에(rootMargin) 다음 페이지를 미리 불러온다. */
-export function PostList({ query, empty, showChannel }: { query: FeedQuery; empty: string; showChannel?: boolean }) {
+export function PostList({ query, empty, badge }: { query: FeedQuery; empty: string; badge?: Badge }) {
   const { data, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query;
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -99,7 +103,7 @@ export function PostList({ query, empty, showChannel }: { query: FeedQuery; empt
     <>
       <ul className={s.list}>
         {posts.map((post) => (
-          <PostItem key={post.id} post={post} showChannel={showChannel} />
+          <PostItem key={post.id} post={post} badge={badge} />
         ))}
       </ul>
       <div ref={sentinel} className={s.sentinel} />

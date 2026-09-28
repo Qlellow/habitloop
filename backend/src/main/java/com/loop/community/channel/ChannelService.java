@@ -24,10 +24,13 @@ public class ChannelService {
     private static final Set<String> RESERVED = Set.of("new", "all", "admin", "api", "me", "search", "write", "loop");
 
     private final ChannelRepository channelRepository;
+    private final ChannelCategoryRepository categoryRepository;
     private final UserRepository userRepository;
 
-    public ChannelService(ChannelRepository channelRepository, UserRepository userRepository) {
+    public ChannelService(ChannelRepository channelRepository, ChannelCategoryRepository categoryRepository,
+                          UserRepository userRepository) {
         this.channelRepository = channelRepository;
+        this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
     }
 
@@ -47,7 +50,8 @@ public class ChannelService {
 
     @Transactional(readOnly = true)
     public ChannelDetail detail(String slug, Long viewerId) {
-        return ChannelDetail.of(findWithOwner(slug), viewerId);
+        Channel channel = findWithOwner(slug);
+        return ChannelDetail.of(channel, viewerId, categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
     }
 
     @Transactional
@@ -63,7 +67,7 @@ public class ChannelService {
         }
         Channel channel = channelRepository.save(
                 new Channel(slug, name, request.description(), userRepository.getReferenceById(userId)));
-        return ChannelDetail.of(findWithOwner(channel.getSlug()), userId);
+        return ChannelDetail.of(findWithOwner(channel.getSlug()), userId, List.of());
     }
 
     @Transactional
@@ -78,7 +82,7 @@ public class ChannelService {
             throw ApiException.conflict("같은 이름의 채널이 이미 있어요");
         }
         channel.update(name, request.description());
-        return ChannelDetail.of(channel, userId);
+        return ChannelDetail.of(channel, userId, categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -86,7 +90,7 @@ public class ChannelService {
         return channelRepository.findBySlug(slug).orElseThrow(ChannelService::notFound);
     }
 
-    private Channel findWithOwner(String slug) {
+    Channel findWithOwner(String slug) {
         return channelRepository.findWithOwnerBySlug(slug).orElseThrow(ChannelService::notFound);
     }
 
