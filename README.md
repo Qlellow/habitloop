@@ -20,8 +20,8 @@ frontend/   React SPA (dev 5173, 운영은 Nginx 가 정적 파일 + /api 프록
 ### 로컬 개발
 
 ```bash
-# 1) 백엔드: H2 인메모리 DB + 샘플 데이터로 바로 실행
-cd backend && mvn spring-boot:run
+# 1) 백엔드: H2 인메모리 DB + 샘플 데이터로 바로 실행 (Maven 설치 불필요, Java 21 만 있으면 됨)
+cd backend && ./mvnw spring-boot:run      # Windows: mvnw.cmd spring-boot:run
 
 # 2) 프론트: /api 요청은 8080 으로 프록시
 cd frontend && npm install && npm run dev
@@ -46,7 +46,7 @@ http://localhost 로 접속합니다. 도메인으로 배포할 때는 `PUBLIC_O
 ### 테스트
 
 ```bash
-cd backend && mvn verify      # 통합 테스트 (회원가입 → 글 → 페이지네이션 → 좋아요 → 댓글 → 권한)
+cd backend && ./mvnw verify     # 통합 테스트 (회원가입 → 글 → 페이지네이션 → 좋아요 → 댓글 → 권한)
 cd frontend && npm run build  # 타입 체크 + 프로덕션 빌드
 ```
 
