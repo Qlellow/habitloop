@@ -8,39 +8,69 @@
 - **좋아요**: 글과 댓글 모두 누를 수 있습니다. 좋아요 2개 이상 받은 댓글 중 상위 3개는 **베스트 댓글**로 맨 위에 올라갑니다.
 - 검색, 인기글(전체/채널별), 무한 스크롤, 내 글 모아보기, 라이트/다크 모드를 지원합니다.
 
-| 영역     | 기술                                                                 |
-| -------- | -------------------------------------------------------------------- |
-| Backend  | Spring Boot 3.5 · Java 21 · Spring Security(JWT) · JPA · Flyway      |
-| DB       | MySQL 8.4 (로컬 개발은 H2 MySQL 모드, 설치 없이 실행)                |
-| Frontend | React 19 · TypeScript · Vite 8 · TanStack Query · React Router 7     |
-| Infra    | Docker Compose (MySQL + Spring Boot + Nginx) · GitHub Actions CI     |
+웹은 **넓은 화면용 웹사이트**로, 휴대폰은 **네이티브 앱(React Native)** 으로 따로 만들었습니다.
+데이터를 다루는 코드(API 호출, 타입, 캐시·좋아요 같은 데이터 훅, 로그인 상태)는 `packages/shared` 에 한 번만 작성하고 웹과 앱이 함께 씁니다.
+
+| 영역     | 기술                                                                          |
+| -------- | ----------------------------------------------------------------------------- |
+| Backend  | Spring Boot 3.5 · Java 21 · Spring Security(JWT) · JPA · Flyway               |
+| DB       | MySQL 8.4 (로컬 개발은 H2 MySQL 모드, 설치 없이 실행)                         |
+| Web      | React 19.1 · TypeScript · Vite 8 · TanStack Query · React Router 7            |
+| Mobile   | React Native 0.81 · **Expo SDK 54** · Expo Router 6 · TanStack Query          |
+| Shared   | `@loop/shared` — API 클라이언트 · 타입 · 데이터 훅 · 인증 상태 (웹/앱 공용)    |
+| Infra    | Docker Compose (MySQL + Spring Boot + Nginx) · GitHub Actions CI              |
 
 ```
-backend/    Spring Boot API (port 8080)
-frontend/   React SPA (dev 5173, 운영은 Nginx 가 정적 파일 + /api 프록시)
+backend/          Spring Boot API (port 8080)
+web/              React 웹사이트 (dev 5173, 운영은 Nginx 가 정적 파일 + /api 프록시)
+mobile/           React Native 앱 (Expo SDK 54, Expo Router)
+packages/shared/  웹·앱 공용 코드
 ```
+
+> 웹과 앱은 같은 React 버전(19.1.0)을 써야 공용 패키지가 React 를 하나만 불러옵니다.
+> Expo SDK 를 올릴 때는 `web/package.json` 의 `react`, `react-dom` 도 같은 버전으로 맞춰 주세요.
 
 ## 실행
 
-### 로컬 개발
+### 1) 백엔드
 
 ```bash
-# 1) 백엔드: H2 인메모리 DB + 샘플 데이터로 바로 실행 (Maven 설치 불필요, Java 21 만 있으면 됨)
+# H2 인메모리 DB + 샘플 데이터로 바로 실행 (Maven 설치 불필요, Java 21 만 있으면 됨)
 cd backend && ./mvnw spring-boot:run      # Windows: mvnw.cmd spring-boot:run
-
-# 2) 프론트: /api 요청은 8080 으로 프록시
-cd frontend && npm install && npm run dev
 ```
 
-http://localhost:5173 에서 확인할 수 있습니다. 체험 계정은 `demo@loop.dev` / `password1234` 입니다.
+체험 계정은 `demo@loop.dev` / `password1234` 입니다.
 
-### Docker (운영 구성)
+### 2) 웹
+
+```bash
+npm install          # 저장소 루트에서 한 번 (웹·앱·공용 패키지를 함께 설치)
+npm run web          # http://localhost:5173 (/api 는 8080 으로 프록시)
+```
+
+### 3) 모바일 앱 (Expo Go)
+
+휴대폰에 **Expo Go (SDK 54)** 를 설치하고, PC 와 휴대폰을 **같은 Wi-Fi** 에 연결한 뒤:
+
+```bash
+npm run mobile       # = cd mobile && npx expo start
+```
+
+터미널에 나오는 QR 코드를 Expo Go(Android) 또는 카메라(iOS)로 찍으면 앱이 열립니다.
+
+- 앱은 Expo 개발 서버가 떠 있는 PC 의 IP 로 API(`http://<PC IP>:8080`)를 자동으로 찾아갑니다.
+  휴대폰에서 연결이 안 되면 PC 방화벽에서 8080 포트를 열어 주세요.
+- Android 에뮬레이터는 `a`, iOS 시뮬레이터는 `i` 를 누르면 됩니다.
+- 다른 서버를 쓰려면 `EXPO_PUBLIC_API_URL=https://api.example.com npm run mobile`.
+- 스토어 배포용 빌드는 EAS Build(`npx eas build`)를 쓰고, 이때는 HTTPS API 주소를 `EXPO_PUBLIC_API_URL` 로 넣어 주세요.
+
+### Docker (운영 구성: DB + API + 웹)
 
 ```bash
 JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
 ```
 
-http://localhost 로 접속합니다. 도메인으로 배포할 때는 `PUBLIC_ORIGIN=https://your.domain` 을 설정해 주세요. 이 값은 CORS 허용 목록으로 쓰입니다.
+http://localhost 로 접속합니다. 도메인으로 배포할 때는 `PUBLIC_ORIGIN=https://your.domain` 을 설정해 주세요. 이 값은 CORS 허용 목록으로 쓰입니다. (네이티브 앱은 브라우저가 아니라서 CORS 와 무관합니다.)
 
 | 환경 변수        | 설명                                   | 기본값             |
 | ---------------- | -------------------------------------- | ------------------ |
@@ -51,8 +81,10 @@ http://localhost 로 접속합니다. 도메인으로 배포할 때는 `PUBLIC_O
 ### 테스트
 
 ```bash
-cd backend && ./mvnw verify     # 통합 테스트 (회원가입 → 글 → 페이지네이션 → 좋아요 → 댓글 → 권한)
-cd frontend && npm run build  # 타입 체크 + 프로덕션 빌드
+cd backend && ./mvnw verify          # 통합 테스트 (회원가입 → 글 → 채널·카테고리 → 좋아요 → 댓글 → 권한)
+npm run build:web                    # 웹 타입 체크 + 프로덕션 빌드
+npm run typecheck                    # 웹 + 앱 타입 체크
+cd mobile && npx expo export --platform android --platform ios   # 앱 번들 확인
 ```
 
 ## API
@@ -95,7 +127,15 @@ cd frontend && npm run build  # 타입 체크 + 프로덕션 빌드
 - **런타임**: Java 21 가상 스레드, gzip 응답 압축(20개 목록 4.8KB → 0.5KB), HTTP/2, HikariCP 튜닝, MySQL `rewriteBatchedStatements` 와 prepared statement 캐시를 사용합니다.
 - **레이어드 Docker 이미지**: 의존성 레이어와 앱 레이어를 분리해, 코드만 바뀌면 작은 레이어만 다시 배포합니다.
 
-### 프론트엔드
+### 모바일 앱
+
+- **네이티브 화면**: 탭 바(홈·채널·내 정보), 네이티브 스택 전환, 모달(글쓰기·로그인), 당겨서 새로고침을 씁니다.
+- **FlatList 가상화**: 화면 밖 항목은 그리지 않고(`windowSize`, `removeClippedSubviews`) 끝에 가까워지면 다음 페이지를 미리 불러옵니다.
+- **네이티브 마크다운 렌더러**: HTML·WebView 없이 marked 토큰을 `Text`/`View` 로 직접 그립니다. 가볍고 스크립트 삽입(XSS) 위험이 없으며, 링크는 http/https/mailto 만 엽니다.
+- **보안 저장소**: 로그인 토큰은 iOS Keychain / Android Keystore(`expo-secure-store`)에 저장합니다.
+- **캐시 공유**: 목록에서 이미 받은 제목·작성자로 상세 화면을 먼저 그리고 본문만 이어서 받습니다 (웹과 같은 공용 훅).
+
+### 웹 (프론트엔드)
 
 - **라우트 단위 코드 스플리팅**: 첫 화면(홈)만 메인 번들에 넣고 나머지 화면은 `React.lazy` 로 필요할 때 받습니다. react / router / query 는 별도 vendor 청크로 분리해 배포 후에도 캐시가 유지됩니다.
 - **마크다운 파서 지연 로딩**: `marked` + `DOMPurify`(gzip 25KB)는 별도 청크로 분리했습니다. 글 상세를 열거나 미리보기를 누를 때만 받습니다. 같은 본문은 다시 파싱하지 않도록 memo 로 감쌉니다.

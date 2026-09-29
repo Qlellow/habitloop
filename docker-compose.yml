@@ -31,8 +31,10 @@ services:
       # 브라우저가 접속하는 주소 (nginx 가 같은 도메인으로 프록시해도 POST 에는 Origin 이 붙는다)
       CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost}
 
-  frontend:
-    build: ./frontend
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
     restart: unless-stopped
     depends_on:
       - backend

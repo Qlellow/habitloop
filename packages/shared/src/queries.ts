@@ -91,12 +91,12 @@ export function useChannels(q = '') {
 
 export function useChannel(slug: string | undefined) {
   const qc = useQueryClient();
-  return useQuery({
+  return useQuery<ChannelDetail>({
     queryKey: keys.channel(slug ?? ''),
     queryFn: ({ signal }) => api<ChannelDetail>(`/api/channels/${encodeURIComponent(slug!)}`, { signal }),
     enabled: !!slug,
     // 채널 목록에서 들어오면 이미 아는 이름·소개로 헤더를 먼저 그린다
-    placeholderData: () => {
+    placeholderData: (): ChannelDetail | undefined => {
       for (const [, list] of qc.getQueriesData<ChannelSummary[]>({ queryKey: ['channels'] })) {
         const hit = list?.find((c) => c.slug === slug);
         if (hit) return { ...hit, createdAt: '', mine: false, categories: [] };
@@ -174,28 +174,42 @@ export function useCategoryMutation(slug: string) {
 
 /* ───────── 게시글 ───────── */
 
+/** 목록·인기글 캐시에 이미 있는 글 요약을 찾는다 (상세 화면을 먼저 그리는 데 쓴다) */
+function findCachedSummary(qc: QueryClient, id: number): PostSummary | undefined {
+  for (const [, data] of qc.getQueriesData<InfiniteData<CursorPage<PostSummary>> | PostSummary[]>({ queryKey: keys.posts })) {
+    if (!data) continue;
+    const items = Array.isArray(data) ? data : data.pages.flatMap((p) => p.items);
+    const hit = items.find((p) => p.id === id);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
 export function usePost(id: number, placeholder?: PostSummary) {
-  return useQuery({
+  const qc = useQueryClient();
+  return useQuery<PostDetail>({
     queryKey: keys.post(id),
     queryFn: ({ signal }) => api<PostDetail>(`/api/posts/${id}`, { signal }),
     // 목록에서 넘어온 경우 이미 아는 정보(제목, 작성자 등)로 먼저 그려서 체감 속도를 높인다
-    placeholderData: placeholder
-      ? () => ({
-          id: placeholder.id,
-          channel: { slug: placeholder.channelSlug, name: placeholder.channelName },
-          category: undefined,
-          title: placeholder.title,
-          content: '',
-          author: { id: 0, nickname: placeholder.authorNickname },
-          likeCount: placeholder.likeCount,
-          commentCount: placeholder.commentCount,
-          viewCount: placeholder.viewCount,
-          createdAt: placeholder.createdAt,
-          updatedAt: placeholder.createdAt,
-          liked: false,
-          mine: false,
-        })
-      : undefined,
+    placeholderData: (): PostDetail | undefined => {
+      const summary = placeholder ?? findCachedSummary(qc, id);
+      if (!summary) return undefined;
+      return {
+        id: summary.id,
+        channel: { slug: summary.channelSlug, name: summary.channelName },
+        category: undefined,
+        title: summary.title,
+        content: '',
+        author: { id: 0, nickname: summary.authorNickname },
+        likeCount: summary.likeCount,
+        commentCount: summary.commentCount,
+        viewCount: summary.viewCount,
+        createdAt: summary.createdAt,
+        updatedAt: summary.createdAt,
+        liked: false,
+        mine: false,
+      };
+    },
   });
 }
 
