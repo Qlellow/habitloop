@@ -6,7 +6,8 @@
 - **채널 카테고리**: 채널 소유자가 채널 안에 공지사항·소설·일러스트 같은 카테고리를 최대 20개까지 만들고, 이름 변경·삭제·순서 변경을 할 수 있습니다. **관리자만 글쓰기**로 설정한 카테고리(공지사항 등)는 소유자만 글을 올릴 수 있습니다. 카테고리를 지워도 글은 남고 '카테고리 없음'이 됩니다.
 - **마크다운 글쓰기**: 서식 툴바와 미리보기를 제공합니다. 렌더링 결과는 sanitize 해서 XSS 를 막습니다.
 - **좋아요**: 글과 댓글 모두 누를 수 있습니다. 좋아요 2개 이상 받은 댓글 중 상위 3개는 **베스트 댓글**로 맨 위에 올라갑니다.
-- 검색, 인기글(전체/채널별), 무한 스크롤, 내 글 모아보기, 라이트/다크 모드를 지원합니다.
+- **마이페이지**(`/me`): 왼쪽 메뉴에서 내가 쓴 글 · 가입/북마크한 채널 · 내 정보 수정(닉네임, 비밀번호) · 설정(테마, 글 목록 미리보기, 편집기 기본 보기)을 볼 수 있습니다. 채널은 가입과 별개로 ☆ 북마크할 수 있습니다.
+- 검색, 인기글(전체/채널별), 무한 스크롤, 라이트/다크 모드(시스템 설정 또는 직접 선택)를 지원합니다.
 
 웹은 **넓은 화면용 웹사이트**로, 휴대폰은 **네이티브 앱(React Native)** 으로 따로 만들었습니다.
 데이터를 다루는 코드(API 호출, 타입, 캐시·좋아요 같은 데이터 훅, 로그인 상태)는 `packages/shared` 에 한 번만 작성하고 웹과 앱이 함께 씁니다.
@@ -106,7 +107,11 @@ cd mobile && npx expo export --platform android --platform ios   # 앱 번들 �
 | GET    | `/api/channels/previews?q=&size=`      |      | 채널 목록 + 채널별 최근 글 미리보기(최대 8개) |
 | GET    | `/api/channels/{slug}`                 |      | 채널 정보 (`joined`: 가입 여부)         |
 | POST / DELETE | `/api/channels/{slug}/members`, `…/members/me` | ✓ | 채널 가입 / 탈퇴 (만든 사람은 탈퇴 불가) |
-| GET    | `/api/me/channels`                     | ✓    | 내가 가입한 채널                        |
+| GET    | `/api/me/channels`                     | ✓    | 내가 가입한 채널 (`owner`: 내가 만든 채널) |
+| PUT / DELETE | `/api/channels/{slug}/bookmark`  | ✓    | 채널 북마크 / 해제                      |
+| GET    | `/api/me/bookmarks/channels`           | ✓    | 내가 북마크한 채널                      |
+| PUT    | `/api/me/profile`                      | ✓    | 닉네임 변경 (새 토큰을 돌려줌)          |
+| PUT    | `/api/me/password`                     | ✓    | 비밀번호 변경 (지금 비밀번호 확인)      |
 | POST / PUT | `/api/channels`, `/api/channels/{slug}` | ✓ | 채널 만들기 / 수정 (만든 사람만)      |
 | POST / PUT / DELETE | `/api/channels/{slug}/categories[/{id}]` | ✓ | 카테고리 추가 / 수정 / 삭제 (소유자만) |
 | PUT    | `/api/channels/{slug}/categories/order` | ✓   | 카테고리 순서 변경 `{ ids: [...] }`     |

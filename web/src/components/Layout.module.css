@@ -211,6 +211,12 @@
   max-width: 880px;
 }
 
+/* 마이페이지: 왼쪽 메뉴 + 내용 */
+.nav {
+  grid-template-columns: 220px minmax(0, 1fr);
+  max-width: 1080px;
+}
+
 .wide {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -250,7 +256,8 @@
 
 @media (max-width: 860px) {
   .three,
-  .twoRight {
+  .twoRight,
+  .nav {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -294,7 +301,7 @@
   max-width: calc(100vw - 40px);
   padding: 12px 20px;
   border-radius: var(--radius-md);
-  background: rgba(25, 31, 40, 0.94);
+  background: var(--toast-bg);
   color: #fff;
   font-size: 15px;
   font-weight: 500;
@@ -302,11 +309,6 @@
   animation: toastIn 0.2s ease-out;
 }
 
-@media (prefers-color-scheme: dark) {
-  .toast {
-    background: rgba(70, 70, 80, 0.96);
-  }
-}
 
 @keyframes toastIn {
   from {

@@ -1,7 +1,7 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, compact, useAuth, useChannel, useFeed } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
-import { JoinButton } from '../components/JoinButton';
+import { BookmarkButton, JoinButton } from '../components/JoinButton';
 import { Footer, Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { PopularCard } from '../components/Sidebar';
@@ -53,6 +53,7 @@ export default function ChannelPage() {
                   <div className={s.bannerSlug}>c/{channel.slug}</div>
                 </div>
                 <div className={s.bannerActions}>
+                  {!isPlaceholderData && <BookmarkButton channel={channel} />}
                   {!isPlaceholderData && <JoinButton channel={channel} />}
                   {channel.mine && (
                     <Link

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { getSettings } from '../lib/settings';
 import ui from './ui.module.css';
 import s from './MarkdownEditor.module.css';
 
@@ -24,8 +25,11 @@ const ACTIONS: Action[] = [
 const SHORTCUTS: Record<string, number> = { b: 0, i: 1, k: 6 };
 
 export function MarkdownEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  // 넓은 화면에서는 작성과 미리보기를 나란히 보여 준다
-  const [mode, setMode] = useState<Mode>(() => (window.innerWidth >= 1000 ? 'split' : 'write'));
+  // 설정의 기본 보기 방식을 따르되, 좁은 화면에서는 나란히 보기 대신 작성으로 연다
+  const [mode, setMode] = useState<Mode>(() => {
+    const preferred = getSettings().editorMode;
+    return preferred === 'split' && window.innerWidth < 1000 ? 'write' : preferred;
+  });
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const apply = (action: Action) => {

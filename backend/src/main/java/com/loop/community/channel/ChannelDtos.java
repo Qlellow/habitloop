@@ -38,15 +38,24 @@ public final class ChannelDtos {
     public record MembershipResponse(boolean joined, int memberCount) {
     }
 
+    public record BookmarkResponse(boolean bookmarked) {
+    }
+
+    /** 내가 가입한 채널. owner 면 탈퇴 대신 관리 버튼을 보여 준다 */
+    public record MyChannel(Long id, String slug, String name, String description, int postCount, int memberCount,
+                            boolean owner) {
+    }
+
     /** joined: 보는 사람이 이 채널에 가입했는지 (가입해야 글을 쓸 수 있다) */
     public record ChannelDetail(Long id, String slug, String name, String description, int postCount,
                                 int memberCount, String ownerNickname, Instant createdAt, boolean mine,
-                                boolean joined, List<CategoryResponse> categories) {
+                                boolean joined, boolean bookmarked, List<CategoryResponse> categories) {
 
-        static ChannelDetail of(Channel c, Long viewerId, boolean joined, List<ChannelCategory> categories) {
+        static ChannelDetail of(Channel c, Long viewerId, boolean joined, boolean bookmarked,
+                                List<ChannelCategory> categories) {
             return new ChannelDetail(c.getId(), c.getSlug(), c.getName(), c.getDescription(), c.getPostCount(),
                     c.getMemberCount(), c.getOwner() == null ? null : c.getOwner().getNickname(), c.getCreatedAt(),
-                    viewerId != null && c.isOwnedBy(viewerId), joined,
+                    viewerId != null && c.isOwnedBy(viewerId), joined, bookmarked,
                     categories.stream().map(CategoryResponse::from).toList());
         }
     }

@@ -12,7 +12,11 @@ const WritePage = lazy(loaders.write);
 const SearchPage = lazy(loaders.search);
 const LoginPage = lazy(loaders.login);
 const SignupPage = lazy(loaders.signup);
-const MyPage = lazy(loaders.me);
+const MyLayout = lazy(loaders.me);
+const MyPostsPage = lazy(loaders.myPosts);
+const MyChannelsPage = lazy(loaders.myChannels);
+const ProfilePage = lazy(loaders.profile);
+const SettingsPage = lazy(loaders.settings);
 const ChannelPage = lazy(loaders.channel);
 const ChannelsPage = lazy(loaders.channels);
 const ChannelFormPage = lazy(loaders.channelForm);
@@ -57,7 +61,17 @@ const router = createBrowserRouter([
       { path: '/c/:slug/manage', element: auth(<ChannelManagePage />) },
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
-      { path: '/me', element: auth(<MyPage />) },
+      {
+        path: '/me',
+        element: auth(<MyLayout />),
+        children: [
+          { index: true, element: <Navigate to="/me/posts" replace /> },
+          { path: 'posts', element: <MyPostsPage /> },
+          { path: 'channels', element: <MyChannelsPage /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'settings', element: <SettingsPage /> },
+        ],
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

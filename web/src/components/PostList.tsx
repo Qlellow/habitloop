@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 import { compact, timeAgo, type CursorPage, type PostSummary } from '@loop/shared';
 import { preload } from '../lib/preload';
+import { useSettings } from '../lib/settings';
 import { CommentIcon, HeartIcon } from './Icons';
 import s from './PostList.module.css';
 import ui from './ui.module.css';
@@ -10,7 +11,15 @@ import ui from './ui.module.css';
 /** badge: 홈에서는 채널 이름, 채널 안에서는 카테고리 이름을 보여 준다 */
 export type Badge = 'channel' | 'category';
 
-export const PostItem = memo(function PostItem({ post, badge = 'channel' }: { post: PostSummary; badge?: Badge }) {
+export const PostItem = memo(function PostItem({
+  post,
+  badge = 'channel',
+  showExcerpt = true,
+}: {
+  post: PostSummary;
+  badge?: Badge;
+  showExcerpt?: boolean;
+}) {
   const label = badge === 'channel' ? post.channelName : post.categoryName;
   return (
     <li className={s.item}>
@@ -33,7 +42,7 @@ export const PostItem = memo(function PostItem({ post, badge = 'channel' }: { po
           <time dateTime={post.createdAt}>{timeAgo(post.createdAt)}</time>
         </div>
         <h3 className={s.title}>{post.title}</h3>
-        <p className={s.excerpt}>{post.excerpt}</p>
+        {showExcerpt && <p className={s.excerpt}>{post.excerpt}</p>}
         <div className={s.stats}>
           <span className={s.stat}>
             <HeartIcon /> {compact(post.likeCount)}
@@ -68,6 +77,7 @@ type FeedQuery = UseInfiniteQueryResult<InfiniteData<CursorPage<PostSummary>>>;
 export function PostList({ query, empty, badge }: { query: FeedQuery; empty: string; badge?: Badge }) {
   const { data, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query;
   const sentinel = useRef<HTMLDivElement>(null);
+  const { showExcerpt } = useSettings();
 
   useEffect(() => {
     const el = sentinel.current;
@@ -102,7 +112,7 @@ export function PostList({ query, empty, badge }: { query: FeedQuery; empty: str
     <>
       <ul className={s.list}>
         {posts.map((post) => (
-          <PostItem key={post.id} post={post} badge={badge} />
+          <PostItem key={post.id} post={post} badge={badge} showExcerpt={showExcerpt} />
         ))}
       </ul>
       <div ref={sentinel} className={s.sentinel} />

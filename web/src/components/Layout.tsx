@@ -79,8 +79,11 @@ function UserMenu() {
             <div className={s.menuName}>{user.nickname}</div>
             <div className={s.menuEmail}>{user.email}</div>
           </div>
-          <Link to="/me" className={s.menuItem} role="menuitem">
-            내 글
+          <Link to="/me" className={s.menuItem} role="menuitem" onPointerEnter={preload.me}>
+            마이페이지
+          </Link>
+          <Link to="/me/channels" className={s.menuItem} role="menuitem">
+            내 채널
           </Link>
           <Link to="/channels/new" className={s.menuItem} role="menuitem" onPointerEnter={preload.channelForm}>
             채널 만들기
@@ -143,7 +146,7 @@ export function SiteHeader() {
   );
 }
 
-type Variant = 'three' | 'twoRight' | 'single' | 'wide' | 'narrow';
+type Variant = 'three' | 'twoRight' | 'nav' | 'single' | 'wide' | 'narrow';
 
 /** 페이지 그리드. left/right 는 넓은 화면에서만 옆에 붙고, 좁아지면 접히거나 아래로 내려간다. */
 export function Page({
@@ -159,7 +162,7 @@ export function Page({
 }) {
   return (
     <div className={`${s.page} ${s[variant]}`}>
-      {variant === 'three' && <aside className={s.left}>{left}</aside>}
+      {(variant === 'three' || variant === 'nav') && <aside className={s.left}>{left}</aside>}
       <main className={s.main}>{children}</main>
       {(variant === 'three' || variant === 'twoRight') && <aside className={s.right}>{right}</aside>}
     </div>

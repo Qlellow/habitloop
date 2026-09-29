@@ -38,6 +38,14 @@ public class User {
         this.createdAt = Instant.now();
     }
 
+    public void changeNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
     public Long getId() {
         return id;
     }

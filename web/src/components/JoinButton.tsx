@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth, useMembership, type ChannelDetail } from '@loop/shared';
+import { useAuth, useBookmark, useMembership, type ChannelDetail } from '@loop/shared';
 import { toast } from './Toast';
 import ui from './ui.module.css';
 
@@ -64,6 +64,33 @@ export function JoinButton({
       }}
     >
       ✓ 가입됨
+    </button>
+  );
+}
+
+/** 채널 북마크 (가입과 별개). 비로그인이면 로그인으로. */
+export function BookmarkButton({ channel }: { channel: ChannelDetail }) {
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
+  const { pathname, search } = useLocation();
+  const bookmark = useBookmark(channel.slug);
+  const on = channel.bookmarked;
+  return (
+    <button
+      type="button"
+      className={`${ui.button} ${ui.ghost}`}
+      aria-pressed={on}
+      title={on ? '북마크 해제' : '북마크'}
+      style={on ? { color: 'var(--primary)' } : undefined}
+      onClick={() => {
+        if (!isLoggedIn) return navigate(`/login?next=${encodeURIComponent(pathname + search)}`);
+        bookmark.mutate(!on, {
+          onSuccess: () => toast(on ? '북마크를 해제했어요' : '북마크했어요. 마이페이지에서 모아 볼 수 있어요'),
+          onError: (e) => toast(e.message),
+        });
+      }}
+    >
+      {on ? '★' : '☆'} 북마크
     </button>
   );
 }

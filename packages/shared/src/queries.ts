@@ -15,6 +15,7 @@ import type {
   ChannelPreview,
   ChannelSummary,
   MembershipResponse,
+  MyChannel,
   Comment,
   CursorPage,
   LikeResponse,
@@ -54,6 +55,7 @@ export const keys = {
   channels: (q = '') => ['channels', q] as const,
   channelPreviews: (q = '') => ['channels', 'previews', q] as const,
   myChannels: ['channels', 'mine'] as const,
+  bookmarkedChannels: ['channels', 'bookmarks'] as const,
   channel: (slug: string) => ['channel', slug] as const,
 };
 
@@ -117,7 +119,7 @@ export function useChannel(slug: string | undefined) {
     placeholderData: (): ChannelDetail | undefined => {
       for (const [, list] of qc.getQueriesData<ChannelSummary[]>({ queryKey: ['channels'] })) {
         const hit = list?.find((c) => c.slug === slug);
-        if (hit) return { ...hit, createdAt: '', mine: false, joined: false, categories: [] };
+        if (hit) return { ...hit, createdAt: '', mine: false, joined: false, bookmarked: false, categories: [] };
       }
       return undefined;
     },
@@ -145,7 +147,7 @@ export function useSaveChannel(slug?: string) {
 export function useMyChannels(enabled: boolean) {
   return useQuery({
     queryKey: keys.myChannels,
-    queryFn: ({ signal }) => api<ChannelSummary[]>('/api/me/channels', { signal }),
+    queryFn: ({ signal }) => api<MyChannel[]>('/api/me/channels', { signal }),
     enabled,
   });
 }
@@ -162,6 +164,35 @@ export function useMembership(slug: string) {
       qc.setQueryData<ChannelDetail>(keys.channel(slug), (c) => c && { ...c, ...res });
       qc.invalidateQueries({ queryKey: ['channels'] });
     },
+  });
+}
+
+/** 내가 북마크한 채널 */
+export function useBookmarkedChannels(enabled: boolean) {
+  return useQuery({
+    queryKey: keys.bookmarkedChannels,
+    queryFn: ({ signal }) => api<ChannelSummary[]>('/api/me/bookmarks/channels', { signal }),
+    enabled,
+  });
+}
+
+/** 채널 북마크 켜기/끄기 (누르는 즉시 반영) */
+export function useBookmark(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (on: boolean) =>
+      api<{ bookmarked: boolean }>(`/api/channels/${encodeURIComponent(slug)}/bookmark`, {
+        method: on ? 'PUT' : 'DELETE',
+      }),
+    onMutate: (on) => {
+      const prev = qc.getQueryData<ChannelDetail>(keys.channel(slug));
+      qc.setQueryData<ChannelDetail>(keys.channel(slug), (c) => c && { ...c, bookmarked: on });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(keys.channel(slug), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.bookmarkedChannels }),
   });
 }
 
@@ -455,6 +486,28 @@ export function useSignOut() {
     authStore.signOut();
     clearUserScopedCache(qc);
   };
+}
+
+/** 닉네임 변경. 서버가 새 토큰을 주므로 로그인 상태를 갱신하고, 닉네임이 보이는 캐시를 새로 받는다. */
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { nickname: string }) => api<AuthResponse>('/api/me/profile', { method: 'PUT', body }),
+    onSuccess: (res) => {
+      authStore.signIn(res);
+      qc.invalidateQueries({ queryKey: keys.posts });
+      qc.removeQueries({ queryKey: ['post'] });
+      qc.removeQueries({ queryKey: ['comments'] });
+      qc.removeQueries({ queryKey: ['channel'] });
+    },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (body: { currentPassword: string; newPassword: string }) =>
+      api<void>('/api/me/password', { method: 'PUT', body }),
+  });
 }
 
 export function useAuthMutation(mode: 'login' | 'signup') {

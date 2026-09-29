@@ -1,6 +1,6 @@
 package com.loop.community.channel;
 
-import com.loop.community.channel.ChannelDtos.ChannelSummary;
+import com.loop.community.channel.ChannelDtos.MyChannel;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,11 +22,12 @@ public interface ChannelMemberRepository extends JpaRepository<ChannelMember, Lo
 
     /** 내가 가입한 채널 (최근에 가입한 순). (user_id, channel_id) 인덱스를 탄다 */
     @Query("""
-            select new com.loop.community.channel.ChannelDtos$ChannelSummary(
-                c.id, c.slug, c.name, c.description, c.postCount, c.memberCount)
-            from ChannelMember m join Channel c on c.id = m.channelId
+            select new com.loop.community.channel.ChannelDtos$MyChannel(
+                c.id, c.slug, c.name, c.description, c.postCount, c.memberCount,
+                case when o.id = :userId then true else false end)
+            from ChannelMember m join Channel c on c.id = m.channelId left join c.owner o
             where m.userId = :userId
             order by m.id desc
             """)
-    List<ChannelSummary> findMyChannels(@Param("userId") Long userId);
+    List<MyChannel> findMyChannels(@Param("userId") Long userId);
 }

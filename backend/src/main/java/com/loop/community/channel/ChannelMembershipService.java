@@ -1,6 +1,8 @@
 package com.loop.community.channel;
 
+import com.loop.community.channel.ChannelDtos.BookmarkResponse;
 import com.loop.community.channel.ChannelDtos.ChannelSummary;
+import com.loop.community.channel.ChannelDtos.MyChannel;
 import com.loop.community.channel.ChannelDtos.MembershipResponse;
 import com.loop.community.common.ApiException;
 import java.util.Collection;
@@ -11,19 +13,22 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 채널 가입/탈퇴. 가입은 글쓰기 권한이고, 보기·공감·댓글에는 필요 없다. */
+/** 채널 가입/탈퇴와 북마크. 가입은 글쓰기 권한이고, 보기·공감·댓글에는 필요 없다. 북마크는 권한과 무관하다. */
 @Service
 public class ChannelMembershipService {
 
     private final ChannelService channelService;
     private final ChannelRepository channelRepository;
     private final ChannelMemberRepository memberRepository;
+    private final ChannelBookmarkRepository bookmarkRepository;
 
     public ChannelMembershipService(ChannelService channelService, ChannelRepository channelRepository,
-                                    ChannelMemberRepository memberRepository) {
+                                    ChannelMemberRepository memberRepository,
+                                    ChannelBookmarkRepository bookmarkRepository) {
         this.channelService = channelService;
         this.channelRepository = channelRepository;
         this.memberRepository = memberRepository;
+        this.bookmarkRepository = bookmarkRepository;
     }
 
     /** 여러 번 눌러도 결과가 같다 (이미 가입했으면 그대로) */
@@ -60,8 +65,26 @@ public class ChannelMembershipService {
         }
     }
 
+    /** 여러 번 눌러도 결과가 같다 */
+    @Transactional
+    public BookmarkResponse bookmark(Long userId, String slug, boolean on) {
+        Channel channel = channelService.getBySlug(slug);
+        boolean exists = bookmarkRepository.existsByChannelIdAndUserId(channel.getId(), userId);
+        if (on && !exists) {
+            bookmarkRepository.saveAndFlush(new ChannelBookmark(channel.getId(), userId));
+        } else if (!on && exists) {
+            bookmarkRepository.deleteByChannelIdAndUserId(channel.getId(), userId);
+        }
+        return new BookmarkResponse(on);
+    }
+
     @Transactional(readOnly = true)
-    public List<ChannelSummary> myChannels(Long userId) {
+    public List<ChannelSummary> bookmarkedChannels(Long userId) {
+        return bookmarkRepository.findBookmarkedChannels(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyChannel> myChannels(Long userId) {
         return memberRepository.findMyChannels(userId);
     }
 

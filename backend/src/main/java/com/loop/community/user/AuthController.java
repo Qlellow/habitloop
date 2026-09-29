@@ -3,6 +3,8 @@ package com.loop.community.user;
 import com.loop.community.security.AuthUser;
 import com.loop.community.user.AuthDtos.AuthResponse;
 import com.loop.community.user.AuthDtos.LoginRequest;
+import com.loop.community.user.AuthDtos.PasswordRequest;
+import com.loop.community.user.AuthDtos.ProfileRequest;
 import com.loop.community.user.AuthDtos.SignupRequest;
 import com.loop.community.user.AuthDtos.UserResponse;
 import jakarta.validation.Valid;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,5 +40,16 @@ public class AuthController {
     @GetMapping("/api/me")
     public UserResponse me(@AuthenticationPrincipal AuthUser user) {
         return authService.me(user.id());
+    }
+
+    @PutMapping("/api/me/profile")
+    public AuthResponse updateProfile(@AuthenticationPrincipal AuthUser user, @Valid @RequestBody ProfileRequest request) {
+        return authService.updateProfile(user.id(), request);
+    }
+
+    @PutMapping("/api/me/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(@AuthenticationPrincipal AuthUser user, @Valid @RequestBody PasswordRequest request) {
+        authService.changePassword(user.id(), request);
     }
 }

@@ -30,6 +30,8 @@
   --primary-weak: var(--blue-50);
   --danger: var(--red-500);
   --skeleton: var(--grey-100);
+  --danger-weak: var(--red-50);
+  --toast-bg: rgba(25, 31, 40, 0.94);
 
   --radius-lg: 10px;
   --radius-md: 8px;
@@ -43,8 +45,27 @@
   color-scheme: light;
 }
 
+/* 다크 테마: 설정에서 '다크'를 고르거나, '시스템 설정'이면서 OS 가 다크일 때 */
+:root[data-theme='dark'] {
+  --bg: #101013;
+  --border: #2a2a31;
+  --surface: #1c1c21;
+  --surface-pressed: #26262c;
+  --text-strong: #f2f2f4;
+  --text: #d9d9de;
+  --text-sub: #9e9ea6;
+  --text-weak: #7e7e87;
+  --line: #2a2a31;
+  --field: #2a2a31;
+  --primary-weak: rgba(49, 130, 246, 0.16);
+  --skeleton: #2a2a31;
+  --danger-weak: rgba(240, 68, 82, 0.14);
+  --toast-bg: rgba(70, 70, 80, 0.96);
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #101013;
     --border: #2a2a31;
     --surface: #1c1c21;
@@ -57,6 +78,8 @@
     --field: #2a2a31;
     --primary-weak: rgba(49, 130, 246, 0.16);
     --skeleton: #2a2a31;
+    --danger-weak: rgba(240, 68, 82, 0.14);
+    --toast-bg: rgba(70, 70, 80, 0.96);
     color-scheme: dark;
   }
 }

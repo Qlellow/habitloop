@@ -331,7 +331,9 @@ class CommunityFlowTest {
                 .andExpect(status().isCreated());
         mvc.perform(auth(get("/api/me/channels"), guest))
                 .andExpect(jsonPath("$[0].slug").value("club"))
-                .andExpect(jsonPath("$[0].memberCount").value(2));
+                .andExpect(jsonPath("$[0].memberCount").value(2))
+                .andExpect(jsonPath("$[0].owner").value(false));
+        mvc.perform(auth(get("/api/me/channels"), owner)).andExpect(jsonPath("$[0].owner").value(true));
         mvc.perform(auth(get("/api/channels/previews").param("q", "club"), guest))
                 .andExpect(jsonPath("$[0].joined").value(true));
         mvc.perform(get("/api/channels/previews").param("q", "club"))
@@ -346,6 +348,50 @@ class CommunityFlowTest {
         mvc.perform(auth(delete("/api/channels/club/members/me"), owner)).andExpect(status().isBadRequest());
         mvc.perform(post("/api/channels/club/members")).andExpect(status().isUnauthorized());
         mvc.perform(auth(get("/api/me/channels"), guest)).andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void bookmarksAndProfile() throws Exception {
+        String me = signup("mypage@test.dev", "마이페이지");
+        signup("taken@test.dev", "이미있음");
+
+        // 채널 북마크 (가입과 별개, 여러 번 눌러도 같음)
+        mvc.perform(auth(get("/api/channels/free"), me)).andExpect(jsonPath("$.bookmarked").value(false));
+        mvc.perform(auth(put("/api/channels/free/bookmark"), me)).andExpect(jsonPath("$.bookmarked").value(true));
+        mvc.perform(auth(put("/api/channels/free/bookmark"), me)).andExpect(jsonPath("$.bookmarked").value(true));
+        mvc.perform(auth(put("/api/channels/daily/bookmark"), me));
+        mvc.perform(auth(get("/api/channels/free"), me))
+                .andExpect(jsonPath("$.bookmarked").value(true))
+                .andExpect(jsonPath("$.joined").value(false));
+        mvc.perform(auth(get("/api/me/bookmarks/channels"), me))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].slug").value("daily")); // 최근 북마크 순
+        mvc.perform(auth(delete("/api/channels/free/bookmark"), me)).andExpect(jsonPath("$.bookmarked").value(false));
+        mvc.perform(auth(get("/api/me/bookmarks/channels"), me)).andExpect(jsonPath("$", hasSize(1)));
+        mvc.perform(put("/api/channels/free/bookmark")).andExpect(status().isUnauthorized());
+
+        // 닉네임 변경: 새 토큰과 함께 돌아오고, 겹치면 409
+        mvc.perform(auth(json(put("/api/me/profile"), Map.of("nickname", "이미있음")), me)).andExpect(status().isConflict());
+        String renamedToken = body(mvc.perform(auth(json(put("/api/me/profile"), Map.of("nickname", "새닉네임")), me))
+                .andExpect(jsonPath("$.user.nickname").value("새닉네임"))).get("token").asText();
+        mvc.perform(auth(get("/api/me"), renamedToken)).andExpect(jsonPath("$.nickname").value("새닉네임"));
+
+        // 비밀번호 변경: 지금 비밀번호가 맞아야 한다
+        mvc.perform(auth(json(put("/api/me/password"),
+                        Map.of("currentPassword", "wrong-password", "newPassword", "newpassword123")), me))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("지금 비밀번호가 맞지 않아요"));
+        mvc.perform(auth(json(put("/api/me/password"),
+                        Map.of("currentPassword", "password1234", "newPassword", "short")), me))
+                .andExpect(status().isBadRequest());
+        mvc.perform(auth(json(put("/api/me/password"),
+                        Map.of("currentPassword", "password1234", "newPassword", "newpassword123")), me))
+                .andExpect(status().isNoContent());
+        mvc.perform(json(post("/api/auth/login"), Map.of("email", "mypage@test.dev", "password", "password1234")))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(json(post("/api/auth/login"), Map.of("email", "mypage@test.dev", "password", "newpassword123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.nickname").value("새닉네임"));
     }
 
     @Test

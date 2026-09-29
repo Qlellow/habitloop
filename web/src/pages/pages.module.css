@@ -162,15 +162,10 @@
 
 .likeButton[aria-pressed='true'] {
   border-color: var(--danger);
-  background: var(--red-50);
+  background: var(--danger-weak);
   color: var(--danger);
 }
 
-@media (prefers-color-scheme: dark) {
-  .likeButton[aria-pressed='true'] {
-    background: rgba(240, 68, 82, 0.14);
-  }
-}
 
 .likeButton svg {
   width: 20px;

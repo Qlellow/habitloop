@@ -30,6 +30,11 @@ export interface ChannelPreview extends ChannelSummary {
   recentPosts: PostSummary[];
 }
 
+/** 내가 가입한 채널 (owner: 내가 만든 채널) */
+export interface MyChannel extends ChannelSummary {
+  owner: boolean;
+}
+
 export interface MembershipResponse {
   joined: boolean;
   memberCount: number;
@@ -48,6 +53,8 @@ export interface ChannelDetail extends ChannelSummary {
   mine: boolean;
   /** 가입해야 글을 쓸 수 있다 (보기·공감·댓글은 가입 없이 가능) */
   joined: boolean;
+  /** 북마크 (가입과 별개) */
+  bookmarked: boolean;
   categories: ChannelCategory[];
 }
 

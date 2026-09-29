@@ -1,8 +1,10 @@
 package com.loop.community.channel;
 
+import com.loop.community.channel.ChannelDtos.BookmarkResponse;
 import com.loop.community.channel.ChannelDtos.ChannelDetail;
 import com.loop.community.channel.ChannelDtos.ChannelPreview;
 import com.loop.community.channel.ChannelDtos.ChannelSummary;
+import com.loop.community.channel.ChannelDtos.MyChannel;
 import com.loop.community.channel.ChannelDtos.MembershipResponse;
 import com.loop.community.channel.ChannelDtos.CreateChannelRequest;
 import com.loop.community.channel.ChannelDtos.UpdateChannelRequest;
@@ -61,9 +63,25 @@ public class ChannelController {
         return membershipService.leave(user.id(), slug);
     }
 
+    @PutMapping("/api/channels/{slug}/bookmark")
+    public BookmarkResponse bookmark(@AuthenticationPrincipal AuthUser user, @PathVariable String slug) {
+        return membershipService.bookmark(user.id(), slug, true);
+    }
+
+    @DeleteMapping("/api/channels/{slug}/bookmark")
+    public BookmarkResponse unbookmark(@AuthenticationPrincipal AuthUser user, @PathVariable String slug) {
+        return membershipService.bookmark(user.id(), slug, false);
+    }
+
+    /** 내가 북마크한 채널 */
+    @GetMapping("/api/me/bookmarks/channels")
+    public List<ChannelSummary> bookmarkedChannels(@AuthenticationPrincipal AuthUser user) {
+        return membershipService.bookmarkedChannels(user.id());
+    }
+
     /** 내가 가입한 채널 */
     @GetMapping("/api/me/channels")
-    public List<ChannelSummary> myChannels(@AuthenticationPrincipal AuthUser user) {
+    public List<MyChannel> myChannels(@AuthenticationPrincipal AuthUser user) {
         return membershipService.myChannels(user.id());
     }
 

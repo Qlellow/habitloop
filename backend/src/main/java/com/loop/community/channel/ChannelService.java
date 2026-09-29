@@ -26,13 +26,16 @@ public class ChannelService {
     private final ChannelRepository channelRepository;
     private final ChannelCategoryRepository categoryRepository;
     private final ChannelMemberRepository memberRepository;
+    private final ChannelBookmarkRepository bookmarkRepository;
     private final UserRepository userRepository;
 
     public ChannelService(ChannelRepository channelRepository, ChannelCategoryRepository categoryRepository,
-                          ChannelMemberRepository memberRepository, UserRepository userRepository) {
+                          ChannelMemberRepository memberRepository, ChannelBookmarkRepository bookmarkRepository,
+                          UserRepository userRepository) {
         this.channelRepository = channelRepository;
         this.categoryRepository = categoryRepository;
         this.memberRepository = memberRepository;
+        this.bookmarkRepository = bookmarkRepository;
         this.userRepository = userRepository;
     }
 
@@ -54,7 +57,8 @@ public class ChannelService {
     public ChannelDetail detail(String slug, Long viewerId) {
         Channel channel = findWithOwner(slug);
         boolean joined = viewerId != null && memberRepository.existsByChannelIdAndUserId(channel.getId(), viewerId);
-        return ChannelDetail.of(channel, viewerId, joined,
+        boolean bookmarked = viewerId != null && bookmarkRepository.existsByChannelIdAndUserId(channel.getId(), viewerId);
+        return ChannelDetail.of(channel, viewerId, joined, bookmarked,
                 categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
     }
 
@@ -89,7 +93,8 @@ public class ChannelService {
             throw ApiException.conflict("같은 이름의 채널이 이미 있어요");
         }
         channel.update(name, request.description());
-        return ChannelDetail.of(channel, userId, true, categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
+        return ChannelDetail.of(channel, userId, true,
+                bookmarkRepository.existsByChannelIdAndUserId(channel.getId(), userId), categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
     }
 
     @Transactional(readOnly = true)

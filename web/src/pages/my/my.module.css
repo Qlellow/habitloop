@@ -1,0 +1,304 @@
+/* ───── 왼쪽 메뉴 ───── */
+.side {
+  padding: 18px 12px 12px;
+}
+
+.me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px 14px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-weak);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.meText {
+  min-width: 0;
+}
+
+.nickname {
+  font-weight: 700;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email {
+  font-size: 13px;
+  color: var(--text-weak);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.link {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-sub);
+  text-align: left;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.link:hover {
+  background: var(--field);
+  color: var(--text-strong);
+}
+
+.link[aria-current='page'] {
+  background: var(--primary-weak);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.logout {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* ───── 공통 섹션 ───── */
+.head {
+  margin-bottom: 4px;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.desc {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.section {
+  padding: 22px 24px;
+}
+
+.sectionTitle {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.sectionDesc {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.row > button {
+  height: auto;
+}
+
+.row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.readonly {
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  color: var(--text-sub);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* ───── 채널 목록 ───── */
+.channelList {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 6px;
+}
+
+.channel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+}
+
+/* 구분선은 좌우를 들여서 (글 목록과 같은 방식) */
+.channelList li + li {
+  box-shadow: inset 0 1px 0 var(--line);
+  margin: 0 20px;
+}
+
+.channelList li + li .channel {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.channelLink {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.channelLink:hover .channelName {
+  color: var(--primary);
+}
+
+.channelBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.channelName {
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.channelMeta {
+  font-size: 13px;
+  color: var(--text-weak);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ───── 설정 ───── */
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.option + .option {
+  box-shadow: inset 0 1px 0 var(--line);
+}
+
+.optionLabel {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.optionDesc {
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+.segment {
+  flex: none;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--field);
+}
+
+.segment button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.segment button[aria-checked='true'] {
+  background: var(--surface);
+  color: var(--text-strong);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.switch {
+  flex: none;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--grey-300);
+  transition: background-color 0.15s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s;
+}
+
+.switch[aria-checked='true'] {
+  background: var(--primary);
+}
+
+.switch[aria-checked='true']::after {
+  transform: translateX(18px);
+}
+
+@media (max-width: 860px) {
+  /* 좁은 화면에서는 왼쪽 메뉴를 가로 탭처럼 */
+  .side {
+    padding: 12px;
+  }
+
+  .menu {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+  }
+
+  .link {
+    white-space: nowrap;
+  }
+
+  .logout {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .option {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
