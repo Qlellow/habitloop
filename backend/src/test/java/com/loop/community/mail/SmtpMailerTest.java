@@ -22,7 +22,7 @@ class SmtpMailerTest {
         JavaMailSender sender = mock(JavaMailSender.class);
         when(sender.createMimeMessage()).thenReturn(new MimeMessage(Session.getInstance(new Properties())));
 
-        new SmtpMailer(sender, "qlellow0702@gmail.com", 10).sendCode("user@test.dev", CodePurpose.SIGNUP, "123456");
+        new SmtpMailer(sender, "sender@example.com", 10).sendCode("user@test.dev", CodePurpose.SIGNUP, "123456");
 
         ArgumentCaptor<MimeMessage> sent = ArgumentCaptor.forClass(MimeMessage.class);
         verify(sender).send(sent.capture());
@@ -30,7 +30,7 @@ class SmtpMailerTest {
         message.saveChanges();
         assertThat(message.getSubject()).isEqualTo("[루프] 회원가입 인증번호 123456");
         InternetAddress from = (InternetAddress) message.getFrom()[0];
-        assertThat(from.getAddress()).isEqualTo("qlellow0702@gmail.com");
+        assertThat(from.getAddress()).isEqualTo("sender@example.com");
         assertThat(from.getPersonal()).isEqualTo("루프");
         assertThat(message.getAllRecipients()[0].toString()).isEqualTo("user@test.dev");
         ByteArrayOutputStream raw = new ByteArrayOutputStream();

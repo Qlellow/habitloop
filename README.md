@@ -70,17 +70,16 @@ cd backend && ./mvnw spring-boot:run      # Windows: mvnw.cmd spring-boot:run
 
 #### 인증번호 메일 (회원가입 · 2단계 인증)
 
-회원가입할 때와 2단계 인증을 켤 때·쓸 때 이메일로 6자리 인증번호를 보냅니다. 보내는 계정은 `qlellow0702@gmail.com`(Gmail SMTP)이고,
-**비밀번호는 코드나 저장소에 두지 않고 환경 변수로만** 넘깁니다.
+회원가입할 때와 2단계 인증을 켤 때·쓸 때 이메일로 6자리 인증번호를 보냅니다. 보내는 계정(Gmail SMTP)의 주소와 비밀번호는 **코드나 저장소에 두지 않고 환경 변수로만** 넘깁니다 (`MAIL_USERNAME`, `MAIL_PASSWORD`).
 
 ```bash
 # Google 계정 비밀번호가 아니라 '앱 비밀번호'(16자리)를 넣으세요
-MAIL_PASSWORD='abcd efgh ijkl mnop' ./mvnw spring-boot:run
-# Windows PowerShell: $env:MAIL_PASSWORD='abcd efgh ijkl mnop'; .\mvnw.cmd spring-boot:run
+MAIL_USERNAME='보내는주소@gmail.com' MAIL_PASSWORD='앱 비밀번호' ./mvnw spring-boot:run
+# Windows PowerShell: $env:MAIL_USERNAME='보내는주소@gmail.com'; $env:MAIL_PASSWORD='앱 비밀번호'; .\mvnw.cmd spring-boot:run
 ```
 
-- `MAIL_PASSWORD` 가 없으면 메일 대신 **백엔드 콘솔 로그에 인증번호가 찍힙니다** (`[메일 미설정] … 인증번호: 123456`). 로컬 개발은 이대로 쓰면 됩니다.
-- 다른 계정으로 보내려면 `MAIL_USERNAME`(과 필요하면 `MAIL_FROM`)을 바꾸세요. Docker 는 저장소 루트의 `.env` 에 적습니다 (`.env.example` 참고).
+- `MAIL_USERNAME`·`MAIL_PASSWORD` 가 없으면 메일 대신 **백엔드 콘솔 로그에 인증번호가 찍힙니다** (`[메일 미설정] … 인증번호: 123456`). 로컬 개발은 이대로 쓰면 됩니다.
+- 보내는 이름을 다르게 하려면 `MAIL_FROM` 도 설정하세요. Docker 는 저장소 루트의 `.env` 에 적습니다 (`.env.example` 참고).
 - 인증번호는 10분 동안 유효하고, 5번 틀리면 폐기되며, 같은 이메일로는 60초에 한 번 · 한 시간에 10번까지 보낼 수 있습니다. 번호는 SHA-256 해시로만 저장합니다.
 
 ### 2) 웹
@@ -109,6 +108,7 @@ npm run mobile       # = cd mobile && npx expo start
 ### Docker (운영 구성: DB + API + 웹)
 
 ```bash
+cp .env.example .env   # DB_PASSWORD, DB_ROOT_PASSWORD 를 꼭 채우세요 (비어 있으면 compose 가 시작하지 않아요)
 JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
 ```
 
@@ -118,7 +118,9 @@ http://localhost:3001 로 접속합니다. 도메인으로 배포할 때는 `PUB
 | ---------------- | -------------------------------------- | ------------------ |
 | `JWT_SECRET`     | JWT 서명 키 (32바이트 이상)            | 개발용 값          |
 | `PUBLIC_ORIGIN`  | 브라우저가 접속하는 주소 (CORS)        | `http://localhost:3001` |
-| `DB_PASSWORD`    | MySQL 비밀번호                         | `community`        |
+| `DB_PASSWORD`    | MySQL 비밀번호                         | 없음 (**필수**)     |
+| `DB_ROOT_PASSWORD` | MySQL root 비밀번호 (Docker)          | 없음 (**필수**)     |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | 인증번호 메일을 보낼 Gmail 주소 / 앱 비밀번호 | 없음 (없으면 로그에 번호 출력) |
 
 ### 테스트
 

@@ -161,7 +161,7 @@ public class AuthService {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 
-    /** qlellow0702@gmail.com → ql*******02@gmail.com */
+    /** someone123@example.com → so******23@example.com */
     static String mask(String email) {
         int at = email.indexOf('@');
         if (at <= 2) {
