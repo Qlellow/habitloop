@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { createApp } from '../src/app';
+import { createApp } from '../src/create-app';
 import { JwtService } from '../src/auth/jwt.service';
 import { Mailer } from '../src/mail/mailer';
 import { makeExcerpt, EXCERPT_LENGTH } from '../src/posts/excerpt';
