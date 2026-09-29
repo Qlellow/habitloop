@@ -22,6 +22,11 @@ export interface ChannelSummary {
   postCount: number;
 }
 
+/** 채널 목록용: 채널 + 최근 글 미리보기(최대 8개) */
+export interface ChannelPreview extends ChannelSummary {
+  recentPosts: PostSummary[];
+}
+
 export interface ChannelCategory {
   id: number;
   name: string;

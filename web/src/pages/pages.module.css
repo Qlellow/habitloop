@@ -1,6 +1,7 @@
 /* ───── 페이지 머리 ───── */
 .pageHead {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
@@ -401,51 +402,6 @@
   background: var(--field);
   font-size: 13px;
   color: var(--text-sub);
-}
-
-/* ───── 채널 목록 ───── */
-.channelGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.channelCard {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-}
-
-.channelCard:hover {
-  border-color: var(--primary);
-  box-shadow: 0 6px 20px rgba(49, 130, 246, 0.12);
-  transform: translateY(-1px);
-}
-
-.channelCardName {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text-strong);
-}
-
-.channelCardDesc {
-  flex: 1;
-  font-size: 14px;
-  color: var(--text-sub);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.channelCardMeta {
-  font-size: 13px;
-  color: var(--text-weak);
 }
 
 .row {

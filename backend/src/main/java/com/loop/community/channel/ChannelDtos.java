@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import com.loop.community.post.PostDtos.PostSummary;
 import java.util.List;
 
 public final class ChannelDtos {
@@ -26,6 +27,11 @@ public final class ChannelDtos {
     }
 
     public record ChannelSummary(Long id, String slug, String name, String description, int postCount) {
+    }
+
+    /** 채널 목록에서 보여 줄 채널 + 최근 글 미리보기 */
+    public record ChannelPreview(Long id, String slug, String name, String description, int postCount,
+                                 List<PostSummary> recentPosts) {
     }
 
     public record ChannelDetail(Long id, String slug, String name, String description, int postCount,

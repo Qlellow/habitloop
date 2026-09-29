@@ -2,6 +2,7 @@ package com.loop.community.post;
 
 import com.loop.community.post.PostDtos.PostSummary;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.time.Instant;
 import java.util.List;
@@ -78,6 +79,40 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
             query.setParameter("channel", channelSlug);
         }
         return query.setParameter("since", since).setMaxResults(limit).getResultList();
+    }
+
+    /**
+     * 채널마다 "최근 N개" 를 한 번에 가져온다.
+     * 채널별 (channel_id, id) 인덱스 범위 스캔을 UNION ALL 로 묶어, 채널에 글이 아무리 많아도
+     * 각 채널에서 N 행만 읽는다. (윈도 함수 ROW_NUMBER 는 채널 글 전체를 훑어야 해서 쓰지 않는다)
+     * 1) 인덱스만으로 id 를 고르고 2) 그 id 들만 DTO 로 읽는 두 번의 쿼리로 끝난다.
+     */
+    @Override
+    public List<PostSummary> findRecentByChannels(List<Long> channelIds, int perChannel) {
+        if (channelIds.isEmpty() || perChannel <= 0) {
+            return List.of();
+        }
+        StringBuilder sql = new StringBuilder();
+        for (int i = 0; i < channelIds.size(); i++) {
+            if (i > 0) {
+                sql.append(" UNION ALL ");
+            }
+            sql.append("(SELECT id FROM posts WHERE channel_id = ?").append(i + 1)
+                    .append(" ORDER BY id DESC LIMIT ").append(perChannel).append(')');
+        }
+        Query idQuery = em.createNativeQuery(sql.toString());
+        for (int i = 0; i < channelIds.size(); i++) {
+            idQuery.setParameter(i + 1, channelIds.get(i));
+        }
+        List<Long> ids = ((List<?>) idQuery.getResultList()).stream()
+                .map(id -> ((Number) id).longValue())
+                .toList();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return em.createQuery(SELECT_SUMMARY + " where p.id in :ids order by p.id desc", PostSummary.class)
+                .setParameter("ids", ids)
+                .getResultList();
     }
 
     private static String escapeLike(String value) {

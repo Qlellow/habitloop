@@ -151,7 +151,7 @@ export function SiteHeader() {
   );
 }
 
-type Variant = 'three' | 'twoRight' | 'single' | 'narrow';
+type Variant = 'three' | 'twoRight' | 'single' | 'wide' | 'narrow';
 
 /** 페이지 그리드. left/right 는 넓은 화면에서만 옆에 붙고, 좁아지면 접히거나 아래로 내려간다. */
 export function Page({

@@ -21,7 +21,7 @@ public class ChannelService {
     private static final int POPULAR_SIZE = 30;
     private static final int SEARCH_SIZE = 30;
     /** 라우트와 겹치거나 오해를 부를 수 있는 주소는 막는다 */
-    private static final Set<String> RESERVED = Set.of("new", "all", "admin", "api", "me", "search", "write", "loop");
+    private static final Set<String> RESERVED = Set.of("new", "all", "admin", "api", "me", "search", "write", "loop", "previews");
 
     private final ChannelRepository channelRepository;
     private final ChannelCategoryRepository categoryRepository;

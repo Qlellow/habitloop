@@ -254,6 +254,44 @@ class CommunityFlowTest {
     }
 
     @Test
+    void channelPreviewsShowRecentPostsPerChannel() throws Exception {
+        String owner = signup("preview@test.dev", "미리보기");
+        for (String slug : new String[]{"pv-many", "pv-few", "pv-empty"}) {
+            mvc.perform(auth(json(post("/api/channels"), Map.of("slug", slug, "name", "미리" + slug.substring(3))), owner))
+                    .andExpect(status().isCreated());
+        }
+        for (int i = 1; i <= 10; i++) {
+            mvc.perform(auth(json(post("/api/posts"), Map.of("channel", "pv-many", "title", "많은글 " + i, "content", "c")), owner));
+        }
+        for (int i = 1; i <= 2; i++) {
+            mvc.perform(auth(json(post("/api/posts"), Map.of("channel", "pv-few", "title", "적은글 " + i, "content", "c")), owner));
+        }
+
+        JsonNode list = body(mvc.perform(get("/api/channels/previews").param("q", "미리")).andExpect(status().isOk()));
+        Map<String, JsonNode> bySlug = new java.util.HashMap<>();
+        list.forEach(c -> bySlug.put(c.get("slug").asText(), c));
+        org.assertj.core.api.Assertions.assertThat(bySlug).containsKeys("pv-many", "pv-few", "pv-empty");
+
+        JsonNode many = bySlug.get("pv-many").get("recentPosts");
+        org.assertj.core.api.Assertions.assertThat(many).hasSize(8); // 최대 8개
+        org.assertj.core.api.Assertions.assertThat(many.get(0).get("title").asText()).isEqualTo("많은글 10"); // 최신순
+        org.assertj.core.api.Assertions.assertThat(many.get(7).get("title").asText()).isEqualTo("많은글 3");
+        org.assertj.core.api.Assertions.assertThat(bySlug.get("pv-few").get("recentPosts")).hasSize(2);
+        org.assertj.core.api.Assertions.assertThat(bySlug.get("pv-empty").get("recentPosts")).isEmpty();
+
+        // 개수 지정 (상한 8)
+        mvc.perform(get("/api/channels/previews").param("q", "pv-many").param("size", "3"))
+                .andExpect(jsonPath("$[0].recentPosts", hasSize(3)));
+        mvc.perform(get("/api/channels/previews").param("q", "pv-many").param("size", "50"))
+                .andExpect(jsonPath("$[0].recentPosts", hasSize(8)));
+        // 검색어 없이 부르면 인기 채널 기준
+        mvc.perform(get("/api/channels/previews")).andExpect(status().isOk());
+        // 'previews' 는 채널 주소로 쓸 수 없다
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "previews", "name", "예약어")), owner))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void authValidation() throws Exception {
         signup("dup@test.dev", "중복");
         mvc.perform(json(post("/api/auth/signup"),

@@ -103,6 +103,7 @@ cd mobile && npx expo export --platform android --platform ios   # 앱 번들 �
 | POST   | `/api/auth/signup`, `/api/auth/login`  |      | 가입 / 로그인 → `{ token, user }`      |
 | GET    | `/api/me`                              | ✓    | 내 정보                                |
 | GET    | `/api/channels?q=`                     |      | 인기 채널 (q 가 있으면 검색)            |
+| GET    | `/api/channels/previews?q=&size=`      |      | 채널 목록 + 채널별 최근 글 미리보기(최대 8개) |
 | GET    | `/api/channels/{slug}`                 |      | 채널 정보                              |
 | POST / PUT | `/api/channels`, `/api/channels/{slug}` | ✓ | 채널 만들기 / 수정 (만든 사람만)      |
 | POST / PUT / DELETE | `/api/channels/{slug}/categories[/{id}]` | ✓ | 카테고리 추가 / 수정 / 삭제 (소유자만) |
@@ -125,6 +126,7 @@ cd mobile && npx expo export --platform android --platform ios   # 앱 번들 �
 - **DTO 프로젝션 + 미리보기 컬럼**: 목록은 엔티티 대신 필요한 컬럼만 DTO로 읽습니다. 본문(TEXT) 대신 저장 시 잘라 둔 `excerpt` 를 사용합니다.
 - **동적 JPQL**: `(:p is null or ...)` 패턴을 쓰지 않고, 조건이 있을 때만 WHERE 절을 붙여 인덱스를 제대로 타게 합니다.
 - **복합 인덱스**: `(channel_id, id)`, 카테고리 탭용 `(category_id, id)`, 카테고리 순서용 `(channel_id, position)`, `(author_id, id)`, `(post_id, id)`, 베스트 댓글용 `(post_id, like_count)`, `created_at`, 좋아요 `(post_id, user_id)`·`(comment_id, user_id)` unique 인덱스를 둡니다.
+- **채널 목록 미리보기를 한 번에**: 채널마다 최근 글 8개를 `(SELECT … WHERE channel_id=? ORDER BY id DESC LIMIT 8) UNION ALL …` 로 묶어 한 번에 조회합니다. 채널별 `(channel_id, id)` 인덱스만 읽고 8행에서 멈추므로 채널에 글이 아무리 많아도 비용이 같습니다. (채널 30개여도 API 요청 1번, DB 쿼리 3번)
 - **채널 정보 한 번에 조회**: 채널 정보를 불러올 때 카테고리 목록도 함께 받아서, 탭을 그리려고 요청을 한 번 더 보내지 않습니다. 카테고리를 수정하면 서버가 바뀐 전체 목록을 돌려주고, 프론트는 그 목록으로 캐시를 바로 덮어씁니다.
 - **댓글 좋아요 여부 한 번에 조회**: 한 페이지 댓글의 "내가 눌렀는지" 여부를 `IN` 쿼리 한 번으로 가져옵니다 (N+1 없음).
 - **마크다운 미리보기 텍스트**: 목록에 쓸 미리보기를 저장할 때 마크다운 기호를 미리 걷어 두어, 목록 조회 시 파싱 비용이 들지 않습니다.

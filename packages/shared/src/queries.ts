@@ -12,6 +12,7 @@ import type {
   ChannelCategory,
   ChannelDetail,
   ChannelInput,
+  ChannelPreview,
   ChannelSummary,
   Comment,
   CursorPage,
@@ -50,6 +51,7 @@ export const keys = {
   comments: (postId: number) => ['comments', postId] as const,
   bestComments: (postId: number) => ['comments', postId, 'best'] as const,
   channels: (q = '') => ['channels', q] as const,
+  channelPreviews: (q = '') => ['channels', 'previews', q] as const,
   channel: (slug: string) => ['channel', slug] as const,
 };
 
@@ -85,6 +87,20 @@ export function useChannels(q = '') {
     queryKey: keys.channels(keyword),
     queryFn: ({ signal }) => api<ChannelSummary[]>('/api/channels', { query: { q: keyword }, signal }),
     staleTime: keyword ? 30_000 : 60_000,
+    placeholderData: (prev) => prev, // 검색어가 바뀌는 동안 이전 결과를 유지해 깜빡임을 없앤다
+  });
+}
+
+/**
+ * 채널 목록 + 채널마다 최근 글 미리보기. 서버가 한 번의 요청으로 모든 채널의 글을 묶어서 준다.
+ * 키가 ['channels', ...] 아래라 글을 쓰거나 지우면 함께 stale 처리된다.
+ */
+export function useChannelPreviews(q = '', postsPerChannel = 8) {
+  const keyword = q.trim();
+  return useQuery({
+    queryKey: keys.channelPreviews(keyword),
+    queryFn: ({ signal }) =>
+      api<ChannelPreview[]>('/api/channels/previews', { query: { q: keyword, size: postsPerChannel }, signal }),
     placeholderData: (prev) => prev, // 검색어가 바뀌는 동안 이전 결과를 유지해 깜빡임을 없앤다
   });
 }
@@ -180,6 +196,11 @@ function findCachedSummary(qc: QueryClient, id: number): PostSummary | undefined
     if (!data) continue;
     const items = Array.isArray(data) ? data : data.pages.flatMap((p) => p.items);
     const hit = items.find((p) => p.id === id);
+    if (hit) return hit;
+  }
+  // 채널 목록의 최근 글 미리보기에서 들어온 경우
+  for (const [, list] of qc.getQueriesData<ChannelPreview[]>({ queryKey: ['channels', 'previews'] })) {
+    const hit = list?.flatMap((c) => c.recentPosts).find((p) => p.id === id);
     if (hit) return hit;
   }
   return undefined;
