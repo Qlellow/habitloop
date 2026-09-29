@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { createApp } from './app';
+import { createApp } from './create-app';
 
 async function bootstrap() {
   const app = await createApp();
