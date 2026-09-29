@@ -15,19 +15,19 @@
 | -------- | ----------------------------------------------------------------------------- |
 | Backend  | Spring Boot 3.5 · Java 21 · Spring Security(JWT) · JPA · Flyway               |
 | DB       | MySQL 8.4 (로컬 개발은 H2 MySQL 모드, 설치 없이 실행)                         |
-| Web      | React 19.1 · TypeScript · Vite 8 · TanStack Query · React Router 7            |
-| Mobile   | React Native 0.81 · **Expo SDK 54** · Expo Router 6 · TanStack Query          |
+| Web      | React 19.2 · TypeScript · Vite 8 · TanStack Query · React Router 7            |
+| Mobile   | React Native 0.86 · **Expo SDK 57** · Expo Router · TanStack Query            |
 | Shared   | `@loop/shared` — API 클라이언트 · 타입 · 데이터 훅 · 인증 상태 (웹/앱 공용)    |
 | Infra    | Docker Compose (MySQL + Spring Boot + Nginx) · GitHub Actions CI              |
 
 ```
 backend/          Spring Boot API (port 8080)
 web/              React 웹사이트 (dev 5173, 운영은 Nginx 가 정적 파일 + /api 프록시)
-mobile/           React Native 앱 (Expo SDK 54, Expo Router)
+mobile/           React Native 앱 (Expo SDK 57, Expo Router)
 packages/shared/  웹·앱 공용 코드
 ```
 
-> 웹과 앱은 같은 React 버전(19.1.0)을 써야 공용 패키지가 React 를 하나만 불러옵니다.
+> 웹과 앱은 같은 React 버전(19.2.3)을 써야 공용 패키지가 React 를 하나만 불러옵니다.
 > Expo SDK 를 올릴 때는 `web/package.json` 의 `react`, `react-dom` 도 같은 버전으로 맞춰 주세요.
 
 ## 실행
@@ -50,7 +50,7 @@ npm run web          # http://localhost:5173 (/api 는 8080 으로 프록시)
 
 ### 3) 모바일 앱 (Expo Go)
 
-휴대폰에 **Expo Go (SDK 54)** 를 설치하고, PC 와 휴대폰을 **같은 Wi-Fi** 에 연결한 뒤:
+휴대폰에 **Expo Go (SDK 57)** 를 설치하고, PC 와 휴대폰을 **같은 Wi-Fi** 에 연결한 뒤:
 
 ```bash
 npm run mobile       # = cd mobile && npx expo start
