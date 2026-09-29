@@ -9,7 +9,6 @@ import HomePage from './pages/HomePage';
 // 첫 화면(홈)만 메인 번들에 넣고 나머지 화면은 라우트 단위로 쪼개서 필요할 때 받는다
 const PostDetailPage = lazy(loaders.post);
 const WritePage = lazy(loaders.write);
-const SearchPage = lazy(loaders.search);
 const LoginPage = lazy(loaders.login);
 const SignupPage = lazy(loaders.signup);
 const MyLayout = lazy(loaders.me);
@@ -50,7 +49,8 @@ const router = createBrowserRouter([
     element: <Root />,
     children: [
       { path: '/', element: <HomePage /> },
-      { path: '/search', element: <SearchPage /> },
+      // 예전 글 검색 주소는 채널 검색으로
+      { path: '/search', element: <Navigate to="/channels" replace /> },
       { path: '/posts/:id', element: <PostDetailPage /> },
       { path: '/posts/:id/edit', element: auth(<WritePage />) },
       { path: '/write', element: auth(<WritePage />) },

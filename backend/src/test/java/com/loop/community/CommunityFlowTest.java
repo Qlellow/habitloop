@@ -286,9 +286,9 @@ class CommunityFlowTest {
         org.assertj.core.api.Assertions.assertThat(bySlug.get("pv-empty").get("recentPosts")).isEmpty();
 
         // 개수 지정 (상한 8)
-        mvc.perform(get("/api/channels/previews").param("q", "pv-many").param("size", "3"))
+        mvc.perform(get("/api/channels/previews").param("q", "미리many").param("size", "3"))
                 .andExpect(jsonPath("$[0].recentPosts", hasSize(3)));
-        mvc.perform(get("/api/channels/previews").param("q", "pv-many").param("size", "50"))
+        mvc.perform(get("/api/channels/previews").param("q", "미리many").param("size", "50"))
                 .andExpect(jsonPath("$[0].recentPosts", hasSize(8)));
         // 검색어 없이 부르면 인기 채널 기준
         mvc.perform(get("/api/channels/previews")).andExpect(status().isOk());
@@ -334,9 +334,9 @@ class CommunityFlowTest {
                 .andExpect(jsonPath("$[0].memberCount").value(2))
                 .andExpect(jsonPath("$[0].owner").value(false));
         mvc.perform(auth(get("/api/me/channels"), owner)).andExpect(jsonPath("$[0].owner").value(true));
-        mvc.perform(auth(get("/api/channels/previews").param("q", "club"), guest))
+        mvc.perform(auth(get("/api/channels/previews").param("q", "동호회"), guest))
                 .andExpect(jsonPath("$[0].joined").value(true));
-        mvc.perform(get("/api/channels/previews").param("q", "club"))
+        mvc.perform(get("/api/channels/previews").param("q", "동호회"))
                 .andExpect(jsonPath("$[0].joined").value(false));
 
         // 탈퇴하면 다시 못 쓴다. 만든 사람은 탈퇴할 수 없다
@@ -392,6 +392,27 @@ class CommunityFlowTest {
         mvc.perform(json(post("/api/auth/login"), Map.of("email", "mypage@test.dev", "password", "newpassword123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user.nickname").value("새닉네임"));
+    }
+
+    @Test
+    void channelSearchMatchesNameWithPrefixFirst() throws Exception {
+        String owner = signup("search-owner@test.dev", "검색테스트");
+        // 글 수: 뒤에 '사진'이 붙은 채널이 더 많아도, 이름이 검색어로 시작하는 채널이 먼저 나와야 한다
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "srch-a", "name", "여행사진")), owner));
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "srch-b", "name", "사진관")), owner));
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "photo", "name", "필름카메라")), owner));
+        for (int i = 0; i < 3; i++) {
+            mvc.perform(auth(json(post("/api/posts"), Map.of("channel", "srch-a", "title", "t" + i, "content", "c")), owner));
+        }
+        mvc.perform(get("/api/channels").param("q", "사진"))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].name").value("사진관"))
+                .andExpect(jsonPath("$[1].name").value("여행사진"));
+        // 이름만 본다: 주소(slug)로는 걸리지 않는다
+        mvc.perform(get("/api/channels").param("q", "photo")).andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(get("/api/channels").param("q", "카메")).andExpect(jsonPath("$[0].slug").value("photo"));
+        // LIKE 특수문자는 글자 그대로
+        mvc.perform(get("/api/channels").param("q", "%")).andExpect(jsonPath("$", hasSize(0)));
     }
 
     @Test

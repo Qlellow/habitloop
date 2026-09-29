@@ -1,38 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useSignOut } from '@loop/shared';
-import { SearchIcon } from './Icons';
+import { ChannelSearch } from './ChannelSearch';
 import { preload } from '../lib/preload';
 import ui from './ui.module.css';
 import s from './Layout.module.css';
-
-function SearchBox() {
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const [params] = useSearchParams();
-  const [q, setQ] = useState(pathname === '/search' ? (params.get('q') ?? '') : '');
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const keyword = q.trim();
-    if (keyword) navigate(`/search?q=${encodeURIComponent(keyword)}`);
-  };
-
-  return (
-    <form className={s.search} role="search" onSubmit={submit}>
-      <SearchIcon />
-      <input
-        className={ui.input}
-        type="search"
-        placeholder="글 제목 검색"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        onFocus={preload.search}
-        aria-label="글 검색"
-      />
-    </form>
-  );
-}
 
 function UserMenu() {
   const { user } = useAuth();
@@ -125,7 +97,7 @@ export function SiteHeader() {
             채널
           </NavLink>
         </nav>
-        <SearchBox key={pathname === '/search' ? 'search' : 'other'} />
+        <ChannelSearch />
         <div className={s.actions}>
           {/* 글은 채널 안에서만 쓰므로 글쓰기 버튼은 각 채널 페이지에 있다 */}
           {isLoggedIn ? (
@@ -161,7 +133,7 @@ export function Page({
   children: ReactNode;
 }) {
   return (
-    <div className={`${s.page} ${s[variant]}`}>
+    <div className={`${s.page} ${variant === 'nav' ? s.withNav : s[variant]}`}>
       {(variant === 'three' || variant === 'nav') && <aside className={s.left}>{left}</aside>}
       <main className={s.main}>{children}</main>
       {(variant === 'three' || variant === 'twoRight') && <aside className={s.right}>{right}</aside>}

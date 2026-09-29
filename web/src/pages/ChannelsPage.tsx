@@ -1,5 +1,5 @@
 import { memo, useDeferredValue, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { compact, timeAgo, useAuth, useChannelPreviews, type ChannelPreview } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { Page } from '../components/Layout';
@@ -74,7 +74,9 @@ function BoardSkeleton() {
 
 export default function ChannelsPage() {
   const { isLoggedIn } = useAuth();
-  const [input, setInput] = useState('');
+  // 헤더 검색에서 "결과 모두 보기"로 오면 ?q= 로 검색어가 넘어온다
+  const [params] = useSearchParams();
+  const [input, setInput] = useState(params.get('q') ?? '');
   // 입력은 즉시 반영하고, 검색 요청은 렌더가 한가할 때 보낸다
   const q = useDeferredValue(input);
   const { data, isPending } = useChannelPreviews(q);
@@ -91,7 +93,7 @@ export default function ChannelsPage() {
           <input
             type="search"
             className={ui.input}
-            placeholder="채널 이름이나 주소로 찾기"
+            placeholder="채널 이름으로 찾기"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             aria-label="채널 검색"

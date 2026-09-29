@@ -1,0 +1,130 @@
+.root {
+  flex: 1;
+  min-width: 120px;
+  max-width: 440px;
+  position: relative;
+}
+
+
+.root > svg {
+  position: absolute;
+  left: 12px;
+  top: 20px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--text-weak);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.root input {
+  height: 40px;
+  padding-left: 38px;
+  border-radius: var(--radius-md);
+}
+
+.menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+  animation: pop 0.12s ease-out;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* 결과가 많아도 화면을 덮지 않도록 높이를 제한하고 안에서 스크롤 */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: min(360px, calc(100vh - var(--header-h) - 40px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.active {
+  background: var(--field);
+}
+
+.body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mark {
+  background: none;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--text-weak);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  padding: 16px 10px;
+  font-size: 14px;
+  color: var(--text-weak);
+  text-align: center;
+}
+
+.all {
+  margin-top: 4px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.all.active {
+  color: var(--primary);
+}
+
+@media (max-width: 520px) {
+  /* 좁은 화면에서는 드롭다운을 화면 폭에 맞춘다 */
+  .menu {
+    position: fixed;
+    top: calc(var(--header-h) + 4px);
+    left: 12px;
+    right: 12px;
+  }
+}

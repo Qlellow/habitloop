@@ -50,7 +50,7 @@ public class ChannelService {
     public List<ChannelSummary> search(String keyword) {
         String escaped = keyword.strip().toLowerCase(Locale.ROOT)
                 .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-        return channelRepository.search("%" + escaped + "%", Limit.of(SEARCH_SIZE));
+        return channelRepository.search("%" + escaped + "%", escaped + "%", Limit.of(SEARCH_SIZE));
     }
 
     @Transactional(readOnly = true)

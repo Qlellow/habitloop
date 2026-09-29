@@ -73,29 +73,6 @@
   color: var(--text-strong);
 }
 
-.search {
-  flex: 1;
-  max-width: 440px;
-  position: relative;
-}
-
-.search svg {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
-  color: var(--text-weak);
-  pointer-events: none;
-}
-
-.search input {
-  height: 40px;
-  padding-left: 38px;
-  border-radius: var(--radius-md);
-}
-
 .actions {
   margin-left: auto;
   display: flex;
@@ -212,7 +189,7 @@
 }
 
 /* 마이페이지: 왼쪽 메뉴 + 내용 */
-.nav {
+.withNav {
   grid-template-columns: 220px minmax(0, 1fr);
   max-width: 1080px;
 }
@@ -257,7 +234,7 @@
 @media (max-width: 860px) {
   .three,
   .twoRight,
-  .nav {
+  .withNav {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -266,9 +243,6 @@
     position: static;
   }
 
-  .search {
-    display: none;
-  }
 
   .headerInner {
     gap: 12px;
@@ -281,6 +255,11 @@
 }
 
 @media (max-width: 520px) {
+  /* 아주 좁은 화면: 홈은 로고로, 채널은 검색으로 갈 수 있으니 글자 메뉴를 숨겨 검색창 자리를 만든다 */
+  .nav {
+    display: none;
+  }
+
   .userName {
     display: none;
   }

@@ -26,13 +26,15 @@ public interface ChannelRepository extends JpaRepository<Channel, Long> {
             """)
     List<ChannelSummary> findPopular(Limit limit);
 
+    /** 채널 이름에 검색어가 들어간 채널. 이름이 검색어로 시작하는 채널을 먼저, 그다음 글이 많은 순 */
     @Query("""
             select new com.loop.community.channel.ChannelDtos$ChannelSummary(c.id, c.slug, c.name, c.description, c.postCount, c.memberCount)
             from Channel c
-            where lower(c.name) like :pattern escape '\\' or c.slug like :pattern escape '\\'
-            order by c.postCount desc, c.id asc
+            where lower(c.name) like :pattern escape '\\'
+            order by case when lower(c.name) like :prefix escape '\\' then 0 else 1 end,
+                     c.postCount desc, c.id asc
             """)
-    List<ChannelSummary> search(@Param("pattern") String pattern, Limit limit);
+    List<ChannelSummary> search(@Param("pattern") String pattern, @Param("prefix") String prefix, Limit limit);
 
     @Modifying
     @Query("update Channel c set c.postCount = c.postCount + :delta where c.id = :id")
