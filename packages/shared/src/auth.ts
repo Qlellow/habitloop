@@ -91,6 +91,10 @@ export const authStore = {
     set({ ...next, ready: true });
     void persist(next);
   },
+  /** 사용자 정보만 바꾼다 (2단계 인증 켜기/끄기 등) */
+  updateUser(user: User) {
+    if (state.token) authStore.signIn({ token: state.token, user });
+  },
   signOut() {
     set({ ...signedOut, ready: true });
     void persist(signedOut);

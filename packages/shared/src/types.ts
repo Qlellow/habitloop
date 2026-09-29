@@ -2,11 +2,25 @@ export interface User {
   id: number;
   email: string;
   nickname: string;
+  /** 2단계 인증: 켜면 로그인할 때 이메일로 받은 인증번호를 한 번 더 입력한다 */
+  twoFactorEnabled?: boolean;
 }
 
 export interface AuthResponse {
   token: string;
   user: User;
+}
+
+/**
+ * 로그인 결과. 2단계 인증이 꺼져 있으면 token·user 가,
+ * 켜져 있으면 twoFactorRequired 와 번호 입력용 challenge, 가린 이메일이 온다.
+ */
+export interface LoginResponse {
+  token?: string;
+  user?: User;
+  twoFactorRequired: boolean;
+  challenge?: string;
+  maskedEmail?: string;
 }
 
 export interface CursorPage<T> {

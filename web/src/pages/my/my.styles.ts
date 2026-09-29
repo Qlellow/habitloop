@@ -40,6 +40,8 @@ const s = {
     'max-[860px]:flex-col max-[860px]:items-start',
   optionLabel: 'font-semibold text-fg-strong',
   optionDesc: 'text-[13px] text-fg-weak',
+  inlineForm: 'flex flex-col gap-2.5 mt-1 mb-2 p-4 rounded-md bg-pressed',
+  inlineActions: 'flex items-center gap-1.5',
   segment: 'flex-none inline-flex p-[3px] rounded-sm bg-field',
   segmentButton:
     'h-8 px-3.5 rounded text-sm font-semibold text-fg-sub ' +

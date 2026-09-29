@@ -9,6 +9,7 @@ import {
 import { api, ApiError } from './client';
 import type {
   AuthResponse,
+  LoginResponse,
   ChannelCategory,
   ChannelDetail,
   ChannelInput,
@@ -579,14 +580,75 @@ export function useChangePassword() {
   });
 }
 
-export function useAuthMutation(mode: 'login' | 'signup') {
+/** 회원가입 1단계: 이메일로 인증번호 받기 */
+export function useSignupCode() {
+  return useMutation({
+    mutationFn: (email: string) => api<void>('/api/auth/signup/code', { method: 'POST', body: { email } }),
+  });
+}
+
+/** 회원가입 2단계: 이메일로 받은 번호와 함께 가입 */
+export function useSignup() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { email: string; password: string; nickname?: string }) =>
-      api<AuthResponse>(`/api/auth/${mode}`, { method: 'POST', body }),
+    mutationFn: (body: { email: string; password: string; nickname: string; code: string }) =>
+      api<AuthResponse>('/api/auth/signup', { method: 'POST', body }),
     onSuccess: (res) => {
       authStore.signIn(res);
       clearUserScopedCache(qc);
     },
   });
+}
+
+/**
+ * 로그인. 2단계 인증이 꺼져 있으면 바로 로그인되고,
+ * 켜져 있으면 결과의 twoFactorRequired·challenge 로 번호 입력 화면을 띄운다 (useVerifyLogin).
+ */
+export function useLogin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { email: string; password: string }) =>
+      api<LoginResponse>('/api/auth/login', { method: 'POST', body }),
+    onSuccess: (res) => {
+      if (res.token && res.user) {
+        authStore.signIn({ token: res.token, user: res.user });
+        clearUserScopedCache(qc);
+      }
+    },
+  });
+}
+
+/** 2단계 인증 로그인: 이메일로 받은 번호 확인 */
+export function useVerifyLogin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { challenge: string; code: string }) =>
+      api<AuthResponse>('/api/auth/login/verify', { method: 'POST', body }),
+    onSuccess: (res) => {
+      authStore.signIn(res);
+      clearUserScopedCache(qc);
+    },
+  });
+}
+
+/** 2단계 인증 로그인: 번호 다시 받기 (새 challenge 를 돌려준다) */
+export function useResendLoginCode() {
+  return useMutation({
+    mutationFn: (challenge: string) =>
+      api<{ challenge: string }>('/api/auth/login/resend', { method: 'POST', body: { challenge } }),
+  });
+}
+
+/** 설정의 2단계 인증: 번호 받기 → 번호 확인해서 켜기, 비밀번호 확인해서 끄기 */
+export function useTwoFactor() {
+  const sendCode = useMutation({ mutationFn: () => api<void>('/api/me/2fa/code', { method: 'POST' }) });
+  const enable = useMutation({
+    mutationFn: (code: string) => api<User>('/api/me/2fa/enable', { method: 'POST', body: { code } }),
+    onSuccess: (user) => authStore.updateUser(user),
+  });
+  const disable = useMutation({
+    mutationFn: (password: string) => api<User>('/api/me/2fa/disable', { method: 'POST', body: { password } }),
+    onSuccess: (user) => authStore.updateUser(user),
+  });
+  return { sendCode, enable, disable };
 }

@@ -10,6 +10,7 @@
 - **좋아요**: 글과 댓글 모두 누를 수 있습니다. 좋아요 2개 이상 받은 댓글 중 상위 3개는 **베스트 댓글**로 맨 위에 올라갑니다.
 - **마이페이지**(`/me`): 왼쪽 메뉴에서 내가 쓴 글 · 가입/북마크한 채널 · 내 정보 수정(닉네임, 비밀번호) · 설정(테마, 글 목록 미리보기, 편집기 기본 보기)을 볼 수 있습니다. 채널은 가입과 별개로 ☆ 북마크할 수 있습니다.
 - **채널 검색**: 상단 검색창에 입력하는 동안 채널 이름에 그 글자·단어가 들어간 채널이 드롭다운(최대 높이 360px, 안에서 스크롤)으로 바로 나옵니다. 이름이 검색어로 시작하는 채널이 먼저, 그다음 글이 많은 순입니다. ↑↓·Enter·Esc 로도 쓸 수 있습니다.
+- **이메일 인증 · 2단계 인증**: 회원가입할 때 이메일로 받은 6자리 인증번호를 확인합니다. 설정에서 2단계 인증을 켜면(내 이메일로 받은 번호로 확인) 로그인할 때마다 비밀번호 다음에 메일로 받은 번호를 한 번 더 입력하고, 켜고 끌 때 알림 메일이 갑니다.
 - 인기글(전체/채널별), 무한 스크롤, 라이트/다크 모드(시스템 설정 또는 직접 선택)를 지원합니다.
 
 웹은 **넓은 화면용 웹사이트**로, 휴대폰은 **네이티브 앱(React Native)** 으로 따로 만들었습니다.
@@ -67,6 +68,21 @@ cd backend && ./mvnw spring-boot:run      # Windows: mvnw.cmd spring-boot:run
 
 체험 계정은 `demo@loop.dev` / `password1234` 입니다.
 
+#### 인증번호 메일 (회원가입 · 2단계 인증)
+
+회원가입할 때와 2단계 인증을 켤 때·쓸 때 이메일로 6자리 인증번호를 보냅니다. 보내는 계정은 `qlellow0702@gmail.com`(Gmail SMTP)이고,
+**비밀번호는 코드나 저장소에 두지 않고 환경 변수로만** 넘깁니다.
+
+```bash
+# Google 계정 비밀번호가 아니라 '앱 비밀번호'(16자리)를 넣으세요
+MAIL_PASSWORD='abcd efgh ijkl mnop' ./mvnw spring-boot:run
+# Windows PowerShell: $env:MAIL_PASSWORD='abcd efgh ijkl mnop'; .\mvnw.cmd spring-boot:run
+```
+
+- `MAIL_PASSWORD` 가 없으면 메일 대신 **백엔드 콘솔 로그에 인증번호가 찍힙니다** (`[메일 미설정] … 인증번호: 123456`). 로컬 개발은 이대로 쓰면 됩니다.
+- 다른 계정으로 보내려면 `MAIL_USERNAME`(과 필요하면 `MAIL_FROM`)을 바꾸세요. Docker 는 저장소 루트의 `.env` 에 적습니다 (`.env.example` 참고).
+- 인증번호는 10분 동안 유효하고, 5번 틀리면 폐기되며, 같은 이메일로는 60초에 한 번 · 한 시간에 10번까지 보낼 수 있습니다. 번호는 SHA-256 해시로만 저장합니다.
+
 ### 2) 웹
 
 ```bash
@@ -117,7 +133,11 @@ cd mobile && npx expo export --platform android --platform ios   # 앱 번들 �
 
 | Method | Path                                   | 인증 | 설명                                   |
 | ------ | -------------------------------------- | ---- | -------------------------------------- |
-| POST   | `/api/auth/signup`, `/api/auth/login`  |      | 가입 / 로그인 → `{ token, user }`      |
+| POST   | `/api/auth/signup/code`                |      | 회원가입 인증번호 메일 보내기 `{ email }` |
+| POST   | `/api/auth/signup`                     |      | 가입 `{ email, password, nickname, code }` → `{ token, user }` |
+| POST   | `/api/auth/login`                      |      | 로그인 → `{ token, user }`, 2단계 인증이 켜져 있으면 `{ twoFactorRequired, challenge, maskedEmail }` |
+| POST   | `/api/auth/login/verify`, `…/login/resend` |  | 2단계 인증 번호 확인 `{ challenge, code }` → `{ token, user }` / 번호 다시 받기 |
+| POST   | `/api/me/2fa/code`, `/api/me/2fa/enable`, `/api/me/2fa/disable` | ✓ | 2단계 인증 번호 받기 / 켜기 `{ code }` / 끄기 `{ password }` (켜고 끌 때 알림 메일) |
 | GET    | `/api/me`                              | ✓    | 내 정보                                |
 | GET    | `/api/channels?q=`                     |      | 인기 채널 (q 가 있으면 채널 이름 검색)   |
 | GET    | `/api/channels/previews?q=&size=`      |      | 채널 목록 + 채널별 최근 글 미리보기(최대 8개) |
@@ -128,8 +148,12 @@ cd mobile && npx expo export --platform android --platform ios   # 앱 번들 �
 | GET    | `/api/me/bookmarks/channels`           | ✓    | 내가 북마크한 채널                      |
 | PUT    | `/api/me/profile`                      | ✓    | 닉네임 변경 (새 토큰을 돌려줌)          |
 | PUT    | `/api/me/password`                     | ✓    | 비밀번호 변경 (지금 비밀번호 확인)      |
-| POST / PUT | `/api/channels`, `/api/channels/{slug}` | ✓ | 채널 만들기 / 수정 (만든 사람만)      |
-| POST / PUT / DELETE | `/api/channels/{slug}/categories[/{id}]` | ✓ | 카테고리 추가 / 수정 / 삭제 (소유자만) |
+| POST / PUT | `/api/channels`, `/api/channels/{slug}` | ✓ | 채널 만들기 / 수정 (소유자·관리자)    |
+| GET / PUT / DELETE | `/api/channels/{slug}/icon[?v=]` | PUT·DELETE ✓ | 프로필 이미지 (PUT 은 이미지 바이트 그대로, 512KB 이하) |
+| GET    | `/api/channels/{slug}/staff`           |      | 운영진 목록                             |
+| GET    | `/api/channels/{slug}/members?q=`      | ✓    | 운영진으로 지정할 멤버 찾기 (소유자만)   |
+| PUT    | `/api/channels/{slug}/members/{userId}/role` | ✓ | 역할 지정 `{ role: ADMIN \| MANAGER \| MEMBER }` (소유자만) |
+| POST / PUT / DELETE | `/api/channels/{slug}/categories[/{id}]` | ✓ | 카테고리 추가 / 수정 / 삭제 (소유자·관리자) |
 | PUT    | `/api/channels/{slug}/categories/order` | ✓   | 카테고리 순서 변경 `{ ids: [...] }`     |
 | GET    | `/api/posts?channel=&category=&q=&authorId=&cursor=&size=` | | 목록 (커서 페이지네이션)  |
 | GET    | `/api/posts/popular?channel=`          |      | 최근 7일 인기글 5개 (전체 또는 채널별)  |

@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.loop.community.mail.LoggingMailer;
+import com.loop.community.mail.Mailer;
 import com.loop.community.post.ViewCountBuffer;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -21,7 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-@SpringBootTest(properties = {"app.seed=false", "app.view-flush-interval=1h"})
+@SpringBootTest(properties = {"app.seed=false", "app.view-flush-interval=1h", "app.mail.resend-interval=0s"})
 @AutoConfigureMockMvc
 class CommunityFlowTest {
 
@@ -33,6 +35,10 @@ class CommunityFlowTest {
 
     @Autowired
     ViewCountBuffer viewCountBuffer;
+
+    /** 테스트에는 SMTP 비밀번호가 없어 메일 대신 인증번호를 기억하는 LoggingMailer 가 쓰인다 */
+    @Autowired
+    Mailer mailer;
 
     @Test
     void fullCommunityFlow() throws Exception {
@@ -562,13 +568,83 @@ class CommunityFlowTest {
     }
 
     @Test
+    void signupNeedsEmailCode() throws Exception {
+        Map<String, String> form = new java.util.HashMap<>(Map.of("email", "code@test.dev", "password", "password1234", "nickname", "인증"));
+        // 번호를 받기 전 · 틀린 번호로는 가입할 수 없다
+        form.put("code", "123456");
+        mvc.perform(json(post("/api/auth/signup"), form)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("인증번호를 먼저 받아 주세요"));
+        mvc.perform(json(post("/api/auth/signup/code"), Map.of("email", "Code@test.dev"))).andExpect(status().isNoContent());
+        String code = lastCode("code@test.dev");
+        form.put("code", code.equals("000000") ? "111111" : "000000");
+        mvc.perform(json(post("/api/auth/signup"), form)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("인증번호가 맞지 않아요 (1/5)"));
+        form.put("code", code);
+        mvc.perform(json(post("/api/auth/signup"), form)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.user.twoFactorEnabled").value(false));
+        // 한 번 쓴 번호는 다시 못 쓰고, 이미 가입한 이메일로는 번호를 보내지 않는다
+        form.put("email", "code2@test.dev");
+        form.put("nickname", "인증둘");
+        mvc.perform(json(post("/api/auth/signup"), form)).andExpect(status().isBadRequest());
+        mvc.perform(json(post("/api/auth/signup/code"), Map.of("email", "code@test.dev"))).andExpect(status().isConflict());
+    }
+
+    @Test
+    void twoFactorLogin() throws Exception {
+        String token = signup("2fa@test.dev", "이단계");
+        Map<String, String> login = Map.of("email", "2fa@test.dev", "password", "password1234");
+
+        // 켜기: 내 이메일로 받은 번호를 확인해야 켜진다
+        mvc.perform(auth(json(post("/api/me/2fa/enable"), Map.of("code", "000000")), token)).andExpect(status().isBadRequest());
+        mvc.perform(auth(post("/api/me/2fa/code"), token)).andExpect(status().isNoContent());
+        mvc.perform(auth(json(post("/api/me/2fa/enable"), Map.of("code", lastCode("2fa@test.dev"))), token))
+                .andExpect(jsonPath("$.twoFactorEnabled").value(true));
+        org.assertj.core.api.Assertions.assertThat(((LoggingMailer) mailer).lastNotice("2fa@test.dev")).isEqualTo("2단계 인증이 켜졌어요");
+        mvc.perform(auth(get("/api/me"), token)).andExpect(jsonPath("$.twoFactorEnabled").value(true));
+
+        // 로그인: 비밀번호가 맞으면 토큰 대신 challenge 가 오고, 메일로 받은 번호까지 맞아야 토큰이 나온다
+        JsonNode first = body(mvc.perform(json(post("/api/auth/login"), login))
+                .andExpect(jsonPath("$.twoFactorRequired").value(true))
+                .andExpect(jsonPath("$.token").doesNotExist())
+                .andExpect(jsonPath("$.maskedEmail").value("2**@test.dev")));
+        String challenge = first.get("challenge").asText();
+        String wrong = lastCode("2fa@test.dev").equals("000000") ? "111111" : "000000";
+        for (int i = 1; i < 5; i++) {
+            mvc.perform(json(post("/api/auth/login/verify"), Map.of("challenge", challenge, "code", wrong)))
+                    .andExpect(jsonPath("$.message").value("인증번호가 맞지 않아요 (" + i + "/5)"));
+        }
+        mvc.perform(json(post("/api/auth/login/verify"), Map.of("challenge", challenge, "code", wrong)))
+                .andExpect(jsonPath("$.message").value("인증번호를 5번 틀렸어요. 새 번호를 받아 주세요"));
+        mvc.perform(json(post("/api/auth/login/verify"), Map.of("challenge", challenge, "code", lastCode("2fa@test.dev"))))
+                .andExpect(status().isBadRequest());
+
+        // 다시 받기 → 새 challenge 와 새 번호로 로그인
+        challenge = body(mvc.perform(json(post("/api/auth/login"), login))).get("challenge").asText();
+        String resent = body(mvc.perform(json(post("/api/auth/login/resend"), Map.of("challenge", challenge)))
+                .andExpect(status().isOk())).get("challenge").asText();
+        mvc.perform(json(post("/api/auth/login/verify"), Map.of("challenge", challenge, "code", lastCode("2fa@test.dev"))))
+                .andExpect(status().isBadRequest());
+        String newToken = body(mvc.perform(json(post("/api/auth/login/verify"),
+                        Map.of("challenge", resent, "code", lastCode("2fa@test.dev"))))
+                .andExpect(status().isOk())).get("token").asText();
+        mvc.perform(auth(get("/api/me"), newToken)).andExpect(jsonPath("$.email").value("2fa@test.dev"));
+
+        // 끄기: 비밀번호 확인
+        mvc.perform(auth(json(post("/api/me/2fa/disable"), Map.of("password", "wrong-password")), newToken))
+                .andExpect(status().isBadRequest());
+        mvc.perform(auth(json(post("/api/me/2fa/disable"), Map.of("password", "password1234")), newToken))
+                .andExpect(jsonPath("$.twoFactorEnabled").value(false));
+        mvc.perform(json(post("/api/auth/login"), login)).andExpect(jsonPath("$.token").exists());
+    }
+
+    @Test
     void authValidation() throws Exception {
         signup("dup@test.dev", "중복");
         mvc.perform(json(post("/api/auth/signup"),
-                        Map.of("email", "dup@test.dev", "password", "password1234", "nickname", "다른닉")))
+                        Map.of("email", "dup@test.dev", "password", "password1234", "nickname", "다른닉", "code", "000000")))
                 .andExpect(status().isConflict());
         mvc.perform(json(post("/api/auth/signup"),
-                        Map.of("email", "short@test.dev", "password", "123", "nickname", "짧은비번")))
+                        Map.of("email", "short@test.dev", "password", "123", "nickname", "짧은비번", "code", "000000")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("비밀번호는 8자 이상이어야 해요"));
         mvc.perform(json(post("/api/auth/login"), Map.of("email", "dup@test.dev", "password", "wrong-password")))
@@ -582,9 +658,14 @@ class CommunityFlowTest {
     }
 
     private String signup(String email, String nickname) throws Exception {
+        mvc.perform(json(post("/api/auth/signup/code"), Map.of("email", email))).andExpect(status().isNoContent());
         return body(mvc.perform(json(post("/api/auth/signup"),
-                        Map.of("email", email, "password", "password1234", "nickname", nickname)))
+                        Map.of("email", email, "password", "password1234", "nickname", nickname, "code", lastCode(email))))
                 .andExpect(status().isCreated())).get("token").asText();
+    }
+
+    private String lastCode(String email) {
+        return ((LoggingMailer) mailer).lastCode(email);
     }
 
     private MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder builder, Object body) throws Exception {

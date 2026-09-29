@@ -30,6 +30,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret-at-least-32-bytes}
       # 브라우저가 접속하는 주소 (nginx 가 같은 도메인으로 프록시해도 POST 에는 Origin 이 붙는다)
       CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:3001}
+      # 인증번호 메일 (Gmail). MAIL_PASSWORD 는 Google '앱 비밀번호' — 저장소에 올리지 말고 .env 에만 둔다
+      MAIL_USERNAME: ${MAIL_USERNAME:-qlellow0702@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
 
   web:
     build:

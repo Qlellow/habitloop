@@ -28,6 +28,10 @@ public class User {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** 2단계 인증: 켜면 로그인할 때 이메일로 받은 인증번호를 한 번 더 입력한다 */
+    @Column(nullable = false)
+    private boolean twoFactorEnabled;
+
     protected User() {
     }
 
@@ -44,6 +48,14 @@ public class User {
 
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
+    }
+
+    public void setTwoFactorEnabled(boolean enabled) {
+        this.twoFactorEnabled = enabled;
+    }
+
+    public boolean isTwoFactorEnabled() {
+        return twoFactorEnabled;
     }
 
     public Long getId() {

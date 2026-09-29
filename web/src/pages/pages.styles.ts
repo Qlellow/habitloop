@@ -75,6 +75,8 @@ const s = {
   authTitle: 'mt-0 mb-1.5 text-2xl font-bold text-fg-strong',
   authDesc: 'mt-0 mb-7 text-fg-sub',
   authSwitch: 'mt-5 mb-0 text-center text-sm text-fg-sub [&_a]:ml-1.5 [&_a]:text-primary [&_a]:font-semibold',
+  codeActions: 'flex justify-between gap-2 mt-4',
+  codeRow: 'flex gap-2 [&>input]:flex-1',
   hint: 'mt-4 px-3.5 py-3 rounded-sm bg-field text-[13px] text-fg-sub',
 
   // 채널 카드 (사이드바)
