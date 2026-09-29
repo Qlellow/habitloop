@@ -18,15 +18,15 @@
 
 | 영역     | 기술                                                                          |
 | -------- | ----------------------------------------------------------------------------- |
-| Backend  | Spring Boot 3.5 · Java 21 · Spring Security(JWT) · JPA · Flyway               |
-| DB       | MySQL 8.4 (로컬 개발은 H2 MySQL 모드, 설치 없이 실행)                         |
+| API      | **NestJS 11** · TypeScript · JWT · node-postgres (SQL 직접 작성)               |
+| DB       | **Postgres** (운영: Neon · 로컬 개발/테스트: 메모리 Postgres PGlite, 설치 없이 실행) |
 | Web      | React 19.2 · TypeScript · Vite 8 · TanStack Query · React Router 7 · **Tailwind CSS 3.4** |
 | Mobile   | React Native 0.86 · **Expo SDK 57** · Expo Router · TanStack Query · **NativeWind 4** |
 | Shared   | `@loop/shared` — API 클라이언트 · 타입 · 데이터 훅 · 인증 상태 (웹/앱 공용)    |
-| Infra    | Docker Compose (MySQL + Spring Boot + Nginx) · GitHub Actions CI              |
+| Infra    | **Vercel** (웹 + API 서비스) · Docker Compose (Postgres + API + Nginx) · GitHub Actions CI/CD |
 
 ```
-backend/          Spring Boot API (포트 3000)
+api/              NestJS API (포트 3000, 모든 경로가 /api 로 시작)
 web/              React 웹사이트 (포트 3001, 운영은 Nginx 가 정적 파일 + /api 프록시)
 mobile/           React Native 앱 (Expo SDK 57, Expo Router)
 packages/shared/  웹·앱 공용 코드
@@ -52,21 +52,23 @@ packages/shared/  웹·앱 공용 코드
 
 | 무엇 | 포트 | 주소 |
 | ---- | ---- | ---- |
-| 백엔드 (Spring Boot API) | **3000** | http://localhost:3000/api/... |
+| API (NestJS) | **3000** | http://localhost:3000/api/... |
 | 웹 (React) | **3001** | http://localhost:3001 |
 | 모바일 (Expo 개발 서버) | 8081 (Expo 기본값) | 터미널에 나오는 QR 코드로 접속 |
-| MySQL (Docker) | 3306 | 컨테이너 내부 |
+| Postgres (Docker) | 5432 | 컨테이너 내부 |
 
-포트를 바꾸려면 백엔드는 `PORT=4000 ./mvnw spring-boot:run`, 웹은 `web/vite.config.ts` 의 `port` 를 고치면 됩니다.
+포트를 바꾸려면 API 는 `PORT=4000 npm run api`, 웹은 `web/vite.config.ts` 의 `port` 를 고치면 됩니다.
 
-### 1) 백엔드
+### 1) API
 
 ```bash
-# H2 인메모리 DB + 샘플 데이터로 바로 실행 (Maven 설치 불필요, Java 21 만 있으면 됨)
-cd backend && ./mvnw spring-boot:run      # Windows: mvnw.cmd spring-boot:run
+npm install          # 저장소 루트에서 한 번 (API·웹·앱·공용 패키지를 함께 설치)
+npm run api          # http://localhost:3000/api — 메모리 Postgres(PGlite) + 샘플 데이터로 바로 실행
 ```
 
-체험 계정은 `demo@loop.dev` / `password1234` 입니다.
+- `DATABASE_URL` 이 없으면 **메모리 안에서 도는 Postgres(PGlite)** 를 씁니다. DB 설치가 필요 없고, 끄면 데이터가 사라집니다.
+- 진짜 Postgres 를 쓰려면 `DATABASE_URL=postgres://user:pass@host:5432/db npm run api`. 테이블은 API 가 처음 뜰 때 자동으로 만들어집니다 (`api/src/db/migrations.ts`).
+- 체험 계정은 `demo@loop.dev` / `password1234` 입니다 (메모리 DB 로 켰을 때, 또는 `SEED=true`).
 
 #### 인증번호 메일 (회원가입 · 2단계 인증)
 
@@ -74,19 +76,18 @@ cd backend && ./mvnw spring-boot:run      # Windows: mvnw.cmd spring-boot:run
 
 ```bash
 # Google 계정 비밀번호가 아니라 '앱 비밀번호'(16자리)를 넣으세요
-MAIL_USERNAME='보내는주소@gmail.com' MAIL_PASSWORD='앱 비밀번호' ./mvnw spring-boot:run
-# Windows PowerShell: $env:MAIL_USERNAME='보내는주소@gmail.com'; $env:MAIL_PASSWORD='앱 비밀번호'; .\mvnw.cmd spring-boot:run
+MAIL_USERNAME='보내는주소@gmail.com' MAIL_PASSWORD='앱 비밀번호' npm run api
+# Windows PowerShell: $env:MAIL_USERNAME='보내는주소@gmail.com'; $env:MAIL_PASSWORD='앱 비밀번호'; npm run api
 ```
 
-- `MAIL_USERNAME`·`MAIL_PASSWORD` 가 없으면 메일 대신 **백엔드 콘솔 로그에 인증번호가 찍힙니다** (`[메일 미설정] … 인증번호: 123456`). 로컬 개발은 이대로 쓰면 됩니다.
+- `MAIL_USERNAME`·`MAIL_PASSWORD` 가 없으면 메일 대신 **API 콘솔 로그에 인증번호가 찍힙니다** (`[메일 미설정] … 인증번호: 123456`). 로컬 개발은 이대로 쓰면 됩니다.
 - 보내는 이름을 다르게 하려면 `MAIL_FROM` 도 설정하세요. Docker 는 저장소 루트의 `.env` 에 적습니다 (`.env.example` 참고).
 - 인증번호는 10분 동안 유효하고, 5번 틀리면 폐기되며, 같은 이메일로는 60초에 한 번 · 한 시간에 10번까지 보낼 수 있습니다. 번호는 SHA-256 해시로만 저장합니다.
 
 ### 2) 웹
 
 ```bash
-npm install          # 저장소 루트에서 한 번 (웹·앱·공용 패키지를 함께 설치)
-npm run web          # http://localhost:3001 (/api 는 백엔드 3000 으로 프록시)
+npm run web          # http://localhost:3001 (/api 는 API 3000 으로 프록시)
 ```
 
 ### 3) 모바일 앱 (Expo Go)
@@ -105,10 +106,10 @@ npm run mobile       # = cd mobile && npx expo start
 - 다른 서버를 쓰려면 `EXPO_PUBLIC_API_URL=https://api.example.com npm run mobile`.
 - 스토어 배포용 빌드는 EAS Build(`npx eas build`)를 쓰고, 이때는 HTTPS API 주소를 `EXPO_PUBLIC_API_URL` 로 넣어 주세요.
 
-### Docker (운영 구성: DB + API + 웹)
+### Docker (Postgres + API + 웹)
 
 ```bash
-cp .env.example .env   # DB_PASSWORD, DB_ROOT_PASSWORD 를 꼭 채우세요 (비어 있으면 compose 가 시작하지 않아요)
+cp .env.example .env   # DB_PASSWORD 를 꼭 채우세요 (비어 있으면 compose 가 시작하지 않아요)
 JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
 ```
 
@@ -118,16 +119,62 @@ http://localhost:3001 로 접속합니다. 도메인으로 배포할 때는 `PUB
 | ---------------- | -------------------------------------- | ------------------ |
 | `JWT_SECRET`     | JWT 서명 키 (32바이트 이상)            | 개발용 값          |
 | `PUBLIC_ORIGIN`  | 브라우저가 접속하는 주소 (CORS)        | `http://localhost:3001` |
-| `DB_PASSWORD`    | MySQL 비밀번호                         | 없음 (**필수**)     |
-| `DB_ROOT_PASSWORD` | MySQL root 비밀번호 (Docker)          | 없음 (**필수**)     |
+| `DB_PASSWORD`    | Postgres 비밀번호 (Docker)             | 없음 (**필수**)     |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | 인증번호 메일을 보낼 Gmail 주소 / 앱 비밀번호 | 없음 (없으면 로그에 번호 출력) |
+
+### 배포 (Vercel + GitHub Actions)
+
+```
+브라우저 ──► Vercel ─┬─ /api/*  ──► api 서비스 (NestJS, 서버리스 함수) ──► Neon Postgres
+                     └─ 그 밖    ──► web 서비스 (React 정적 파일)
+```
+
+**1) Vercel (`vercel.json`)**: 한 프로젝트에 두 서비스를 올리고 한 도메인으로 묶습니다.
+
+| 서비스 | 폴더 | 프레임워크 | 공개 경로 |
+| ------ | ---- | ---------- | --------- |
+| `api` | `api/` | NestJS | `/api/*` |
+| `web` | `web/` | Vite (React) | 그 밖의 모든 경로 |
+
+웹은 브라우저에서 같은 도메인의 `/api` 로 요청하므로 서비스끼리 직접 부르는 일이 없어 binding 은 필요 없습니다.
+
+Vercel 프로젝트에서 할 일:
+1. **Storage → Neon Postgres** 를 연결합니다. `DATABASE_URL` 이 자동으로 들어옵니다. 테이블은 API 가 처음 요청을 받을 때 자동으로 만듭니다.
+2. **Settings → Environment Variables** 에 넣습니다.
+
+| 이름 | 값 |
+| ---- | -- |
+| `JWT_SECRET` | 32바이트 이상 무작위 문자열 (**필수**, 없으면 API 가 시작하지 않아요) |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | 인증번호 메일을 보낼 Gmail 주소 / 앱 비밀번호 |
+| `CORS_ORIGINS` | (선택) 다른 도메인에서 API 를 부를 때만. 같은 도메인이면 필요 없어요 |
+
+**2) CI/CD (`.github/workflows/ci.yml`)**
+
+| 언제 | 하는 일 |
+| ---- | ------- |
+| PR · main 푸시 | API 타입 체크 + 통합 테스트(진짜 Postgres), 웹 빌드, 앱 타입 체크·번들, Docker 이미지 빌드 확인 |
+| main 푸시 | Docker 이미지를 GHCR 에 올림: `ghcr.io/<owner>/habitloop-api`, `…-web` (태그 `latest`, `sha-xxxxxxx`) |
+| main 푸시 + 서버 설정 | (선택) Vercel 대신 직접 서버에도 올릴 때: SSH 로 접속해 새 이미지를 받아 재시작 |
+
+Vercel 배포는 Vercel 의 GitHub 연동이 알아서 합니다. 직접 운영하는 서버에도 올리고 싶다면 GitHub 저장소
+**Settings → Secrets and variables → Actions** 에 아래를 넣으세요 (없으면 서버 배포 단계는 건너뜁니다).
+
+| 종류 | 이름 | 값 |
+| ---- | ---- | -- |
+| Variable | `DEPLOY_HOST` | 서버 주소 (IP 또는 도메인) |
+| Variable | `DEPLOY_USER` | SSH 사용자 |
+| Variable | `DEPLOY_PATH` | 서버에서 compose 파일을 둘 폴더 (기본 `~/habitloop`) |
+| Secret | `DEPLOY_SSH_KEY` | 서버에 접속할 SSH 개인 키 |
+
+서버에는 Docker 와 `DEPLOY_PATH/.env` 만 준비해 두면 됩니다 (`.env.example` 참고).
+배포는 `docker-compose.yml` + `docker-compose.prod.yml`(빌드 대신 GHCR 이미지 사용)로 실행됩니다.
 
 ### 테스트
 
 ```bash
-cd backend && ./mvnw verify          # 통합 테스트 (회원가입 → 글 → 채널·카테고리 → 좋아요 → 댓글 → 권한)
+npm test                             # API 통합 테스트 (메모리 Postgres. TEST_DATABASE_URL 을 주면 진짜 Postgres)
 npm run build:web                    # 웹 타입 체크 + 프로덕션 빌드
-npm run typecheck                    # 웹 + 앱 타입 체크
+npm run typecheck                    # API + 웹 + 앱 타입 체크
 cd mobile && npx expo export --platform android --platform ios   # 앱 번들 확인
 ```
 
@@ -169,23 +216,19 @@ cd mobile && npx expo export --platform android --platform ios   # 앱 번들 �
 
 ## 최적화 포인트
 
-### 백엔드
+### API
 
-- **커서(키셋) 페이지네이션**: `OFFSET` 대신 `id < :cursor` 로 조회합니다. 5만 건 기준으로 첫 페이지와 깊은 페이지 모두 약 12ms입니다.
-- **DTO 프로젝션 + 미리보기 컬럼**: 목록은 엔티티 대신 필요한 컬럼만 DTO로 읽습니다. 본문(TEXT) 대신 저장 시 잘라 둔 `excerpt` 를 사용합니다.
-- **동적 JPQL**: `(:p is null or ...)` 패턴을 쓰지 않고, 조건이 있을 때만 WHERE 절을 붙여 인덱스를 제대로 타게 합니다.
-- **복합 인덱스**: `(channel_id, id)`, 카테고리 탭용 `(category_id, id)`, 카테고리 순서용 `(channel_id, position)`, `(author_id, id)`, `(post_id, id)`, 베스트 댓글용 `(post_id, like_count)`, `created_at`, 좋아요 `(post_id, user_id)`·`(comment_id, user_id)` unique 인덱스를 둡니다.
-- **채널 목록 미리보기를 한 번에**: 채널마다 최근 글 8개를 `(SELECT … WHERE channel_id=? ORDER BY id DESC LIMIT 8) UNION ALL …` 로 묶어 한 번에 조회합니다. 채널별 `(channel_id, id)` 인덱스만 읽고 8행에서 멈추므로 채널에 글이 아무리 많아도 비용이 같습니다. (채널 30개여도 API 요청 1번, DB 쿼리 3번)
-- **채널 정보 한 번에 조회**: 채널 정보를 불러올 때 카테고리 목록도 함께 받아서, 탭을 그리려고 요청을 한 번 더 보내지 않습니다. 카테고리를 수정하면 서버가 바뀐 전체 목록을 돌려주고, 프론트는 그 목록으로 캐시를 바로 덮어씁니다.
-- **댓글 좋아요 여부 한 번에 조회**: 한 페이지 댓글의 "내가 눌렀는지" 여부를 `IN` 쿼리 한 번으로 가져옵니다 (N+1 없음).
-- **마크다운 미리보기 텍스트**: 목록에 쓸 미리보기를 저장할 때 마크다운 기호를 미리 걷어 두어, 목록 조회 시 파싱 비용이 들지 않습니다.
-- **카운터 비정규화 + 원자적 UPDATE**: 글·댓글 좋아요 수, 댓글 수, 채널 글 수는 `count(*)` 없이 `SET like_count = like_count + 1` 로 갱신합니다. 엔티티에서는 `updatable=false` 로 두어 덮어쓰기를 막습니다.
-- **조회수 write-behind**: 조회마다 UPDATE 하지 않습니다. 메모리(`LongAdder`)에 모아 5초마다 반영하므로 인기글에 락 경합이 생기지 않습니다. 종료 시에도 flush 합니다.
-- **N+1 방지**: fetch join, `default_batch_fetch_size`, `open-in-view: false` 를 적용했습니다.
-- **인기글·인기 채널 캐시**: Caffeine에 60초 동안 캐시합니다(인기글은 채널별로 따로 캐시). 글을 삭제하거나 채널을 만들고 수정하면 캐시를 비웁니다.
-- **Stateless JWT**: 토큰에 닉네임을 담아 요청마다 사용자를 DB에서 조회하지 않습니다. JWT 파서는 한 번만 만들어 재사용합니다.
-- **런타임**: Java 21 가상 스레드, gzip 응답 압축(20개 목록 4.8KB → 0.5KB), HTTP/2, HikariCP 튜닝, MySQL `rewriteBatchedStatements` 와 prepared statement 캐시를 사용합니다.
-- **레이어드 Docker 이미지**: 의존성 레이어와 앱 레이어를 분리해, 코드만 바뀌면 작은 레이어만 다시 배포합니다.
+- **커서(키셋) 페이지네이션**: `OFFSET` 대신 `id < :cursor` 로 조회해 페이지가 깊어져도 비용이 같습니다.
+- **필요한 컬럼만**: 목록은 본문(TEXT) 대신 저장할 때 마크다운 기호를 걷어 잘라 둔 `excerpt` 를 읽습니다. SQL 을 직접 써서 필요한 컬럼만 가져옵니다.
+- **동적 WHERE**: `(:p is null or ...)` 패턴을 쓰지 않고, 조건이 있을 때만 WHERE 절을 붙여 인덱스를 제대로 타게 합니다.
+- **복합 인덱스**: `(channel_id, id)`, 카테고리 탭용 `(category_id, id)`, 카테고리 순서용 `(channel_id, position)`, `(author_id, id)`, `(post_id, id)`, 베스트 댓글용 `(post_id, like_count)`, `created_at`, 좋아요·가입 unique 인덱스를 둡니다.
+- **채널 목록 미리보기를 한 번에**: `unnest(채널 id 목록) CROSS JOIN LATERAL (… ORDER BY id DESC LIMIT 8)` 로 채널마다 `(channel_id, id)` 인덱스에서 8행만 읽습니다. 채널에 글이 아무리 많아도 비용이 같습니다.
+- **N+1 없음**: 댓글의 "내가 눌렀는지", 작성자 운영진 배지, 가입 여부를 `= ANY(배열)` 쿼리 한 번으로 가져옵니다.
+- **카운터 비정규화 + 원자적 UPDATE**: 좋아요·댓글·글·멤버 수는 `count(*)` 없이 `SET like_count = like_count + 1` 로 갱신하고, 중복 요청은 `ON CONFLICT DO NOTHING` 으로 막습니다.
+- **서버리스에 맞춘 설계**: 조회수는 메모리에 모으지 않고 원자적 UPDATE 로 바로 반영합니다. DB 연결은 첫 요청 때 맺고 마이그레이션도 그때 한 번 적용합니다(여러 인스턴스가 동시에 떠도 advisory lock 으로 한 곳에서만).
+- **인기글·인기 채널 캐시**: 인스턴스마다 60초 캐시합니다. 글을 쓰거나 지우고 채널이 바뀌면 캐시를 비웁니다.
+- **Stateless JWT**: 토큰에 닉네임을 담고, 사용자 존재 여부는 60초 캐시해 요청마다 DB 를 보지 않습니다.
+- **Docker 이미지**: 실행용 의존성과 빌드 결과만 담은 3단계 빌드입니다.
 
 ### 모바일 앱
 

@@ -1,27 +1,54 @@
-name: CI
+name: CI/CD
 
+# PR·푸시마다 테스트와 Docker 이미지 빌드를 확인하고,
+# main 에 들어오면 이미지를 GHCR(GitHub 컨테이너 레지스트리)에 올린 뒤 (설정했다면) 서버에 배포한다.
+# (Vercel 배포는 Vercel 의 GitHub 연동이 따로 한다)
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # ghcr.io/<owner>/habitloop-api, ghcr.io/<owner>/habitloop-web
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/habitloop
 
 jobs:
-  backend:
+  api:
+    name: API 테스트 (Postgres)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: loop_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-node@v4
         with:
-          distribution: temurin
-          java-version: 21
-          cache: maven
-      - run: ./mvnw -B verify
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 타입 체크
+        run: npm run typecheck -w api
+      - name: 통합 테스트 (진짜 Postgres)
+        run: npm test -w api
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/loop_test
+      - name: 빌드
+        run: npm run build -w api
 
   web-and-mobile:
+    name: 웹·앱 빌드
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,3 +66,89 @@ jobs:
         run: npx expo export --platform android --platform ios --output-dir /tmp/expo-export
         env:
           CI: 1
+
+  docker:
+    name: Docker 이미지 (${{ matrix.service }})
+    needs: [api, web-and-mobile]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      # PR 에서는 빌드만 확인하고, main 에서만 레지스트리에 올린다
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./${{ matrix.service }}/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions 캐시로 의존성 레이어를 재사용해 빌드 시간을 줄인다
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    name: 서버 배포
+    needs: docker
+    # main 푸시 + 저장소 변수 DEPLOY_HOST 를 설정했을 때만 (설정 전에는 건너뛴다)
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_HOST != ''
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      # docker 작업이 붙인 태그와 같은 형식 (sha-<짧은 커밋 해시>)
+      - id: tag
+        run: echo "value=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - name: compose 파일 복사
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          username: ${{ vars.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: docker-compose.yml,docker-compose.prod.yml
+          target: ${{ vars.DEPLOY_PATH || '~/habitloop' }}
+      - name: 새 이미지 받아서 재시작
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
+          IMAGE_TAG: ${{ steps.tag.outputs.value }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/habitloop' }}
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          username: ${{ vars.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: IMAGE_PREFIX,IMAGE_TAG,GHCR_USER,GHCR_TOKEN,DEPLOY_PATH
+          script: |
+            set -e
+            cd "$DEPLOY_PATH"
+            # 비밀번호 같은 값은 서버의 .env 에만 있다 (저장소에는 없다)
+            test -f .env || { echo "서버의 $DEPLOY_PATH/.env 가 없어요 (.env.example 참고)"; exit 1; }
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            export IMAGE_PREFIX IMAGE_TAG
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api web
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+            docker image prune -f
+            docker logout ghcr.io

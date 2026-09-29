@@ -5,6 +5,7 @@ WORKDIR /app
 # 의존성 정의만 먼저 복사해서, 코드만 바뀌었을 때는 npm ci 레이어를 재사용한다
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
+COPY api/package.json api/
 COPY web/package.json web/
 COPY mobile/package.json mobile/
 RUN --mount=type=cache,target=/root/.npm npm ci -w web --include-workspace-root

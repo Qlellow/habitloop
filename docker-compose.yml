@@ -1,34 +1,32 @@
 services:
-  mysql:
-    image: mysql:8.4
+  postgres:
+    image: postgres:17-alpine
     restart: unless-stopped
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      MYSQL_DATABASE: community
-      MYSQL_USER: community
-      MYSQL_PASSWORD: ${DB_PASSWORD:?.env 에 DB_PASSWORD 를 적어 주세요}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?.env 에 DB_ROOT_PASSWORD 를 적어 주세요}
+      POSTGRES_DB: loop
+      POSTGRES_USER: loop
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?.env 에 DB_PASSWORD 를 적어 주세요}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U loop -d loop"]
       interval: 5s
       timeout: 5s
       retries: 20
 
-  backend:
-    build: ./backend
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     restart: unless-stopped
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     environment:
-      DB_HOST: mysql
-      DB_NAME: community
-      DB_USER: community
-      DB_PASSWORD: ${DB_PASSWORD:?.env 에 DB_PASSWORD 를 적어 주세요}
+      # 테이블은 API 가 처음 뜰 때 자동으로 만든다 (마이그레이션)
+      DATABASE_URL: postgres://loop:${DB_PASSWORD:?.env 에 DB_PASSWORD 를 적어 주세요}@postgres:5432/loop
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret-at-least-32-bytes}
-      # 브라우저가 접속하는 주소 (nginx 가 같은 도메인으로 프록시해도 POST 에는 Origin 이 붙는다)
+      # 브라우저가 접속하는 주소 (CORS)
       CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:3001}
       # 인증번호 메일 (Gmail). MAIL_PASSWORD 는 Google '앱 비밀번호' — 저장소에 올리지 말고 .env 에만 둔다
       MAIL_USERNAME: ${MAIL_USERNAME:-}
@@ -40,9 +38,9 @@ services:
       dockerfile: web/Dockerfile
     restart: unless-stopped
     depends_on:
-      - backend
+      - api
     ports:
-      - "3001:80"   # 브라우저는 http://localhost:3001 (백엔드 3000 은 내부망에서만 사용)
+      - "3001:80"   # 브라우저는 http://localhost:3001 (API 3000 은 내부망에서만 사용)
 
 volumes:
-  mysql_data:
+  pg_data:
