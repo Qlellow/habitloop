@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, useSignOut } from '@loop/shared';
-import { PencilIcon, SearchIcon } from './Icons';
+import { SearchIcon } from './Icons';
 import { preload } from '../lib/preload';
 import ui from './ui.module.css';
 import s from './Layout.module.css';
@@ -106,9 +106,6 @@ export function SiteHeader() {
   const { isLoggedIn } = useAuth();
   const { pathname, search } = useLocation();
   const next = encodeURIComponent(pathname + search);
-  // 채널 안에서 글쓰기를 누르면 그 채널이 미리 선택되게 한다
-  const channel = pathname.match(/^\/c\/([^/]+)/)?.[1];
-  const writeTo = channel ? `/write?channel=${channel}` : '/write';
 
   return (
     <header className={s.header}>
@@ -127,14 +124,9 @@ export function SiteHeader() {
         </nav>
         <SearchBox key={pathname === '/search' ? 'search' : 'other'} />
         <div className={s.actions}>
+          {/* 글은 채널 안에서만 쓰므로 글쓰기 버튼은 각 채널 페이지에 있다 */}
           {isLoggedIn ? (
-            <>
-              <Link to={writeTo} className={`${ui.button} ${ui.primary}`} onPointerEnter={preload.write}>
-                <PencilIcon width={16} height={16} />
-                <span className={s.writeLabel}>글쓰기</span>
-              </Link>
-              <UserMenu />
-            </>
+            <UserMenu />
           ) : (
             <>
               <Link to={`/login?next=${next}`} className={`${ui.button} ${ui.text}`} onPointerEnter={preload.login}>

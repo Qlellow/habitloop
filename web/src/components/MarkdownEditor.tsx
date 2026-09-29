@@ -13,7 +13,7 @@ type Action = { label: string; title: string; apply: (sel: string) => [before: s
 const ACTIONS: Action[] = [
   { label: 'B', title: '굵게 (Ctrl+B)', apply: (t) => ['**', t || '굵은 글씨', '**'] },
   { label: 'I', title: '기울임 (Ctrl+I)', apply: (t) => ['*', t || '기울인 글씨', '*'] },
-  { label: 'H', title: '제목', apply: (t) => ['\n## ', t || '제목', '\n'] },
+  { label: 'H', title: '소제목', apply: (t) => ['\n## ', t || '소제목', '\n'] },
   { label: '•', title: '목록', apply: (t) => ['\n- ', t || '항목', '\n'] },
   { label: '“', title: '인용', apply: (t) => ['\n> ', t || '인용문', '\n'] },
   { label: '</>', title: '코드', apply: (t) => (t.includes('\n') ? ['\n```\n', t, '\n```\n'] : ['`', t || 'code', '`']) },

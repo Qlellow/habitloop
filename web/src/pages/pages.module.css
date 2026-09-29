@@ -323,47 +323,11 @@
   margin-top: 20px;
 }
 
-.picked {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--field);
-  text-align: left;
-  width: 100%;
-}
 
-.pickedName {
-  flex: 1;
-  font-weight: 600;
-  color: var(--text-strong);
-}
 
-.pickedChange {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--primary);
-}
 
-.pickerPanel {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
 
-.pickerPanel input {
-  border-radius: 0;
-  border-bottom: 1px solid var(--border);
-}
 
-.pickerList {
-  list-style: none;
-  margin: 0;
-  padding: 4px;
-  max-height: 280px;
-  overflow-y: auto;
-}
 
 /* ───── 로그인 / 가입 ───── */
 .authCard {
@@ -404,34 +368,10 @@
   color: var(--text-sub);
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  text-align: left;
-}
 
-.row:hover {
-  background: var(--field);
-}
 
-.rowBody {
-  flex: 1;
-  min-width: 0;
-}
 
-.rowName {
-  font-weight: 600;
-  color: var(--text-strong);
-}
 
-.rowDesc {
-  font-size: 13px;
-  color: var(--text-weak);
-}
 
 /* ───── 채널 카드 (사이드바) ───── */
 .sideChannel {
