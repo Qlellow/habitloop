@@ -60,3 +60,31 @@
     width: 100%;
   }
 }
+
+/* 가입 안내 */
+.gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 24px;
+  text-align: center;
+}
+
+.gateTitle {
+  margin: 18px 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.gateDesc {
+  margin: 0 0 24px;
+  color: var(--text-sub);
+}
+
+.gateActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}

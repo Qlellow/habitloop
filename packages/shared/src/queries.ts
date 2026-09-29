@@ -14,6 +14,7 @@ import type {
   ChannelInput,
   ChannelPreview,
   ChannelSummary,
+  MembershipResponse,
   Comment,
   CursorPage,
   LikeResponse,
@@ -52,6 +53,7 @@ export const keys = {
   bestComments: (postId: number) => ['comments', postId, 'best'] as const,
   channels: (q = '') => ['channels', q] as const,
   channelPreviews: (q = '') => ['channels', 'previews', q] as const,
+  myChannels: ['channels', 'mine'] as const,
   channel: (slug: string) => ['channel', slug] as const,
 };
 
@@ -115,7 +117,7 @@ export function useChannel(slug: string | undefined) {
     placeholderData: (): ChannelDetail | undefined => {
       for (const [, list] of qc.getQueriesData<ChannelSummary[]>({ queryKey: ['channels'] })) {
         const hit = list?.find((c) => c.slug === slug);
-        if (hit) return { ...hit, createdAt: '', mine: false, categories: [] };
+        if (hit) return { ...hit, createdAt: '', mine: false, joined: false, categories: [] };
       }
       return undefined;
     },
@@ -134,6 +136,30 @@ export function useSaveChannel(slug?: string) {
         : api<ChannelDetail>('/api/channels', { method: 'POST', body: input }),
     onSuccess: (channel) => {
       qc.setQueryData(keys.channel(channel.slug), channel);
+      qc.invalidateQueries({ queryKey: ['channels'] });
+    },
+  });
+}
+
+/** 내가 가입한 채널 (로그인했을 때만) */
+export function useMyChannels(enabled: boolean) {
+  return useQuery({
+    queryKey: keys.myChannels,
+    queryFn: ({ signal }) => api<ChannelSummary[]>('/api/me/channels', { signal }),
+    enabled,
+  });
+}
+
+/** 채널 가입/탈퇴. 채널 화면은 즉시 바꾸고, 채널 목록·내 채널은 다시 받는다. */
+export function useMembership(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (join: boolean) =>
+      api<MembershipResponse>(`/api/channels/${encodeURIComponent(slug)}/members${join ? '' : '/me'}`, {
+        method: join ? 'POST' : 'DELETE',
+      }),
+    onSuccess: (res) => {
+      qc.setQueryData<ChannelDetail>(keys.channel(slug), (c) => c && { ...c, ...res });
       qc.invalidateQueries({ queryKey: ['channels'] });
     },
   });
@@ -419,6 +445,8 @@ function clearUserScopedCache(qc: QueryClient) {
   qc.removeQueries({ queryKey: ['post'] });
   qc.removeQueries({ queryKey: ['comments'] });
   qc.removeQueries({ queryKey: ['channel'] });
+  // 가입 여부(joined)·내 채널이 들어 있다
+  qc.removeQueries({ queryKey: ['channels'] });
 }
 
 export function useSignOut() {

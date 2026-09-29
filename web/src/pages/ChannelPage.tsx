@@ -1,6 +1,7 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, compact, useAuth, useChannel, useFeed } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
+import { JoinButton } from '../components/JoinButton';
 import { Footer, Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { PopularCard } from '../components/Sidebar';
@@ -13,7 +14,7 @@ export default function ChannelPage() {
   const { slug = '' } = useParams();
   const [params, setParams] = useSearchParams();
   const { isLoggedIn } = useAuth();
-  const { data: channel, error } = useChannel(slug);
+  const { data: channel, error, isPlaceholderData } = useChannel(slug);
   const categories = channel?.categories ?? [];
   const raw = Number(params.get('category'));
   // 지워진 카테고리 주소로 들어오면 전체 탭으로 보여 준다
@@ -25,8 +26,8 @@ export default function ChannelPage() {
     return <NotFoundPage message="없거나 사라진 채널이에요" />;
   }
 
-  // 관리자 전용 카테고리 탭에서는 관리자에게만 글쓰기 버튼을 보여 준다
-  const canWrite = !active?.ownerOnly || channel?.mine;
+  // 글쓰기는 가입한 사람만, 관리자 전용 카테고리 탭에서는 관리자만
+  const canWrite = !!channel?.joined && (!active?.ownerOnly || channel.mine);
   const writeParams = new URLSearchParams({ channel: slug });
   if (active) writeParams.set('category', String(active.id));
   const writeTo = `/write?${writeParams}`;
@@ -52,6 +53,7 @@ export default function ChannelPage() {
                   <div className={s.bannerSlug}>c/{channel.slug}</div>
                 </div>
                 <div className={s.bannerActions}>
+                  {!isPlaceholderData && <JoinButton channel={channel} />}
                   {channel.mine && (
                     <Link
                       to={`/c/${slug}/manage`}
@@ -61,9 +63,9 @@ export default function ChannelPage() {
                       채널 관리
                     </Link>
                   )}
-                  {canWrite && (
+                  {canWrite && isLoggedIn && (
                     <Link
-                      to={isLoggedIn ? writeTo : `/login?next=${encodeURIComponent(writeTo)}`}
+                      to={writeTo}
                       className={`${ui.button} ${ui.primary}`}
                       onPointerEnter={preload.write}
                     >
@@ -74,7 +76,8 @@ export default function ChannelPage() {
               </div>
               {channel.description && <p className={s.bannerDesc}>{channel.description}</p>}
               <div className={s.bannerMeta}>
-                글 {compact(channel.postCount)}개{channel.ownerNickname && ` · 만든 사람 ${channel.ownerNickname}`}
+                멤버 {compact(channel.memberCount)}명 · 글 {compact(channel.postCount)}개
+                {channel.ownerNickname && ` · 만든 사람 ${channel.ownerNickname}`}
               </div>
             </>
           ) : (

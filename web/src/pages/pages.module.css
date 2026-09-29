@@ -147,7 +147,7 @@
   gap: 8px;
   height: 44px;
   padding: 0 20px;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--surface);
   font-weight: 600;
@@ -220,8 +220,12 @@
   padding: 14px 20px;
 }
 
-.comment + .comment {
-  border-top: 1px solid var(--line);
+.comment + .comment::before {
+  content: '';
+  display: block;
+  height: 1px;
+  margin: -14px 0 14px;
+  background: var(--line);
 }
 
 .commentHead {
@@ -258,7 +262,7 @@
   gap: 4px;
   height: 28px;
   padding: 0 10px 0 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 600;
   color: var(--text-sub);
@@ -298,8 +302,8 @@
   background: var(--primary-weak);
 }
 
-.bestList .comment + .comment {
-  border-top-color: color-mix(in srgb, var(--primary) 14%, transparent);
+.bestList .comment + .comment::before {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
 .bestBadge {

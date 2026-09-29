@@ -20,11 +20,19 @@ export interface ChannelSummary {
   name: string;
   description: string;
   postCount: number;
+  memberCount: number;
 }
 
 /** 채널 목록용: 채널 + 최근 글 미리보기(최대 8개) */
 export interface ChannelPreview extends ChannelSummary {
+  /** 보는 사람이 가입했는지 (비로그인은 false) */
+  joined: boolean;
   recentPosts: PostSummary[];
+}
+
+export interface MembershipResponse {
+  joined: boolean;
+  memberCount: number;
 }
 
 export interface ChannelCategory {
@@ -38,6 +46,8 @@ export interface ChannelDetail extends ChannelSummary {
   ownerNickname?: string;
   createdAt: string;
   mine: boolean;
+  /** 가입해야 글을 쓸 수 있다 (보기·공감·댓글은 가입 없이 가능) */
+  joined: boolean;
   categories: ChannelCategory[];
 }
 

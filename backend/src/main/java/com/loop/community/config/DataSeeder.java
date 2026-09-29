@@ -3,6 +3,8 @@ package com.loop.community.config;
 import com.loop.community.channel.Channel;
 import com.loop.community.channel.ChannelCategory;
 import com.loop.community.channel.ChannelCategoryRepository;
+import com.loop.community.channel.ChannelMember;
+import com.loop.community.channel.ChannelMemberRepository;
 import com.loop.community.channel.ChannelRepository;
 import com.loop.community.comment.Comment;
 import com.loop.community.comment.CommentLike;
@@ -66,17 +68,20 @@ public class DataSeeder implements ApplicationRunner {
     private final UserRepository userRepository;
     private final ChannelRepository channelRepository;
     private final ChannelCategoryRepository categoryRepository;
+    private final ChannelMemberRepository memberRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(UserRepository userRepository, ChannelRepository channelRepository,
-                      ChannelCategoryRepository categoryRepository, PostRepository postRepository, CommentRepository commentRepository,
+                      ChannelCategoryRepository categoryRepository, ChannelMemberRepository memberRepository,
+                      PostRepository postRepository, CommentRepository commentRepository,
                       CommentLikeRepository commentLikeRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.channelRepository = channelRepository;
         this.categoryRepository = categoryRepository;
+        this.memberRepository = memberRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.commentLikeRepository = commentLikeRepository;
@@ -127,6 +132,36 @@ public class DataSeeder implements ApplicationRunner {
             }
         }
         seedCreativeChannel(users);
+        seedBooksChannel(users);
+        seedMemberships();
+    }
+
+    /** 가입 체험용: demo 계정은 아직 가입하지 않은 채널 */
+    private void seedBooksChannel(List<User> users) {
+        Channel books = channelRepository.save(new Channel("books", "독서", "읽은 책 이야기와 추천을 나눠요", users.get(1)));
+        postRepository.save(new Post(users.get(1), books, null, "이번 달에 읽은 책 3권", "1. 소설 한 권\n2. 에세이 한 권\n3. 경제 책 한 권"));
+        postRepository.save(new Post(users.get(2), books, null, "출퇴근길에 읽기 좋은 책 추천해요", "짧은 단편집이 딱 좋아요."));
+        channelRepository.addPostCount(books.getId(), 2);
+    }
+
+    /** 채널 주인과 그 채널에 글을 쓴 사람은 가입된 상태로 둔다 (V4 마이그레이션과 같은 규칙) */
+    private void seedMemberships() {
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (Channel c : channelRepository.findAll()) {
+            if (c.getOwner() != null && seen.add(c.getId() + ":" + c.getOwner().getId())) {
+                memberRepository.save(new ChannelMember(c.getId(), c.getOwner().getId()));
+            }
+        }
+        for (Post p : postRepository.findAll()) {
+            Long channelId = p.getChannel().getId();
+            Long userId = p.getAuthor().getId();
+            if (seen.add(channelId + ":" + userId)) {
+                memberRepository.save(new ChannelMember(channelId, userId));
+            }
+        }
+        java.util.Map<Long, Long> counts = new java.util.HashMap<>();
+        seen.forEach(k -> counts.merge(Long.valueOf(k.split(":")[0]), 1L, Long::sum));
+        counts.forEach((channelId, n) -> channelRepository.addMemberCount(channelId, n.intValue()));
     }
 
     /** 채널 안 카테고리 예시: 공지사항(관리자 전용) / 소설 / 일러스트 */

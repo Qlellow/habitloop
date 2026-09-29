@@ -10,7 +10,7 @@ export function ChannelIcon({ slug, name, size = 32 }: { slug: string; name: str
         placeItems: 'center',
         width: size,
         height: size,
-        borderRadius: size * 0.3,
+        borderRadius: Math.round(size * 0.22),
         background: channelColor(slug),
         color: '#fff',
         fontSize: size * 0.44,

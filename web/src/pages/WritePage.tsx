@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-r
 import { ApiError, useChannel, usePost, useSavePost, type ChannelDetail, type PostDetail } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { Dropdown, type DropdownOption } from '../components/Dropdown';
+import { JoinButton } from '../components/JoinButton';
 import { Page } from '../components/Layout';
 import { MarkdownEditor } from '../components/MarkdownEditor';
 import { toast } from '../components/Toast';
@@ -107,10 +108,29 @@ function PostForm({
   );
 }
 
+/** 가입하지 않은 채널에서 글쓰기를 열면: 가입하면 바로 쓸 수 있게 안내 */
+function JoinGate({ channel }: { channel: ChannelDetail }) {
+  return (
+    <div className={`${ui.card} ${w.gate}`}>
+      <ChannelIcon slug={channel.slug} name={channel.name} size={56} />
+      <h1 className={w.gateTitle}>{channel.name} 채널에 가입해야 글을 쓸 수 있어요</h1>
+      <p className={w.gateDesc}>글 보기, 공감, 댓글은 가입하지 않아도 할 수 있어요.</p>
+      <div className={w.gateActions}>
+        <Link to={`/c/${channel.slug}`} className={`${ui.button} ${ui.ghost} ${ui.large}`}>
+          채널로 돌아가기
+        </Link>
+        <JoinButton channel={channel} size="large" joinLabel="가입하고 글쓰기" />
+      </div>
+    </div>
+  );
+}
+
 function NewPost({ slug, defaultCategory }: { slug: string; defaultCategory?: number }) {
   const { data: channel, isPlaceholderData, error } = useChannel(slug);
   if (error instanceof ApiError && error.status === 404) return <GoToChannels />;
   if (!channel || isPlaceholderData) return <div className={ui.spinner} />;
+  // 가입하면 채널 캐시의 joined 가 바뀌면서 바로 글쓰기 화면으로 넘어간다
+  if (!channel.joined) return <JoinGate channel={channel} />;
   return <PostForm channel={channel} defaultCategory={defaultCategory} />;
 }
 

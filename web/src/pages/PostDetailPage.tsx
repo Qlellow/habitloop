@@ -191,7 +191,9 @@ function ChannelCard({ slug }: { slug: string }) {
         <ChannelIcon slug={data.slug} name={data.name} size={40} />
         <div>
           <div className={s.sideChannelName}>{data.name}</div>
-          <div className={s.bannerSlug}>글 {compact(data.postCount)}개</div>
+          <div className={s.bannerSlug}>
+            멤버 {compact(data.memberCount)}명 · 글 {compact(data.postCount)}개
+          </div>
         </div>
       </div>
       {data.description && <p className={s.sideChannelDesc}>{data.description}</p>}

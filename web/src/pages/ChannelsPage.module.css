@@ -49,6 +49,17 @@
   transition: color 0.12s;
 }
 
+.joined {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: var(--primary-weak);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: 2px;
+}
+
 .meta {
   font-size: 13px;
   color: var(--text-weak);

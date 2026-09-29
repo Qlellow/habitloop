@@ -46,14 +46,14 @@
 .modes {
   display: inline-flex;
   padding: 3px;
-  border-radius: 9px;
+  border-radius: 7px;
   background: var(--field);
 }
 
 .modes button {
   height: 28px;
   padding: 0 12px;
-  border-radius: 7px;
+  border-radius: 5px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-sub);

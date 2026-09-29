@@ -10,15 +10,18 @@ import b from './ChannelsPage.module.css';
 
 /** 채널 카드: 채널 정보 + 최근 글 최대 8개 미리보기 */
 const ChannelBoard = memo(function ChannelBoard({ channel }: { channel: ChannelPreview }) {
-  const { slug, name, description, postCount, recentPosts } = channel;
+  const { slug, name, description, postCount, memberCount, joined, recentPosts } = channel;
   return (
     <section className={b.board}>
       <Link to={`/c/${slug}`} className={b.head} onPointerEnter={preload.channel}>
         <ChannelIcon slug={slug} name={name} size={36} />
         <span className={b.headText}>
-          <span className={b.name}>{name}</span>
+          <span className={b.name}>
+            {name}
+            {joined && <span className={b.joined}>가입함</span>}
+          </span>
           <span className={b.meta}>
-            c/{slug} · 글 {compact(postCount)}개
+            c/{slug} · 멤버 {compact(memberCount)} · 글 {compact(postCount)}
           </span>
         </span>
         <span className={b.go} aria-hidden>

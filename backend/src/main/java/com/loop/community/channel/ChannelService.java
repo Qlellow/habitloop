@@ -25,12 +25,14 @@ public class ChannelService {
 
     private final ChannelRepository channelRepository;
     private final ChannelCategoryRepository categoryRepository;
+    private final ChannelMemberRepository memberRepository;
     private final UserRepository userRepository;
 
     public ChannelService(ChannelRepository channelRepository, ChannelCategoryRepository categoryRepository,
-                          UserRepository userRepository) {
+                          ChannelMemberRepository memberRepository, UserRepository userRepository) {
         this.channelRepository = channelRepository;
         this.categoryRepository = categoryRepository;
+        this.memberRepository = memberRepository;
         this.userRepository = userRepository;
     }
 
@@ -51,7 +53,9 @@ public class ChannelService {
     @Transactional(readOnly = true)
     public ChannelDetail detail(String slug, Long viewerId) {
         Channel channel = findWithOwner(slug);
-        return ChannelDetail.of(channel, viewerId, categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
+        boolean joined = viewerId != null && memberRepository.existsByChannelIdAndUserId(channel.getId(), viewerId);
+        return ChannelDetail.of(channel, viewerId, joined,
+                categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
     }
 
     @Transactional
@@ -67,7 +71,10 @@ public class ChannelService {
         }
         Channel channel = channelRepository.save(
                 new Channel(slug, name, request.description(), userRepository.getReferenceById(userId)));
-        return ChannelDetail.of(findWithOwner(channel.getSlug()), userId, List.of());
+        // 만든 사람은 자동으로 가입된다
+        memberRepository.save(new ChannelMember(channel.getId(), userId));
+        channelRepository.addMemberCount(channel.getId(), 1);
+        return detail(slug, userId);
     }
 
     @Transactional
@@ -82,7 +89,7 @@ public class ChannelService {
             throw ApiException.conflict("같은 이름의 채널이 이미 있어요");
         }
         channel.update(name, request.description());
-        return ChannelDetail.of(channel, userId, categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
+        return ChannelDetail.of(channel, userId, true, categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
     }
 
     @Transactional(readOnly = true)

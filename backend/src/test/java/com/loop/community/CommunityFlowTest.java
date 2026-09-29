@@ -50,6 +50,9 @@ class CommunityFlowTest {
                 .andExpect(jsonPath("$.mine").value(true))
                 .andExpect(jsonPath("$.ownerNickname").value("앨리스"));
 
+        // 'cats' 는 만든 사람이라 자동 가입, 'free' 는 가입해야 글을 쓸 수 있다
+        mvc.perform(auth(post("/api/channels/free/members"), alice)).andExpect(jsonPath("$.joined").value(true));
+
         // 글 25개 작성 → 커서 페이지네이션 확인
         long lastId = 0;
         for (int i = 1; i <= 25; i++) {
@@ -209,6 +212,9 @@ class CommunityFlowTest {
                 .andExpect(jsonPath("$.categories[1].name").value("일러스트"))
                 .andExpect(jsonPath("$.categories[0].ownerOnly").value(true));
 
+        mvc.perform(auth(post("/api/channels/art/members"), member)).andExpect(status().isOk());
+        mvc.perform(auth(post("/api/channels/free/members"), member)).andExpect(status().isOk());
+
         // 관리자 전용 카테고리: 회원은 못 쓰고 소유자는 쓸 수 있다
         mvc.perform(auth(json(post("/api/posts"),
                         Map.of("channel", "art", "categoryId", notice, "title", "공지", "content", "c")), member))
@@ -289,6 +295,57 @@ class CommunityFlowTest {
         // 'previews' 는 채널 주소로 쓸 수 없다
         mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "previews", "name", "예약어")), owner))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void channelMembership() throws Exception {
+        String owner = signup("club-owner@test.dev", "모임장");
+        String guest = signup("club-guest@test.dev", "구경꾼");
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "club", "name", "동호회")), owner))
+                .andExpect(jsonPath("$.joined").value(true))
+                .andExpect(jsonPath("$.memberCount").value(1));
+        long postId = body(mvc.perform(auth(json(post("/api/posts"),
+                        Map.of("channel", "club", "title", "환영해요", "content", "c")), owner))
+                .andExpect(status().isCreated())).get("id").asLong();
+
+        // 가입 안 한 사람: 글쓰기는 막히고
+        mvc.perform(auth(get("/api/channels/club"), guest)).andExpect(jsonPath("$.joined").value(false));
+        mvc.perform(auth(json(post("/api/posts"), Map.of("channel", "club", "title", "t", "content", "c")), guest))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("'동호회' 채널에 가입해야 글을 쓸 수 있어요"));
+        // 보기 · 공감 · 댓글 · 댓글 좋아요는 된다
+        mvc.perform(auth(get("/api/posts/" + postId), guest)).andExpect(status().isOk());
+        mvc.perform(auth(post("/api/posts/" + postId + "/like"), guest)).andExpect(jsonPath("$.liked").value(true));
+        long commentId = body(mvc.perform(auth(json(post("/api/posts/" + postId + "/comments"),
+                        Map.of("content", "구경 왔어요")), guest))
+                .andExpect(status().isCreated())).get("id").asLong();
+        mvc.perform(auth(post("/api/posts/" + postId + "/comments/" + commentId + "/like"), guest))
+                .andExpect(jsonPath("$.liked").value(true));
+
+        // 가입하면 글을 쓸 수 있다 (여러 번 눌러도 한 번만)
+        mvc.perform(auth(post("/api/channels/club/members"), guest))
+                .andExpect(jsonPath("$.joined").value(true))
+                .andExpect(jsonPath("$.memberCount").value(2));
+        mvc.perform(auth(post("/api/channels/club/members"), guest)).andExpect(jsonPath("$.memberCount").value(2));
+        mvc.perform(auth(json(post("/api/posts"), Map.of("channel", "club", "title", "가입 인사", "content", "c")), guest))
+                .andExpect(status().isCreated());
+        mvc.perform(auth(get("/api/me/channels"), guest))
+                .andExpect(jsonPath("$[0].slug").value("club"))
+                .andExpect(jsonPath("$[0].memberCount").value(2));
+        mvc.perform(auth(get("/api/channels/previews").param("q", "club"), guest))
+                .andExpect(jsonPath("$[0].joined").value(true));
+        mvc.perform(get("/api/channels/previews").param("q", "club"))
+                .andExpect(jsonPath("$[0].joined").value(false));
+
+        // 탈퇴하면 다시 못 쓴다. 만든 사람은 탈퇴할 수 없다
+        mvc.perform(auth(delete("/api/channels/club/members/me"), guest))
+                .andExpect(jsonPath("$.joined").value(false))
+                .andExpect(jsonPath("$.memberCount").value(1));
+        mvc.perform(auth(json(post("/api/posts"), Map.of("channel", "club", "title", "t", "content", "c")), guest))
+                .andExpect(status().isForbidden());
+        mvc.perform(auth(delete("/api/channels/club/members/me"), owner)).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/channels/club/members")).andExpect(status().isUnauthorized());
+        mvc.perform(auth(get("/api/me/channels"), guest)).andExpect(jsonPath("$", hasSize(0)));
     }
 
     @Test

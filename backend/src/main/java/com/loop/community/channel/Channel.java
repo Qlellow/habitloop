@@ -38,6 +38,10 @@ public class Channel {
     @Column(nullable = false, updatable = false)
     private int postCount;
 
+    /** 원자적 UPDATE 쿼리로만 변경한다 */
+    @Column(nullable = false, updatable = false)
+    private int memberCount;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -82,6 +86,10 @@ public class Channel {
 
     public int getPostCount() {
         return postCount;
+    }
+
+    public int getMemberCount() {
+        return memberCount;
     }
 
     public Instant getCreatedAt() {

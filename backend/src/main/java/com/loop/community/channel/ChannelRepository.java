@@ -21,13 +21,13 @@ public interface ChannelRepository extends JpaRepository<Channel, Long> {
     boolean existsByName(String name);
 
     @Query("""
-            select new com.loop.community.channel.ChannelDtos$ChannelSummary(c.id, c.slug, c.name, c.description, c.postCount)
+            select new com.loop.community.channel.ChannelDtos$ChannelSummary(c.id, c.slug, c.name, c.description, c.postCount, c.memberCount)
             from Channel c order by c.postCount desc, c.id asc
             """)
     List<ChannelSummary> findPopular(Limit limit);
 
     @Query("""
-            select new com.loop.community.channel.ChannelDtos$ChannelSummary(c.id, c.slug, c.name, c.description, c.postCount)
+            select new com.loop.community.channel.ChannelDtos$ChannelSummary(c.id, c.slug, c.name, c.description, c.postCount, c.memberCount)
             from Channel c
             where lower(c.name) like :pattern escape '\\' or c.slug like :pattern escape '\\'
             order by c.postCount desc, c.id asc
@@ -37,4 +37,12 @@ public interface ChannelRepository extends JpaRepository<Channel, Long> {
     @Modifying
     @Query("update Channel c set c.postCount = c.postCount + :delta where c.id = :id")
     int addPostCount(@Param("id") Long id, @Param("delta") int delta);
+
+    // 같은 트랜잭션에서 방금 만든 채널을 다시 읽을 때 옛 값(0)이 보이지 않도록 영속성 컨텍스트를 비운다
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Channel c set c.memberCount = c.memberCount + :delta where c.id = :id")
+    int addMemberCount(@Param("id") Long id, @Param("delta") int delta);
+
+    @Query("select c.memberCount from Channel c where c.id = :id")
+    int findMemberCount(@Param("id") Long id);
 }

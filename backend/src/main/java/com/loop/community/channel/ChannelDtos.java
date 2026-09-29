@@ -26,22 +26,27 @@ public final class ChannelDtos {
             @Size(max = 200, message = "소개는 200자 이내로 입력해 주세요") String description) {
     }
 
-    public record ChannelSummary(Long id, String slug, String name, String description, int postCount) {
+    public record ChannelSummary(Long id, String slug, String name, String description, int postCount,
+                                 int memberCount) {
     }
 
     /** 채널 목록에서 보여 줄 채널 + 최근 글 미리보기 */
     public record ChannelPreview(Long id, String slug, String name, String description, int postCount,
-                                 List<PostSummary> recentPosts) {
+                                 int memberCount, boolean joined, List<PostSummary> recentPosts) {
     }
 
-    public record ChannelDetail(Long id, String slug, String name, String description, int postCount,
-                                String ownerNickname, Instant createdAt, boolean mine,
-                                List<CategoryResponse> categories) {
+    public record MembershipResponse(boolean joined, int memberCount) {
+    }
 
-        static ChannelDetail of(Channel c, Long viewerId, List<ChannelCategory> categories) {
+    /** joined: 보는 사람이 이 채널에 가입했는지 (가입해야 글을 쓸 수 있다) */
+    public record ChannelDetail(Long id, String slug, String name, String description, int postCount,
+                                int memberCount, String ownerNickname, Instant createdAt, boolean mine,
+                                boolean joined, List<CategoryResponse> categories) {
+
+        static ChannelDetail of(Channel c, Long viewerId, boolean joined, List<ChannelCategory> categories) {
             return new ChannelDetail(c.getId(), c.getSlug(), c.getName(), c.getDescription(), c.getPostCount(),
-                    c.getOwner() == null ? null : c.getOwner().getNickname(), c.getCreatedAt(),
-                    viewerId != null && c.isOwnedBy(viewerId),
+                    c.getMemberCount(), c.getOwner() == null ? null : c.getOwner().getNickname(), c.getCreatedAt(),
+                    viewerId != null && c.isOwnedBy(viewerId), joined,
                     categories.stream().map(CategoryResponse::from).toList());
         }
     }

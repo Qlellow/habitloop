@@ -3,6 +3,7 @@ package com.loop.community.post;
 import com.loop.community.channel.Channel;
 import com.loop.community.channel.ChannelCategory;
 import com.loop.community.channel.ChannelCategoryService;
+import com.loop.community.channel.ChannelMembershipService;
 import com.loop.community.channel.ChannelRepository;
 import com.loop.community.channel.ChannelService;
 import com.loop.community.common.ApiException;
@@ -39,18 +40,20 @@ public class PostService {
     private final ChannelService channelService;
     private final ChannelRepository channelRepository;
     private final ChannelCategoryService categoryService;
+    private final ChannelMembershipService membershipService;
     private final ViewCountBuffer viewCountBuffer;
 
     public PostService(PostRepository postRepository, PostLikeRepository postLikeRepository,
                        UserRepository userRepository, ChannelService channelService,
                        ChannelRepository channelRepository, ChannelCategoryService categoryService,
-                       ViewCountBuffer viewCountBuffer) {
+                       ChannelMembershipService membershipService, ViewCountBuffer viewCountBuffer) {
         this.postRepository = postRepository;
         this.postLikeRepository = postLikeRepository;
         this.userRepository = userRepository;
         this.channelService = channelService;
         this.channelRepository = channelRepository;
         this.categoryService = categoryService;
+        this.membershipService = membershipService;
         this.viewCountBuffer = viewCountBuffer;
     }
 
@@ -79,6 +82,8 @@ public class PostService {
     @Transactional
     public PostDetail create(Long userId, CreatePostRequest request) {
         Channel channel = channelService.getBySlug(request.channel());
+        // 글쓰기는 채널 가입자만 (보기·공감·댓글은 가입 없이 가능)
+        membershipService.requireMember(channel, userId);
         ChannelCategory category = categoryService.resolveForPost(channel, request.categoryId(), userId);
         User author = userRepository.getReferenceById(userId);
         Post post = postRepository.save(new Post(author, channel, category, request.title(), request.content()));
