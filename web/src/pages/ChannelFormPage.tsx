@@ -1,0 +1,192 @@
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { channelIconUrl, useChannel, useChannelIcon, useSaveChannel, type ChannelDetail } from '@loop/shared';
+import { ChannelIcon } from '../components/ChannelIcon';
+import { Page } from '../components/Layout';
+import { MarkdownEditor } from '../components/MarkdownEditor';
+import { toast } from '../components/Toast';
+import { ui } from '../components/ui';
+import { toSquareIcon } from '../lib/image';
+import s from './pages.styles';
+import { cn } from '../lib/cn';
+
+const SLUG = /^[a-z0-9][a-z0-9_-]{1,29}$/;
+const MAX_DESCRIPTION = 2000;
+
+/** 프로필 이미지: 새로 고른 사진(blob) · 지우기(null) · 그대로(undefined) */
+type IconChange = { blob: Blob; url: string } | null | undefined;
+
+function IconPicker({
+  name,
+  slug,
+  current,
+  change,
+  onChange,
+}: {
+  name: string;
+  slug: string;
+  current?: string;
+  change: IconChange;
+  onChange: (c: IconChange) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const preview = change === null ? undefined : (change?.url ?? current);
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const blob = await toSquareIcon(file);
+      onChange({ blob, url: URL.createObjectURL(blob) });
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = '';
+    }
+  };
+
+  return (
+    <div className={ui.field}>
+      <span className={ui.label}>채널 프로필</span>
+      <div className={s.iconPicker}>
+        <ChannelIcon channel={{ slug: slug || 'loop', name: name.trim() || '루' }} src={preview} size={72} />
+        <div className={s.iconPickerBody}>
+          <div className={s.iconPickerActions}>
+            <button type="button" className={cn(ui.button, ui.secondary, ui.small)} disabled={busy} onClick={() => input.current?.click()}>
+              {busy ? '준비 중…' : preview ? '사진 바꾸기' : '사진 올리기'}
+            </button>
+            {preview && (
+              <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={() => onChange(current ? null : undefined)}>
+                기본으로
+              </button>
+            )}
+          </div>
+          <p className={cn(ui.help, 'mt-0')}>정사각형으로 잘려요. 사진이 없으면 채널 이름 첫 글자로 보여요.</p>
+        </div>
+        <input
+          ref={input}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="sr-only"
+          tabIndex={-1}
+          aria-label="채널 프로필 사진"
+          onChange={(e) => pick(e.target.files?.[0])}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ChannelForm({ initial }: { initial?: ChannelDetail }) {
+  const navigate = useNavigate();
+  const save = useSaveChannel(initial?.slug);
+  const [slug, setSlug] = useState(initial?.slug ?? '');
+  const [name, setName] = useState(initial?.name ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [icon, setIcon] = useState<IconChange>();
+  const iconMutation = useChannelIcon(initial?.slug ?? slug);
+
+  // 미리보기용으로 만든 blob 주소는 바뀌거나 화면을 떠날 때 풀어 준다
+  useEffect(() => () => void (icon && URL.revokeObjectURL(icon.url)), [icon]);
+
+  const slugOk = !!initial || SLUG.test(slug);
+  const valid = slugOk && name.trim().length >= 2 && description.length <= MAX_DESCRIPTION;
+  const pending = save.isPending || iconMutation.isPending;
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!valid || pending) return;
+    save.mutate(
+      { slug, name: name.trim(), description: description.trim() },
+      {
+        onSuccess: async (c) => {
+          if (icon !== undefined) {
+            try {
+              await iconMutation.mutateAsync(icon?.blob ?? null);
+            } catch (err) {
+              // 채널은 만들어졌으니 이동은 하고, 사진만 실패했다고 알려 준다
+              toast(`프로필 사진을 올리지 못했어요: ${(err as Error).message}`);
+            }
+          }
+          toast(initial ? '채널 정보를 바꿨어요' : `${c.name} 채널을 만들었어요`);
+          navigate(initial ? `/c/${c.slug}/manage` : `/c/${c.slug}`, { replace: true });
+        },
+      },
+    );
+  };
+
+  return (
+    <form className={cn(ui.card, s.formCard)} onSubmit={submit} noValidate>
+      <IconPicker name={name} slug={slug} current={initial && channelIconUrl(initial)} change={icon} onChange={setIcon} />
+      <label className={ui.field}>
+        <span className={ui.label}>채널 이름</span>
+        <input className={ui.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="예) 고양이" autoFocus />
+      </label>
+      <label className={ui.field}>
+        <span className={ui.label}>고리</span>
+        <input
+          className={ui.input}
+          value={slug}
+          onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+          maxLength={30}
+          placeholder="예) cats"
+          disabled={!!initial}
+          autoCapitalize="off"
+          spellCheck={false}
+        />
+        <p className={ui.help}>
+          {initial
+            ? '고리는 바꿀 수 없어요'
+            : slug
+              ? `${location.host}/c/${slug}${slugOk ? '' : ' · 2자 이상, 영문이나 숫자로 시작해야 해요'}`
+              : '고리는 루프에서 채널로 이어지는 짧은 이름이에요. 주소(/c/고리)에 쓰이고, 만든 뒤에는 바꿀 수 없어요. 영문 소문자·숫자·-·_ 로 2~30자'}
+        </p>
+      </label>
+      <div className={ui.field}>
+        <span className={ui.label}>소개 (선택)</span>
+        <MarkdownEditor
+          compact
+          value={description}
+          onChange={setDescription}
+          maxLength={MAX_DESCRIPTION}
+          label="채널 소개"
+          placeholder={'어떤 이야기를 나누는 곳인지 알려 주세요\n\n마크다운으로 규칙이나 운영진 소개도 적을 수 있어요'}
+        />
+        <p className={ui.help}>
+          {description.length.toLocaleString()} / {MAX_DESCRIPTION.toLocaleString()}자 · 길면 채널 화면에서 '더 보기'로 접혀요
+        </p>
+      </div>
+      {save.error && <p className={ui.error}>{save.error.message}</p>}
+      <div className={s.formFoot}>
+        <button type="button" className={cn(ui.button, ui.ghost)} onClick={() => navigate(-1)}>
+          취소
+        </button>
+        <button type="submit" className={cn(ui.button, ui.primary)} disabled={!valid || pending}>
+          {pending ? '저장 중…' : initial ? '저장하기' : '채널 만들기'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function EditChannel({ slug }: { slug: string }) {
+  const { data, isPending, isPlaceholderData, isError } = useChannel(slug);
+  if (isPending || isPlaceholderData) return <div className={ui.spinner} />;
+  if (isError || !data.canManage) return <Navigate to={`/c/${slug}`} replace />;
+  return <ChannelForm initial={data} />;
+}
+
+export default function ChannelFormPage() {
+  const { slug } = useParams();
+  return (
+    <Page variant="single">
+      <div>
+        <h1 className={s.pageTitle}>{slug ? '채널 정보 수정' : '새 채널 만들기'}</h1>
+        {!slug && <p className={s.pageDesc}>좋아하는 주제로 사람들이 모이는 공간을 만들어 보세요.</p>}
+      </div>
+      {slug ? <EditChannel slug={slug} /> : <ChannelForm />}
+    </Page>
+  );
+}

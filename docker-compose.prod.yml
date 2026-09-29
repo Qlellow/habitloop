@@ -1,0 +1,10 @@
+# 운영 서버용 덮어쓰기: 서버에서 빌드하지 않고 GitHub Actions 가 GHCR 에 올린 이미지를 받아 쓴다.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+# IMAGE_TAG 를 비우면 main 의 최신 이미지(latest)를 쓴다. 배포 작업은 커밋별 태그(sha-xxxxxxx)를 넘긴다.
+services:
+  api:
+    image: ${IMAGE_PREFIX:-ghcr.io/qlellow/habitloop}-api:${IMAGE_TAG:-latest}
+
+  web:
+    image: ${IMAGE_PREFIX:-ghcr.io/qlellow/habitloop}-web:${IMAGE_TAG:-latest}

@@ -1,54 +1,46 @@
-version: "3.9"
-
 services:
-  mysql:
-    image: mysql:8.0
+  postgres:
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: habitloop
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_USER: habitloop
-      MYSQL_PASSWORD: habitloop
-    ports:
-      - "3306:3306"
+      POSTGRES_DB: loop
+      POSTGRES_USER: loop
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?.env 에 DB_PASSWORD 를 적어 주세요}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpass"]
+      test: ["CMD-SHELL", "pg_isready -U loop -d loop"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
 
   api:
     build:
-      context: ./apps/api
+      context: .
+      dockerfile: api/Dockerfile
     restart: unless-stopped
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: habitloop
-      DB_PASSWORD: habitloop
-      DB_NAME: habitloop
-      JWT_SECRET: change-me-in-prod
-      PORT: 3001
-    ports:
-      - "3001:3001"
+      # 테이블은 API 가 처음 뜰 때 자동으로 만든다 (마이그레이션)
+      DATABASE_URL: postgres://loop:${DB_PASSWORD:?.env 에 DB_PASSWORD 를 적어 주세요}@postgres:5432/loop
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret-at-least-32-bytes}
+      # 브라우저가 접속하는 주소 (CORS)
+      CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:3001}
+      # 인증번호 메일 (Gmail). MAIL_PASSWORD 는 Google '앱 비밀번호' — 저장소에 올리지 말고 .env 에만 둔다
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
 
   web:
     build:
-      context: ./apps/web
+      context: .
+      dockerfile: web/Dockerfile
     restart: unless-stopped
     depends_on:
       - api
-    environment:
-      API_URL: http://api:3001
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-      PORT: 3000
     ports:
-      - "3000:3000"
+      - "3001:80"   # 브라우저는 http://localhost:3001 (API 3000 은 내부망에서만 사용)
 
 volumes:
-  mysql_data:
+  pg_data:

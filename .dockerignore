@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.expo
+backend/target
+.git
+# 웹 이미지는 앱(mobile)의 package.json 만 필요하다 (워크스페이스 lockfile 검증용)
+mobile/*
+!mobile/package.json

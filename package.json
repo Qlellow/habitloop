@@ -1,7 +1,19 @@
 {
-  "name": "habitloop",
+  "name": "loop",
   "private": true,
-  "version": "0.1.0",
-  "description": "습관 트래커 + 소셜 — Next.js SSR web / Expo mobile / NestJS API / MySQL / Docker / CI-CD",
-  "workspaces": ["apps/api", "apps/web", "apps/mobile"]
+  "description": "루프 커뮤니티 — API(NestJS) · 웹(React) · 앱(React Native) · 공용 패키지 워크스페이스",
+  "workspaces": [
+    "packages/*",
+    "api",
+    "web",
+    "mobile"
+  ],
+  "scripts": {
+    "api": "npm run dev -w api",
+    "web": "npm run dev -w web",
+    "mobile": "npm run start -w mobile",
+    "test": "npm test -w api",
+    "typecheck": "npm run typecheck -w api && npm run typecheck -w web && npm run typecheck -w mobile",
+    "build:web": "npm run build -w web"
+  }
 }

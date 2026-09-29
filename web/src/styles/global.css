@@ -1,0 +1,155 @@
+:root {
+  --grey-50: #f9fafb;
+  --grey-100: #f2f4f6;
+  --grey-200: #e5e8eb;
+  --grey-300: #d1d6db;
+  --grey-400: #b0b8c1;
+  --grey-500: #8b95a1;
+  --grey-600: #6b7684;
+  --grey-700: #4e5968;
+  --grey-800: #333d4b;
+  --grey-900: #191f28;
+
+  --blue-50: #e8f3ff;
+  --blue-500: #3182f6;
+  --blue-600: #2272eb;
+  --red-500: #f04452;
+  --red-50: #ffeeee;
+
+  --bg: var(--grey-50);
+  --surface: #ffffff;
+  --surface-pressed: var(--grey-50);
+  --text-strong: var(--grey-900);
+  --text: var(--grey-800);
+  --text-sub: var(--grey-600);
+  --text-weak: var(--grey-500);
+  --line: var(--grey-100);
+  --field: var(--grey-100);
+  /* 회색 버튼(bg-field)을 올렸을 때: 원래보다 한 단계만 진하게/밝게 */
+  --field-hover: var(--grey-200);
+  --primary: var(--blue-500);
+  --primary-pressed: var(--blue-600);
+  --primary-weak: var(--blue-50);
+  --danger: var(--red-500);
+  --skeleton: var(--grey-100);
+  --danger-weak: var(--red-50);
+  --toast-bg: rgba(25, 31, 40, 0.94);
+
+  /* 채널 운영진 배지: 소유자(노랑) · 관리자(초록) · 매니저(파랑) */
+  --role-owner: #f5a700;
+  --role-owner-bg: #fff6d6;
+  --role-admin: #03b26c;
+  --role-admin-bg: #e3f8ee;
+  --role-manager: #3182f6;
+  --role-manager-bg: #e8f3ff;
+
+  --radius-lg: 10px;
+  --radius-md: 8px;
+  --radius-sm: 6px;
+  --header-h: 64px;
+  --page-w: 1240px;
+  --border: var(--grey-200);
+  --shadow-pop: 0 12px 32px rgba(0, 29, 58, 0.14);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  color-scheme: light;
+}
+
+/* 다크 테마: 설정에서 '다크'를 고르거나, '시스템 설정'이면서 OS 가 다크일 때 */
+:root[data-theme='dark'] {
+  --bg: #101013;
+  --border: #2a2a31;
+  --surface: #1c1c21;
+  --surface-pressed: #26262c;
+  --text-strong: #f2f2f4;
+  --text: #d9d9de;
+  --text-sub: #9e9ea6;
+  --text-weak: #7e7e87;
+  --line: #2a2a31;
+  --field: #2a2a31;
+  --field-hover: #35353d;
+  --primary-weak: rgba(49, 130, 246, 0.16);
+  --skeleton: #2a2a31;
+  --danger-weak: rgba(240, 68, 82, 0.14);
+  --toast-bg: rgba(70, 70, 80, 0.96);
+  --role-owner-bg: rgba(245, 167, 0, 0.18);
+  --role-admin-bg: rgba(3, 178, 108, 0.18);
+  --role-manager-bg: rgba(49, 130, 246, 0.2);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #101013;
+    --border: #2a2a31;
+    --surface: #1c1c21;
+    --surface-pressed: #26262c;
+    --text-strong: #f2f2f4;
+    --text: #d9d9de;
+    --text-sub: #9e9ea6;
+    --text-weak: #7e7e87;
+    --line: #2a2a31;
+    --field: #2a2a31;
+  --field-hover: #35353d;
+    --primary-weak: rgba(49, 130, 246, 0.16);
+    --skeleton: #2a2a31;
+    --danger-weak: rgba(240, 68, 82, 0.14);
+    --toast-bg: rgba(70, 70, 80, 0.96);
+  --role-owner-bg: rgba(245, 167, 0, 0.18);
+  --role-admin-bg: rgba(3, 178, 108, 0.18);
+  --role-manager-bg: rgba(49, 130, 246, 0.2);
+    color-scheme: dark;
+  }
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tailwind preflight 위에 얹는 기본 스타일 */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    min-height: 100dvh;
+    min-width: 320px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
+      'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
+  input,
+  textarea {
+    color: var(--text-strong);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
