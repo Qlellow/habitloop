@@ -179,10 +179,6 @@ export function SiteFooter() {
           <LogoMark className="w-5 h-5" />
           루프
         </Link>
-        <nav className={s.footerNav} aria-label="바로가기">
-          <Link to="/">홈</Link>
-          <Link to="/channels">채널</Link>
-        </nav>
         <p className={s.copyright}>© 루프 커뮤니티</p>
       </div>
     </footer>
