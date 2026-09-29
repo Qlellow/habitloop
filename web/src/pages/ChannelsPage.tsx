@@ -22,7 +22,7 @@ const ChannelBoard = memo(function ChannelBoard({ channel }: { channel: ChannelP
             {joined && <span className={b.joined}>가입함</span>}
           </span>
           <span className={b.meta}>
-            c/{slug} · 멤버 {compact(memberCount)} · 글 {compact(postCount)}
+            멤버 {compact(memberCount)} · 글 {compact(postCount)}
           </span>
         </span>
         <span className={b.go} aria-hidden>
