@@ -1,20 +1,25 @@
 import { memo, type ReactNode } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-  type PressableProps,
-  type StyleProp,
-  type TextInputProps,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View, type PressableProps, type TextInputProps } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { channelColor } from '@loop/shared';
-import { makeStyles, radius, useColors } from './theme';
+import { cn } from './cn';
+import { useColors } from './theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'text' | 'danger';
+
+const variants: Record<Variant, { box: string; label: string }> = {
+  primary: { box: 'bg-primary', label: 'text-white' },
+  secondary: { box: 'bg-primary-weak', label: 'text-primary' },
+  ghost: { box: 'bg-field', label: 'text-fg' },
+  text: { box: 'bg-transparent', label: 'text-fg-sub' },
+  danger: { box: 'bg-danger-weak', label: 'text-danger' },
+};
+
+const sizes = {
+  sm: { box: 'h-[34px] px-3 rounded-sm', label: 'text-sm' },
+  md: { box: 'h-11 px-[18px] rounded-sm', label: 'text-[15px]' },
+  lg: { box: 'h-[54px] px-[18px] rounded-md', label: 'text-[17px]' },
+};
 
 export function Button({
   title,
@@ -23,7 +28,7 @@ export function Button({
   full,
   disabled,
   loading,
-  style,
+  className,
   ...rest
 }: PressableProps & {
   title: string;
@@ -31,136 +36,98 @@ export function Button({
   size?: 'sm' | 'md' | 'lg';
   full?: boolean;
   loading?: boolean;
-  style?: StyleProp<ViewStyle>;
+  className?: string;
 }) {
   const c = useColors();
-  const bg = { primary: c.primary, secondary: c.primaryWeak, ghost: c.field, text: 'transparent', danger: c.dangerWeak }[variant];
-  const fg = { primary: c.onPrimary, secondary: c.primary, ghost: c.text, text: c.sub, danger: c.danger }[variant];
-  const height = { sm: 34, md: 44, lg: 54 }[size];
+  const v = variants[variant];
   return (
     <Pressable
       accessibilityRole="button"
       disabled={disabled || loading}
-      style={({ pressed }) => [
-        {
-          height,
-          paddingHorizontal: size === 'sm' ? 12 : 18,
-          borderRadius: size === 'lg' ? radius.md : radius.sm,
-          backgroundColor: bg,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          opacity: disabled ? 0.4 : 1,
-          transform: [{ scale: pressed ? 0.97 : 1 }],
-        },
-        full && { alignSelf: 'stretch' },
-        style,
-      ]}
+      className={cn(
+        'flex-row items-center justify-center active:scale-[0.97]',
+        v.box,
+        sizes[size].box,
+        full && 'self-stretch',
+        disabled && 'opacity-40',
+        className,
+      )}
       {...rest}
     >
       {loading ? (
-        <ActivityIndicator color={fg} />
+        <ActivityIndicator color={variant === 'primary' ? '#fff' : c.primary} />
       ) : (
-        <Text style={{ color: fg, fontSize: size === 'lg' ? 17 : size === 'sm' ? 14 : 15, fontWeight: '600' }}>{title}</Text>
+        <Text className={cn('font-semibold', v.label, sizes[size].label)}>{title}</Text>
       )}
     </Pressable>
   );
 }
 
 export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress: () => void }) {
-  const c = useColors();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      style={{
-        height: 34,
-        paddingHorizontal: 14,
-        borderRadius: 999,
-        justifyContent: 'center',
-        backgroundColor: selected ? c.textStrong : c.field,
-      }}
+      className={cn('h-[34px] px-3.5 rounded-full justify-center', selected ? 'bg-fg-strong' : 'bg-field')}
     >
-      <Text style={{ fontSize: 14, fontWeight: '600', color: selected ? c.surface : c.sub }}>{label}</Text>
+      <Text className={cn('text-sm font-semibold', selected ? 'text-surface' : 'text-fg-sub')}>{label}</Text>
     </Pressable>
   );
 }
 
-export function Input(props: TextInputProps) {
+export function Input({ className, ...props }: TextInputProps & { className?: string }) {
   const c = useColors();
   return (
     <TextInput
       placeholderTextColor={c.weak}
       {...props}
-      style={[
-        {
-          backgroundColor: c.field,
-          borderRadius: radius.md,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          fontSize: 16,
-          color: c.textStrong,
-        },
-        props.style,
-      ]}
+      className={cn('bg-field rounded-md px-4 py-3.5 text-base text-fg-strong', className)}
     />
   );
 }
 
-export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const c = useColors();
-  return <View style={[{ backgroundColor: c.surface, borderRadius: radius.lg, overflow: 'hidden' }, style]}>{children}</View>;
+export function Card({ children, className }: { children: ReactNode; className?: string }) {
+  return <View className={cn('bg-surface rounded-lg overflow-hidden', className)}>{children}</View>;
 }
 
 export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
-  const s = useSectionStyles();
   return (
-    <View style={s.row}>
-      <Text style={s.title}>{children}</Text>
+    <View className="flex-row items-center justify-between px-5 pt-5 pb-2">
+      <Text className="text-lg font-bold text-fg-strong">{children}</Text>
       {right}
     </View>
   );
 }
 
-const useSectionStyles = makeStyles((c) => ({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
-  title: { fontSize: 18, fontWeight: '700', color: c.textStrong },
-}));
-
+// 크기·채널 색처럼 값에 따라 바뀌는 부분만 style 로 넘긴다
 export const ChannelIcon = memo(function ChannelIcon({ slug, name, size = 36 }: { slug: string; name: string; size?: number }) {
   return (
     <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size * 0.3,
-        backgroundColor: channelColor(slug),
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      className="items-center justify-center"
+      style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: channelColor(slug) }}
     >
-      <Text style={{ color: '#fff', fontWeight: '800', fontSize: size * 0.44 }}>{name.slice(0, 1)}</Text>
+      <Text className="text-white font-extrabold" style={{ fontSize: size * 0.44 }}>
+        {name.slice(0, 1)}
+      </Text>
     </View>
   );
 });
 
 export function Avatar({ name, size = 38 }: { name: string; size?: number }) {
-  const c = useColors();
   return (
-    <View
-      style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c.primaryWeak, alignItems: 'center', justifyContent: 'center' }}
-    >
-      <Text style={{ color: c.primary, fontWeight: '700', fontSize: size * 0.4 }}>{name.slice(0, 1)}</Text>
+    <View className="items-center justify-center bg-primary-weak rounded-full" style={{ width: size, height: size }}>
+      <Text className="text-primary font-bold" style={{ fontSize: size * 0.4 }}>
+        {name.slice(0, 1)}
+      </Text>
     </View>
   );
 }
 
 export function Empty({ children, action }: { children: ReactNode; action?: ReactNode }) {
-  const c = useColors();
   return (
-    <View style={{ paddingVertical: 48, paddingHorizontal: 20, alignItems: 'center', gap: 16 }}>
-      <Text style={{ color: c.weak, fontSize: 15, textAlign: 'center' }}>{children}</Text>
+    <View className="py-12 px-5 items-center gap-4">
+      <Text className="text-fg-weak text-[15px] text-center">{children}</Text>
       {action}
     </View>
   );
@@ -168,12 +135,11 @@ export function Empty({ children, action }: { children: ReactNode; action?: Reac
 
 export function Loading() {
   const c = useColors();
-  return <ActivityIndicator style={{ marginVertical: 28 }} color={c.primary} />;
+  return <ActivityIndicator className="my-7" color={c.primary} />;
 }
 
-export function Skeleton({ width, height, style }: { width: number | `${number}%`; height: number; style?: StyleProp<ViewStyle> }) {
-  const c = useColors();
-  return <View style={[{ width, height, borderRadius: 6, backgroundColor: c.skeleton }, style]} />;
+export function Skeleton({ width, height, className }: { width: number | `${number}%`; height: number; className?: string }) {
+  return <View className={cn('rounded-[6px] bg-skeleton', className)} style={{ width, height }} />;
 }
 
 export function Heart({ filled, size = 16, color }: { filled?: boolean; size?: number; color: string }) {
@@ -184,7 +150,7 @@ export function Heart({ filled, size = 16, color }: { filled?: boolean; size?: n
 export function HeaderIcon({ name, onPress, label }: { name: keyof typeof Ionicons.glyphMap; onPress: () => void; label: string }) {
   const c = useColors();
   return (
-    <Pressable onPress={onPress} accessibilityLabel={label} hitSlop={10} style={{ paddingHorizontal: 6 }}>
+    <Pressable onPress={onPress} accessibilityLabel={label} hitSlop={10} className="px-1.5">
       <Ionicons name={name} size={24} color={c.textStrong} />
     </Pressable>
   );

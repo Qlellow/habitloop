@@ -1,22 +1,13 @@
 import { useDeferredValue, useLayoutEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useChannel, useChannels, usePost, useSavePost, type PostDetail } from '@loop/shared';
 import { Markdown } from '../src/Markdown';
 import { ChannelIcon, Chip, Input, Loading } from '../src/ui';
-import { makeStyles, useColors } from '../src/theme';
+import { cn } from '../src/cn';
+import { useColors } from '../src/theme';
 
 function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: string) => void }) {
-  const s = useStyles();
   const [open, setOpen] = useState(!value);
   const [input, setInput] = useState('');
   const q = useDeferredValue(input);
@@ -25,28 +16,28 @@ function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: s
 
   if (!open && selected) {
     return (
-      <Pressable style={s.picked} onPress={() => setOpen(true)}>
+      <Pressable className="flex-row items-center gap-2.5 p-3 rounded-md bg-field mb-3 active:opacity-70" onPress={() => setOpen(true)}>
         <ChannelIcon slug={selected.slug} name={selected.name} size={30} />
-        <Text style={s.pickedName}>{selected.name}</Text>
-        <Text style={s.change}>변경</Text>
+        <Text className="flex-1 text-base font-semibold text-fg-strong">{selected.name}</Text>
+        <Text className="text-sm font-semibold text-primary">변경</Text>
       </Pressable>
     );
   }
   return (
-    <View style={s.picker}>
+    <View className="gap-1 mb-3">
       <Input placeholder="어느 채널에 올릴까요?" value={input} onChangeText={setInput} />
       {channels?.slice(0, 8).map((c) => (
         <Pressable
           key={c.slug}
-          style={({ pressed }) => [s.option, pressed && { opacity: 0.6 }]}
+          className="flex-row items-center gap-2.5 py-2.5 px-1 active:opacity-60"
           onPress={() => {
             onChange(c.slug);
             setOpen(false);
           }}
         >
           <ChannelIcon slug={c.slug} name={c.name} size={30} />
-          <Text style={s.pickedName}>{c.name}</Text>
-          <Text style={s.optionSlug}>c/{c.slug}</Text>
+          <Text className="flex-1 text-base font-semibold text-fg-strong">{c.name}</Text>
+          <Text className="text-[13px] text-fg-weak">c/{c.slug}</Text>
         </Pressable>
       ))}
     </View>
@@ -60,7 +51,7 @@ function CategoryPicker({ channel, value, onChange }: { channel: string; value: 
   const selectable = data.categories.filter((c) => !c.ownerOnly || data.mine);
   if (!selectable.length) return null;
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 pb-3">
       <Chip label="선택 안 함" selected={value == null} onPress={() => onChange(null)} />
       {selectable.map((c) => (
         <Chip key={c.id} label={c.name} selected={value === c.id} onPress={() => onChange(c.id)} />
@@ -81,7 +72,6 @@ const TOOLS: [string, Wrap][] = [
 ];
 
 function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDetail; defaultChannel?: string; defaultCategory?: number }) {
-  const s = useStyles();
   const c = useColors();
   const navigation = useNavigation();
   const save = useSavePost(initial?.id);
@@ -112,12 +102,12 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
     navigation.setOptions({
       title: initial ? '글 수정' : '글쓰기',
       headerLeft: () => (
-        <Text style={s.headerCancel} onPress={() => router.back()}>
+        <Text className="text-base text-fg-sub px-1" onPress={() => router.back()}>
           취소
         </Text>
       ),
       headerRight: () => (
-        <Text style={[s.headerSubmit, !valid && { opacity: 0.35 }]} onPress={submit}>
+        <Text className={cn('text-base font-bold text-primary px-1', !valid && 'opacity-35')} onPress={submit}>
           {save.isPending ? '저장 중' : initial ? '저장' : '올리기'}
         </Text>
       ),
@@ -133,12 +123,16 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.surface }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={100}>
-      <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView
+      className="flex-1 bg-surface"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={100}
+    >
+      <ScrollView contentContainerClassName="p-5 pb-10" keyboardShouldPersistTaps="handled">
         {initial ? (
-          <View style={s.picked}>
+          <View className="flex-row items-center gap-2.5 p-3 rounded-md bg-field mb-3">
             <ChannelIcon slug={initial.channel.slug} name={initial.channel.name} size={30} />
-            <Text style={s.pickedName}>{initial.channel.name}</Text>
+            <Text className="flex-1 text-base font-semibold text-fg-strong">{initial.channel.name}</Text>
           </View>
         ) : (
           <ChannelPicker
@@ -150,21 +144,34 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
           />
         )}
         {channel ? <CategoryPicker channel={channel} value={categoryId} onChange={setCategoryId} /> : null}
-        <TextInput style={s.title} placeholder="제목" placeholderTextColor={c.weak} value={title} onChangeText={setTitle} maxLength={100} />
-        <View style={s.bar}>
-          <View style={s.segment}>
+        <TextInput
+          className="text-[22px] font-bold text-fg-strong py-3 border-b border-line"
+          placeholder="제목"
+          placeholderTextColor={c.weak}
+          value={title}
+          onChangeText={setTitle}
+          maxLength={100}
+        />
+        <View className="flex-row mt-3.5 mb-2.5">
+          <View className="flex-row p-[3px] rounded-[11px] bg-field">
             {(['작성', '미리보기'] as const).map((label, i) => (
-              <Pressable key={label} onPress={() => setPreview(i === 1)} style={[s.segmentItem, preview === (i === 1) && s.segmentOn]}>
-                <Text style={[s.segmentText, preview === (i === 1) && { color: c.textStrong }]}>{label}</Text>
+              <Pressable
+                key={label}
+                onPress={() => setPreview(i === 1)}
+                className={cn('px-3.5 py-1.5 rounded-[8px]', preview === (i === 1) && 'bg-surface')}
+              >
+                <Text className={cn('text-sm font-semibold text-fg-sub', preview === (i === 1) && 'text-fg-strong')}>{label}</Text>
               </Pressable>
             ))}
           </View>
         </View>
         {preview ? (
-          <View style={s.preview}>{content.trim() ? <Markdown source={content} /> : <Text style={{ color: c.weak }}>미리 볼 내용이 없어요</Text>}</View>
+          <View className="min-h-[320px]">
+            {content.trim() ? <Markdown source={content} /> : <Text className="text-fg-weak">미리 볼 내용이 없어요</Text>}
+          </View>
         ) : (
           <TextInput
-            style={s.body}
+            className="min-h-[320px] text-base leading-6 text-fg"
             placeholder={'내용을 입력해 주세요\n마크다운 문법(**굵게**, # 제목, - 목록)을 쓸 수 있어요'}
             placeholderTextColor={c.weak}
             value={content}
@@ -178,10 +185,20 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
         )}
       </ScrollView>
       {!preview ? (
-        <ScrollView horizontal keyboardShouldPersistTaps="always" style={s.toolbar} contentContainerStyle={s.toolbarInner}>
+        <ScrollView
+          horizontal
+          keyboardShouldPersistTaps="always"
+          className="grow-0 border-t border-border bg-surface"
+          contentContainerClassName="px-2 py-1.5 gap-0.5"
+        >
           {TOOLS.map(([label, wrap]) => (
-            <Pressable key={label} onPress={() => apply(wrap)} style={s.tool} hitSlop={4}>
-              <Text style={s.toolText}>{label}</Text>
+            <Pressable
+              key={label}
+              onPress={() => apply(wrap)}
+              className="min-w-[42px] h-[38px] items-center justify-center rounded-[8px] active:bg-field"
+              hitSlop={4}
+            >
+              <Text className="text-base font-bold text-fg-sub">{label}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -200,27 +217,3 @@ export default function WriteScreen() {
   }
   return <Form defaultChannel={params.channel} defaultCategory={Number(params.category) || undefined} />;
 }
-
-const useStyles = makeStyles((c) => ({
-  wrap: { padding: 20, paddingBottom: 40 },
-  headerCancel: { fontSize: 16, color: c.sub, paddingHorizontal: 4 },
-  headerSubmit: { fontSize: 16, fontWeight: '700', color: c.primary, paddingHorizontal: 4 },
-  picked: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 14, backgroundColor: c.field, marginBottom: 12 },
-  pickedName: { flex: 1, fontSize: 16, fontWeight: '600', color: c.textStrong },
-  change: { fontSize: 14, fontWeight: '600', color: c.primary },
-  picker: { gap: 4, marginBottom: 12 },
-  option: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 4 },
-  optionSlug: { fontSize: 13, color: c.weak },
-  title: { fontSize: 22, fontWeight: '700', color: c.textStrong, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.line },
-  bar: { flexDirection: 'row', marginTop: 14, marginBottom: 10 },
-  segment: { flexDirection: 'row', padding: 3, borderRadius: 11, backgroundColor: c.field },
-  segmentItem: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
-  segmentOn: { backgroundColor: c.surface },
-  segmentText: { fontSize: 14, fontWeight: '600', color: c.sub },
-  body: { minHeight: 320, fontSize: 16, lineHeight: 24, color: c.text },
-  preview: { minHeight: 320 },
-  toolbar: { flexGrow: 0, borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.surface },
-  toolbarInner: { paddingHorizontal: 8, paddingVertical: 6, gap: 2 },
-  tool: { minWidth: 42, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
-  toolText: { fontSize: 16, fontWeight: '700', color: c.sub },
-}));

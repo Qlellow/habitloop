@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Platform, StyleSheet, useColorScheme } from 'react-native';
+import { useColorScheme } from 'react-native';
+import { vars } from 'nativewind';
 
 // 웹과 같은 토스 톤의 팔레트 (다크 모드 포함)
 const light = {
@@ -14,11 +14,12 @@ const light = {
   border: '#e5e8eb',
   field: '#f2f4f6',
   primary: '#3182f6',
+  primaryPressed: '#2272eb',
   primaryWeak: '#e8f3ff',
   danger: '#f04452',
   dangerWeak: '#ffeeee',
   skeleton: '#eef0f3',
-  onPrimary: '#ffffff',
+  toast: 'rgba(25,31,40,0.94)',
 };
 
 const dark: typeof light = {
@@ -33,11 +34,12 @@ const dark: typeof light = {
   border: '#2a2a31',
   field: '#2a2a31',
   primary: '#3182f6',
+  primaryPressed: '#2272eb',
   primaryWeak: 'rgba(49,130,246,0.18)',
   danger: '#f04452',
   dangerWeak: 'rgba(240,68,82,0.16)',
   skeleton: '#26262c',
-  onPrimary: '#ffffff',
+  toast: 'rgba(70,70,80,0.96)',
 };
 
 export type Colors = typeof light;
@@ -46,13 +48,35 @@ export function useColors(): Colors {
   return useColorScheme() === 'dark' ? dark : light;
 }
 
-/** 색상에 따라 달라지는 스타일을 테마가 바뀔 때만 다시 만든다 */
-export function makeStyles<T extends StyleSheet.NamedStyles<T>>(factory: (c: Colors) => T) {
-  return function useStyles() {
-    const c = useColors();
-    return useMemo(() => StyleSheet.create(factory(c)), [c]);
-  };
+/**
+ * 팔레트를 NativeWind 가 읽는 CSS 변수로 바꾼다. 루트에 한 번 걸어 두면
+ * className 의 bg-surface, text-fg-strong 같은 색이 라이트/다크에 맞게 풀린다.
+ * (변수 이름은 packages/shared/tailwind-preset.cjs · 웹 global.css 와 같다)
+ */
+function toVars(c: Colors) {
+  return vars({
+    '--bg': c.bg,
+    '--surface': c.surface,
+    '--surface-pressed': c.pressed,
+    '--text': c.text,
+    '--text-strong': c.textStrong,
+    '--text-sub': c.sub,
+    '--text-weak': c.weak,
+    '--line': c.line,
+    '--field': c.field,
+    '--border': c.border,
+    '--primary': c.primary,
+    '--primary-pressed': c.primaryPressed,
+    '--primary-weak': c.primaryWeak,
+    '--danger': c.danger,
+    '--danger-weak': c.dangerWeak,
+    '--skeleton': c.skeleton,
+    '--toast-bg': c.toast,
+  });
 }
 
-export const radius = { lg: 18, md: 14, sm: 10 };
-export const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
+const themes = { light: toVars(light), dark: toVars(dark) };
+
+export function useThemeVars() {
+  return useColorScheme() === 'dark' ? themes.dark : themes.light;
+}

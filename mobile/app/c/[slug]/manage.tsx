@@ -4,7 +4,7 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCategoryMutation, useChannel, type ChannelCategory } from '@loop/shared';
 import { Button, Input, Loading } from '../../../src/ui';
-import { makeStyles, useColors } from '../../../src/theme';
+import { useColors } from '../../../src/theme';
 
 const MAX = 20;
 
@@ -21,7 +21,6 @@ function Row({
   count: number;
   onMove: (from: number, to: number) => void;
 }) {
-  const s = useStyles();
   const c = useColors();
   const mutation = useCategoryMutation(slug);
   const [editing, setEditing] = useState(false);
@@ -31,23 +30,26 @@ function Row({
 
   if (editing) {
     return (
-      <View style={s.row}>
-        <View style={{ flex: 1, gap: 10 }}>
+      <View className="flex-row items-center gap-3 px-5 py-3 border-t border-line">
+        <View className="flex-1 gap-2.5">
           <Input value={name} onChangeText={setName} maxLength={20} autoFocus />
-          <View style={s.toggleRow}>
-            <Text style={s.toggleLabel}>관리자만 글쓰기</Text>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-[15px] font-semibold text-fg">관리자만 글쓰기</Text>
             <Switch value={ownerOnly} onValueChange={setOwnerOnly} trackColor={{ true: c.primary }} />
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button title="취소" variant="ghost" size="sm" style={{ flex: 1 }} onPress={() => setEditing(false)} />
+          <View className="flex-row gap-2">
+            <Button title="취소" variant="ghost" size="sm" className="flex-1" onPress={() => setEditing(false)} />
             <Button
               title="저장"
               size="sm"
-              style={{ flex: 1 }}
+              className="flex-1"
               disabled={!name.trim()}
               loading={mutation.isPending}
               onPress={() =>
-                mutation.mutate({ type: 'update', id: category.id, name: name.trim(), ownerOnly }, { onSuccess: () => setEditing(false), onError })
+                mutation.mutate(
+                  { type: 'update', id: category.id, name: name.trim(), ownerOnly },
+                  { onSuccess: () => setEditing(false), onError },
+                )
               }
             />
           </View>
@@ -57,24 +59,33 @@ function Row({
   }
 
   return (
-    <View style={s.row}>
-      <View style={s.order}>
+    <View className="flex-row items-center gap-3 px-5 py-3 border-t border-line">
+      <View className="gap-0.5">
         <Pressable disabled={index === 0} onPress={() => onMove(index, index - 1)} hitSlop={6} accessibilityLabel={`${category.name} 위로`}>
           <Ionicons name="chevron-up" size={20} color={index === 0 ? c.border : c.sub} />
         </Pressable>
-        <Pressable disabled={index === count - 1} onPress={() => onMove(index, index + 1)} hitSlop={6} accessibilityLabel={`${category.name} 아래로`}>
+        <Pressable
+          disabled={index === count - 1}
+          onPress={() => onMove(index, index + 1)}
+          hitSlop={6}
+          accessibilityLabel={`${category.name} 아래로`}
+        >
           <Ionicons name="chevron-down" size={20} color={index === count - 1 ? c.border : c.sub} />
         </Pressable>
       </View>
-      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={s.name}>{category.name}</Text>
-        {category.ownerOnly ? <Text style={s.badge}>관리자 전용</Text> : null}
+      <View className="flex-1 flex-row items-center gap-2">
+        <Text className="text-base font-semibold text-fg-strong">{category.name}</Text>
+        {category.ownerOnly ? (
+          <Text className="px-[7px] py-0.5 rounded-[6px] overflow-hidden bg-primary-weak text-primary text-xs font-semibold">
+            관리자 전용
+          </Text>
+        ) : null}
       </View>
-      <Text style={s.action} onPress={() => setEditing(true)}>
+      <Text className="text-[15px] text-fg-sub px-1" onPress={() => setEditing(true)}>
         수정
       </Text>
       <Text
-        style={[s.action, { color: c.danger }]}
+        className="text-[15px] text-danger px-1"
         onPress={() =>
           Alert.alert(`'${category.name}' 카테고리를 삭제할까요?`, '이 카테고리의 글은 지워지지 않고 카테고리만 비워져요.', [
             { text: '취소', style: 'cancel' },
@@ -89,7 +100,6 @@ function Row({
 }
 
 export default function ManageScreen() {
-  const s = useStyles();
   const c = useColors();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { data: channel, isPlaceholderData, isPending } = useChannel(slug);
@@ -119,28 +129,36 @@ export default function ManageScreen() {
     );
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
-      <ScrollView contentContainerStyle={{ paddingVertical: 12 }} keyboardShouldPersistTaps="handled">
-        <Pressable style={s.card} onPress={() => router.push(`/channel-form?slug=${slug}`)}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.cardTitle}>채널 정보 수정</Text>
-            <Text style={s.cardDesc} numberOfLines={1}>
+    <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+      <ScrollView contentContainerClassName="py-3" keyboardShouldPersistTaps="handled">
+        <Pressable
+          className="flex-row items-center gap-3 p-5 mb-3 bg-surface active:bg-pressed"
+          onPress={() => router.push(`/channel-form?slug=${slug}`)}
+        >
+          <View className="flex-1">
+            <Text className="text-[17px] font-bold text-fg-strong">채널 정보 수정</Text>
+            <Text className="mt-1 text-[13px] text-fg-sub" numberOfLines={1}>
               {channel.name} · {channel.description || '소개 없음'}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={c.weak} />
         </Pressable>
-        <View style={[s.card, { flexDirection: 'column', alignItems: 'stretch', padding: 0 }]}>
-          <View style={{ padding: 20, paddingBottom: 8 }}>
-            <Text style={s.cardTitle}>
-              카테고리 <Text style={s.count}>{categories.length}/{MAX}</Text>
+        <View className="mb-3 bg-surface">
+          <View className="p-5 pb-2">
+            <Text className="text-[17px] font-bold text-fg-strong">
+              카테고리{' '}
+              <Text className="text-sm font-medium text-fg-weak">
+                {categories.length}/{MAX}
+              </Text>
             </Text>
-            <Text style={s.cardDesc}>공지사항·소설·일러스트처럼 채널 글을 나눠 보세요. 순서대로 채널 탭에 보여요.</Text>
+            <Text className="mt-1 text-[13px] text-fg-sub">
+              공지사항·소설·일러스트처럼 채널 글을 나눠 보세요. 순서대로 채널 탭에 보여요.
+            </Text>
           </View>
           {categories.map((cat, i) => (
             <Row key={cat.id} slug={slug} category={cat} index={i} count={categories.length} onMove={move} />
           ))}
-          <View style={s.addBox}>
+          <View className="gap-3 p-5 border-t border-line">
             <Input
               placeholder={categories.length >= MAX ? `카테고리는 ${MAX}개까지 만들 수 있어요` : '새 카테고리 이름'}
               value={name}
@@ -148,10 +166,10 @@ export default function ManageScreen() {
               maxLength={20}
               editable={categories.length < MAX}
             />
-            <View style={s.toggleRow}>
+            <View className="flex-row items-center justify-between">
               <View>
-                <Text style={s.toggleLabel}>관리자만 글쓰기</Text>
-                <Text style={s.cardDesc}>공지사항처럼 나만 글을 올릴 수 있어요</Text>
+                <Text className="text-[15px] font-semibold text-fg">관리자만 글쓰기</Text>
+                <Text className="mt-1 text-[13px] text-fg-sub">공지사항처럼 나만 글을 올릴 수 있어요</Text>
               </View>
               <Switch value={ownerOnly} onValueChange={setOwnerOnly} trackColor={{ true: c.primary }} />
             </View>
@@ -162,18 +180,3 @@ export default function ManageScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const useStyles = makeStyles((c) => ({
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 20, marginBottom: 12, backgroundColor: c.surface },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: c.textStrong },
-  cardDesc: { marginTop: 4, fontSize: 13, color: c.sub },
-  count: { fontSize: 14, fontWeight: '500', color: c.weak },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: 1, borderTopColor: c.line },
-  order: { gap: 2 },
-  name: { fontSize: 16, fontWeight: '600', color: c.textStrong },
-  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, overflow: 'hidden', backgroundColor: c.primaryWeak, color: c.primary, fontSize: 12, fontWeight: '600' },
-  action: { fontSize: 15, color: c.sub, paddingHorizontal: 4 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  toggleLabel: { fontSize: 15, fontWeight: '600', color: c.text },
-  addBox: { gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: c.line },
-}));

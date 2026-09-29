@@ -3,11 +3,8 @@ import { FlatList, Pressable, Text, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { compact, useAuth, useChannels, type ChannelSummary } from '@loop/shared';
 import { ChannelIcon, Empty, Input, Loading, Button } from '../../src/ui';
-import { makeStyles, useColors } from '../../src/theme';
 
 export default function ChannelsScreen() {
-  const s = useStyles();
-  const c = useColors();
   const { isLoggedIn } = useAuth();
   const navigation = useNavigation();
   const [input, setInput] = useState('');
@@ -18,7 +15,7 @@ export default function ChannelsScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <Text onPress={create} style={s.headerAction}>
+        <Text onPress={create} className="mr-4 text-base font-semibold text-primary">
           만들기
         </Text>
       ),
@@ -30,22 +27,28 @@ export default function ChannelsScreen() {
       data={data ?? []}
       keyExtractor={(ch) => ch.slug}
       keyboardShouldPersistTaps="handled"
-      style={{ backgroundColor: c.surface }}
+      className="bg-surface"
       ListHeaderComponent={
-        <View style={s.searchWrap}>
-          <Input placeholder="채널 이름이나 주소로 찾기" value={input} onChangeText={setInput} returnKeyType="search" clearButtonMode="while-editing" />
+        <View className="p-4 pb-2">
+          <Input
+            placeholder="채널 이름이나 주소로 찾기"
+            value={input}
+            onChangeText={setInput}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
         </View>
       }
       renderItem={({ item }) => (
-        <Pressable onPress={() => router.push(`/c/${item.slug}`)} style={({ pressed }) => [s.row, pressed && s.pressed]}>
+        <Pressable onPress={() => router.push(`/c/${item.slug}`)} className="flex-row items-center gap-3.5 px-5 py-3 active:bg-pressed">
           <ChannelIcon slug={item.slug} name={item.name} size={42} />
-          <View style={{ flex: 1 }}>
-            <Text style={s.name}>{item.name}</Text>
-            <Text style={s.desc} numberOfLines={1}>
+          <View className="flex-1">
+            <Text className="text-base font-semibold text-fg-strong">{item.name}</Text>
+            <Text className="mt-0.5 text-sm text-fg-sub" numberOfLines={1}>
               {item.description || `c/${item.slug}`}
             </Text>
           </View>
-          <Text style={s.count}>글 {compact(item.postCount)}</Text>
+          <Text className="text-[13px] text-fg-weak">글 {compact(item.postCount)}</Text>
         </Pressable>
       )}
       ListEmptyComponent={
@@ -58,13 +61,3 @@ export default function ChannelsScreen() {
     />
   );
 }
-
-const useStyles = makeStyles((c) => ({
-  headerAction: { marginRight: 16, fontSize: 16, fontWeight: '600', color: c.primary },
-  searchWrap: { padding: 16, paddingBottom: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 12 },
-  pressed: { backgroundColor: c.pressed },
-  name: { fontSize: 16, fontWeight: '600', color: c.textStrong },
-  desc: { marginTop: 2, fontSize: 14, color: c.sub },
-  count: { fontSize: 13, color: c.weak },
-}));

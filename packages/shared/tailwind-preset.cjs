@@ -1,7 +1,7 @@
 /**
  * 웹(Tailwind)과 앱(NativeWind)이 함께 쓰는 디자인 토큰.
  * 색은 CSS 변수를 가리키므로, 라이트/다크 값은 각 앱의 global.css 에서 바꾼다.
- *   웹: web/src/styles/global.css   앱: mobile/global.css
+ *   웹: web/src/styles/global.css   앱: mobile/src/theme.ts (vars())
  *
  * @type {import('tailwindcss').Config}
  */

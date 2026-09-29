@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Image, Linking, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { marked, type Token, type Tokens } from 'marked';
-import { makeStyles, mono, useColors } from './theme';
+import { cn } from './cn';
 
 /**
  * 마크다운 → 네이티브 컴포넌트.
@@ -27,22 +27,25 @@ function RemoteImage({ uri, alt }: { uri: string; alt: string }) {
   const { width } = useWindowDimensions();
   const [ratio, setRatio] = useState(16 / 9);
   useEffect(() => {
-    Image.getSize(uri, (w, h) => h > 0 && setRatio(w / h), () => undefined);
+    Image.getSize(
+      uri,
+      (w, h) => h > 0 && setRatio(w / h),
+      () => undefined,
+    );
   }, [uri]);
   if (!SAFE_URL.test(uri)) return null;
   return (
     <Image
       source={{ uri }}
       accessibilityLabel={alt}
-      style={{ width: '100%', maxWidth: width, aspectRatio: ratio, borderRadius: 12, marginBottom: 14 }}
+      className="w-full rounded-[12px] mb-3.5"
+      style={{ maxWidth: width, aspectRatio: ratio }}
       resizeMode="cover"
     />
   );
 }
 
 export const Markdown = memo(function Markdown({ source }: { source: string }) {
-  const s = useStyles();
-  const c = useColors();
   // 같은 본문이면 다시 파싱하지 않는다
   const tokens = useMemo(() => marked.lexer(source, { gfm: true, breaks: true }), [source]);
 
@@ -52,25 +55,25 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
       switch (t.type) {
         case 'strong':
           return (
-            <Text key={k} style={s.strong}>
+            <Text key={k} className={s.strong}>
               {inline(t.tokens, k)}
             </Text>
           );
         case 'em':
           return (
-            <Text key={k} style={s.em}>
+            <Text key={k} className={s.em}>
               {inline(t.tokens, k)}
             </Text>
           );
         case 'del':
           return (
-            <Text key={k} style={s.del}>
+            <Text key={k} className={s.del}>
               {inline(t.tokens, k)}
             </Text>
           );
         case 'codespan':
           return (
-            <Text key={k} style={s.codespan}>
+            <Text key={k} className={s.codespan}>
               {decode(t.text)}
             </Text>
           );
@@ -78,13 +81,13 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
           return '\n';
         case 'link':
           return (
-            <Text key={k} style={s.link} onPress={() => open(t.href)} accessibilityRole="link">
+            <Text key={k} className={s.link} onPress={() => open(t.href)} accessibilityRole="link">
               {inline(t.tokens, k)}
             </Text>
           );
         case 'image':
           return (
-            <Text key={k} style={s.link} onPress={() => open(t.href)}>
+            <Text key={k} className={s.link} onPress={() => open(t.href)}>
               [이미지{t.text ? `: ${t.text}` : ''}]
             </Text>
           );
@@ -100,7 +103,7 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
       case 'heading': {
         const h = t as Tokens.Heading;
         return (
-          <Text key={key} style={[s.heading, h.depth <= 1 ? s.h1 : h.depth === 2 ? s.h2 : s.h3]}>
+          <Text key={key} className={cn(s.heading, h.depth <= 1 ? s.h1 : h.depth === 2 ? s.h2 : s.h3)}>
             {inline(h.tokens, key)}
           </Text>
         );
@@ -114,7 +117,7 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
           return images.map((img, i) => <RemoteImage key={`${key}-${i}`} uri={img.href} alt={img.text} />);
         }
         return (
-          <Text key={key} style={s.p}>
+          <Text key={key} className={s.p}>
             {inline(p.tokens, key)}
           </Text>
         );
@@ -122,7 +125,7 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
       case 'text': {
         const tt = t as Tokens.Text;
         return (
-          <Text key={key} style={s.p}>
+          <Text key={key} className={s.p}>
             {tt.tokens ? inline(tt.tokens, key) : decode(tt.text)}
           </Text>
         );
@@ -131,11 +134,11 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
         const l = t as Tokens.List;
         const start = typeof l.start === 'number' ? l.start : 1;
         return (
-          <View key={key} style={s.list}>
+          <View key={key} className={s.list}>
             {l.items.map((item, i) => (
-              <View key={i} style={s.li}>
-                <Text style={s.bullet}>{item.task ? (item.checked ? '☑' : '☐') : l.ordered ? `${start + i}.` : '•'}</Text>
-                <View style={{ flex: 1 }}>{item.tokens.map((b, j) => block(b, `${key}-${i}-${j}`))}</View>
+              <View key={i} className={s.li}>
+                <Text className={s.bullet}>{item.task ? (item.checked ? '☑' : '☐') : l.ordered ? `${start + i}.` : '•'}</Text>
+                <View className="flex-1">{item.tokens.map((b, j) => block(b, `${key}-${i}-${j}`))}</View>
               </View>
             ))}
           </View>
@@ -143,29 +146,29 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
       }
       case 'blockquote':
         return (
-          <View key={key} style={s.quote}>
+          <View key={key} className={s.quote}>
             {(t as Tokens.Blockquote).tokens.map((b, j) => block(b, `${key}-${j}`))}
           </View>
         );
       case 'code':
         return (
-          <ScrollView key={key} horizontal style={s.code} contentContainerStyle={{ padding: 14 }}>
-            <Text style={s.codeText} selectable>
+          <ScrollView key={key} horizontal className={s.code} contentContainerClassName="p-3.5">
+            <Text className={s.codeText} selectable>
               {(t as Tokens.Code).text}
             </Text>
           </ScrollView>
         );
       case 'hr':
-        return <View key={key} style={s.hr} />;
+        return <View key={key} className={s.hr} />;
       case 'table': {
         const tb = t as Tokens.Table;
         return (
-          <ScrollView key={key} horizontal style={{ marginBottom: 14 }}>
-            <View style={s.table}>
+          <ScrollView key={key} horizontal className="mb-3.5">
+            <View className={s.table}>
               {[tb.header, ...tb.rows].map((row, r) => (
-                <View key={r} style={[s.tr, r === 0 && { backgroundColor: c.field }]}>
+                <View key={r} className={cn(s.tr, r === 0 && 'bg-field')}>
                   {row.map((cell, ci) => (
-                    <Text key={ci} style={[s.td, r === 0 && s.strong]}>
+                    <Text key={ci} className={cn(s.td, r === 0 && s.strong)}>
                       {inline(cell.tokens, `${key}-${r}-${ci}`)}
                     </Text>
                   ))}
@@ -179,7 +182,7 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
         return null;
       default:
         return 'text' in t ? (
-          <Text key={key} style={s.p}>
+          <Text key={key} className={s.p}>
             {decode(String(t.text))}
           </Text>
         ) : null;
@@ -189,25 +192,25 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
   return <View>{tokens.map((t, i) => block(t, String(i)))}</View>;
 });
 
-const useStyles = makeStyles((c) => ({
-  p: { fontSize: 16, lineHeight: 27, color: c.text, marginBottom: 14 },
-  heading: { color: c.textStrong, fontWeight: '700', marginTop: 10, marginBottom: 10 },
-  h1: { fontSize: 22, lineHeight: 30 },
-  h2: { fontSize: 20, lineHeight: 28 },
-  h3: { fontSize: 18, lineHeight: 26 },
-  strong: { fontWeight: '700', color: c.textStrong },
-  em: { fontStyle: 'italic' },
-  del: { textDecorationLine: 'line-through' },
-  codespan: { fontFamily: mono, fontSize: 14, backgroundColor: c.field, color: c.textStrong },
-  link: { color: c.primary, textDecorationLine: 'underline' },
-  list: { marginBottom: 6 },
-  li: { flexDirection: 'row', gap: 8 },
-  bullet: { width: 20, fontSize: 16, lineHeight: 27, color: c.sub, textAlign: 'right' },
-  quote: { borderLeftWidth: 3, borderLeftColor: c.border, paddingLeft: 12, marginBottom: 14, opacity: 0.85 },
-  code: { backgroundColor: c.field, borderRadius: 12, marginBottom: 14 },
-  codeText: { fontFamily: mono, fontSize: 13, lineHeight: 20, color: c.textStrong },
-  hr: { height: 1, backgroundColor: c.border, marginVertical: 18 },
-  table: { borderWidth: 1, borderColor: c.border, borderRadius: 8 },
-  tr: { flexDirection: 'row' },
-  td: { minWidth: 90, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 0.5, borderColor: c.border, color: c.text, fontSize: 14 },
-}));
+const s = {
+  p: 'text-base leading-[27px] text-fg mb-3.5',
+  heading: 'text-fg-strong font-bold mt-2.5 mb-2.5',
+  h1: 'text-[22px] leading-[30px]',
+  h2: 'text-xl leading-7',
+  h3: 'text-lg leading-[26px]',
+  strong: 'font-bold text-fg-strong',
+  em: 'italic',
+  del: 'line-through',
+  codespan: 'font-mono text-sm bg-field text-fg-strong',
+  link: 'text-primary underline',
+  list: 'mb-1.5',
+  li: 'flex-row gap-2',
+  bullet: 'w-5 text-base leading-[27px] text-fg-sub text-right',
+  quote: 'border-l-[3px] border-border pl-3 mb-3.5 opacity-85',
+  code: 'bg-field rounded-[12px] mb-3.5',
+  codeText: 'font-mono text-[13px] leading-5 text-fg-strong',
+  hr: 'h-px bg-border my-[18px]',
+  table: 'border border-border rounded-[8px]',
+  tr: 'flex-row',
+  td: 'min-w-[90px] px-2.5 py-2 border-[0.5px] border-border text-fg text-sm',
+};

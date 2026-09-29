@@ -5,5 +5,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "../packages/shared/src"]
+  "include": ["**/*.ts", "**/*.tsx", "../packages/shared/src", "nativewind-env.d.ts"]
 }

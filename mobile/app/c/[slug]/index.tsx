@@ -4,11 +4,9 @@ import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { ApiError, compact, useAuth, useChannel, useFeed } from '@loop/shared';
 import { PostFeed } from '../../../src/PostList';
 import { ChannelIcon, Chip, Empty, HeaderIcon, Skeleton } from '../../../src/ui';
-import { makeStyles } from '../../../src/theme';
 import { PopularBlock } from '../../../src/Popular';
 
 export default function ChannelScreen() {
-  const s = useStyles();
   const params = useLocalSearchParams<{ slug: string; category?: string }>();
   const slug = params.slug;
   const navigation = useNavigation();
@@ -25,10 +23,8 @@ export default function ChannelScreen() {
     navigation.setOptions({
       title: channel?.name ?? '',
       headerRight: () => (
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          {channel?.mine ? (
-            <HeaderIcon name="settings-outline" label="채널 관리" onPress={() => router.push(`/c/${slug}/manage`)} />
-          ) : null}
+        <View className="flex-row gap-3">
+          {channel?.mine ? <HeaderIcon name="settings-outline" label="채널 관리" onPress={() => router.push(`/c/${slug}/manage`)} /> : null}
           {canWrite ? (
             <HeaderIcon name="create-outline" label="글쓰기" onPress={() => router.push(isLoggedIn ? writeTo : '/login')} />
           ) : null}
@@ -48,29 +44,29 @@ export default function ChannelScreen() {
       empty={active ? `'${active.name}'에 아직 글이 없어요` : '이 채널의 첫 글을 남겨 보세요!'}
       header={
         <View>
-          <View style={s.hero}>
+          <View className="bg-surface p-5 pb-4 mb-3">
             {channel ? (
               <>
-                <View style={s.heroTop}>
+                <View className="flex-row items-center gap-3.5">
                   <ChannelIcon slug={channel.slug} name={channel.name} size={56} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.name}>{channel.name}</Text>
-                    <Text style={s.slug}>c/{channel.slug}</Text>
+                  <View className="flex-1">
+                    <Text className="text-[22px] font-bold text-fg-strong">{channel.name}</Text>
+                    <Text className="text-sm text-fg-weak">c/{channel.slug}</Text>
                   </View>
                 </View>
-                {channel.description ? <Text style={s.desc}>{channel.description}</Text> : null}
-                <Text style={s.meta}>
+                {channel.description ? <Text className="mt-3.5 text-[15px] leading-[22px] text-fg-sub">{channel.description}</Text> : null}
+                <Text className="mt-2 text-[13px] text-fg-weak">
                   글 {compact(channel.postCount)}개{channel.ownerNickname ? ` · 만든 사람 ${channel.ownerNickname}` : ''}
                 </Text>
               </>
             ) : (
-              <View style={s.heroTop}>
+              <View className="flex-row items-center gap-3.5">
                 <Skeleton width={56} height={56} />
                 <Skeleton width={140} height={24} />
               </View>
             )}
             {categories.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabs}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 pt-4">
                 <Chip label="전체" selected={!active} onPress={() => selectTab()} />
                 {categories.map((c) => (
                   <Chip key={c.id} label={c.name} selected={active?.id === c.id} onPress={() => selectTab(c.id)} />
@@ -84,13 +80,3 @@ export default function ChannelScreen() {
     />
   );
 }
-
-const useStyles = makeStyles((c) => ({
-  hero: { backgroundColor: c.surface, padding: 20, paddingBottom: 16, marginBottom: 12 },
-  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  name: { fontSize: 22, fontWeight: '700', color: c.textStrong },
-  slug: { fontSize: 14, color: c.weak },
-  desc: { marginTop: 14, fontSize: 15, lineHeight: 22, color: c.sub },
-  meta: { marginTop: 8, fontSize: 13, color: c.weak },
-  tabs: { gap: 8, paddingTop: 16 },
-}));

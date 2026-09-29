@@ -17,8 +17,8 @@
 | -------- | ----------------------------------------------------------------------------- |
 | Backend  | Spring Boot 3.5 · Java 21 · Spring Security(JWT) · JPA · Flyway               |
 | DB       | MySQL 8.4 (로컬 개발은 H2 MySQL 모드, 설치 없이 실행)                         |
-| Web      | React 19.2 · TypeScript · Vite 8 · TanStack Query · React Router 7            |
-| Mobile   | React Native 0.86 · **Expo SDK 57** · Expo Router · TanStack Query            |
+| Web      | React 19.2 · TypeScript · Vite 8 · TanStack Query · React Router 7 · **Tailwind CSS 3.4** |
+| Mobile   | React Native 0.86 · **Expo SDK 57** · Expo Router · TanStack Query · **NativeWind 4** |
 | Shared   | `@loop/shared` — API 클라이언트 · 타입 · 데이터 훅 · 인증 상태 (웹/앱 공용)    |
 | Infra    | Docker Compose (MySQL + Spring Boot + Nginx) · GitHub Actions CI              |
 
@@ -28,6 +28,19 @@ web/              React 웹사이트 (포트 3001, 운영은 Nginx 가 정적 �
 mobile/           React Native 앱 (Expo SDK 57, Expo Router)
 packages/shared/  웹·앱 공용 코드
 ```
+
+### 스타일 (Tailwind / NativeWind)
+
+웹은 **Tailwind CSS**, 앱은 같은 클래스 문법을 네이티브 스타일로 바꿔 주는 **NativeWind** 로 스타일을 입힙니다.
+
+- 색 이름(`bg`, `surface`, `fg-strong`, `fg-sub`, `primary`, `danger` …)은 `packages/shared/tailwind-preset.cjs` 에 한 번 정의하고 웹·앱 설정이 함께 씁니다.
+  색 값은 CSS 변수(`var(--surface)` 등)라서, `bg-surface text-fg-strong` 처럼 쓰면 라이트/다크 모드에 맞게 자동으로 바뀝니다.
+  - 웹: 변수 값은 `web/src/styles/global.css` (설정의 테마 선택 + 시스템 설정)
+  - 앱: 변수 값은 `mobile/src/theme.ts` 의 팔레트를 루트 레이아웃에서 NativeWind `vars()` 로 내려 줍니다.
+- 클래스를 조건부로 합칠 때는 `cn()` (tailwind-merge) 을 씁니다. 같은 속성이면 뒤에 온 클래스가 이깁니다. 예) `cn(ui.button, ui.primary, ui.small)`
+- 웹의 공통 UI 조각은 `web/src/components/ui.ts`, 화면별 클래스 묶음은 `*.styles.ts` 에 있습니다. 글 본문(마크다운)은 `@tailwindcss/typography` 의 `prose` 를 토큰 색에 맞춰 씁니다.
+- 앱은 `Pressable` 에 `active:` 를 붙여 눌림 효과를 줍니다 (예: `active:bg-pressed`, `active:scale-95`). 아이콘 색처럼 스타일이 아닌 prop 은 `useColors()` 로 받습니다.
+- Tailwind 는 두 곳 모두 3.4(LTS)를 씁니다. NativeWind 4 가 Tailwind 3 을 필요로 하고, 한 워크스페이스에 3 과 4 를 섞으면 설치가 꼬이기 때문입니다.
 
 > 웹과 앱은 같은 React 버전(19.2.3)을 써야 공용 패키지가 React 를 하나만 불러옵니다.
 > Expo SDK 를 올릴 때는 `web/package.json` 의 `react`, `react-dom` 도 같은 버전으로 맞춰 주세요.
@@ -164,6 +177,6 @@ cd mobile && npx expo export --platform android --platform ios   # 앱 번들 �
 - **낙관적 업데이트**: 글·댓글 좋아요는 누르는 즉시 반영하고 실패하면 되돌립니다. 댓글 좋아요는 목록과 베스트 댓글 캐시를 함께 고칩니다. 댓글 작성·삭제와 글 삭제는 다시 요청하지 않고 캐시만 수정합니다.
 - **렌더링 비용 절감**: 긴 목록에 `content-visibility: auto` 를 적용하고, 목록 항목은 `memo` 로 감쌉니다. 인증 상태는 Context 대신 `useSyncExternalStore` 로 구독해 필요한 컴포넌트만 다시 렌더링합니다.
 - **폰트**: Pretendard dynamic subset을 직접 호스팅해 화면에 쓰인 글자 조각만 받습니다. 외부 CDN 연결이 없고 `font-display: swap` 을 적용했습니다.
-- **가벼운 의존성**: axios, 날짜 라이브러리, UI 킷을 쓰지 않습니다. `fetch` 와 `Intl` 포매터(한 번만 생성)를 쓰고, 스타일은 CSS Modules로 런타임 비용이 없습니다.
+- **가벼운 의존성**: axios, 날짜 라이브러리, UI 킷을 쓰지 않습니다. `fetch` 와 `Intl` 포매터(한 번만 생성)를 쓰고, 스타일은 Tailwind CSS(빌드할 때 쓰인 클래스만 남김)로 런타임 비용이 없습니다.
 - **Nginx**: 빌드할 때 gzip을 미리 압축해 두고(`gzip_static`), 해시가 붙은 자산에는 `immutable` 1년 캐시를, `index.html` 에는 `no-cache` 를 적용합니다. API 업스트림은 keepalive 로 연결합니다.
 - 채널 검색은 입력이 멈춘 뒤 150ms 후에 요청하고(디바운스, 한 단어를 치는 동안 요청 1번), 같은 검색어는 캐시에서 바로 보여 줍니다. 화면을 벗어나면 진행 중인 요청을 `AbortSignal` 로 취소합니다.

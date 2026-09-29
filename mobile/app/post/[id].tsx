@@ -1,14 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -30,48 +21,51 @@ import {
 } from '@loop/shared';
 import { Markdown } from '../../src/Markdown';
 import { Avatar, Empty, Heart, Loading, Skeleton, Button } from '../../src/ui';
-import { makeStyles, useColors } from '../../src/theme';
+import { cn } from '../../src/cn';
+import { useColors } from '../../src/theme';
 
 function toast(message: string) {
   Alert.alert(message);
 }
 
 function Article({ post, placeholder }: { post: PostDetail; placeholder: boolean }) {
-  const s = useStyles();
   const c = useColors();
   const { isLoggedIn } = useAuth();
   const like = useToggleLike(post.id);
   return (
-    <View style={s.article}>
-      <View style={s.crumbs}>
-        <Text style={s.crumb} onPress={() => router.push(`/c/${post.channel.slug}`)}>
+    <View className="p-5 pb-7 border-b-[12px] border-bg">
+      <View className="flex-row items-center gap-1.5">
+        <Text className="text-sm font-semibold text-primary" onPress={() => router.push(`/c/${post.channel.slug}`)}>
           {post.channel.name}
         </Text>
         {post.category ? (
           <>
-            <Text style={s.crumbSep}>›</Text>
-            <Text style={s.crumb} onPress={() => router.push(`/c/${post.channel.slug}?category=${post.category!.id}`)}>
+            <Text className="text-fg-weak">›</Text>
+            <Text
+              className="text-sm font-semibold text-primary"
+              onPress={() => router.push(`/c/${post.channel.slug}?category=${post.category!.id}`)}
+            >
               {post.category.name}
             </Text>
           </>
         ) : null}
       </View>
-      <Text style={s.title}>{post.title}</Text>
-      <View style={s.byline}>
+      <Text className="mt-2 mb-4 text-2xl leading-8 font-bold text-fg-strong">{post.title}</Text>
+      <View className="flex-row items-center gap-2.5 pb-[18px] border-b border-line">
         <Avatar name={post.author.nickname} />
         <View>
-          <Text style={s.author}>{post.author.nickname}</Text>
-          <Text style={s.meta}>
+          <Text className="text-[15px] font-semibold text-fg-strong">{post.author.nickname}</Text>
+          <Text className="text-[13px] text-fg-weak">
             {timeAgo(post.createdAt)} · 조회 {compact(post.viewCount)}
           </Text>
         </View>
       </View>
-      <View style={s.content}>
+      <View className="mt-5 mb-4 min-h-[60px]">
         {placeholder ? (
           <>
             <Skeleton width="100%" height={18} />
-            <Skeleton width="88%" height={18} style={{ marginTop: 10 }} />
-            <Skeleton width="60%" height={18} style={{ marginTop: 10 }} />
+            <Skeleton width="88%" height={18} className="mt-2.5" />
+            <Skeleton width="60%" height={18} className="mt-2.5" />
           </>
         ) : (
           <Markdown source={post.content} />
@@ -81,13 +75,16 @@ function Article({ post, placeholder }: { post: PostDetail; placeholder: boolean
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ selected: post.liked }}
-          onPress={() =>
-            isLoggedIn ? like.mutate(!post.liked, { onError: (e) => toast(e.message) }) : router.push('/login')
-          }
-          style={({ pressed }) => [s.likeButton, post.liked && s.likeOn, pressed && { transform: [{ scale: 0.95 }] }]}
+          onPress={() => (isLoggedIn ? like.mutate(!post.liked, { onError: (e) => toast(e.message) }) : router.push('/login'))}
+          className={cn(
+            'self-center flex-row items-center gap-1.5 h-11 px-5 rounded-full active:scale-95',
+            post.liked ? 'bg-danger-weak' : 'bg-field',
+          )}
         >
           <Heart filled={post.liked} size={20} color={post.liked ? c.danger : c.sub} />
-          <Text style={[s.likeText, post.liked && { color: c.danger }]}>좋아요 {compact(post.likeCount)}</Text>
+          <Text className={cn('text-[15px] font-semibold', post.liked ? 'text-danger' : 'text-fg-sub')}>
+            좋아요 {compact(post.likeCount)}
+          </Text>
         </Pressable>
       )}
     </View>
@@ -95,20 +92,21 @@ function Article({ post, placeholder }: { post: PostDetail; placeholder: boolean
 }
 
 function CommentItem({ comment: cm, postId, best }: { comment: Comment; postId: number; best?: boolean }) {
-  const s = useStyles();
   const c = useColors();
   const { isLoggedIn } = useAuth();
   const like = useToggleCommentLike(postId);
   const remove = useDeleteComment(postId);
   return (
-    <View style={[s.comment, best && s.best]}>
-      <View style={s.commentHead}>
-        {best ? <Text style={s.bestBadge}>BEST</Text> : null}
-        <Text style={s.commentAuthor}>{cm.authorNickname}</Text>
-        <Text style={s.meta}>{timeAgo(cm.createdAt)}</Text>
+    <View className={cn('px-5 py-3.5', best && 'mx-3 mb-1.5 rounded-md bg-primary-weak px-4')}>
+      <View className="flex-row items-center gap-2">
+        {best ? (
+          <Text className="px-1.5 py-px rounded-[6px] overflow-hidden bg-primary text-white text-[11px] font-extrabold">BEST</Text>
+        ) : null}
+        <Text className="text-sm font-semibold text-fg-strong">{cm.authorNickname}</Text>
+        <Text className="text-[13px] text-fg-weak">{timeAgo(cm.createdAt)}</Text>
         {cm.mine && !best ? (
           <Text
-            style={[s.meta, { marginLeft: 'auto' }]}
+            className="text-[13px] text-fg-weak ml-auto"
             onPress={() =>
               Alert.alert('댓글을 삭제할까요?', undefined, [
                 { text: '취소', style: 'cancel' },
@@ -120,25 +118,24 @@ function CommentItem({ comment: cm, postId, best }: { comment: Comment; postId: 
           </Text>
         ) : null}
       </View>
-      <Text style={s.commentBody}>{cm.content}</Text>
+      <Text className="mt-1 text-[15px] leading-[22px] text-fg">{cm.content}</Text>
       <Pressable
         hitSlop={8}
-        style={s.commentLike}
+        className="flex-row items-center gap-1 mt-2 self-start"
         onPress={() =>
-          isLoggedIn
-            ? like.mutate({ commentId: cm.id, like: !cm.liked }, { onError: (e) => toast(e.message) })
-            : router.push('/login')
+          isLoggedIn ? like.mutate({ commentId: cm.id, like: !cm.liked }, { onError: (e) => toast(e.message) }) : router.push('/login')
         }
       >
         <Heart filled={cm.liked} size={15} color={cm.liked ? c.danger : c.weak} />
-        <Text style={[s.meta, cm.liked && { color: c.danger }]}>{cm.likeCount > 0 ? compact(cm.likeCount) : '좋아요'}</Text>
+        <Text className={cn('text-[13px] text-fg-weak', cm.liked && 'text-danger')}>
+          {cm.likeCount > 0 ? compact(cm.likeCount) : '좋아요'}
+        </Text>
       </Pressable>
     </View>
   );
 }
 
 function Composer({ postId }: { postId: number }) {
-  const s = useStyles();
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { isLoggedIn } = useAuth();
@@ -147,7 +144,10 @@ function Composer({ postId }: { postId: number }) {
 
   if (!isLoggedIn) {
     return (
-      <View style={[s.composer, { paddingBottom: 10 + insets.bottom }]}>
+      <View
+        className="flex-row items-end gap-2 px-3 pt-2.5 bg-surface border-t border-border"
+        style={{ paddingBottom: 10 + insets.bottom }}
+      >
         <Button title="로그인하고 댓글 남기기" variant="secondary" full onPress={() => router.push('/login')} />
       </View>
     );
@@ -158,9 +158,9 @@ function Composer({ postId }: { postId: number }) {
     add.mutate(content, { onSuccess: () => setText(''), onError: (e) => toast(e.message) });
   };
   return (
-    <View style={[s.composer, { paddingBottom: 10 + insets.bottom }]}>
+    <View className="flex-row items-end gap-2 px-3 pt-2.5 bg-surface border-t border-border" style={{ paddingBottom: 10 + insets.bottom }}>
       <TextInput
-        style={s.composerInput}
+        className="flex-1 min-h-[42px] max-h-[120px] px-4 py-[11px] rounded-[21px] bg-field text-[15px] text-fg-strong"
         placeholder="댓글을 남겨 보세요"
         placeholderTextColor={c.weak}
         value={text}
@@ -171,7 +171,10 @@ function Composer({ postId }: { postId: number }) {
       <Pressable
         onPress={submit}
         disabled={!text.trim() || add.isPending}
-        style={[s.send, (!text.trim() || add.isPending) && { opacity: 0.4 }]}
+        className={cn(
+          'w-[42px] h-[42px] rounded-full bg-primary items-center justify-center',
+          (!text.trim() || add.isPending) && 'opacity-40',
+        )}
         accessibilityLabel="댓글 등록"
       >
         <Ionicons name="arrow-up" size={20} color="#fff" />
@@ -181,7 +184,6 @@ function Composer({ postId }: { postId: number }) {
 }
 
 export default function PostScreen() {
-  const s = useStyles();
   const c = useColors();
   const id = Number(useLocalSearchParams<{ id: string }>().id);
   const navigation = useNavigation();
@@ -229,18 +231,18 @@ export default function PostScreen() {
   const list = comments.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
       <FlatList
         data={list}
         keyExtractor={(cm) => String(cm.id)}
         renderItem={({ item }) => <CommentItem comment={item} postId={id} />}
-        ItemSeparatorComponent={() => <View style={s.sep} />}
+        ItemSeparatorComponent={() => <View className="h-px bg-line mx-5" />}
         ListHeaderComponent={
           <>
             {post ? <Article post={post} placeholder={isPlaceholderData} /> : <Loading />}
-            <View style={s.commentsHead}>
-              <Text style={s.commentsTitle}>
-                댓글 <Text style={{ color: c.primary }}>{post?.commentCount ?? ''}</Text>
+            <View className="pt-5">
+              <Text className="px-5 pb-2 text-[17px] font-bold text-fg-strong">
+                댓글 <Text className="text-primary">{post?.commentCount ?? ''}</Text>
               </Text>
               {best.data?.map((cm) => (
                 <CommentItem key={`best-${cm.id}`} comment={cm} postId={id} best />
@@ -249,10 +251,10 @@ export default function PostScreen() {
           </>
         }
         ListEmptyComponent={comments.isPending ? <Loading /> : <Empty>첫 댓글을 남겨 보세요</Empty>}
-        ListFooterComponent={comments.isFetchingNextPage ? <Loading /> : <View style={{ height: 24 }} />}
+        ListFooterComponent={comments.isFetchingNextPage ? <Loading /> : <View className="h-6" />}
         onEndReached={() => comments.hasNextPage && !comments.isFetchingNextPage && comments.fetchNextPage()}
         onEndReachedThreshold={0.5}
-        style={s.list}
+        className="bg-surface"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       />
@@ -260,70 +262,3 @@ export default function PostScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const useStyles = makeStyles((c) => ({
-  list: { backgroundColor: c.surface },
-  article: { padding: 20, paddingBottom: 28, borderBottomWidth: 12, borderBottomColor: c.bg },
-  crumbs: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  crumb: { fontSize: 14, fontWeight: '600', color: c.primary },
-  crumbSep: { color: c.weak },
-  title: { marginTop: 8, marginBottom: 16, fontSize: 24, lineHeight: 32, fontWeight: '700', color: c.textStrong },
-  byline: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: c.line },
-  author: { fontSize: 15, fontWeight: '600', color: c.textStrong },
-  meta: { fontSize: 13, color: c.weak },
-  content: { marginTop: 20, marginBottom: 16, minHeight: 60 },
-  likeButton: {
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 44,
-    paddingHorizontal: 20,
-    borderRadius: 999,
-    backgroundColor: c.field,
-  },
-  likeOn: { backgroundColor: c.dangerWeak },
-  likeText: { fontSize: 15, fontWeight: '600', color: c.sub },
-  commentsHead: { paddingTop: 20 },
-  commentsTitle: { paddingHorizontal: 20, paddingBottom: 8, fontSize: 17, fontWeight: '700', color: c.textStrong },
-  comment: { paddingHorizontal: 20, paddingVertical: 14 },
-  best: { marginHorizontal: 12, marginBottom: 6, borderRadius: 14, backgroundColor: c.primaryWeak, paddingHorizontal: 16 },
-  bestBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 6,
-    overflow: 'hidden',
-    backgroundColor: c.primary,
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  commentHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  commentAuthor: { fontSize: 14, fontWeight: '600', color: c.textStrong },
-  commentBody: { marginTop: 4, fontSize: 15, lineHeight: 22, color: c.text },
-  commentLike: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, alignSelf: 'flex-start' },
-  sep: { height: 1, backgroundColor: c.line, marginHorizontal: 20 },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    backgroundColor: c.surface,
-    borderTopWidth: 1,
-    borderTopColor: c.border,
-  },
-  composerInput: {
-    flex: 1,
-    minHeight: 42,
-    maxHeight: 120,
-    paddingHorizontal: 16,
-    paddingTop: 11,
-    paddingBottom: 11,
-    borderRadius: 21,
-    backgroundColor: c.field,
-    fontSize: 15,
-    color: c.textStrong,
-  },
-  send: { width: 42, height: 42, borderRadius: 21, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
-}));
