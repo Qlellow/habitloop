@@ -2,8 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { safeNext, useAuthMutation } from '@loop/shared';
 import { Page } from '../components/Layout';
-import ui from '../components/ui.module.css';
-import s from './pages.module.css';
+import { ui } from '../components/ui';
+import s from './pages.styles';
+import { cn } from '../lib/cn';
 
 export default function LoginPage() {
   const [params] = useSearchParams();
@@ -20,7 +21,7 @@ export default function LoginPage() {
 
   return (
     <Page variant="narrow">
-      <form className={`${ui.card} ${s.authCard}`} onSubmit={submit} noValidate>
+      <form className={cn(ui.card, s.authCard)} onSubmit={submit} noValidate>
         <h1 className={s.authTitle}>로그인</h1>
         <p className={s.authDesc}>루프에 다시 오신 걸 환영해요.</p>
         <label className={ui.field}>
@@ -47,7 +48,7 @@ export default function LoginPage() {
         {login.error && <p className={ui.error}>{login.error.message}</p>}
         <button
           type="submit"
-          className={`${ui.button} ${ui.primary} ${ui.large} ${ui.full}`}
+          className={cn(ui.button, ui.primary, ui.large, ui.full)}
           disabled={!email || !password || login.isPending}
         >
           {login.isPending ? '확인 중…' : '로그인'}

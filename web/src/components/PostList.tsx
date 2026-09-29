@@ -5,8 +5,9 @@ import { compact, timeAgo, type CursorPage, type PostSummary } from '@loop/share
 import { preload } from '../lib/preload';
 import { useSettings } from '../lib/settings';
 import { CommentIcon, HeartIcon } from './Icons';
-import s from './PostList.module.css';
-import ui from './ui.module.css';
+import s from './PostList.styles';
+import { ui } from './ui';
+import { cn } from '../lib/cn';
 
 /** badge: 홈에서는 채널 이름, 채널 안에서는 카테고리 이름을 보여 준다 */
 export type Badge = 'channel' | 'category';
@@ -98,7 +99,7 @@ export function PostList({ query, empty, badge }: { query: FeedQuery; empty: str
       <div className={ui.empty}>
         불러오지 못했어요
         <div style={{ marginTop: 12 }}>
-          <button type="button" className={`${ui.button} ${ui.secondary} ${ui.small}`} onClick={() => refetch()}>
+          <button type="button" className={cn(ui.button, ui.secondary, ui.small)} onClick={() => refetch()}>
             다시 시도
           </button>
         </div>

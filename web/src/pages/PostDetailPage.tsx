@@ -25,9 +25,10 @@ import { Markdown } from '../components/Markdown';
 import { PopularCard } from '../components/Sidebar';
 import { toast } from '../components/Toast';
 import { preload } from '../lib/preload';
-import ui from '../components/ui.module.css';
-import s from './pages.module.css';
+import { ui } from '../components/ui';
+import s from './pages.styles';
 import NotFoundPage from './NotFoundPage';
+import { cn } from '../lib/cn';
 
 function useLoginRedirect(postId: number) {
   const navigate = useNavigate();
@@ -133,7 +134,7 @@ function Comments({ postId, count }: { postId: number; count?: number }) {
           />
           <div className={s.composerFoot}>
             <span>Ctrl + Enter 로 등록</span>
-            <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={!text.trim() || add.isPending}>
+            <button type="submit" className={cn(ui.button, ui.primary)} disabled={!text.trim() || add.isPending}>
               등록
             </button>
           </div>
@@ -170,7 +171,7 @@ function Comments({ postId, count }: { postId: number; count?: number }) {
         <div style={{ padding: '4px 20px 20px' }}>
           <button
             type="button"
-            className={`${ui.button} ${ui.ghost} ${ui.full}`}
+            className={cn(ui.button, ui.ghost, ui.full)}
             onClick={() => query.fetchNextPage()}
             disabled={query.isFetchingNextPage}
           >
@@ -186,7 +187,7 @@ function ChannelCard({ slug }: { slug: string }) {
   const { data } = useChannel(slug);
   if (!data) return null;
   return (
-    <section className={`${ui.card} ${s.sideChannel}`}>
+    <section className={cn(ui.card, s.sideChannel)}>
       <div className={s.sideChannelTop}>
         <ChannelIcon slug={data.slug} name={data.name} size={40} />
         <div>
@@ -197,7 +198,7 @@ function ChannelCard({ slug }: { slug: string }) {
         </div>
       </div>
       {data.description && <p className={s.sideChannelDesc}>{data.description}</p>}
-      <Link to={`/c/${slug}`} className={`${ui.button} ${ui.secondary} ${ui.full}`} onPointerEnter={preload.channel}>
+      <Link to={`/c/${slug}`} className={cn(ui.button, ui.secondary, ui.full)} onPointerEnter={preload.channel}>
         채널로 가기
       </Link>
     </section>
@@ -241,7 +242,7 @@ export default function PostDetailPage() {
         )
       }
     >
-      <article className={`${ui.card} ${s.article}`}>
+      <article className={cn(ui.card, s.article)}>
         {!post ? (
           <>
             <div className={ui.skeleton} style={{ width: 80, height: 16 }} />
@@ -277,10 +278,10 @@ export default function PostDetailPage() {
               </div>
               {post.mine && !isPlaceholderData && (
                 <div className={s.bylineActions}>
-                  <Link to={`/posts/${id}/edit`} className={`${ui.button} ${ui.text} ${ui.small}`}>
+                  <Link to={`/posts/${id}/edit`} className={cn(ui.button, ui.text, ui.small)}>
                     수정
                   </Link>
-                  <button type="button" className={`${ui.button} ${ui.text} ${ui.small} ${ui.danger}`} onClick={onDelete}>
+                  <button type="button" className={cn(ui.button, ui.text, ui.small, ui.danger)} onClick={onDelete}>
                     삭제
                   </button>
                 </div>

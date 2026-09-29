@@ -8,5 +8,9 @@
   "peerDependencies": {
     "@tanstack/react-query": "^5.0.0",
     "react": "*"
-  }
+  },
+  "files": [
+    "src",
+    "tailwind-preset.cjs"
+  ]
 }

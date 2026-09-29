@@ -1,7 +1,6 @@
 import { memo, useMemo } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import s from './Markdown.module.css';
 
 marked.setOptions({ gfm: true, breaks: true });
 
@@ -29,5 +28,5 @@ export function renderMarkdown(source: string): string {
 /** 같은 본문이면 다시 파싱하지 않도록 memo + useMemo */
 export const Markdown = memo(function Markdown({ source }: { source: string }) {
   const html = useMemo(() => renderMarkdown(source), [source]);
-  return <div className={s.markdown} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />;
 });

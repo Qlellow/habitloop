@@ -1,8 +1,9 @@
 import { lazy, Suspense, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { getSettings } from '../lib/settings';
-import ui from './ui.module.css';
-import s from './MarkdownEditor.module.css';
+import { ui } from './ui';
+import { cn } from '../lib/cn';
+import s from './MarkdownEditor.styles';
 
 // 미리보기를 켜기 전에는 마크다운 파서를 받지 않는다
 const Preview = lazy(() => import('./Markdown').then((m) => ({ default: m.Markdown })));
@@ -54,6 +55,7 @@ export function MarkdownEditor({ value, onChange }: { value: string; onChange: (
             <button
               key={a.title}
               type="button"
+              className={s.tool}
               title={a.title}
               aria-label={a.title}
               disabled={!showEditor}
@@ -79,18 +81,18 @@ export function MarkdownEditor({ value, onChange }: { value: string; onChange: (
               aria-selected={mode === m}
               onClick={() => setMode(m)}
               onPointerEnter={m !== 'write' ? preloadPreview : undefined}
-              className={m === 'split' ? s.splitOnly : undefined}
+              className={cn(s.mode, m === 'split' && s.splitOnly)}
             >
               {label}
             </button>
           ))}
         </div>
       </div>
-      <div className={`${s.panes} ${mode === 'split' ? s.split : ''}`}>
+      <div className={cn(s.panes, mode === 'split' && s.split)}>
         {showEditor && (
           <textarea
             ref={ref}
-            className={`${ui.textarea} ${s.textarea}`}
+            className={cn(ui.textarea, s.textarea)}
             placeholder={'내용을 입력해 주세요\n\n**굵게**, # 제목, - 목록, [링크](https://) 같은 마크다운 문법을 쓸 수 있어요'}
             maxLength={20000}
             value={value}
@@ -106,7 +108,7 @@ export function MarkdownEditor({ value, onChange }: { value: string; onChange: (
           />
         )}
         {showPreview && (
-          <div className={s.preview} aria-label="미리보기">
+          <div className={cn(s.preview, mode === 'split' && s.previewInSplit)} aria-label="미리보기">
             {value.trim() ? (
               <Suspense fallback={<div className={ui.spinner} />}>
                 <Preview source={value} />

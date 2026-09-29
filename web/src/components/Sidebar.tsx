@@ -2,8 +2,8 @@ import { Link, NavLink } from 'react-router-dom';
 import { compact, useAuth, useChannels, useMyChannels, usePopular, type ChannelSummary } from '@loop/shared';
 import { ChannelIcon } from './ChannelIcon';
 import { preload } from '../lib/preload';
-import ui from './ui.module.css';
-import s from './Sidebar.module.css';
+import { ui } from './ui';
+import s from './Sidebar.styles';
 
 function ChannelLinks({ channels }: { channels: ChannelSummary[] }) {
   return (

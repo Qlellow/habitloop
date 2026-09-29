@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import s from './Layout.module.css';
+import s from './Layout.styles';
 
 let message: string | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;

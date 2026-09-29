@@ -5,8 +5,9 @@ import { ChannelIcon } from '../components/ChannelIcon';
 import { Page } from '../components/Layout';
 import { toast } from '../components/Toast';
 import { preload } from '../lib/preload';
-import ui from '../components/ui.module.css';
-import s from './pages.module.css';
+import { ui } from '../components/ui';
+import s from './pages.styles';
+import { cn } from '../lib/cn';
 
 const MAX = 20;
 
@@ -60,7 +61,7 @@ function CategoryRow({
       {editing ? (
         <form className={s.catEdit} onSubmit={save}>
           <input
-            className={`${ui.input} ${s.input}`}
+            className={cn(ui.input, s.input)}
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={20}
@@ -71,10 +72,10 @@ function CategoryRow({
             <input type="checkbox" checked={ownerOnly} onChange={(e) => setOwnerOnly(e.target.checked)} />
             관리자만 글쓰기
           </label>
-          <button type="button" className={`${ui.button} ${ui.ghost} ${ui.small}`} onClick={() => setEditing(false)}>
+          <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => setEditing(false)}>
             취소
           </button>
-          <button type="submit" className={`${ui.button} ${ui.primary} ${ui.small}`} disabled={!name.trim() || mutation.isPending}>
+          <button type="submit" className={cn(ui.button, ui.primary, ui.small)} disabled={!name.trim() || mutation.isPending}>
             저장
           </button>
         </form>
@@ -84,10 +85,10 @@ function CategoryRow({
             {category.name}
             {category.ownerOnly && <span className={ui.badge}>관리자 전용</span>}
           </div>
-          <button type="button" className={`${ui.button} ${ui.text} ${ui.small}`} onClick={() => setEditing(true)}>
+          <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={() => setEditing(true)}>
             수정
           </button>
-          <button type="button" className={`${ui.button} ${ui.text} ${ui.small} ${ui.danger}`} onClick={remove}>
+          <button type="button" className={cn(ui.button, ui.text, ui.small, ui.danger)} onClick={remove}>
             삭제
           </button>
         </>
@@ -131,7 +132,7 @@ function AddCategory({ slug, disabled }: { slug: string; disabled: boolean }) {
         <input type="checkbox" checked={ownerOnly} onChange={(e) => setOwnerOnly(e.target.checked)} disabled={disabled} />
         관리자만 글쓰기
       </label>
-      <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={disabled || !name.trim() || mutation.isPending}>
+      <button type="submit" className={cn(ui.button, ui.primary)} disabled={disabled || !name.trim() || mutation.isPending}>
         추가
       </button>
     </form>
@@ -172,7 +173,7 @@ export default function ChannelManagePage() {
           </div>
         </div>
       </div>
-      <section className={`${ui.card} ${s.settingsSection}`}>
+      <section className={cn(ui.card, s.settingsSection)}>
         <div className={s.pageHead}>
           <div>
             <h2 className={s.settingsTitle}>채널 정보</h2>
@@ -180,12 +181,12 @@ export default function ChannelManagePage() {
               {channel.description || '소개가 아직 없어요'}
             </p>
           </div>
-          <Link to={`/c/${slug}/edit`} className={`${ui.button} ${ui.ghost}`} onPointerEnter={preload.channelForm}>
+          <Link to={`/c/${slug}/edit`} className={cn(ui.button, ui.ghost)} onPointerEnter={preload.channelForm}>
             수정
           </Link>
         </div>
       </section>
-      <section className={`${ui.card} ${s.settingsSection}`}>
+      <section className={cn(ui.card, s.settingsSection)}>
         <h2 className={s.settingsTitle}>
           카테고리 <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-weak)' }}>{categories.length}/{MAX}</span>
         </h2>

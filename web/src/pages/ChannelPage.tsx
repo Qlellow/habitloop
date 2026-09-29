@@ -6,9 +6,10 @@ import { Footer, Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { PopularCard } from '../components/Sidebar';
 import { preload } from '../lib/preload';
-import ui from '../components/ui.module.css';
-import s from './pages.module.css';
+import { ui } from '../components/ui';
+import s from './pages.styles';
 import NotFoundPage from './NotFoundPage';
+import { cn } from '../lib/cn';
 
 export default function ChannelPage() {
   const { slug = '' } = useParams();
@@ -58,7 +59,7 @@ export default function ChannelPage() {
                   {channel.mine && (
                     <Link
                       to={`/c/${slug}/manage`}
-                      className={`${ui.button} ${ui.ghost}`}
+                      className={cn(ui.button, ui.ghost)}
                       onPointerEnter={preload.channelManage}
                     >
                       채널 관리
@@ -67,7 +68,7 @@ export default function ChannelPage() {
                   {canWrite && isLoggedIn && (
                     <Link
                       to={writeTo}
-                      className={`${ui.button} ${ui.primary}`}
+                      className={cn(ui.button, ui.primary)}
                       onPointerEnter={preload.write}
                     >
                       글쓰기

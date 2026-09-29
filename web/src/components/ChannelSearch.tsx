@@ -4,8 +4,9 @@ import { compact, useChannels, type ChannelSummary } from '@loop/shared';
 import { ChannelIcon } from './ChannelIcon';
 import { SearchIcon } from './Icons';
 import { preload } from '../lib/preload';
-import ui from './ui.module.css';
-import s from './ChannelSearch.module.css';
+import { ui } from './ui';
+import { cn } from '../lib/cn';
+import s from './ChannelSearch.styles';
 
 /** 이름에서 검색어와 겹치는 부분을 굵게 */
 function Highlight({ text, keyword }: { text: string; keyword: string }) {
@@ -111,10 +112,10 @@ export function ChannelSearch() {
 
   return (
     <div className={s.root} ref={rootRef}>
-      <SearchIcon />
+      <SearchIcon className={s.icon} />
       <input
         ref={inputRef}
-        className={ui.input}
+        className={cn(ui.input, s.input)}
         type="search"
         role="combobox"
         aria-label="채널 검색"
@@ -147,7 +148,7 @@ export function ChannelSearch() {
                 data-index={i}
                 role="option"
                 aria-selected={active === i}
-                className={`${s.item} ${active === i ? s.active : ''}`}
+                className={cn(s.item, active === i && s.active)}
                 onMouseEnter={() => setActive(i)}
                 onMouseDown={(e) => e.preventDefault()} // 입력창 포커스 유지
                 onClick={() => go(`/c/${c.slug}`)}
@@ -173,7 +174,7 @@ export function ChannelSearch() {
               data-index={allResultsIndex}
               role="option"
               aria-selected={active === allResultsIndex}
-              className={`${s.all} ${active === allResultsIndex ? s.active : ''}`}
+              className={cn(s.all, active === allResultsIndex && s.allActive)}
               onMouseEnter={() => setActive(allResultsIndex)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={goAll}

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import s from './Dropdown.module.css';
+import { cn } from '../lib/cn';
+import s from './Dropdown.styles';
 
 export interface DropdownOption<T> {
   value: T;
@@ -95,7 +96,7 @@ export function Dropdown<T>({
   const selected = options[selectedIndex];
 
   return (
-    <div className={`${s.root} ${className ?? ''}`} ref={rootRef} onKeyDown={onKeyDown}>
+    <div className={cn(s.root, className)} ref={rootRef} onKeyDown={onKeyDown}>
       <button
         ref={buttonRef}
         type="button"
@@ -119,7 +120,7 @@ export function Dropdown<T>({
               id={`${listId}-${i}`}
               role="option"
               aria-selected={i === selectedIndex}
-              className={`${s.option} ${i === active ? s.active : ''}`}
+              className={cn(s.option, i === active && s.active)}
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => e.preventDefault()} // 포커스가 버튼에서 빠지지 않게
               onClick={() => choose(i)}

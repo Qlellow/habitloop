@@ -7,9 +7,10 @@ import { JoinButton } from '../components/JoinButton';
 import { Page } from '../components/Layout';
 import { MarkdownEditor } from '../components/MarkdownEditor';
 import { toast } from '../components/Toast';
-import ui from '../components/ui.module.css';
-import s from './pages.module.css';
-import w from './WritePage.module.css';
+import { ui } from '../components/ui';
+import s from './pages.styles';
+import w from './WritePage.styles';
+import { cn } from '../lib/cn';
 
 /** 글은 채널 안에서만 쓴다. 채널은 들어온 곳으로 고정되고, 카테고리만 드롭다운으로 고른다. */
 function PostForm({
@@ -73,7 +74,7 @@ function PostForm({
         </Link>
         <h1 className={s.pageTitle}>{initial ? '글 수정' : '글쓰기'}</h1>
       </div>
-      <form className={`${ui.card} ${s.formCard}`} onSubmit={submit}>
+      <form className={cn(ui.card, s.formCard)} onSubmit={submit}>
         <div className={w.titleRow}>
           {selectable.length > 0 && (
             <Dropdown
@@ -85,7 +86,7 @@ function PostForm({
             />
           )}
           <input
-            className={`${ui.input} ${w.title}`}
+            className={cn(ui.input, w.title)}
             placeholder="제목을 입력해 주세요"
             maxLength={100}
             value={title}
@@ -96,10 +97,10 @@ function PostForm({
         </div>
         <MarkdownEditor value={content} onChange={setContent} />
         <div className={s.formFoot}>
-          <button type="button" className={`${ui.button} ${ui.ghost}`} onClick={() => navigate(-1)}>
+          <button type="button" className={cn(ui.button, ui.ghost)} onClick={() => navigate(-1)}>
             취소
           </button>
-          <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={!valid || save.isPending}>
+          <button type="submit" className={cn(ui.button, ui.primary)} disabled={!valid || save.isPending}>
             {save.isPending ? '저장 중…' : initial ? '수정하기' : '올리기'}
           </button>
         </div>
@@ -111,12 +112,12 @@ function PostForm({
 /** 가입하지 않은 채널에서 글쓰기를 열면: 가입하면 바로 쓸 수 있게 안내 */
 function JoinGate({ channel }: { channel: ChannelDetail }) {
   return (
-    <div className={`${ui.card} ${w.gate}`}>
+    <div className={cn(ui.card, w.gate)}>
       <ChannelIcon slug={channel.slug} name={channel.name} size={56} />
       <h1 className={w.gateTitle}>{channel.name} 채널에 가입해야 글을 쓸 수 있어요</h1>
       <p className={w.gateDesc}>글 보기, 공감, 댓글은 가입하지 않아도 할 수 있어요.</p>
       <div className={w.gateActions}>
-        <Link to={`/c/${channel.slug}`} className={`${ui.button} ${ui.ghost} ${ui.large}`}>
+        <Link to={`/c/${channel.slug}`} className={cn(ui.button, ui.ghost, ui.large)}>
           채널로 돌아가기
         </Link>
         <JoinButton channel={channel} size="large" joinLabel="가입하고 글쓰기" />

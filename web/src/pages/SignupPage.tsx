@@ -2,8 +2,9 @@ import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { safeNext, useAuthMutation } from '@loop/shared';
 import { Page } from '../components/Layout';
-import ui from '../components/ui.module.css';
-import s from './pages.module.css';
+import { ui } from '../components/ui';
+import s from './pages.styles';
+import { cn } from '../lib/cn';
 
 export default function SignupPage() {
   const [params] = useSearchParams();
@@ -24,7 +25,7 @@ export default function SignupPage() {
 
   return (
     <Page variant="narrow">
-      <form className={`${ui.card} ${s.authCard}`} onSubmit={submit} noValidate>
+      <form className={cn(ui.card, s.authCard)} onSubmit={submit} noValidate>
         <h1 className={s.authTitle}>회원가입</h1>
         <p className={s.authDesc}>몇 가지만 입력하면 바로 시작할 수 있어요.</p>
         <label className={ui.field}>
@@ -47,7 +48,7 @@ export default function SignupPage() {
           />
         </label>
         {signup.error && <p className={ui.error}>{signup.error.message}</p>}
-        <button type="submit" className={`${ui.button} ${ui.primary} ${ui.large} ${ui.full}`} disabled={!valid || signup.isPending}>
+        <button type="submit" className={cn(ui.button, ui.primary, ui.large, ui.full)} disabled={!valid || signup.isPending}>
           {signup.isPending ? '가입 중…' : '가입하기'}
         </button>
         <p className={s.authSwitch}>

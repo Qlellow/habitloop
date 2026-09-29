@@ -1,6 +1,7 @@
 import { updateSettings, useSettings, type Settings } from '../../lib/settings';
-import ui from '../../components/ui.module.css';
-import s from './my.module.css';
+import { ui } from '../../components/ui';
+import s from './my.styles';
+import { cn } from '../../lib/cn';
 
 function Segment<K extends keyof Settings>({
   name,
@@ -17,6 +18,7 @@ function Segment<K extends keyof Settings>({
         <button
           key={String(v)}
           type="button"
+          className={s.segmentButton}
           role="radio"
           aria-checked={value === v}
           onClick={() => updateSettings({ [name]: v } as Partial<Settings>)}
@@ -36,7 +38,7 @@ export default function SettingsPage() {
         <h1 className={s.title}>설정</h1>
         <p className={s.desc}>바로 적용되고, 이 브라우저에 저장돼요.</p>
       </div>
-      <section className={`${ui.card} ${s.section}`}>
+      <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>화면</h2>
         <div className={s.option}>
           <div>
@@ -68,7 +70,7 @@ export default function SettingsPage() {
           />
         </div>
       </section>
-      <section className={`${ui.card} ${s.section}`}>
+      <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>글쓰기</h2>
         <div className={s.option}>
           <div>

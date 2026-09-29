@@ -4,9 +4,10 @@ import { compact, timeAgo, useAuth, useChannelPreviews, type ChannelPreview } fr
 import { ChannelIcon } from '../components/ChannelIcon';
 import { Page } from '../components/Layout';
 import { preload } from '../lib/preload';
-import ui from '../components/ui.module.css';
-import s from './pages.module.css';
-import b from './ChannelsPage.module.css';
+import { ui } from '../components/ui';
+import s from './pages.styles';
+import b from './ChannelsPage.styles';
+import { cn } from '../lib/cn';
 
 /** 채널 카드: 채널 정보 + 최근 글 최대 8개 미리보기 */
 const ChannelBoard = memo(function ChannelBoard({ channel }: { channel: ChannelPreview }) {
@@ -98,7 +99,7 @@ export default function ChannelsPage() {
             onChange={(e) => setInput(e.target.value)}
             aria-label="채널 검색"
           />
-          <Link to={createTo} className={`${ui.button} ${ui.primary}`} onPointerEnter={preload.channelForm}>
+          <Link to={createTo} className={cn(ui.button, ui.primary)} onPointerEnter={preload.channelForm}>
             채널 만들기
           </Link>
         </div>
@@ -116,10 +117,10 @@ export default function ChannelsPage() {
           ))}
         </div>
       ) : (
-        <div className={`${ui.card} ${ui.empty}`}>
+        <div className={cn(ui.card, ui.empty)}>
           찾는 채널이 없어요
           <div style={{ marginTop: 16 }}>
-            <Link to={createTo} className={`${ui.button} ${ui.secondary} ${ui.small}`}>
+            <Link to={createTo} className={cn(ui.button, ui.secondary, ui.small)}>
               새 채널 만들기
             </Link>
           </div>

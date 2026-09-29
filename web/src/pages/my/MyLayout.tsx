@@ -2,8 +2,9 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth, useSignOut } from '@loop/shared';
 import { Page } from '../../components/Layout';
 import { preload } from '../../lib/preload';
-import ui from '../../components/ui.module.css';
-import s from './my.module.css';
+import { ui } from '../../components/ui';
+import s from './my.styles';
+import { cn } from '../../lib/cn';
 
 const MENU = [
   { to: '/me/posts', label: '내가 쓴 글', preload: preload.myPosts },
@@ -23,7 +24,7 @@ export default function MyLayout() {
     <Page
       variant="nav"
       left={
-        <nav className={`${ui.card} ${s.side}`} aria-label="마이페이지 메뉴">
+        <nav className={cn(ui.card, s.side)} aria-label="마이페이지 메뉴">
           <div className={s.me}>
             <span className={s.avatar} aria-hidden>
               {user.nickname.slice(0, 1)}

@@ -10,12 +10,13 @@ import {
 import { ChannelIcon } from '../../components/ChannelIcon';
 import { toast } from '../../components/Toast';
 import { preload } from '../../lib/preload';
-import ui from '../../components/ui.module.css';
-import s from './my.module.css';
+import { ui } from '../../components/ui';
+import s from './my.styles';
+import { cn } from '../../lib/cn';
 
 function ChannelRow({ channel, action }: { channel: ChannelSummary; action: React.ReactNode }) {
   return (
-    <li>
+    <li className={s.channelItem}>
       <div className={s.channel}>
         <Link to={`/c/${channel.slug}`} className={s.channelLink} onPointerEnter={preload.channel}>
           <ChannelIcon slug={channel.slug} name={channel.name} size={40} />
@@ -38,7 +39,7 @@ function LeaveButton({ channel }: { channel: ChannelSummary }) {
   return (
     <button
       type="button"
-      className={`${ui.button} ${ui.ghost} ${ui.small}`}
+      className={cn(ui.button, ui.ghost, ui.small)}
       disabled={membership.isPending}
       onClick={() => {
         if (!confirm(`'${channel.name}' 채널에서 탈퇴할까요?\n탈퇴하면 이 채널에 글을 쓸 수 없어요.`)) return;
@@ -55,7 +56,7 @@ function UnbookmarkButton({ channel }: { channel: ChannelSummary }) {
   return (
     <button
       type="button"
-      className={`${ui.button} ${ui.ghost} ${ui.small}`}
+      className={cn(ui.button, ui.ghost, ui.small)}
       disabled={bookmark.isPending}
       onClick={() => bookmark.mutate(false, { onSuccess: () => toast('북마크를 해제했어요') })}
     >
@@ -111,7 +112,7 @@ export default function MyChannelsPage() {
                     <UnbookmarkButton channel={c} />
                   ) : 'owner' in c && c.owner ? (
                     // 만든 채널은 탈퇴할 수 없으니 관리로 보낸다
-                    <Link to={`/c/${c.slug}/manage`} className={`${ui.button} ${ui.ghost} ${ui.small}`}>
+                    <Link to={`/c/${c.slug}/manage`} className={cn(ui.button, ui.ghost, ui.small)}>
                       채널 관리
                     </Link>
                   ) : (
@@ -125,7 +126,7 @@ export default function MyChannelsPage() {
           <div className={ui.empty}>
             {tab === 'joined' ? '아직 가입한 채널이 없어요' : '북마크한 채널이 없어요. 채널 페이지의 ☆ 버튼으로 추가할 수 있어요'}
             <div style={{ marginTop: 16 }}>
-              <Link to="/channels" className={`${ui.button} ${ui.secondary} ${ui.small}`}>
+              <Link to="/channels" className={cn(ui.button, ui.secondary, ui.small)}>
                 채널 둘러보기
               </Link>
             </div>

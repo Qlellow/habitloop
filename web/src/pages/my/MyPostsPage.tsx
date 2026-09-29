@@ -1,7 +1,7 @@
 import { useAuth, useFeed } from '@loop/shared';
 import { PostList } from '../../components/PostList';
-import ui from '../../components/ui.module.css';
-import s from './my.module.css';
+import { ui } from '../../components/ui';
+import s from './my.styles';
 
 export default function MyPostsPage() {
   const { user } = useAuth();

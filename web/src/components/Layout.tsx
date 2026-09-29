@@ -3,8 +3,9 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useSignOut } from '@loop/shared';
 import { ChannelSearch } from './ChannelSearch';
 import { preload } from '../lib/preload';
-import ui from './ui.module.css';
-import s from './Layout.module.css';
+import { ui } from './ui';
+import { cn } from '../lib/cn';
+import s from './Layout.styles';
 
 function UserMenu() {
   const { user } = useAuth();
@@ -104,10 +105,10 @@ export function SiteHeader() {
             <UserMenu />
           ) : (
             <>
-              <Link to={`/login?next=${next}`} className={`${ui.button} ${ui.text}`} onPointerEnter={preload.login}>
+              <Link to={`/login?next=${next}`} className={cn(ui.button, ui.text)} onPointerEnter={preload.login}>
                 로그인
               </Link>
-              <Link to={`/signup?next=${next}`} className={`${ui.button} ${ui.primary}`} onPointerEnter={preload.signup}>
+              <Link to={`/signup?next=${next}`} className={cn(ui.button, ui.primary)} onPointerEnter={preload.signup}>
                 회원가입
               </Link>
             </>
@@ -133,10 +134,12 @@ export function Page({
   children: ReactNode;
 }) {
   return (
-    <div className={`${s.page} ${variant === 'nav' ? s.withNav : s[variant]}`}>
-      {(variant === 'three' || variant === 'nav') && <aside className={s.left}>{left}</aside>}
+    <div className={cn(s.page, variant === 'nav' ? s.withNav : s[variant])}>
+      {(variant === 'three' || variant === 'nav') && (
+        <aside className={cn(s.side, variant === 'three' && s.leftInThree)}>{left}</aside>
+      )}
       <main className={s.main}>{children}</main>
-      {(variant === 'three' || variant === 'twoRight') && <aside className={s.right}>{right}</aside>}
+      {(variant === 'three' || variant === 'twoRight') && <aside className={s.side}>{right}</aside>}
     </div>
   );
 }

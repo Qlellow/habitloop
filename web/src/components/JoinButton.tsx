@@ -1,7 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useBookmark, useMembership, type ChannelDetail } from '@loop/shared';
 import { toast } from './Toast';
-import ui from './ui.module.css';
+import { ui } from './ui';
+import { cn } from '../lib/cn';
 
 /**
  * 채널 가입/탈퇴 버튼.
@@ -31,7 +32,7 @@ export function JoinButton({
     return (
       <button
         type="button"
-        className={`${ui.button} ${ui.primary} ${sizeClass}`}
+        className={cn(ui.button, ui.primary, sizeClass)}
         disabled={membership.isPending}
         onClick={() => {
           if (!isLoggedIn) return navigate(`/login?next=${encodeURIComponent(pathname + search)}`);
@@ -52,7 +53,7 @@ export function JoinButton({
   return (
     <button
       type="button"
-      className={`${ui.button} ${ui.ghost} ${sizeClass}`}
+      className={cn(ui.button, ui.ghost, sizeClass)}
       title="누르면 탈퇴할 수 있어요"
       disabled={membership.isPending}
       onClick={() => {
@@ -78,7 +79,7 @@ export function BookmarkButton({ channel }: { channel: ChannelDetail }) {
   return (
     <button
       type="button"
-      className={`${ui.button} ${ui.ghost}`}
+      className={cn(ui.button, ui.ghost)}
       aria-pressed={on}
       title={on ? '북마크 해제' : '북마크'}
       style={on ? { color: 'var(--primary)' } : undefined}

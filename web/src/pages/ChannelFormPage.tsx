@@ -3,8 +3,9 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useChannel, useSaveChannel, type ChannelDetail } from '@loop/shared';
 import { Page } from '../components/Layout';
 import { toast } from '../components/Toast';
-import ui from '../components/ui.module.css';
-import s from './pages.module.css';
+import { ui } from '../components/ui';
+import s from './pages.styles';
+import { cn } from '../lib/cn';
 
 const SLUG = /^[a-z0-9][a-z0-9_-]{1,29}$/;
 
@@ -33,7 +34,7 @@ function ChannelForm({ initial }: { initial?: ChannelDetail }) {
   };
 
   return (
-    <form className={`${ui.card} ${s.formCard}`} onSubmit={submit} noValidate>
+    <form className={cn(ui.card, s.formCard)} onSubmit={submit} noValidate>
       <label className={ui.field}>
         <span className={ui.label}>채널 이름</span>
         <input className={ui.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="예) 고양이" autoFocus />
@@ -70,10 +71,10 @@ function ChannelForm({ initial }: { initial?: ChannelDetail }) {
       </label>
       {save.error && <p className={ui.error}>{save.error.message}</p>}
       <div className={s.formFoot}>
-        <button type="button" className={`${ui.button} ${ui.ghost}`} onClick={() => navigate(-1)}>
+        <button type="button" className={cn(ui.button, ui.ghost)} onClick={() => navigate(-1)}>
           취소
         </button>
-        <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={!valid || save.isPending}>
+        <button type="submit" className={cn(ui.button, ui.primary)} disabled={!valid || save.isPending}>
           {save.isPending ? '저장 중…' : initial ? '저장하기' : '채널 만들기'}
         </button>
       </div>

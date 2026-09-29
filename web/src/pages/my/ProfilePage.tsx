@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth, useChangePassword, useUpdateProfile } from '@loop/shared';
 import { toast } from '../../components/Toast';
-import ui from '../../components/ui.module.css';
-import s from './my.module.css';
+import { ui } from '../../components/ui';
+import s from './my.styles';
+import { cn } from '../../lib/cn';
 
 function NicknameForm({ current }: { current: string }) {
   const update = useUpdateProfile();
@@ -17,7 +18,7 @@ function NicknameForm({ current }: { current: string }) {
   };
 
   return (
-    <form className={`${ui.card} ${s.section}`} onSubmit={submit}>
+    <form className={cn(ui.card, s.section)} onSubmit={submit}>
       <h2 className={s.sectionTitle}>닉네임</h2>
       <p className={s.sectionDesc}>글과 댓글에 보이는 이름이에요. 바꾸면 이전 글에도 새 닉네임이 보여요.</p>
       <div className={s.row}>
@@ -28,7 +29,7 @@ function NicknameForm({ current }: { current: string }) {
           maxLength={20}
           aria-label="닉네임"
         />
-        <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={!valid || update.isPending}>
+        <button type="submit" className={cn(ui.button, ui.primary)} disabled={!valid || update.isPending}>
           저장
         </button>
       </div>
@@ -60,7 +61,7 @@ function PasswordForm() {
   };
 
   return (
-    <form className={`${ui.card} ${s.section}`} onSubmit={submit}>
+    <form className={cn(ui.card, s.section)} onSubmit={submit}>
       <h2 className={s.sectionTitle}>비밀번호</h2>
       <p className={s.sectionDesc}>지금 비밀번호를 확인한 뒤에 바꿀 수 있어요.</p>
       <label className={ui.field}>
@@ -85,7 +86,7 @@ function PasswordForm() {
       </label>
       {change.error && <p className={ui.error}>{change.error.message}</p>}
       <div className={s.actions}>
-        <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={!valid || change.isPending}>
+        <button type="submit" className={cn(ui.button, ui.primary)} disabled={!valid || change.isPending}>
           비밀번호 바꾸기
         </button>
       </div>
@@ -101,7 +102,7 @@ export default function ProfilePage() {
       <div className={s.head}>
         <h1 className={s.title}>내 정보 수정</h1>
       </div>
-      <section className={`${ui.card} ${s.section}`}>
+      <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>이메일</h2>
         <p className={s.sectionDesc}>로그인할 때 쓰는 이메일이에요. 바꿀 수 없어요.</p>
         <div className={s.readonly}>{user.email}</div>
