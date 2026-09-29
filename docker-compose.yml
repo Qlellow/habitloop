@@ -29,7 +29,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-community}
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret-at-least-32-bytes}
       # 브라우저가 접속하는 주소 (nginx 가 같은 도메인으로 프록시해도 POST 에는 Origin 이 붙는다)
-      CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost}
+      CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:3001}
 
   web:
     build:
@@ -39,7 +39,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "3001:80"   # 브라우저는 http://localhost:3001 (백엔드 3000 은 내부망에서만 사용)
 
 volumes:
   mysql_data:

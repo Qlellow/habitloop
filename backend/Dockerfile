@@ -16,7 +16,7 @@ COPY --from=build /app/extracted/spring-boot-loader/ ./
 COPY --from=build /app/extracted/snapshot-dependencies/ ./
 COPY --from=build /app/extracted/application/ ./
 USER app
-EXPOSE 8080
+EXPOSE 3000
 ENV SPRING_PROFILES_ACTIVE=prod \
     JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

@@ -34,7 +34,7 @@ spring:
       write-dates-as-timestamps: false
 
 server:
-  port: ${PORT:8080}
+  port: ${PORT:3000}
   shutdown: graceful
   compression:
     enabled: true
@@ -58,7 +58,7 @@ app:
     secret: ${JWT_SECRET:local-dev-secret-please-change-this-to-a-long-random-string}
     ttl: 7d
   cors:
-    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:4173}
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3001}
   seed: false
 
 ---

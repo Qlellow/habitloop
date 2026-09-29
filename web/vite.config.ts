@@ -3,10 +3,19 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  // 포트: 백엔드 3000, 웹 3001 (이미 쓰고 있으면 다른 포트로 넘어가지 않고 바로 에러를 낸다)
   server: {
-    port: 5173,
+    port: 3001,
+    strictPort: true,
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': 'http://localhost:3000',
+    },
+  },
+  preview: {
+    port: 3001,
+    strictPort: true,
+    proxy: {
+      '/api': 'http://localhost:3000',
     },
   },
   build: {

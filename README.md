@@ -21,8 +21,8 @@
 | Infra    | Docker Compose (MySQL + Spring Boot + Nginx) · GitHub Actions CI              |
 
 ```
-backend/          Spring Boot API (port 8080)
-web/              React 웹사이트 (dev 5173, 운영은 Nginx 가 정적 파일 + /api 프록시)
+backend/          Spring Boot API (포트 3000)
+web/              React 웹사이트 (포트 3001, 운영은 Nginx 가 정적 파일 + /api 프록시)
 mobile/           React Native 앱 (Expo SDK 57, Expo Router)
 packages/shared/  웹·앱 공용 코드
 ```
@@ -31,6 +31,15 @@ packages/shared/  웹·앱 공용 코드
 > Expo SDK 를 올릴 때는 `web/package.json` 의 `react`, `react-dom` 도 같은 버전으로 맞춰 주세요.
 
 ## 실행
+
+| 무엇 | 포트 | 주소 |
+| ---- | ---- | ---- |
+| 백엔드 (Spring Boot API) | **3000** | http://localhost:3000/api/... |
+| 웹 (React) | **3001** | http://localhost:3001 |
+| 모바일 (Expo 개발 서버) | 8081 (Expo 기본값) | 터미널에 나오는 QR 코드로 접속 |
+| MySQL (Docker) | 3306 | 컨테이너 내부 |
+
+포트를 바꾸려면 백엔드는 `PORT=4000 ./mvnw spring-boot:run`, 웹은 `web/vite.config.ts` 의 `port` 를 고치면 됩니다.
 
 ### 1) 백엔드
 
@@ -45,7 +54,7 @@ cd backend && ./mvnw spring-boot:run      # Windows: mvnw.cmd spring-boot:run
 
 ```bash
 npm install          # 저장소 루트에서 한 번 (웹·앱·공용 패키지를 함께 설치)
-npm run web          # http://localhost:5173 (/api 는 8080 으로 프록시)
+npm run web          # http://localhost:3001 (/api 는 백엔드 3000 으로 프록시)
 ```
 
 ### 3) 모바일 앱 (Expo Go)
@@ -58,8 +67,8 @@ npm run mobile       # = cd mobile && npx expo start
 
 터미널에 나오는 QR 코드를 Expo Go(Android) 또는 카메라(iOS)로 찍으면 앱이 열립니다.
 
-- 앱은 Expo 개발 서버가 떠 있는 PC 의 IP 로 API(`http://<PC IP>:8080`)를 자동으로 찾아갑니다.
-  휴대폰에서 연결이 안 되면 PC 방화벽에서 8080 포트를 열어 주세요.
+- 앱은 Expo 개발 서버가 떠 있는 PC 의 IP 로 API(`http://<PC IP>:3000`)를 자동으로 찾아갑니다.
+  휴대폰에서 연결이 안 되면 PC 방화벽에서 3000 포트를 열어 주세요.
 - Android 에뮬레이터는 `a`, iOS 시뮬레이터는 `i` 를 누르면 됩니다.
 - 다른 서버를 쓰려면 `EXPO_PUBLIC_API_URL=https://api.example.com npm run mobile`.
 - 스토어 배포용 빌드는 EAS Build(`npx eas build`)를 쓰고, 이때는 HTTPS API 주소를 `EXPO_PUBLIC_API_URL` 로 넣어 주세요.
@@ -70,12 +79,12 @@ npm run mobile       # = cd mobile && npx expo start
 JWT_SECRET=$(openssl rand -base64 48) docker compose up --build
 ```
 
-http://localhost 로 접속합니다. 도메인으로 배포할 때는 `PUBLIC_ORIGIN=https://your.domain` 을 설정해 주세요. 이 값은 CORS 허용 목록으로 쓰입니다. (네이티브 앱은 브라우저가 아니라서 CORS 와 무관합니다.)
+http://localhost:3001 로 접속합니다. 도메인으로 배포할 때는 `PUBLIC_ORIGIN=https://your.domain` 을 설정해 주세요. 이 값은 CORS 허용 목록으로 쓰입니다. (네이티브 앱은 브라우저가 아니라서 CORS 와 무관합니다.)
 
 | 환경 변수        | 설명                                   | 기본값             |
 | ---------------- | -------------------------------------- | ------------------ |
 | `JWT_SECRET`     | JWT 서명 키 (32바이트 이상)            | 개발용 값          |
-| `PUBLIC_ORIGIN`  | 브라우저가 접속하는 주소 (CORS)        | `http://localhost` |
+| `PUBLIC_ORIGIN`  | 브라우저가 접속하는 주소 (CORS)        | `http://localhost:3001` |
 | `DB_PASSWORD`    | MySQL 비밀번호                         | `community`        |
 
 ### 테스트
