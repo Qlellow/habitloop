@@ -415,6 +415,29 @@ class CommunityFlowTest {
         mvc.perform(get("/api/channels").param("q", "%")).andExpect(jsonPath("$", hasSize(0)));
     }
 
+    @Autowired
+    com.loop.community.security.JwtProvider jwtProvider;
+
+    @Test
+    void tokenForMissingUserIsTreatedAsLoggedOut() throws Exception {
+        // 서명은 맞지만 DB 에 없는 사용자 (DB 를 초기화한 뒤 브라우저에 남은 토큰과 같은 상황)
+        String ghost = jwtProvider.issue(999_999L, "유령");
+        String real = signup("ghost-check@test.dev", "진짜회원");
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "ghost-ch", "name", "유령확인")), real));
+        long postId = body(mvc.perform(auth(json(post("/api/posts"),
+                        Map.of("channel", "ghost-ch", "title", "t", "content", "c")), real))).get("id").asLong();
+
+        // 예전에는 FK 위반이 409 "이미 처리된 요청" 으로 잘못 보였다 → 이제는 401
+        mvc.perform(auth(post("/api/posts/" + postId + "/like"), ghost))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("로그인이 필요해요"));
+        mvc.perform(auth(get("/api/me"), ghost)).andExpect(status().isUnauthorized());
+        // 읽기는 비로그인처럼 그대로 된다
+        mvc.perform(auth(get("/api/posts/" + postId), ghost))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.liked").value(false));
+    }
+
     @Test
     void authValidation() throws Exception {
         signup("dup@test.dev", "중복");

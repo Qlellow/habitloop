@@ -25,9 +25,9 @@ spring:
     enabled: true
   cache:
     type: caffeine
-    cache-names: popularPosts,popularChannels
+    cache-names: popularPosts,popularChannels,userExists
     caffeine:
-      spec: maximumSize=100,expireAfterWrite=60s
+      spec: maximumSize=10000,expireAfterWrite=60s
   jackson:
     default-property-inclusion: non_null
     serialization:

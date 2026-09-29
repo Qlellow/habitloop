@@ -70,6 +70,20 @@ export const authStore = {
   reload() {
     if (storage) void authStore.init(storage);
   },
+  /**
+   * 저장된 로그인이 아직 유효한지 서버에 한 번 확인하고, 최신 사용자 정보(닉네임 등)로 바꾼다.
+   * 서버 DB 가 초기화됐거나 계정이 없어졌으면 api() 가 401 을 받아 자동으로 로그아웃된다.
+   */
+  async verify(fetchMe: () => Promise<User>) {
+    const token = state.token;
+    if (!token) return;
+    try {
+      const user = await fetchMe();
+      if (state.token === token) authStore.signIn({ token, user });
+    } catch {
+      // 401 은 api() 가 이미 로그아웃 처리. 네트워크 오류면 그대로 둔다
+    }
+  },
   getToken: () => state.token,
   getUser: () => state.user,
   signIn(res: AuthResponse) {

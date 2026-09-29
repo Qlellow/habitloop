@@ -22,6 +22,7 @@ import type {
   PostDetail,
   PostInput,
   PostSummary,
+  User,
 } from './types';
 import { authStore } from './auth';
 
@@ -357,6 +358,8 @@ export function useToggleLike(postId: number) {
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(keys.post(postId), ctx.prev);
+      // 되돌린 값이 틀릴 수도 있으니(예: 동시에 눌려 서버엔 이미 반영) 서버의 실제 상태를 다시 받는다
+      qc.invalidateQueries({ queryKey: keys.post(postId) });
     },
     onSuccess: (res) => {
       qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, ...res });
@@ -417,6 +420,7 @@ export function useToggleCommentLike(postId: number) {
     onError: (_e, _v, ctx) => {
       qc.setQueryData(keys.comments(postId), ctx?.prevPages);
       qc.setQueryData(keys.bestComments(postId), ctx?.prevBest);
+      qc.invalidateQueries({ queryKey: keys.comments(postId) });
     },
     onSuccess: (res, { commentId }) => {
       patchComment(qc, postId, commentId, (c) => ({ ...c, ...res }));
@@ -470,6 +474,11 @@ export function useDeleteComment(postId: number) {
 }
 
 /* ───────── 인증 ───────── */
+
+/** 앱을 열 때 한 번: 저장된 로그인이 아직 유효한지 확인 (무효면 자동 로그아웃) */
+export function verifySession() {
+  return authStore.verify(() => api<User>('/api/me'));
+}
 
 /** liked / mine 같은 사용자별 필드가 들어 있는 캐시를 버린다 */
 function clearUserScopedCache(qc: QueryClient) {

@@ -3,14 +3,14 @@ import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { authStore, configureApi, queryClient, useAuth } from '@loop/shared';
+import { authStore, configureApi, queryClient, useAuth, verifySession } from '@loop/shared';
 import { API_URL } from '../src/config';
 import { secureStorage } from '../src/storage';
 import { useColors } from '../src/theme';
 
 // 앱이 뜰 때 한 번: 서버 주소 설정 + 보안 저장소에서 로그인 정보 읽기
 configureApi({ baseUrl: API_URL });
-void authStore.init(secureStorage);
+void Promise.resolve(authStore.init(secureStorage)).then(verifySession);
 
 export default function RootLayout() {
   const { ready } = useAuth();
