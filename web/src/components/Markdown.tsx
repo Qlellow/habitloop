@@ -26,7 +26,7 @@ export function renderMarkdown(source: string): string {
 }
 
 /** 같은 본문이면 다시 파싱하지 않도록 memo + useMemo */
-export const Markdown = memo(function Markdown({ source }: { source: string }) {
+export const Markdown = memo(function Markdown({ source, className }: { source: string; className?: string }) {
   const html = useMemo(() => renderMarkdown(source), [source]);
-  return <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div className={className ? `prose ${className}` : 'prose'} dangerouslySetInnerHTML={{ __html: html }} />;
 });

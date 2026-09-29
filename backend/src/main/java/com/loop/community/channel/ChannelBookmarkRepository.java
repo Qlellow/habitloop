@@ -18,7 +18,7 @@ public interface ChannelBookmarkRepository extends JpaRepository<ChannelBookmark
     /** 최근에 북마크한 순. (user_id, id) 인덱스를 탄다 */
     @Query("""
             select new com.loop.community.channel.ChannelDtos$ChannelSummary(
-                c.id, c.slug, c.name, c.description, c.postCount, c.memberCount)
+                c.id, c.slug, c.name, c.description, c.postCount, c.memberCount, c.iconVersion)
             from ChannelBookmark b join Channel c on c.id = b.channelId
             where b.userId = :userId
             order by b.id desc

@@ -16,6 +16,7 @@ import type {
   ChannelSummary,
   MembershipResponse,
   MyChannel,
+  StaffMember,
   Comment,
   CursorPage,
   LikeResponse,
@@ -58,6 +59,8 @@ export const keys = {
   myChannels: ['channels', 'mine'] as const,
   bookmarkedChannels: ['channels', 'bookmarks'] as const,
   channel: (slug: string) => ['channel', slug] as const,
+  staff: (slug: string) => ['channel', slug, 'staff'] as const,
+  memberSearch: (slug: string, q: string) => ['channel', slug, 'members', q] as const,
 };
 
 const PAGE_SIZE = 20;
@@ -120,7 +123,8 @@ export function useChannel(slug: string | undefined) {
     placeholderData: (): ChannelDetail | undefined => {
       for (const [, list] of qc.getQueriesData<ChannelSummary[]>({ queryKey: ['channels'] })) {
         const hit = list?.find((c) => c.slug === slug);
-        if (hit) return { ...hit, createdAt: '', mine: false, joined: false, bookmarked: false, categories: [] };
+        if (hit)
+          return { ...hit, createdAt: '', mine: false, canManage: false, staff: false, joined: false, bookmarked: false, categories: [] };
       }
       return undefined;
     },
@@ -140,6 +144,61 @@ export function useSaveChannel(slug?: string) {
     onSuccess: (channel) => {
       qc.setQueryData(keys.channel(channel.slug), channel);
       qc.invalidateQueries({ queryKey: ['channels'] });
+    },
+  });
+}
+
+/**
+ * 채널 프로필 이미지 올리기/지우기 (소유자·관리자).
+ * 새 버전 번호를 채널 캐시에 바로 넣어 이미지가 곧장 바뀌고, 목록에 보이는 채널도 다시 받는다.
+ */
+export function useChannelIcon(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (image: Blob | null) =>
+      image
+        ? api<{ iconVersion: number }>(`/api/channels/${encodeURIComponent(slug)}/icon`, { method: 'PUT', blob: image })
+        : api<void>(`/api/channels/${encodeURIComponent(slug)}/icon`, { method: 'DELETE' }).then(() => ({ iconVersion: 0 })),
+    onSuccess: ({ iconVersion }) => {
+      qc.setQueryData<ChannelDetail>(keys.channel(slug), (c) => (c ? { ...c, iconVersion } : c));
+      qc.invalidateQueries({ queryKey: ['channels'] });
+      qc.invalidateQueries({ queryKey: ['post'] });
+    },
+  });
+}
+
+/** 운영진 목록 (소유자 → 관리자 → 매니저) */
+export function useStaff(slug: string) {
+  return useQuery({
+    queryKey: keys.staff(slug),
+    queryFn: ({ signal }) => api<StaffMember[]>(`/api/channels/${encodeURIComponent(slug)}/staff`, { signal }),
+  });
+}
+
+/** 운영진으로 지정할 멤버를 닉네임으로 찾기 (소유자만) */
+export function useMemberSearch(slug: string, q: string) {
+  const keyword = q.trim();
+  return useQuery({
+    queryKey: keys.memberSearch(slug, keyword),
+    queryFn: ({ signal }) =>
+      api<StaffMember[]>(`/api/channels/${encodeURIComponent(slug)}/members`, { query: { q: keyword }, signal }),
+    enabled: keyword.length > 0,
+    placeholderData: (prev) => prev,
+  });
+}
+
+/** 멤버를 관리자·매니저로 지정하거나 일반 멤버로 되돌린다 (소유자만). 배지가 보이는 글·댓글도 다시 받는다 */
+export function useChangeRole(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, role }: { userId: number; role: StaffMember['role'] }) =>
+      api<StaffMember[]>(`/api/channels/${encodeURIComponent(slug)}/members/${userId}/role`, { method: 'PUT', body: { role } }),
+    onSuccess: (staff) => {
+      qc.setQueryData(keys.staff(slug), staff);
+      qc.invalidateQueries({ queryKey: ['channel', slug, 'members'] });
+      qc.invalidateQueries({ queryKey: keys.posts });
+      qc.removeQueries({ queryKey: ['post'] });
+      qc.removeQueries({ queryKey: ['comments'] });
     },
   });
 }
@@ -275,11 +334,11 @@ export function usePost(id: number, placeholder?: PostSummary) {
       if (!summary) return undefined;
       return {
         id: summary.id,
-        channel: { slug: summary.channelSlug, name: summary.channelName },
+        channel: { slug: summary.channelSlug, name: summary.channelName, iconVersion: 0 },
         category: undefined,
         title: summary.title,
         content: '',
-        author: { id: 0, nickname: summary.authorNickname },
+        author: { id: 0, nickname: summary.authorNickname, role: summary.authorRole },
         likeCount: summary.likeCount,
         commentCount: summary.commentCount,
         viewCount: summary.viewCount,
@@ -287,6 +346,7 @@ export function usePost(id: number, placeholder?: PostSummary) {
         updatedAt: summary.createdAt,
         liked: false,
         mine: false,
+        canModerate: false,
       };
     },
   });

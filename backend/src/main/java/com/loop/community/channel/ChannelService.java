@@ -55,11 +55,7 @@ public class ChannelService {
 
     @Transactional(readOnly = true)
     public ChannelDetail detail(String slug, Long viewerId) {
-        Channel channel = findWithOwner(slug);
-        boolean joined = viewerId != null && memberRepository.existsByChannelIdAndUserId(channel.getId(), viewerId);
-        boolean bookmarked = viewerId != null && bookmarkRepository.existsByChannelIdAndUserId(channel.getId(), viewerId);
-        return ChannelDetail.of(channel, viewerId, joined, bookmarked,
-                categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
+        return toDetail(findWithOwner(slug), viewerId);
     }
 
     @Transactional
@@ -68,7 +64,7 @@ public class ChannelService {
         String slug = request.slug().strip().toLowerCase(Locale.ROOT);
         String name = request.name().strip();
         if (RESERVED.contains(slug) || channelRepository.existsBySlug(slug)) {
-            throw ApiException.conflict("이미 사용 중인 채널 주소예요");
+            throw ApiException.conflict("이미 사용 중인 고리예요");
         }
         if (channelRepository.existsByName(name)) {
             throw ApiException.conflict("같은 이름의 채널이 이미 있어요");
@@ -76,7 +72,7 @@ public class ChannelService {
         Channel channel = channelRepository.save(
                 new Channel(slug, name, request.description(), userRepository.getReferenceById(userId)));
         // 만든 사람은 자동으로 가입된다
-        memberRepository.save(new ChannelMember(channel.getId(), userId));
+        memberRepository.save(new ChannelMember(channel.getId(), userId, ChannelRole.OWNER));
         channelRepository.addMemberCount(channel.getId(), 1);
         return detail(slug, userId);
     }
@@ -84,17 +80,36 @@ public class ChannelService {
     @Transactional
     @CacheEvict(value = "popularChannels", allEntries = true)
     public ChannelDetail update(Long userId, String slug, UpdateChannelRequest request) {
-        Channel channel = findWithOwner(slug);
-        if (!channel.isOwnedBy(userId)) {
-            throw ApiException.forbidden();
-        }
+        Channel channel = requireManager(slug, userId);
         String name = request.name().strip();
         if (!name.equals(channel.getName()) && channelRepository.existsByName(name)) {
             throw ApiException.conflict("같은 이름의 채널이 이미 있어요");
         }
         channel.update(name, request.description());
-        return ChannelDetail.of(channel, userId, true,
-                bookmarkRepository.existsByChannelIdAndUserId(channel.getId(), userId), categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
+        return toDetail(channel, userId);
+    }
+
+    /** 보는 사람의 역할 (가입하지 않았거나 로그인하지 않았으면 null) */
+    @Transactional(readOnly = true)
+    public ChannelRole roleOf(Long channelId, Long userId) {
+        return userId == null ? null : memberRepository.findRole(channelId, userId).orElse(null);
+    }
+
+    /** 채널 관리(정보·프로필·카테고리)는 소유자와 관리자만 */
+    @Transactional(readOnly = true)
+    public Channel requireManager(String slug, Long userId) {
+        Channel channel = findWithOwner(slug);
+        ChannelRole role = roleOf(channel.getId(), userId);
+        if (role == null || !role.canManage()) {
+            throw ApiException.forbidden("채널 소유자와 관리자만 할 수 있어요");
+        }
+        return channel;
+    }
+
+    private ChannelDetail toDetail(Channel channel, Long viewerId) {
+        boolean bookmarked = viewerId != null && bookmarkRepository.existsByChannelIdAndUserId(channel.getId(), viewerId);
+        return ChannelDetail.of(channel, roleOf(channel.getId(), viewerId), bookmarked,
+                categoryRepository.findByChannelIdOrderByPositionAsc(channel.getId()));
     }
 
     @Transactional(readOnly = true)

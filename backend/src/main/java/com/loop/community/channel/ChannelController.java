@@ -8,6 +8,15 @@ import com.loop.community.channel.ChannelDtos.MyChannel;
 import com.loop.community.channel.ChannelDtos.MembershipResponse;
 import com.loop.community.channel.ChannelDtos.CreateChannelRequest;
 import com.loop.community.channel.ChannelDtos.UpdateChannelRequest;
+import com.loop.community.channel.ChannelDtos.RoleRequest;
+import com.loop.community.channel.ChannelDtos.StaffMember;
+import com.loop.community.common.ApiException;
+import java.time.Duration;
+import java.util.Map;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestHeader;
 import com.loop.community.security.AuthUser;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -29,12 +38,66 @@ public class ChannelController {
     private final ChannelService channelService;
     private final ChannelPreviewService previewService;
     private final ChannelMembershipService membershipService;
+    private final ChannelStaffService staffService;
+    private final ChannelIconService iconService;
 
     public ChannelController(ChannelService channelService, ChannelPreviewService previewService,
-                             ChannelMembershipService membershipService) {
+                             ChannelMembershipService membershipService, ChannelStaffService staffService,
+                             ChannelIconService iconService) {
         this.channelService = channelService;
         this.previewService = previewService;
         this.membershipService = membershipService;
+        this.staffService = staffService;
+        this.iconService = iconService;
+    }
+
+    /** 운영진 목록 (누구나 볼 수 있다) */
+    @GetMapping("/api/channels/{slug}/staff")
+    public List<StaffMember> staff(@PathVariable String slug) {
+        return staffService.staff(slug);
+    }
+
+    /** 운영진으로 지정할 멤버를 닉네임으로 찾기 (소유자만) */
+    @GetMapping("/api/channels/{slug}/members")
+    public List<StaffMember> searchMembers(@AuthenticationPrincipal AuthUser user, @PathVariable String slug,
+                                           @RequestParam(required = false) String q) {
+        return staffService.searchMembers(user == null ? null : user.id(), slug, q);
+    }
+
+    /** 멤버를 관리자·매니저로 지정하거나 일반 멤버로 되돌린다 (소유자만) */
+    @PutMapping("/api/channels/{slug}/members/{userId}/role")
+    public List<StaffMember> changeRole(@AuthenticationPrincipal AuthUser user, @PathVariable String slug,
+                                        @PathVariable Long userId, @Valid @RequestBody RoleRequest request) {
+        return staffService.changeRole(user.id(), slug, userId, request.role());
+    }
+
+    /** 프로필 이미지. 주소에 버전(?v=)이 있으면 내용이 바뀌지 않으므로 오래 캐시한다 */
+    @GetMapping("/api/channels/{slug}/icon")
+    public ResponseEntity<byte[]> icon(@PathVariable String slug, @RequestParam(required = false) Integer v) {
+        ChannelIconService.Icon icon = iconService.get(slug);
+        CacheControl cache = v == null ? CacheControl.noCache() : CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(icon.contentType()))
+                .cacheControl(cache)
+                .header("X-Content-Type-Options", "nosniff")
+                .body(icon.data());
+    }
+
+    /** 이미지 바이트를 그대로 올린다 (Content-Type: image/webp | image/png | image/jpeg) */
+    @PutMapping("/api/channels/{slug}/icon")
+    public Map<String, Integer> uploadIcon(@AuthenticationPrincipal AuthUser user, @PathVariable String slug,
+                                           @RequestHeader(value = "Content-Type", required = false) String contentType,
+                                           @RequestBody(required = false) byte[] data) {
+        if (data == null) {
+            throw ApiException.badRequest("이미지를 골라 주세요");
+        }
+        return Map.of("iconVersion", iconService.upload(user.id(), slug, contentType, data));
+    }
+
+    @DeleteMapping("/api/channels/{slug}/icon")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteIcon(@AuthenticationPrincipal AuthUser user, @PathVariable String slug) {
+        iconService.delete(user.id(), slug);
     }
 
     /** q 가 없으면 인기 채널, 있으면 이름/주소 검색 */

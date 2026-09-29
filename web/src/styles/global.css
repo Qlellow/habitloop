@@ -25,6 +25,8 @@
   --text-weak: var(--grey-500);
   --line: var(--grey-100);
   --field: var(--grey-100);
+  /* 회색 버튼(bg-field)을 올렸을 때: 원래보다 한 단계만 진하게/밝게 */
+  --field-hover: var(--grey-200);
   --primary: var(--blue-500);
   --primary-pressed: var(--blue-600);
   --primary-weak: var(--blue-50);
@@ -32,6 +34,14 @@
   --skeleton: var(--grey-100);
   --danger-weak: var(--red-50);
   --toast-bg: rgba(25, 31, 40, 0.94);
+
+  /* 채널 운영진 배지: 소유자(노랑) · 관리자(초록) · 매니저(파랑) */
+  --role-owner: #f5a700;
+  --role-owner-bg: #fff6d6;
+  --role-admin: #03b26c;
+  --role-admin-bg: #e3f8ee;
+  --role-manager: #3182f6;
+  --role-manager-bg: #e8f3ff;
 
   --radius-lg: 10px;
   --radius-md: 8px;
@@ -57,10 +67,14 @@
   --text-weak: #7e7e87;
   --line: #2a2a31;
   --field: #2a2a31;
+  --field-hover: #35353d;
   --primary-weak: rgba(49, 130, 246, 0.16);
   --skeleton: #2a2a31;
   --danger-weak: rgba(240, 68, 82, 0.14);
   --toast-bg: rgba(70, 70, 80, 0.96);
+  --role-owner-bg: rgba(245, 167, 0, 0.18);
+  --role-admin-bg: rgba(3, 178, 108, 0.18);
+  --role-manager-bg: rgba(49, 130, 246, 0.2);
   color-scheme: dark;
 }
 
@@ -76,10 +90,14 @@
     --text-weak: #7e7e87;
     --line: #2a2a31;
     --field: #2a2a31;
+  --field-hover: #35353d;
     --primary-weak: rgba(49, 130, 246, 0.16);
     --skeleton: #2a2a31;
     --danger-weak: rgba(240, 68, 82, 0.14);
     --toast-bg: rgba(70, 70, 80, 0.96);
+  --role-owner-bg: rgba(245, 167, 0, 0.18);
+  --role-admin-bg: rgba(3, 178, 108, 0.18);
+  --role-manager-bg: rgba(49, 130, 246, 0.2);
     color-scheme: dark;
   }
 }

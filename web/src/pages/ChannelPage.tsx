@@ -1,8 +1,10 @@
+import { useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, compact, useAuth, useChannel, useFeed } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
+import { ChannelIntro } from '../components/ChannelIntro';
 import { BookmarkButton, JoinButton } from '../components/JoinButton';
-import { Footer, Page } from '../components/Layout';
+import { Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { PopularCard } from '../components/Sidebar';
 import { preload } from '../lib/preload';
@@ -22,13 +24,14 @@ export default function ChannelPage() {
   const active = categories.find((c) => c.id === raw);
   const feed = useFeed({ channel: slug, category: active?.id });
   const selectTab = (id?: number) => setParams(id ? { category: String(id) } : {}, { replace: true });
+  const headerRef = useRef<HTMLElement>(null);
 
   if (error instanceof ApiError && error.status === 404) {
     return <NotFoundPage message="없거나 사라진 채널이에요" />;
   }
 
-  // 글쓰기는 가입한 사람만, 관리자 전용 카테고리 탭에서는 관리자만
-  const canWrite = !!channel?.joined && (!active?.ownerOnly || channel.mine);
+  // 글쓰기는 가입한 사람만, 운영진 전용 카테고리 탭에서는 운영진만
+  const canWrite = !!channel?.joined && (!active?.ownerOnly || channel.staff);
   const writeParams = new URLSearchParams({ channel: slug });
   if (active) writeParams.set('category', String(active.id));
   const writeTo = `/write?${writeParams}`;
@@ -39,24 +42,25 @@ export default function ChannelPage() {
       right={
         <>
           <PopularCard channel={slug} title="이 채널 인기글" />
-          <Footer />
         </>
       }
     >
-      <section className={ui.card}>
-        <div className={s.banner}>
+      <section className={ui.card} ref={headerRef}>
+        <div className={cn(s.banner, categories.length === 0 && 'pb-6')}>
           {channel ? (
             <>
               <div className={s.bannerTop}>
-                <ChannelIcon slug={channel.slug} name={channel.name} size={56} />
+                <ChannelIcon channel={channel} size={56} />
                 <div className={s.bannerInfo}>
                   <h1 className={s.bannerName}>{channel.name}</h1>
-                  <div className={s.bannerSlug}>c/{channel.slug}</div>
+                  <div className={s.bannerSlug}>
+                    멤버 {compact(channel.memberCount)}명 · 글 {compact(channel.postCount)}개
+                  </div>
                 </div>
                 <div className={s.bannerActions}>
                   {!isPlaceholderData && <BookmarkButton channel={channel} />}
                   {!isPlaceholderData && <JoinButton channel={channel} />}
-                  {channel.mine && (
+                  {channel.canManage && (
                     <Link
                       to={`/c/${slug}/manage`}
                       className={cn(ui.button, ui.ghost)}
@@ -76,11 +80,9 @@ export default function ChannelPage() {
                   )}
                 </div>
               </div>
-              {channel.description && <p className={s.bannerDesc}>{channel.description}</p>}
-              <div className={s.bannerMeta}>
-                멤버 {compact(channel.memberCount)}명 · 글 {compact(channel.postCount)}개
-                {channel.ownerNickname && ` · 만든 사람 ${channel.ownerNickname}`}
-              </div>
+              {channel.description && (
+                <ChannelIntro key={channel.slug} source={channel.description} headerRef={headerRef} />
+              )}
             </>
           ) : (
             <div className={s.bannerTop} style={{ paddingBottom: 20 }}>

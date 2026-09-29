@@ -153,7 +153,7 @@ export function ChannelSearch() {
                 onMouseDown={(e) => e.preventDefault()} // 입력창 포커스 유지
                 onClick={() => go(`/c/${c.slug}`)}
               >
-                <ChannelIcon slug={c.slug} name={c.name} size={32} />
+                <ChannelIcon channel={c} size={32} />
                 <span className={s.body}>
                   <span className={s.name}>
                     <Highlight text={c.name} keyword={keyword} />

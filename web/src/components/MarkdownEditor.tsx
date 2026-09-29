@@ -25,7 +25,22 @@ const ACTIONS: Action[] = [
 
 const SHORTCUTS: Record<string, number> = { b: 0, i: 1, k: 6 };
 
-export function MarkdownEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function MarkdownEditor({
+  value,
+  onChange,
+  compact,
+  maxLength = 20000,
+  placeholder = '내용을 입력해 주세요\n\n**굵게**, # 제목, - 목록, [링크](https://) 같은 마크다운 문법을 쓸 수 있어요',
+  label = '내용',
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  /** 채널 소개처럼 짧은 글: 편집 영역을 낮게 */
+  compact?: boolean;
+  maxLength?: number;
+  placeholder?: string;
+  label?: string;
+}) {
   // 설정의 기본 보기 방식을 따르되, 좁은 화면에서는 나란히 보기 대신 작성으로 연다
   const [mode, setMode] = useState<Mode>(() => {
     const preferred = getSettings().editorMode;
@@ -92,9 +107,9 @@ export function MarkdownEditor({ value, onChange }: { value: string; onChange: (
         {showEditor && (
           <textarea
             ref={ref}
-            className={cn(ui.textarea, s.textarea)}
-            placeholder={'내용을 입력해 주세요\n\n**굵게**, # 제목, - 목록, [링크](https://) 같은 마크다운 문법을 쓸 수 있어요'}
-            maxLength={20000}
+            className={cn(ui.textarea, s.textarea, compact && s.compact)}
+            placeholder={placeholder}
+            maxLength={maxLength}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
@@ -104,11 +119,11 @@ export function MarkdownEditor({ value, onChange }: { value: string; onChange: (
                 apply(ACTIONS[idx]);
               }
             }}
-            aria-label="내용"
+            aria-label={label}
           />
         )}
         {showPreview && (
-          <div className={cn(s.preview, mode === 'split' && s.previewInSplit)} aria-label="미리보기">
+          <div className={cn(s.preview, compact && s.compactPreview, mode === 'split' && s.previewInSplit)} aria-label="미리보기">
             {value.trim() ? (
               <Suspense fallback={<div className={ui.spinner} />}>
                 <Preview source={value} />

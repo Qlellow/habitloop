@@ -45,7 +45,7 @@ public class ChannelPreviewService {
 
         return channels.stream()
                 .map(c -> new ChannelPreview(c.id(), c.slug(), c.name(), c.description(), c.postCount(),
-                        c.memberCount(), joined.contains(c.id()), postsByChannel.getOrDefault(c.slug(), List.of())))
+                        c.memberCount(), c.iconVersion(), joined.contains(c.id()), postsByChannel.getOrDefault(c.slug(), List.of())))
                 .toList();
     }
 }

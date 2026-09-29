@@ -5,7 +5,7 @@ import s from './Dropdown.styles';
 export interface DropdownOption<T> {
   value: T;
   label: string;
-  /** 옵션 오른쪽에 붙는 작은 설명 (예: 관리자 전용) */
+  /** 옵션 오른쪽에 붙는 작은 설명 (예: 운영진 전용) */
   hint?: ReactNode;
 }
 

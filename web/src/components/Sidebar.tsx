@@ -11,7 +11,7 @@ function ChannelLinks({ channels }: { channels: ChannelSummary[] }) {
       {channels.map((c) => (
         <li key={c.slug}>
           <NavLink to={`/c/${c.slug}`} className={s.channel} onPointerEnter={preload.channel}>
-            <ChannelIcon slug={c.slug} name={c.name} size={26} />
+            <ChannelIcon channel={c} size={26} />
             <span className={s.channelName}>{c.name}</span>
           </NavLink>
         </li>
@@ -47,7 +47,7 @@ export function ChannelSidebar() {
               .map((c) => (
                 <li key={c.slug}>
                   <NavLink to={`/c/${c.slug}`} className={s.channel} onPointerEnter={preload.channel}>
-                    <ChannelIcon slug={c.slug} name={c.name} size={26} />
+                    <ChannelIcon channel={c} size={26} />
                     <span className={s.channelName}>{c.name}</span>
                   </NavLink>
                 </li>

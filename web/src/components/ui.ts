@@ -14,7 +14,7 @@ export const ui = {
     'transition-colors disabled:opacity-40 disabled:cursor-default',
   primary: 'bg-primary text-white [&:not(:disabled)]:hover:bg-primary-pressed',
   secondary: 'bg-primary-weak text-primary [&:not(:disabled)]:hover:bg-[color-mix(in_srgb,var(--primary)_18%,transparent)]',
-  ghost: 'bg-field text-fg [&:not(:disabled)]:hover:bg-border',
+  ghost: 'bg-field text-fg [&:not(:disabled)]:hover:bg-field-hover',
   text: 'bg-transparent text-fg-sub px-2.5 [&:not(:disabled)]:hover:bg-field [&:not(:disabled)]:hover:text-fg-strong',
   danger: 'text-danger [&:not(:disabled)]:hover:text-danger',
   small: 'h-8 px-3 text-sm',

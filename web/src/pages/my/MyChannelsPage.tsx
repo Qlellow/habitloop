@@ -5,6 +5,7 @@ import {
   useBookmarkedChannels,
   useMembership,
   useMyChannels,
+  plainText,
   type ChannelSummary,
 } from '@loop/shared';
 import { ChannelIcon } from '../../components/ChannelIcon';
@@ -19,12 +20,12 @@ function ChannelRow({ channel, action }: { channel: ChannelSummary; action: Reac
     <li className={s.channelItem}>
       <div className={s.channel}>
         <Link to={`/c/${channel.slug}`} className={s.channelLink} onPointerEnter={preload.channel}>
-          <ChannelIcon slug={channel.slug} name={channel.name} size={40} />
+          <ChannelIcon channel={channel} size={40} />
           <span className={s.channelBody}>
             <span className={s.channelName}>{channel.name}</span>
             <span className={s.channelMeta}>
               c/{channel.slug} · 멤버 {compact(channel.memberCount)} · 글 {compact(channel.postCount)}
-              {channel.description && ` · ${channel.description}`}
+              {channel.description && ` · ${plainText(channel.description)}`}
             </span>
           </span>
         </Link>

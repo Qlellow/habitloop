@@ -20,14 +20,15 @@ public class Channel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** URL 에 쓰이는 고유 주소 (/c/{slug}). 만든 뒤에는 바꿀 수 없다. */
+    /** 고리: URL 에 쓰이는 채널의 짧은 이름 (/c/{slug}). 만든 뒤에는 바꿀 수 없다. */
     @Column(nullable = false, unique = true, length = 30, updatable = false)
     private String slug;
 
     @Column(nullable = false, unique = true, length = 20)
     private String name;
 
-    @Column(nullable = false, length = 200)
+    /** 마크다운 */
+    @Column(nullable = false, length = 2000)
     private String description;
 
     /** 기본 채널은 운영 채널이라 주인이 없다 */
@@ -41,6 +42,10 @@ public class Channel {
     /** 원자적 UPDATE 쿼리로만 변경한다 */
     @Column(nullable = false, updatable = false)
     private int memberCount;
+
+    /** 프로필 이미지 버전. 0 보다 크면 이미지가 있다. 원자적 UPDATE 쿼리로만 변경한다 */
+    @Column(nullable = false, updatable = false)
+    private int iconVersion;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -90,6 +95,10 @@ public class Channel {
 
     public int getMemberCount() {
         return memberCount;
+    }
+
+    public int getIconVersion() {
+        return iconVersion;
     }
 
     public Instant getCreatedAt() {

@@ -87,7 +87,7 @@ export function SiteHeader() {
     <header className={s.header}>
       <div className={s.headerInner}>
         <Link to="/" className={s.logo} aria-label="루프 홈">
-          <span className={s.logoMark} />
+          <LogoMark className={s.logoMark} />
           루프
         </Link>
         <nav className={s.nav} aria-label="주요 메뉴">
@@ -144,8 +144,49 @@ export function Page({
   );
 }
 
-export function Footer() {
-  return <p className={s.footer}>© 루프 커뮤니티</p>;
+/**
+ * 루프 로고: 무한대(∞). 두 고리가 겹치는 가운데에서 뒤로 지나가는 선을 살짝 끊어,
+ * 입체로 볼 때 뒤쪽이 가려진 것처럼 보이게 한다. (앞 선 아래에 배경색 굵은 선을 깔아 틈을 만든다)
+ */
+export function LogoMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <rect width="24" height="24" rx="6" fill="var(--primary)" />
+      <g fill="none" strokeLinecap="round">
+        <path
+          d="M12 12C13 10 14 8.5 15.5 8.5a3.5 3.5 0 0 1 0 7C14 15.5 13 14 12 12S10 8.5 8.5 8.5a3.5 3.5 0 0 0 0 7C10 15.5 11 14 12 12Z"
+          stroke="#fff"
+          strokeWidth="2"
+        />
+        <path
+          d="M10.6 14.2C11.1 13.6 11.5 12.9 12 12S12.9 10.4 13.4 9.8"
+          stroke="var(--primary)"
+          strokeWidth="5"
+          strokeLinecap="butt"
+        />
+        <path d="M8.5 15.5C10 15.5 11 14 12 12S14 8.5 15.5 8.5" stroke="#fff" strokeWidth="2" />
+      </g>
+    </svg>
+  );
+}
+
+/** 모든 페이지 맨 아래에 붙는 사이트 푸터 */
+export function SiteFooter() {
+  return (
+    <footer className={s.footer}>
+      <div className={s.footerInner}>
+        <Link to="/" className={s.footerLogo} aria-label="루프 홈">
+          <LogoMark className="w-5 h-5" />
+          루프
+        </Link>
+        <nav className={s.footerNav} aria-label="바로가기">
+          <Link to="/">홈</Link>
+          <Link to="/channels">채널</Link>
+        </nav>
+        <p className={s.copyright}>© 루프 커뮤니티</p>
+      </div>
+    </footer>
+  );
 }
 
 export { s as layoutStyles };

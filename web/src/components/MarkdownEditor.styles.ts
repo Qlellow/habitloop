@@ -20,6 +20,9 @@ const s = {
   preview: 'min-h-[460px] max-h-[720px] overflow-y-auto px-5 py-[18px] bg-surface',
   previewInSplit: 'border-l border-border max-[860px]:border-l-0 max-[860px]:border-t',
   empty: 'm-0 text-fg-weak',
+  // 채널 소개처럼 짧은 글: 편집 영역을 낮게
+  compact: 'min-h-[220px]',
+  compactPreview: 'min-h-[220px] max-h-[480px]',
 };
 
 export default s;

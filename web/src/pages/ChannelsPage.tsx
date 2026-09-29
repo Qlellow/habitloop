@@ -1,6 +1,6 @@
 import { memo, useDeferredValue, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { compact, timeAgo, useAuth, useChannelPreviews, type ChannelPreview } from '@loop/shared';
+import { compact, timeAgo, useAuth, useChannelPreviews, plainText, type ChannelPreview } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { Page } from '../components/Layout';
 import { preload } from '../lib/preload';
@@ -15,7 +15,7 @@ const ChannelBoard = memo(function ChannelBoard({ channel }: { channel: ChannelP
   return (
     <section className={b.board}>
       <Link to={`/c/${slug}`} className={b.head} onPointerEnter={preload.channel}>
-        <ChannelIcon slug={slug} name={name} size={36} />
+        <ChannelIcon channel={channel} size={36} />
         <span className={b.headText}>
           <span className={b.name}>
             {name}
@@ -29,7 +29,7 @@ const ChannelBoard = memo(function ChannelBoard({ channel }: { channel: ChannelP
           ›
         </span>
       </Link>
-      {description && <p className={b.desc}>{description}</p>}
+      {description && <p className={b.desc}>{plainText(description)}</p>}
       {recentPosts.length > 0 ? (
         <ul className={b.list}>
           {recentPosts.map((post) => (

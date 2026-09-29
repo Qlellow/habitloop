@@ -14,13 +14,15 @@ import {
   usePost,
   useToggleCommentLike,
   useToggleLike,
+  plainText,
   type Comment,
   type PostDetail,
   type PostSummary,
 } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { HeartIcon } from '../components/Icons';
-import { Footer, Page } from '../components/Layout';
+import { Page } from '../components/Layout';
+import { RoleBadge } from '../components/RoleBadge';
 import { Markdown } from '../components/Markdown';
 import { PopularCard } from '../components/Sidebar';
 import { toast } from '../components/Toast';
@@ -64,7 +66,10 @@ function CommentItem({ comment: c, postId, best }: { comment: Comment; postId: n
     <li className={s.comment}>
       <div className={s.commentHead}>
         {best && <span className={s.bestBadge}>BEST</span>}
-        <span className={s.commentAuthor}>{c.authorNickname}</span>
+        <span className={s.commentAuthor}>
+          {c.authorNickname}
+          <RoleBadge role={c.authorRole} size={16} />
+        </span>
         <time className={s.commentTime} dateTime={c.createdAt} title={new Date(c.createdAt).toLocaleString()}>
           {timeAgo(c.createdAt)}
         </time>
@@ -81,11 +86,14 @@ function CommentItem({ comment: c, postId, best }: { comment: Comment; postId: n
           <HeartIcon filled={c.liked} />
           {c.likeCount > 0 ? compact(c.likeCount) : '좋아요'}
         </button>
-        {c.mine && !best && (
+        {c.deletable && !best && (
           <button
             type="button"
             className={s.commentDelete}
-            onClick={() => confirm('댓글을 삭제할까요?') && remove.mutate(c.id)}
+            onClick={() =>
+              confirm(c.mine ? '댓글을 삭제할까요?' : `${c.authorNickname}님의 댓글을 운영진 권한으로 삭제할까요?`) &&
+              remove.mutate(c.id, { onError: (e) => toast(e.message) })
+            }
           >
             삭제
           </button>
@@ -189,7 +197,7 @@ function ChannelCard({ slug }: { slug: string }) {
   return (
     <section className={cn(ui.card, s.sideChannel)}>
       <div className={s.sideChannelTop}>
-        <ChannelIcon slug={data.slug} name={data.name} size={40} />
+        <ChannelIcon channel={data} size={40} />
         <div>
           <div className={s.sideChannelName}>{data.name}</div>
           <div className={s.bannerSlug}>
@@ -197,7 +205,7 @@ function ChannelCard({ slug }: { slug: string }) {
           </div>
         </div>
       </div>
-      {data.description && <p className={s.sideChannelDesc}>{data.description}</p>}
+      {data.description && <p className={s.sideChannelDesc}>{plainText(data.description)}</p>}
       <Link to={`/c/${slug}`} className={cn(ui.button, ui.secondary, ui.full)} onPointerEnter={preload.channel}>
         채널로 가기
       </Link>
@@ -217,7 +225,7 @@ export default function PostDetailPage() {
   }
 
   const onDelete = () => {
-    if (!post || !confirm('글을 삭제할까요?')) return;
+    if (!post || !confirm(post.mine ? '글을 삭제할까요?' : `${post.author.nickname}님의 글을 운영진 권한으로 삭제할까요?`)) return;
     del.mutate(id, {
       onSuccess: () => {
         toast('글을 삭제했어요');
@@ -237,7 +245,6 @@ export default function PostDetailPage() {
           <>
             <ChannelCard slug={slug} />
             <PopularCard channel={slug} title="이 채널 인기글" />
-            <Footer />
           </>
         )
       }
@@ -268,7 +275,10 @@ export default function PostDetailPage() {
                 {post.author.nickname.slice(0, 1)}
               </span>
               <div>
-                <div className={s.bylineName}>{post.author.nickname}</div>
+                <div className={s.bylineName}>
+                  {post.author.nickname}
+                  <RoleBadge role={post.author.role} />
+                </div>
                 <div className={s.bylineMeta}>
                   <time dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString()}>
                     {timeAgo(post.createdAt)}
@@ -276,11 +286,13 @@ export default function PostDetailPage() {
                   · 조회 {compact(post.viewCount)}
                 </div>
               </div>
-              {post.mine && !isPlaceholderData && (
+              {(post.mine || post.canModerate) && !isPlaceholderData && (
                 <div className={s.bylineActions}>
-                  <Link to={`/posts/${id}/edit`} className={cn(ui.button, ui.text, ui.small)}>
-                    수정
-                  </Link>
+                  {post.mine && (
+                    <Link to={`/posts/${id}/edit`} className={cn(ui.button, ui.text, ui.small)}>
+                      수정
+                    </Link>
+                  )}
                   <button type="button" className={cn(ui.button, ui.text, ui.small, ui.danger)} onClick={onDelete}>
                     삭제
                   </button>

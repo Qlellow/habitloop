@@ -42,3 +42,18 @@ export function channelColor(slug: string): string {
 export function safeNext(next: string | null | undefined, fallback = '/'): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : fallback;
 }
+
+/**
+ * 마크다운을 한 줄 요약용 평문으로 (채널 목록의 소개 등).
+ * 제목·목록·인용 기호, 강조, 코드, 링크·이미지 문법을 걷어 내고 공백을 하나로 모은다.
+ */
+export function plainText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, '')
+    .replace(/(\*\*|__|\*|~~|`)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

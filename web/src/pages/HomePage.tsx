@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth, useFeed } from '@loop/shared';
-import { Footer, Page } from '../components/Layout';
+import { Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { ChannelSidebar, PopularCard } from '../components/Sidebar';
 import { preload } from '../lib/preload';
@@ -34,7 +34,6 @@ export default function HomePage() {
         <>
           <PopularCard />
           <MakeChannelCard />
-          <Footer />
         </>
       }
     >

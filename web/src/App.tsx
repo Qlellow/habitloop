@@ -1,7 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, ScrollRestoration, useLocation } from 'react-router-dom';
 import { useAuth } from '@loop/shared';
-import { SiteHeader } from './components/Layout';
+import { SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
 import { loaders } from './lib/preload';
 import HomePage from './pages/HomePage';
@@ -32,10 +32,13 @@ function RequireAuth({ children }: { children: ReactNode }) {
 function Root() {
   return (
     <>
-      <SiteHeader />
-      <Suspense fallback={null}>
-        <Outlet />
-      </Suspense>
+      <div className="flex flex-col min-h-dvh">
+        <SiteHeader />
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
+        <SiteFooter />
+      </div>
       <ScrollRestoration />
       <Toaster />
     </>

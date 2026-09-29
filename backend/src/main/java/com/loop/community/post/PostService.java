@@ -5,6 +5,7 @@ import com.loop.community.channel.ChannelCategory;
 import com.loop.community.channel.ChannelCategoryService;
 import com.loop.community.channel.ChannelMembershipService;
 import com.loop.community.channel.ChannelRepository;
+import com.loop.community.channel.ChannelRole;
 import com.loop.community.channel.ChannelService;
 import com.loop.community.common.ApiException;
 import com.loop.community.common.CursorPage;
@@ -108,10 +109,11 @@ public class PostService {
     @CacheEvict(value = "popularPosts", allEntries = true)
     public void delete(Long userId, Long postId) {
         Post post = postRepository.findById(postId).orElseThrow(PostService::notFound);
-        if (!post.isWrittenBy(userId)) {
+        Long channelId = post.getChannel().getId();
+        // 작성자 본인, 또는 작성자보다 높은 채널 운영진이 지울 수 있다
+        if (!post.isWrittenBy(userId) && !canModerate(channelId, userId, post.getAuthor().getId())) {
             throw ApiException.forbidden();
         }
-        Long channelId = post.getChannel().getId();
         postRepository.delete(post); // 댓글·좋아요는 FK ON DELETE CASCADE 로 함께 삭제
         channelRepository.addPostCount(channelId, -1);
         viewCountBuffer.discard(postId);
@@ -151,24 +153,32 @@ public class PostService {
         return postRepository.findWithAuthorById(postId).orElseThrow(PostService::notFound);
     }
 
+    private boolean canModerate(Long channelId, Long userId, Long authorId) {
+        ChannelRole role = channelService.roleOf(channelId, userId);
+        return role != null && role.canModerate(channelService.roleOf(channelId, authorId));
+    }
+
     private PostDetail toDetail(Post post, Long viewerId, boolean liked) {
         User author = post.getAuthor();
         Channel channel = post.getChannel();
         ChannelCategory category = post.getCategory();
+        ChannelRole authorRole = channelService.roleOf(channel.getId(), author.getId());
+        ChannelRole viewerRole = channelService.roleOf(channel.getId(), viewerId);
         return new PostDetail(
                 post.getId(),
-                new ChannelRef(channel.getSlug(), channel.getName()),
+                new ChannelRef(channel.getSlug(), channel.getName(), channel.getIconVersion()),
                 category == null ? null : new CategoryRef(category.getId(), category.getName()),
                 post.getTitle(),
                 post.getContent(),
-                new Author(author.getId(), author.getNickname()),
+                new Author(author.getId(), author.getNickname(), ChannelRole.badge(authorRole)),
                 post.getLikeCount(),
                 post.getCommentCount(),
                 post.getViewCount() + viewCountBuffer.pendingOf(post.getId()),
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
                 liked,
-                viewerId != null && post.isWrittenBy(viewerId));
+                viewerId != null && post.isWrittenBy(viewerId),
+                viewerRole != null && !post.isWrittenBy(viewerId) && viewerRole.canModerate(authorRole));
     }
 
     static ApiException notFound() {

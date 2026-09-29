@@ -17,9 +17,10 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
 
     private static final String SELECT_SUMMARY = """
             select new com.loop.community.post.PostDtos$PostSummary(
-                p.id, c.slug, c.name, cat.name, p.title, p.excerpt, a.nickname,
+                p.id, c.slug, c.name, cat.name, p.title, p.excerpt, a.nickname, m.role,
                 p.likeCount, p.commentCount, p.viewCount, p.createdAt)
             from Post p join p.author a join p.channel c left join p.category cat
+                left join ChannelMember m on m.channelId = c.id and m.userId = a.id
             """;
 
     private final EntityManager em;

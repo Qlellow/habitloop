@@ -19,7 +19,7 @@ module.exports = {
           weak: 'var(--text-weak)',
         },
         line: 'var(--line)',
-        field: 'var(--field)',
+        field: { DEFAULT: 'var(--field)', hover: 'var(--field-hover)' },
         border: 'var(--border)',
         primary: {
           DEFAULT: 'var(--primary)',

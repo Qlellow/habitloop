@@ -10,14 +10,12 @@ const s = {
   pageDesc: 'mt-1 mb-0 text-fg-sub',
 
   // 채널 배너
-  banner: 'px-6 pt-6',
-  bannerTop: 'flex items-center gap-4',
-  bannerInfo: 'flex-1 min-w-0',
+  banner: 'px-6 pt-6 pb-3',
+  bannerTop: 'flex flex-wrap items-center gap-x-4 gap-y-3',
+  bannerInfo: 'flex-1 min-w-[120px]',
   bannerName: 'm-0 text-2xl font-bold text-fg-strong',
-  bannerSlug: 'text-sm text-fg-weak',
+  bannerSlug: 'text-sm text-fg-weak whitespace-nowrap',
   bannerActions: 'flex gap-2',
-  bannerDesc: 'mt-3.5 mb-0 text-fg-sub whitespace-pre-wrap',
-  bannerMeta: 'mt-2 mb-3 text-[13px] text-fg-weak',
 
   // 글 본문
   article: 'px-8 py-7 max-[860px]:px-[18px] max-[860px]:py-[22px]',
@@ -25,7 +23,7 @@ const s = {
   title: 'mt-2 mb-4 text-[28px] font-bold leading-[1.35] text-fg-strong max-[860px]:text-[23px]',
   byline: 'flex items-center gap-2.5 pb-5 border-b border-line',
   avatar: 'flex-none grid place-items-center w-[38px] h-[38px] rounded-full bg-primary-weak text-primary font-bold',
-  bylineName: 'font-semibold text-fg-strong',
+  bylineName: 'flex items-center gap-1.5 font-semibold text-fg-strong',
   bylineMeta: 'text-[13px] text-fg-weak',
   bylineActions: 'ml-auto flex gap-1',
   content: 'mt-6 mb-8 min-h-20',
@@ -43,7 +41,7 @@ const s = {
   // 구분선은 좌우를 본문 여백만큼 들인다 (padding 안쪽에 그려짐)
   comment: `px-5 py-3.5 ${divider} [&:not(:first-child)]:before:-mt-3.5 [&:not(:first-child)]:before:mb-3.5`,
   commentHead: 'flex items-center gap-2 text-sm',
-  commentAuthor: 'font-semibold text-fg-strong',
+  commentAuthor: 'inline-flex items-center gap-1 font-semibold text-fg-strong',
   commentTime: 'text-[13px] text-fg-weak',
   commentBody: 'mt-1 mb-2 whitespace-pre-wrap',
   commentActions: 'flex items-center gap-1',
@@ -59,6 +57,18 @@ const s = {
   // 폼
   formCard: 'px-8 pt-7 pb-8 max-[860px]:px-[18px] max-[860px]:py-[22px]',
   formFoot: 'flex justify-end gap-2 mt-5',
+  iconPicker: 'flex items-center gap-4',
+  staffList: 'list-none m-0 p-0',
+  staffRow: 'flex items-center justify-between gap-3 py-2.5 border-t border-line first:border-t-0',
+  staffName: 'flex items-center gap-1.5 min-w-0 font-semibold text-fg-strong',
+  staffRole: 'text-sm text-fg-weak',
+  staffSearch: 'mt-3 pt-4 border-t border-border flex flex-col gap-1',
+  roleSegment: 'inline-flex p-[3px] rounded-[7px] bg-field',
+  segmentButton:
+    'h-7 px-3 rounded-[5px] text-[13px] font-semibold text-fg-sub hover:text-fg-strong disabled:opacity-60 ' +
+    'aria-pressed:bg-surface aria-pressed:text-fg-strong aria-pressed:shadow-[0_1px_2px_rgba(0,0,0,0.08)]',
+  iconPickerBody: 'flex flex-col gap-2 min-w-0',
+  iconPickerActions: 'flex flex-wrap gap-1.5',
 
   // 로그인 / 가입
   authCard: 'px-9 pt-9 pb-7 max-[860px]:px-[22px] max-[860px]:pt-7 max-[860px]:pb-[22px]',
@@ -71,7 +81,7 @@ const s = {
   sideChannel: 'p-5',
   sideChannelTop: 'flex items-center gap-3 mb-2.5',
   sideChannelName: 'text-[17px] font-bold text-fg-strong',
-  sideChannelDesc: 'mt-0 mb-3.5 text-sm text-fg-sub',
+  sideChannelDesc: 'mt-0 mb-3.5 text-sm text-fg-sub line-clamp-3',
 
   // 채널 관리
   settingsSection: 'p-6',

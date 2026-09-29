@@ -4,6 +4,7 @@ import com.loop.community.channel.Channel;
 import com.loop.community.channel.ChannelCategory;
 import com.loop.community.channel.ChannelCategoryRepository;
 import com.loop.community.channel.ChannelMember;
+import com.loop.community.channel.ChannelRole;
 import com.loop.community.channel.ChannelMemberRepository;
 import com.loop.community.channel.ChannelRepository;
 import com.loop.community.comment.Comment;
@@ -134,6 +135,16 @@ public class DataSeeder implements ApplicationRunner {
         seedCreativeChannel(users);
         seedBooksChannel(users);
         seedMemberships();
+        seedStaff(users);
+    }
+
+    /** 운영진 배지 예시: 창작 채널의 관리자(민트초코) · 매니저(하늘색) */
+    private void seedStaff(List<User> users) {
+        Long creative = channelRepository.findBySlug("creative").orElseThrow().getId();
+        memberRepository.findByChannelIdAndUserId(creative, users.get(1).getId())
+                .ifPresent(m -> m.changeRole(ChannelRole.ADMIN));
+        memberRepository.findByChannelIdAndUserId(creative, users.get(2).getId())
+                .ifPresent(m -> m.changeRole(ChannelRole.MANAGER));
     }
 
     /** 가입 체험용: demo 계정은 아직 가입하지 않은 채널 */
@@ -149,7 +160,7 @@ public class DataSeeder implements ApplicationRunner {
         java.util.Set<String> seen = new java.util.HashSet<>();
         for (Channel c : channelRepository.findAll()) {
             if (c.getOwner() != null && seen.add(c.getId() + ":" + c.getOwner().getId())) {
-                memberRepository.save(new ChannelMember(c.getId(), c.getOwner().getId()));
+                memberRepository.save(new ChannelMember(c.getId(), c.getOwner().getId(), ChannelRole.OWNER));
             }
         }
         for (Post p : postRepository.findAll()) {
@@ -164,10 +175,27 @@ public class DataSeeder implements ApplicationRunner {
         counts.forEach((channelId, n) -> channelRepository.addMemberCount(channelId, n.intValue()));
     }
 
+    /** 긴 마크다운 소개 예시 (채널 헤더의 '더 보기' 확인용) */
+    private static final String CREATIVE_INTRO = """
+            직접 쓴 **소설**과 그린 **그림**을 나누는 채널이에요.
+
+            ## 이용 규칙
+            - 직접 만든 작품만 올려 주세요. 퍼온 작품은 출처가 있어도 삭제돼요.
+            - 소설은 `소설`, 그림은 `일러스트` 카테고리에 올려 주세요.
+            - 서로의 작품에는 따뜻한 감상을 남겨 주세요.
+
+            ## 운영진
+            - ⭐ 소유자: 루프
+            - ⚙️ 관리자: 민트초코
+            - 🔧 매니저: 하늘색
+
+            > 좋은 작품은 공지사항에서 이달의 작품으로 소개해요.
+            """;
+
     /** 채널 안 카테고리 예시: 공지사항(관리자 전용) / 소설 / 일러스트 */
     private void seedCreativeChannel(List<User> users) {
         User owner = users.get(0);
-        Channel creative = channelRepository.save(new Channel("creative", "창작", "직접 쓴 소설과 그린 그림을 나눠요", owner));
+        Channel creative = channelRepository.save(new Channel("creative", "창작", CREATIVE_INTRO, owner));
         ChannelCategory notice = categoryRepository.save(new ChannelCategory(creative, "공지사항", true, 0));
         ChannelCategory novel = categoryRepository.save(new ChannelCategory(creative, "소설", false, 1));
         ChannelCategory art = categoryRepository.save(new ChannelCategory(creative, "일러스트", false, 2));

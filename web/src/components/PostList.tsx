@@ -1,3 +1,4 @@
+import { RoleBadge } from './RoleBadge';
 import { memo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
@@ -38,7 +39,10 @@ export const PostItem = memo(function PostItem({
               <span>·</span>
             </>
           )}
-          <span>{post.authorNickname}</span>
+          <span className="inline-flex items-center gap-1">
+            {post.authorNickname}
+            <RoleBadge role={post.authorRole} size={16} />
+          </span>
           <span>·</span>
           <time dateTime={post.createdAt}>{timeAgo(post.createdAt)}</time>
         </div>

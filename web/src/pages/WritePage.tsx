@@ -25,9 +25,9 @@ function PostForm({
   const navigate = useNavigate();
   const save = useSavePost(initial?.id);
 
-  // 관리자 전용 카테고리는 채널 관리자에게만 보인다. (글에 이미 들어 있던 카테고리는 그대로 둘 수 있다)
+  // 운영진 전용 카테고리는 채널 운영진에게만 보인다. (글에 이미 들어 있던 카테고리는 그대로 둘 수 있다)
   const selectable = channel.categories.filter(
-    (c) => !c.ownerOnly || channel.mine || c.id === initial?.category?.id,
+    (c) => !c.ownerOnly || channel.staff || c.id === initial?.category?.id,
   );
   const initialCategory = initial
     ? (initial.category?.id ?? null)
@@ -43,7 +43,7 @@ function PostForm({
     ...selectable.map((c) => ({
       value: c.id,
       label: c.name,
-      hint: c.ownerOnly ? <span className={ui.badge}>관리자 전용</span> : undefined,
+      hint: c.ownerOnly ? <span className={ui.badge}>운영진 전용</span> : undefined,
     })),
   ];
 
@@ -66,7 +66,7 @@ function PostForm({
     <>
       <div className={w.head}>
         <Link to={`/c/${channel.slug}`} className={w.channel}>
-          <ChannelIcon slug={channel.slug} name={channel.name} size={40} />
+          <ChannelIcon channel={channel} size={40} />
           <span>
             <span className={w.channelName}>{channel.name}</span>
             <span className={w.channelSlug}>c/{channel.slug}</span>
@@ -113,7 +113,7 @@ function PostForm({
 function JoinGate({ channel }: { channel: ChannelDetail }) {
   return (
     <div className={cn(ui.card, w.gate)}>
-      <ChannelIcon slug={channel.slug} name={channel.name} size={56} />
+      <ChannelIcon channel={channel} size={56} />
       <h1 className={w.gateTitle}>{channel.name} 채널에 가입해야 글을 쓸 수 있어요</h1>
       <p className={w.gateDesc}>글 보기, 공감, 댓글은 가입하지 않아도 할 수 있어요.</p>
       <div className={w.gateActions}>

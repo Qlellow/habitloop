@@ -351,6 +351,129 @@ class CommunityFlowTest {
     }
 
     @Test
+    void channelStaffRolesAndBadges() throws Exception {
+        String owner = signup("staff-owner@test.dev", "방장");
+        String admin = signup("staff-admin@test.dev", "관리");
+        String manager = signup("staff-manager@test.dev", "매니");
+        String member = signup("staff-member@test.dev", "멤버");
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "staffs", "name", "운영진채널")), owner))
+                .andExpect(jsonPath("$.myRole").value("OWNER"))
+                .andExpect(jsonPath("$.canManage").value(true));
+        for (String t : new String[]{admin, manager, member}) {
+            mvc.perform(auth(post("/api/channels/staffs/members"), t)).andExpect(status().isOk());
+        }
+        long adminId = body(mvc.perform(auth(get("/api/channels/staffs/members").param("q", "관리"), owner))
+                .andExpect(jsonPath("$", hasSize(1)))).get(0).get("userId").asLong();
+        long managerId = body(mvc.perform(auth(get("/api/channels/staffs/members").param("q", "매니"), owner)))
+                .get(0).get("userId").asLong();
+
+        // 운영진 지정은 소유자만
+        mvc.perform(auth(json(put("/api/channels/staffs/members/" + adminId + "/role"), Map.of("role", "ADMIN")), member))
+                .andExpect(status().isForbidden());
+        mvc.perform(auth(get("/api/channels/staffs/members").param("q", "관리"), member)).andExpect(status().isForbidden());
+        mvc.perform(auth(json(put("/api/channels/staffs/members/" + adminId + "/role"), Map.of("role", "ADMIN")), owner))
+                .andExpect(status().isOk());
+        mvc.perform(auth(json(put("/api/channels/staffs/members/" + managerId + "/role"), Map.of("role", "MANAGER")), owner))
+                .andExpect(jsonPath("$[0].role").value("OWNER"))
+                .andExpect(jsonPath("$[1].role").value("ADMIN"))
+                .andExpect(jsonPath("$[2].role").value("MANAGER"));
+        mvc.perform(auth(json(put("/api/channels/staffs/members/" + adminId + "/role"), Map.of("role", "OWNER")), owner))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/channels/staffs/staff")).andExpect(jsonPath("$", hasSize(3)));
+
+        // 관리자는 채널을 관리할 수 있고, 매니저는 못 한다
+        mvc.perform(auth(get("/api/channels/staffs"), admin))
+                .andExpect(jsonPath("$.myRole").value("ADMIN"))
+                .andExpect(jsonPath("$.canManage").value(true))
+                .andExpect(jsonPath("$.mine").value(false));
+        mvc.perform(auth(json(put("/api/channels/staffs"), Map.of("name", "운영진채널", "description", "## 소개\n\n**마크다운**")), admin))
+                .andExpect(status().isOk());
+        mvc.perform(auth(json(put("/api/channels/staffs"), Map.of("name", "운영진채널", "description", "x")), manager))
+                .andExpect(status().isForbidden());
+        mvc.perform(auth(get("/api/channels/staffs"), member))
+                .andExpect(jsonPath("$.myRole").doesNotExist())
+                .andExpect(jsonPath("$.staff").value(false));
+
+        // 운영진 전용 카테고리: 매니저는 쓸 수 있고 일반 멤버는 못 쓴다
+        long notice = body(mvc.perform(auth(json(post("/api/channels/staffs/categories"),
+                Map.of("name", "공지", "ownerOnly", true)), admin))).get(0).get("id").asLong();
+        long staffPost = body(mvc.perform(auth(json(post("/api/posts"),
+                        Map.of("channel", "staffs", "categoryId", notice, "title", "공지", "content", "c")), manager))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.author.role").value("MANAGER"))).get("id").asLong();
+        mvc.perform(auth(json(post("/api/posts"),
+                        Map.of("channel", "staffs", "categoryId", notice, "title", "t", "content", "c")), member))
+                .andExpect(status().isForbidden());
+
+        // 목록·댓글의 닉네임 옆 배지: 일반 멤버는 역할이 없다
+        long memberPost = body(mvc.perform(auth(json(post("/api/posts"),
+                Map.of("channel", "staffs", "title", "멤버 글", "content", "c")), member))).get("id").asLong();
+        mvc.perform(get("/api/posts").param("channel", "staffs"))
+                .andExpect(jsonPath("$.items[0].authorRole").doesNotExist())
+                .andExpect(jsonPath("$.items[1].authorRole").value("MANAGER"));
+        mvc.perform(auth(json(post("/api/posts/" + memberPost + "/comments"), Map.of("content", "환영")), owner))
+                .andExpect(jsonPath("$.authorRole").value("OWNER"));
+        long memberComment = body(mvc.perform(auth(json(post("/api/posts/" + memberPost + "/comments"),
+                Map.of("content", "hi")), member))).get("id").asLong();
+        mvc.perform(get("/api/posts/" + memberPost + "/comments"))
+                .andExpect(jsonPath("$.items[0].authorRole").value("OWNER"))
+                .andExpect(jsonPath("$.items[1].authorRole").doesNotExist());
+
+        // 운영진은 다른 사람의 댓글·글을 지울 수 있다. 일반 멤버는 못 한다
+        mvc.perform(auth(get("/api/posts/" + memberPost), manager)).andExpect(jsonPath("$.canModerate").value(true));
+        mvc.perform(auth(get("/api/posts/" + staffPost), member)).andExpect(jsonPath("$.canModerate").value(false));
+        mvc.perform(auth(delete("/api/posts/" + staffPost), member)).andExpect(status().isForbidden());
+        // 매니저는 더 높은 운영진(소유자)의 댓글은 지울 수 없다
+        long ownerComment = body(mvc.perform(get("/api/posts/" + memberPost + "/comments"))).get("items").get(0).get("id").asLong();
+        mvc.perform(auth(get("/api/posts/" + memberPost + "/comments"), manager))
+                .andExpect(jsonPath("$.items[0].deletable").value(false))
+                .andExpect(jsonPath("$.items[1].deletable").value(true));
+        mvc.perform(auth(delete("/api/posts/" + memberPost + "/comments/" + ownerComment), manager))
+                .andExpect(status().isForbidden());
+        mvc.perform(auth(get("/api/posts/" + staffPost), admin)).andExpect(jsonPath("$.canModerate").value(true));
+        mvc.perform(auth(delete("/api/posts/" + memberPost + "/comments/" + memberComment), manager))
+                .andExpect(status().isNoContent());
+        mvc.perform(auth(delete("/api/posts/" + memberPost), manager)).andExpect(status().isNoContent());
+
+        // 일반 멤버로 되돌리면 권한과 배지가 없어진다
+        mvc.perform(auth(json(put("/api/channels/staffs/members/" + managerId + "/role"), Map.of("role", "MEMBER")), owner))
+                .andExpect(jsonPath("$", hasSize(2)));
+        mvc.perform(get("/api/posts/" + staffPost)).andExpect(jsonPath("$.author.role").doesNotExist());
+    }
+
+    @Test
+    void channelIconUpload() throws Exception {
+        String owner = signup("icon-owner@test.dev", "아이콘");
+        String other = signup("icon-other@test.dev", "남남");
+        mvc.perform(auth(json(post("/api/channels"), Map.of("slug", "icons", "name", "아이콘채널")), owner))
+                .andExpect(jsonPath("$.iconVersion").value(0));
+        mvc.perform(get("/api/channels/icons/icon")).andExpect(status().isNotFound());
+
+        byte[] png = {(byte) 0x89, 'P', 'N', 'G', 1, 2, 3};
+        mvc.perform(auth(put("/api/channels/icons/icon").contentType(MediaType.IMAGE_PNG).content(png), other))
+                .andExpect(status().isForbidden());
+        mvc.perform(auth(put("/api/channels/icons/icon").contentType(MediaType.TEXT_HTML).content(png), owner))
+                .andExpect(status().isBadRequest());
+        mvc.perform(auth(put("/api/channels/icons/icon").contentType(MediaType.IMAGE_PNG).content(new byte[600 * 1024]), owner))
+                .andExpect(status().isBadRequest());
+        mvc.perform(auth(put("/api/channels/icons/icon").contentType(MediaType.IMAGE_PNG).content(png), owner))
+                .andExpect(jsonPath("$.iconVersion").value(1));
+        mvc.perform(get("/api/channels/icons/icon").param("v", "1"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().bytes(png))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Cache-Control", org.hamcrest.Matchers.containsString("immutable")));
+        mvc.perform(get("/api/channels").param("q", "아이콘채널")).andExpect(jsonPath("$[0].iconVersion").value(1));
+
+        // 지우면 음수 버전이 되고, 다시 올리면 옛 주소와 겹치지 않는 새 버전이 된다
+        mvc.perform(auth(delete("/api/channels/icons/icon"), owner)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/channels/icons")).andExpect(jsonPath("$.iconVersion").value(-1));
+        mvc.perform(get("/api/channels/icons/icon")).andExpect(status().isNotFound());
+        mvc.perform(auth(put("/api/channels/icons/icon").contentType(MediaType.IMAGE_PNG).content(png), owner))
+                .andExpect(jsonPath("$.iconVersion").value(2));
+    }
+
+    @Test
     void bookmarksAndProfile() throws Exception {
         String me = signup("mypage@test.dev", "마이페이지");
         signup("taken@test.dev", "이미있음");

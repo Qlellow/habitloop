@@ -2,6 +2,7 @@ package com.loop.community.post;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import com.loop.community.channel.ChannelRole;
 import java.time.Instant;
 
 public final class PostDtos {
@@ -31,16 +32,23 @@ public final class PostDtos {
             String title,
             String excerpt,
             String authorNickname,
+            ChannelRole authorRole,
             int likeCount,
             int commentCount,
             long viewCount,
             Instant createdAt) {
+
+        /** authorRole: 작성자의 채널 운영진 역할 (닉네임 옆 배지). 일반 멤버는 null */
+        public PostSummary {
+            authorRole = ChannelRole.badge(authorRole);
+        }
     }
 
-    public record Author(Long id, String nickname) {
+    /** role: 이 글이 있는 채널에서의 운영진 역할 (일반 멤버는 null) */
+    public record Author(Long id, String nickname, ChannelRole role) {
     }
 
-    public record ChannelRef(String slug, String name) {
+    public record ChannelRef(String slug, String name, int iconVersion) {
     }
 
     public record CategoryRef(Long id, String name) {
@@ -59,7 +67,9 @@ public final class PostDtos {
             Instant createdAt,
             Instant updatedAt,
             boolean liked,
-            boolean mine) {
+            boolean mine,
+            boolean canModerate) {
+        // canModerate: 보는 사람이 작성자보다 높은 채널 운영진이라 이 글을 지울 수 있는지
     }
 
     public record LikeResponse(boolean liked, int likeCount) {

@@ -5,9 +5,7 @@ const s = {
     'backdrop-blur-[14px] backdrop-saturate-[1.8]',
   headerInner: 'flex items-center gap-5 h-header max-w-page mx-auto px-6 max-[860px]:gap-3 max-[860px]:px-4',
   logo: 'flex-none flex items-center gap-2 text-xl font-extrabold tracking-[-0.03em] text-fg-strong',
-  logoMark:
-    "grid place-items-center w-7 h-7 rounded-sm bg-primary after:content-[''] after:w-[11px] after:h-[11px] " +
-    'after:rounded-full after:border-[3px] after:border-white',
+  logoMark: 'w-7 h-7',
   // 아주 좁은 화면: 홈은 로고로, 채널은 검색으로 갈 수 있으니 글자 메뉴를 숨겨 검색창 자리를 만든다
   nav: 'flex gap-0.5 max-[520px]:hidden',
   navLink:
@@ -30,7 +28,7 @@ const s = {
   menuItem: 'block w-full px-3 py-[9px] rounded-sm text-left text-[15px] text-fg hover:bg-field',
 
   // 페이지 그리드: 창이 좁아지면 왼쪽 → 오른쪽 사이드바 순서로 접는다 (일반 반응형 웹)
-  page: 'grid items-start gap-6 max-w-page mx-auto px-6 pt-7 pb-20 max-[860px]:px-4 max-[860px]:pt-5 max-[860px]:pb-16',
+  page: 'grid items-start gap-6 w-full max-w-page mx-auto px-6 pt-7 pb-20 max-[860px]:px-4 max-[860px]:pt-5 max-[860px]:pb-16',
   three: 'grid-cols-[220px_minmax(0,1fr)_300px] max-[1100px]:grid-cols-[minmax(0,1fr)_300px] max-[860px]:grid-cols-1',
   twoRight: 'grid-cols-[minmax(0,1fr)_320px] max-[860px]:grid-cols-1',
   withNav: 'grid-cols-[220px_minmax(0,1fr)] max-w-[1080px] max-[860px]:grid-cols-1',
@@ -41,7 +39,13 @@ const s = {
   leftInThree: 'max-[1100px]:hidden',
   main: 'min-w-0 flex flex-col gap-4',
 
-  footer: 'px-1 pt-1 text-[13px] text-fg-weak',
+  // 사이트 푸터: 페이지가 짧아도 화면 맨 아래에 붙는다 (App 의 Root 가 세로 flex)
+  footer: 'mt-auto border-t border-border bg-surface',
+  footerInner:
+    'flex flex-wrap items-center gap-x-6 gap-y-2 max-w-page mx-auto px-6 py-6 text-[13px] text-fg-weak max-[860px]:px-4',
+  footerLogo: 'flex items-center gap-1.5 text-sm font-extrabold text-fg-sub',
+  footerNav: 'flex gap-4 [&>a:hover]:text-fg-strong',
+  copyright: 'm-0 ml-auto max-[520px]:ml-0 max-[520px]:w-full',
   toast:
     'fixed left-1/2 bottom-8 -translate-x-1/2 z-50 max-w-[calc(100vw-40px)] px-5 py-3 rounded-md bg-toast ' +
     'text-white text-[15px] font-medium shadow-pop animate-toast-in',
