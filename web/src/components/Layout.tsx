@@ -171,6 +171,9 @@ export function LogoMark({ className }: { className?: string }) {
 }
 
 /** 모든 페이지 맨 아래에 붙는 사이트 푸터 */
+/** 문의 · 제안 · 버그 제보를 받는 노션 페이지 */
+const CONTACT_URL = 'https://app.notion.com/p/3eae8a58bd17804a97e9d25b148c01fe';
+
 export function SiteFooter() {
   return (
     <footer className={s.footer}>
@@ -179,6 +182,13 @@ export function SiteFooter() {
           <LogoMark className="w-5 h-5" />
           루프
         </Link>
+        {/* 문의·제안·버그 제보는 노션 페이지로 모은다 */}
+        <p className={s.contact}>
+          궁금한 점이나 불편한 점이 있나요?
+          <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer" className={s.contactLink}>
+            노션에 문의 남기기 ↗
+          </a>
+        </p>
         <p className={s.copyright}>© 루프 커뮤니티</p>
       </div>
     </footer>
