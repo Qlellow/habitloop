@@ -45,6 +45,10 @@ const s = {
     'flex flex-wrap items-center gap-x-6 gap-y-2 max-w-page mx-auto px-6 py-6 text-[13px] text-fg-weak max-[860px]:px-4',
   footerLogo: 'flex items-center gap-1.5 text-sm font-extrabold text-fg-sub',
   footerNav: 'flex gap-4 [&>a:hover]:text-fg-strong',
+  contact: 'm-0 flex flex-wrap items-center gap-x-2 gap-y-1',
+  contactLink:
+    'inline-flex items-center h-7 px-2.5 rounded-sm bg-field text-[13px] font-semibold text-fg-sub transition-colors ' +
+    'hover:bg-field-hover hover:text-fg-strong',
   copyright: 'm-0 ml-auto max-[520px]:ml-0 max-[520px]:w-full',
   toast:
     'fixed left-1/2 bottom-8 -translate-x-1/2 z-50 max-w-[calc(100vw-40px)] px-5 py-3 rounded-md bg-toast ' +
