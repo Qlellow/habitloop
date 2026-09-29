@@ -1,0 +1,132 @@
+:root {
+  --grey-50: #f9fafb;
+  --grey-100: #f2f4f6;
+  --grey-200: #e5e8eb;
+  --grey-300: #d1d6db;
+  --grey-400: #b0b8c1;
+  --grey-500: #8b95a1;
+  --grey-600: #6b7684;
+  --grey-700: #4e5968;
+  --grey-800: #333d4b;
+  --grey-900: #191f28;
+
+  --blue-50: #e8f3ff;
+  --blue-500: #3182f6;
+  --blue-600: #2272eb;
+  --red-500: #f04452;
+  --red-50: #ffeeee;
+
+  --bg: var(--grey-50);
+  --surface: #ffffff;
+  --surface-pressed: var(--grey-50);
+  --text-strong: var(--grey-900);
+  --text: var(--grey-800);
+  --text-sub: var(--grey-600);
+  --text-weak: var(--grey-500);
+  --line: var(--grey-100);
+  --field: var(--grey-100);
+  --primary: var(--blue-500);
+  --primary-pressed: var(--blue-600);
+  --primary-weak: var(--blue-50);
+  --danger: var(--red-500);
+  --skeleton: var(--grey-100);
+
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --header-h: 64px;
+  --page-w: 1240px;
+  --border: var(--grey-200);
+  --shadow-pop: 0 12px 32px rgba(0, 29, 58, 0.14);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101013;
+    --border: #2a2a31;
+    --surface: #1c1c21;
+    --surface-pressed: #26262c;
+    --text-strong: #f2f2f4;
+    --text: #d9d9de;
+    --text-sub: #9e9ea6;
+    --text-weak: #7e7e87;
+    --line: #2a2a31;
+    --field: #2a2a31;
+    --primary-weak: rgba(49, 130, 246, 0.16);
+    --skeleton: #2a2a31;
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
+    'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;
+  min-width: 320px;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  font: inherit;
+  color: var(--text-strong);
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

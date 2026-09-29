@@ -1,0 +1,12 @@
+{
+  "name": "@loop/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "웹(React)과 앱(React Native)이 함께 쓰는 API 클라이언트, 타입, 데이터 훅, 인증 상태",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": "*"
+  }
+}

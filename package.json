@@ -1,0 +1,16 @@
+{
+  "name": "loop",
+  "private": true,
+  "description": "루프 커뮤니티 — 웹(React) · 앱(React Native) · 공용 패키지 워크스페이스",
+  "workspaces": [
+    "packages/*",
+    "web",
+    "mobile"
+  ],
+  "scripts": {
+    "web": "npm run dev -w web",
+    "mobile": "npm run start -w mobile",
+    "typecheck": "npm run typecheck -w web && npm run typecheck -w mobile",
+    "build:web": "npm run build -w web"
+  }
+}

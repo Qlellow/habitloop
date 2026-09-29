@@ -1,0 +1,17 @@
+import { Link } from 'react-router-dom';
+import { Page } from '../components/Layout';
+import ui from '../components/ui.module.css';
+
+export default function NotFoundPage({ message = '페이지를 찾을 수 없어요' }: { message?: string }) {
+  return (
+    <Page variant="single">
+      <div className={`${ui.card} ${ui.empty}`} style={{ padding: '80px 20px' }}>
+        <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-strong)', margin: '0 0 8px' }}>{message}</p>
+        <p style={{ margin: '0 0 24px' }}>주소가 맞는지 확인해 주세요.</p>
+        <Link to="/" className={`${ui.button} ${ui.primary}`}>
+          홈으로 가기
+        </Link>
+      </div>
+    </Page>
+  );
+}

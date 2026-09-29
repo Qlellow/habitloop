@@ -1,0 +1,662 @@
+/* ───── 페이지 머리 ───── */
+.pageHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.pageDesc {
+  margin: 4px 0 0;
+  color: var(--text-sub);
+}
+
+/* ───── 채널 배너 ───── */
+.banner {
+  padding: 24px 24px 0;
+}
+
+.bannerTop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bannerInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.bannerName {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.bannerSlug {
+  font-size: 14px;
+  color: var(--text-weak);
+}
+
+.bannerActions {
+  display: flex;
+  gap: 8px;
+}
+
+.bannerDesc {
+  margin: 14px 0 0;
+  color: var(--text-sub);
+  white-space: pre-wrap;
+}
+
+.bannerMeta {
+  margin: 8px 0 12px;
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+/* ───── 글 본문 ───── */
+.article {
+  padding: 28px 32px 28px;
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-weak);
+}
+
+.crumbs a {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.crumbs a:hover {
+  text-decoration: underline;
+}
+
+.title {
+  margin: 8px 0 16px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-strong);
+}
+
+.byline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--primary-weak);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.bylineName {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.bylineMeta {
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+.bylineActions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.content {
+  margin: 24px 0 32px;
+  min-height: 80px;
+}
+
+.reactions {
+  display: flex;
+  justify-content: center;
+}
+
+.likeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-weight: 600;
+  color: var(--text-sub);
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.likeButton:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.likeButton[aria-pressed='true'] {
+  border-color: var(--danger);
+  background: var(--red-50);
+  color: var(--danger);
+}
+
+@media (prefers-color-scheme: dark) {
+  .likeButton[aria-pressed='true'] {
+    background: rgba(240, 68, 82, 0.14);
+  }
+}
+
+.likeButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ───── 댓글 ───── */
+.composer {
+  padding: 0 20px 16px;
+}
+
+.composer textarea {
+  min-height: 84px;
+}
+
+.composerFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+.loginPrompt {
+  margin: 0 20px 16px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--field);
+  text-align: center;
+  color: var(--text-sub);
+}
+
+.loginPrompt a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.comments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.comment {
+  padding: 14px 20px;
+}
+
+.comment + .comment {
+  border-top: 1px solid var(--line);
+}
+
+.commentHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.commentAuthor {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.commentTime {
+  color: var(--text-weak);
+  font-size: 13px;
+}
+
+.commentBody {
+  margin: 4px 0 8px;
+  white-space: pre-wrap;
+}
+
+.commentActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.commentLike {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.commentLike:hover {
+  background: var(--field);
+}
+
+.commentLike svg {
+  width: 15px;
+  height: 15px;
+}
+
+.commentLike[aria-pressed='true'] {
+  color: var(--danger);
+}
+
+.commentDelete {
+  font-size: 13px;
+  color: var(--text-weak);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.commentDelete:hover {
+  background: var(--field);
+  color: var(--danger);
+}
+
+.bestList {
+  list-style: none;
+  margin: 0 20px 16px;
+  padding: 2px 0;
+  border-radius: var(--radius-md);
+  background: var(--primary-weak);
+}
+
+.bestList .comment + .comment {
+  border-top-color: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.bestBadge {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* ───── 폼 ───── */
+.formCard {
+  padding: 28px 32px 32px;
+}
+
+.formFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.picked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  text-align: left;
+  width: 100%;
+}
+
+.pickedName {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.pickedChange {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.pickerPanel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.pickerPanel input {
+  border-radius: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pickerList {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+/* ───── 로그인 / 가입 ───── */
+.authCard {
+  padding: 36px 36px 28px;
+}
+
+.authTitle {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.authDesc {
+  margin: 0 0 28px;
+  color: var(--text-sub);
+}
+
+.authSwitch {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.authSwitch a {
+  margin-left: 6px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.hint {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+/* ───── 채널 목록 ───── */
+.channelGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.channelCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.channelCard:hover {
+  border-color: var(--primary);
+  box-shadow: 0 6px 20px rgba(49, 130, 246, 0.12);
+  transform: translateY(-1px);
+}
+
+.channelCardName {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.channelCardDesc {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-sub);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.channelCardMeta {
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+
+.row:hover {
+  background: var(--field);
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowName {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.rowDesc {
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+/* ───── 채널 카드 (사이드바) ───── */
+.sideChannel {
+  padding: 20px;
+}
+
+.sideChannelTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.sideChannelName {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.sideChannelDesc {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+/* ───── 채널 관리 ───── */
+.settingsSection {
+  padding: 24px;
+}
+
+.settingsTitle {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.settingsDesc {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.catTable {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.catRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 12px;
+}
+
+.catRow + .catRow {
+  border-top: 1px solid var(--line);
+}
+
+.catOrder {
+  display: flex;
+  gap: 2px;
+}
+
+.catOrder button {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+.catOrder button:hover:not(:disabled) {
+  background: var(--field);
+}
+
+.catOrder button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.catName {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.catEdit {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.catEdit input[type='text'],
+.catEdit .input {
+  flex: 1;
+  min-width: 160px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.addRow > input {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* ───── 프로필 ───── */
+.profile {
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.profileAvatar {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: var(--primary-weak);
+  color: var(--primary);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.profileName {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.profileEmail {
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--text-weak);
+}
+
+@media (max-width: 860px) {
+  .article,
+  .formCard {
+    padding: 22px 18px;
+  }
+
+  .title {
+    font-size: 23px;
+  }
+
+  .authCard {
+    padding: 28px 22px 22px;
+  }
+}
