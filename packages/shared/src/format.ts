@@ -57,3 +57,20 @@ export function plainText(markdown: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/* ───────── 이메일 인증번호 ───────── */
+
+/** 인증번호 자릿수와 유효 시간 (서버와 같게 맞춘다) */
+export const CODE_LENGTH = 6;
+export const CODE_TTL_SECONDS = 5 * 60;
+
+/** 입력한 글자를 인증번호 형식(영문 대문자 + 1~9)으로 정리한다. 소문자는 대문자로 바꾼다 */
+export function cleanCode(input: string): string {
+  return input.toUpperCase().replace(/[^A-Z1-9]/g, '').slice(0, CODE_LENGTH);
+}
+
+/** 남은 초 → "4:05" */
+export function mmss(seconds: number): string {
+  const s = Math.max(0, Math.ceil(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}

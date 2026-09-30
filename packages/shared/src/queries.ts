@@ -682,6 +682,30 @@ export function useResendLoginCode() {
   });
 }
 
+/**
+ * 비밀번호 재설정: 이메일로 번호 받기(challenge) → 번호 확인(resetToken) → 새 비밀번호.
+ * 2단계 인증을 켰는지와 상관없이 항상 이메일 인증을 거친다.
+ */
+export function usePasswordReset() {
+  const sendCode = useMutation({
+    mutationFn: (email: string) =>
+      api<{ challenge: string; maskedEmail: string }>('/api/auth/password/code', { method: 'POST', body: { email } }),
+  });
+  const resend = useMutation({
+    mutationFn: (challenge: string) =>
+      api<{ challenge: string }>('/api/auth/password/resend', { method: 'POST', body: { challenge } }),
+  });
+  const verify = useMutation({
+    mutationFn: (body: { challenge: string; code: string }) =>
+      api<{ resetToken: string }>('/api/auth/password/verify', { method: 'POST', body }),
+  });
+  const reset = useMutation({
+    mutationFn: (body: { resetToken: string; newPassword: string }) =>
+      api<void>('/api/auth/password/reset', { method: 'POST', body }),
+  });
+  return { sendCode, resend, verify, reset };
+}
+
 /** 설정의 2단계 인증: 번호 받기 → 번호 확인해서 켜기, 비밀번호 확인해서 끄기 */
 export function useTwoFactor() {
   const sendCode = useMutation({ mutationFn: () => api<void>('/api/me/2fa/code', { method: 'POST' }) });

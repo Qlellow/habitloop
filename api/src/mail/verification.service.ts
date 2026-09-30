@@ -12,6 +12,7 @@ const CHALLENGE_TTL_MS = 30 * 60_000;
 interface CodeRow {
   id: number;
   email: string;
+  purpose: CodePurpose;
   codeHash: string;
   userId: number | null;
   attempts: number;
@@ -19,14 +20,29 @@ interface CodeRow {
   createdAt: Date;
 }
 
-const SELECT_CODE = `SELECT id, email, code_hash AS "codeHash", user_id AS "userId", attempts,
+const SELECT_CODE = `SELECT id, email, purpose, code_hash AS "codeHash", user_id AS "userId", attempts,
   expires_at AS "expiresAt", created_at AS "createdAt" FROM email_codes`;
 
 const hash = (code: string) => createHash('sha256').update(code, 'utf8').digest('hex');
 
+/** 인증번호에 쓰는 글자: 영문 대문자와 1~9 (헷갈리는 0 은 뺀다) */
+export const CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789';
+export const CODE_LENGTH = 6;
+export const CODE_PATTERN = new RegExp(`^[${CODE_CHARS}]{${CODE_LENGTH}}$`);
+
+const newCode = () => Array.from({ length: CODE_LENGTH }, () => CODE_CHARS[randomInt(CODE_CHARS.length)]).join('');
+/** 소문자로 입력해도 같은 번호로 본다 (공백도 무시) */
+export const normalizeCode = (code: unknown) => String(code ?? '').replace(/\s/g, '').toUpperCase();
+
+/** 번호 입력 화면을 쓰는 용도: 비밀번호(또는 이메일)를 확인한 사람만 challenge 로 번호를 입력할 수 있다 */
+const CHALLENGE_PURPOSES: CodePurpose[] = ['LOGIN', 'PASSWORD_RESET'];
+
+const expiredMessage = (purpose: CodePurpose) =>
+  purpose === 'PASSWORD_RESET' ? '인증 시간이 지났어요. 처음부터 다시 시도해 주세요' : '인증 시간이 지났어요. 다시 로그인해 주세요';
+
 /**
  * 이메일 인증번호 발급과 확인.
- * - 6자리 숫자, 10분 유효, 해시만 저장
+ * - 영문 대문자·숫자(1~9) 6자리, 5분 유효, 해시만 저장
  * - 5번 틀리면 폐기 (다시 받아야 한다), 재발송은 60초 간격 · 한 시간에 10번까지
  * - 다 쓴 번호는 지우지 않고 만료시킨다 (한 시간 발송 횟수를 세는 데 쓴다). 하루 지난 기록은 보낼 때 정리한다
  */
@@ -39,7 +55,7 @@ export class VerificationService {
     private readonly mailer: Mailer,
   ) {}
 
-  /** 인증번호를 만들어 메일로 보낸다. 로그인용이면 번호 입력 화면에서 쓸 일회용 challenge 를 돌려준다 */
+  /** 인증번호를 만들어 메일로 보낸다. 로그인·비밀번호 재설정용이면 번호 입력 화면에서 쓸 일회용 challenge 를 돌려준다 */
   async send(email: string, purpose: CodePurpose, userId: number | null): Promise<string | undefined> {
     const now = Date.now();
     const last = await this.db.one<CodeRow>(`${SELECT_CODE} WHERE email = $1 AND purpose = $2 ORDER BY id DESC LIMIT 1`, [email, purpose]);
@@ -53,8 +69,8 @@ export class VerificationService {
     );
     if (sent!.n >= HOURLY_LIMIT) throw ApiError.tooMany('인증번호를 너무 많이 요청했어요. 한 시간 뒤에 다시 시도해 주세요');
 
-    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    const challenge = purpose === 'LOGIN' ? randomBytes(32).toString('base64url') : undefined;
+    const code = newCode();
+    const challenge = CHALLENGE_PURPOSES.includes(purpose) ? randomBytes(32).toString('base64url') : undefined;
     await this.db.transaction(async () => {
       await this.db.execute("DELETE FROM email_codes WHERE created_at < now() - interval '1 day'");
       await this.db.execute('UPDATE email_codes SET expires_at = now() WHERE email = $1 AND purpose = $2 AND expires_at > now()', [email, purpose]);
@@ -75,21 +91,19 @@ export class VerificationService {
     await this.check(saved, code);
   }
 
-  /** 2단계 인증 로그인: challenge 로 번호를 찾아 확인하고, 그 번호를 받은 사용자 id 를 돌려준다 */
-  async verifyChallenge(challenge: string, code: string): Promise<number> {
-    const saved = await this.db.one<CodeRow>(`${SELECT_CODE} WHERE challenge = $1`, [challenge]);
-    if (!saved) throw ApiError.badRequest('인증 시간이 지났어요. 다시 로그인해 주세요');
+  /** challenge 로 번호를 찾아 확인하고, 그 번호를 받은 사용자 id 를 돌려준다 (다른 용도의 challenge 는 받지 않는다) */
+  async verifyChallenge(purpose: CodePurpose, challenge: string, code: string): Promise<number> {
+    const saved = await this.db.one<CodeRow>(`${SELECT_CODE} WHERE challenge = $1 AND purpose = $2`, [challenge, purpose]);
+    if (!saved) throw ApiError.badRequest(expiredMessage(purpose));
     await this.check(saved, code);
     return saved.userId!;
   }
 
-  /** 2단계 인증 로그인에서 '다시 받기': 같은 사람에게 새 번호와 새 challenge 를 보낸다 */
-  async resendChallenge(challenge: string): Promise<string> {
-    const saved = await this.db.one<CodeRow>(`${SELECT_CODE} WHERE challenge = $1`, [challenge]);
-    if (!saved || saved.createdAt.getTime() < Date.now() - CHALLENGE_TTL_MS) {
-      throw ApiError.badRequest('인증 시간이 지났어요. 다시 로그인해 주세요');
-    }
-    return (await this.send(saved.email, 'LOGIN', saved.userId))!;
+  /** 번호 입력 화면의 '다시 받기': 같은 사람에게 새 번호와 새 challenge 를 보낸다 */
+  async resendChallenge(purpose: CodePurpose, challenge: string): Promise<string> {
+    const saved = await this.db.one<CodeRow>(`${SELECT_CODE} WHERE challenge = $1 AND purpose = $2`, [challenge, purpose]);
+    if (!saved || saved.createdAt.getTime() < Date.now() - CHALLENGE_TTL_MS) throw ApiError.badRequest(expiredMessage(purpose));
+    return (await this.send(saved.email, purpose, saved.userId))!;
   }
 
   /**
@@ -98,7 +112,7 @@ export class VerificationService {
    */
   private async check(saved: CodeRow, code: string) {
     if (saved.expiresAt.getTime() <= Date.now()) throw ApiError.badRequest('인증번호가 만료됐어요. 새 번호를 받아 주세요');
-    const given = Buffer.from(hash(String(code ?? '').trim()));
+    const given = Buffer.from(hash(normalizeCode(code)));
     const match = timingSafeEqual(Buffer.from(saved.codeHash), given);
     if (match) {
       // 한 번 쓴 번호는 다시 못 쓴다

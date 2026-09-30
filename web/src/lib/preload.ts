@@ -6,6 +6,7 @@ export const loaders = {
   write: () => import('../pages/WritePage'),
   login: () => import('../pages/LoginPage'),
   signup: () => import('../pages/SignupPage'),
+  resetPassword: () => import('../pages/ResetPasswordPage'),
   me: () => import('../pages/my/MyLayout'),
   myPosts: () => import('../pages/my/MyPostsPage'),
   myChannels: () => import('../pages/my/MyChannelsPage'),

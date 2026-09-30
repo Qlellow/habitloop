@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { safeNext, useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
-import { CodeField, useCooldown } from '../components/CodeField';
+import { CODE_LENGTH, safeNext, useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
+import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
 import { Page } from '../components/Layout';
 import { toast } from '../components/Toast';
 import { ui } from '../components/ui';
@@ -22,14 +22,14 @@ function TwoFactorStep({
 }) {
   const verify = useVerifyLogin();
   const resend = useResendLoginCode();
-  // 로그인하면서 번호를 방금 보냈으니 다시 받기는 잠깐 기다린다
-  const cooldown = useCooldown(60, true);
+  // 로그인하면서 번호를 방금 보냈으니 시간을 바로 센다
+  const timer = useCodeTimer(true);
   const [challenge, setChallenge] = useState(initial);
   const [code, setCode] = useState('');
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (code.length !== 6) return;
+    if (code.length !== CODE_LENGTH) return;
     verify.mutate({ challenge, code }, { onSuccess: onDone, onError: () => setCode('') });
   };
 
@@ -37,36 +37,34 @@ function TwoFactorStep({
     <form className={cn(ui.card, s.authCard)} onSubmit={submit} noValidate>
       <h1 className={s.authTitle}>2단계 인증</h1>
       <p className={s.authDesc}>
-        {maskedEmail ?? '가입한 이메일'}(으)로 보낸 인증번호 6자리를 입력해 주세요. 10분 동안 쓸 수 있어요.
+        {maskedEmail ?? '가입한 이메일'}(으)로 보낸 인증번호 {CODE_LENGTH}자리를 입력해 주세요.
       </p>
       <div className={ui.field}>
-        <CodeField value={code} onChange={setCode} autoFocus />
-      </div>
-      {verify.error && <p className={ui.error}>{verify.error.message}</p>}
-      <button type="submit" className={cn(ui.button, ui.primary, ui.large, ui.full)} disabled={code.length !== 6 || verify.isPending}>
-        {verify.isPending ? '확인 중…' : '확인'}
-      </button>
-      <div className={s.codeActions}>
-        <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={onBack}>
-          ← 다른 계정으로 로그인
-        </button>
-        <button
-          type="button"
-          className={cn(ui.button, ui.text, ui.small)}
-          disabled={cooldown.left > 0 || resend.isPending}
-          onClick={() =>
+        <CodeField value={code} onChange={setCode} autoFocus invalid={!!verify.error && !code} />
+        <CodeTimer
+          timer={timer}
+          pending={resend.isPending}
+          onResend={() =>
             resend.mutate(challenge, {
               onSuccess: (res) => {
                 setChallenge(res.challenge);
                 setCode('');
-                cooldown.start();
+                verify.reset();
+                timer.restart();
                 toast('인증번호를 다시 보냈어요');
               },
               onError: (e) => toast(e.message),
             })
           }
-        >
-          {cooldown.left > 0 ? `다시 받기 (${cooldown.left}초)` : '번호 다시 받기'}
+        />
+      </div>
+      {verify.error && <p className={ui.error}>{verify.error.message}</p>}
+      <button type="submit" className={cn(ui.button, ui.primary, ui.large, ui.full)} disabled={code.length !== CODE_LENGTH || timer.expired || verify.isPending}>
+        {verify.isPending ? '확인 중…' : '확인'}
+      </button>
+      <div className={s.codeActions}>
+        <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={onBack}>
+          ← 다른 계정으로 로그인
         </button>
       </div>
     </form>
@@ -129,16 +127,24 @@ export default function LoginPage() {
             autoFocus
           />
         </label>
-        <label className={ui.field}>
-          <span className={ui.label}>비밀번호</span>
+        <div className={ui.field}>
+          <div className={s.labelRow}>
+            <label className={ui.label} htmlFor="login-password">
+              비밀번호
+            </label>
+            <Link to={`/password/reset${email ? `?email=${encodeURIComponent(email.trim())}` : ''}`} className={s.forgot}>
+              비밀번호를 잊으셨나요?
+            </Link>
+          </div>
           <input
+            id="login-password"
             className={ui.input}
             type="password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-        </label>
+        </div>
         {login.error && <p className={ui.error}>{login.error.message}</p>}
         <button
           type="submit"

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import jwt from 'jsonwebtoken';
 
@@ -5,6 +6,13 @@ export interface AuthUser {
   id: number;
   nickname: string;
 }
+
+/** 비밀번호 재설정 토큰: 이메일 인증을 마친 뒤 새 비밀번호를 정할 때까지만 쓴다 */
+const RESET_TTL = '10m';
+const RESET_PURPOSE = 'password-reset';
+
+/** 비밀번호가 바뀌면 달라지는 값. 재설정 토큰에 넣어서 한 번 쓰면 다시 못 쓰게 한다 */
+const passwordVersion = (passwordHash: string) => createHash('sha256').update(passwordHash).digest('hex').slice(0, 16);
 
 const DEV_SECRET = 'local-dev-secret-please-change-this-to-a-long-random-string';
 
@@ -32,10 +40,36 @@ export class JwtService {
   parse(token: string): AuthUser | undefined {
     try {
       const claims = jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+      // 재설정 토큰 같은 다른 용도의 토큰으로는 로그인할 수 없다
+      if (claims.purpose) return undefined;
       const id = Number(claims.sub);
       return Number.isInteger(id) ? { id, nickname: String(claims.nickname ?? '') } : undefined;
     } catch {
       return undefined;
     }
+  }
+
+  issueReset(userId: number, passwordHash: string): string {
+    return jwt.sign({ purpose: RESET_PURPOSE, pv: passwordVersion(passwordHash) }, this.secret, {
+      subject: String(userId),
+      expiresIn: RESET_TTL,
+      algorithm: 'HS256',
+    });
+  }
+
+  /** 재설정 토큰이 유효하면 사용자 id. 이미 비밀번호를 바꿨으면(pv 가 다르면) 호출한 쪽에서 거절한다 */
+  parseReset(token: string): { id: number; pv: string } | undefined {
+    try {
+      const claims = jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+      const id = Number(claims.sub);
+      if (claims.purpose !== RESET_PURPOSE || !Number.isInteger(id)) return undefined;
+      return { id, pv: String(claims.pv) };
+    } catch {
+      return undefined;
+    }
+  }
+
+  matchesPassword(pv: string, passwordHash: string) {
+    return pv === passwordVersion(passwordHash);
   }
 }
