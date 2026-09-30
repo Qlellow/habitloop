@@ -25,11 +25,35 @@ function load(): Settings {
 let state = load();
 const listeners = new Set<() => void>();
 
+/**
+ * 테마가 바뀌는 순간에는 모든 transition 을 잠깐 끈다.
+ * 안 그러면 transition-colors 가 걸린 버튼·입력칸만 색이 천천히 바뀌어서 나머지 화면과 따로 깜빡인다.
+ */
+function withoutTransitions(change: () => void) {
+  const root = document.documentElement;
+  root.classList.add('theme-switching');
+  change();
+  // 바뀐 색을 transition 없이 한 번 계산하게 한 뒤 다음 프레임에 되돌린다
+  void getComputedStyle(root).backgroundColor;
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')));
+}
+
 /** 'system' 이면 속성을 지워 OS 설정(prefers-color-scheme)을 따른다 */
 export function applyTheme(theme: Settings['theme']) {
   const root = document.documentElement;
-  if (theme === 'system') delete root.dataset.theme;
-  else root.dataset.theme = theme;
+  withoutTransitions(() => {
+    if (theme === 'system') delete root.dataset.theme;
+    else root.dataset.theme = theme;
+  });
+}
+
+// '시스템 설정'일 때 OS 가 밝게/어둡게 바뀌어도 같은 방법으로 깜빡임 없이 바꾼다
+try {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (state.theme === 'system') withoutTransitions(() => {});
+  });
+} catch {
+  // matchMedia 가 없는 환경은 무시
 }
 
 export function updateSettings(patch: Partial<Settings>) {

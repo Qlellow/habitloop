@@ -153,3 +153,11 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 테마를 바꾸는 한두 프레임 동안: 색이 서서히 바뀌는 요소 없이 화면 전체가 한 번에 바뀌게 한다 (lib/settings.ts) */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
