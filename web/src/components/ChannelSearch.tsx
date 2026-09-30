@@ -159,7 +159,7 @@ export function ChannelSearch() {
                     <Highlight text={c.name} keyword={keyword} />
                   </span>
                   <span className={s.meta}>
-                    c/{c.slug} · 멤버 {compact(c.memberCount)} · 글 {compact(c.postCount)}
+                    c/{c.slug} · 팔로워 {compact(c.memberCount)} · 글 {compact(c.postCount)}
                   </span>
                 </span>
               </li>

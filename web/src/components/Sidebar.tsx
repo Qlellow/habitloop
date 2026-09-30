@@ -20,7 +20,7 @@ function ChannelLinks({ channels }: { channels: ChannelSummary[] }) {
   );
 }
 
-/** 왼쪽 사이드바: 내가 가입한 채널 + 인기 채널 바로가기 */
+/** 왼쪽 사이드바: 내가 팔로우한 채널(북마크한 채널 먼저) + 인기 채널 바로가기 */
 export function ChannelSidebar() {
   const { isLoggedIn } = useAuth();
   const mine = useMyChannels(isLoggedIn);
@@ -30,11 +30,11 @@ export function ChannelSidebar() {
     <nav className={s.block} aria-label="채널">
       {isLoggedIn && (
         <div className={s.section}>
-          <h2 className={s.heading}>내 채널</h2>
+          <h2 className={s.heading}>팔로우한 채널</h2>
           {mine.data && mine.data.length > 0 ? (
             <ChannelLinks channels={mine.data} />
           ) : mine.data ? (
-            <p className={s.hint}>가입한 채널이 없어요. 채널에 가입하면 여기에 모여요.</p>
+            <p className={s.hint}>팔로우한 채널이 없어요. 채널을 팔로우하면 여기에 모여요.</p>
           ) : null}
         </div>
       )}
