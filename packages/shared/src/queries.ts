@@ -324,11 +324,50 @@ function findCachedSummary(qc: QueryClient, id: number): PostSummary | undefined
   return undefined;
 }
 
+/**
+ * 상세를 받아 오면 목록·인기글·채널 미리보기 캐시에 있는 같은 글의 숫자(조회·좋아요·댓글)도 맞춘다.
+ * 그래야 뒤로 가기로 목록에 돌아왔을 때 새로고침 없이 방금 늘어난 조회수가 보인다.
+ */
+function syncCachedSummary(qc: QueryClient, post: PostDetail) {
+  const patch = (p: PostSummary): PostSummary =>
+    p.id !== post.id ||
+    (p.viewCount === post.viewCount && p.likeCount === post.likeCount && p.commentCount === post.commentCount)
+      ? p
+      : { ...p, viewCount: post.viewCount, likeCount: post.likeCount, commentCount: post.commentCount };
+  // 바뀐 게 없으면 원래 참조를 그대로 돌려줘서 불필요한 리렌더를 막는다
+  const patchList = <T extends PostSummary>(list: T[]): T[] => {
+    const next = list.map((p) => patch(p) as T);
+    return next.some((p, i) => p !== list[i]) ? next : list;
+  };
+
+  qc.setQueriesData<InfiniteData<CursorPage<PostSummary>> | PostSummary[]>({ queryKey: keys.posts }, (data) => {
+    if (!data) return data;
+    if (Array.isArray(data)) return patchList(data);
+    const pages = data.pages.map((page) => {
+      const items = patchList(page.items);
+      return items === page.items ? page : { ...page, items };
+    });
+    return pages.some((page, i) => page !== data.pages[i]) ? { ...data, pages } : data;
+  });
+  qc.setQueriesData<ChannelPreview[]>({ queryKey: ['channels', 'previews'] }, (list) => {
+    if (!list) return list;
+    const next = list.map((c) => {
+      const recentPosts = patchList(c.recentPosts);
+      return recentPosts === c.recentPosts ? c : { ...c, recentPosts };
+    });
+    return next.some((c, i) => c !== list[i]) ? next : list;
+  });
+}
+
 export function usePost(id: number, placeholder?: PostSummary) {
   const qc = useQueryClient();
   return useQuery<PostDetail>({
     queryKey: keys.post(id),
-    queryFn: ({ signal }) => api<PostDetail>(`/api/posts/${id}`, { signal }),
+    queryFn: async ({ signal }) => {
+      const post = await api<PostDetail>(`/api/posts/${id}`, { signal });
+      syncCachedSummary(qc, post);
+      return post;
+    },
     // 목록에서 넘어온 경우 이미 아는 정보(제목, 작성자 등)로 먼저 그려서 체감 속도를 높인다
     placeholderData: (): PostDetail | undefined => {
       const summary = placeholder ?? findCachedSummary(qc, id);
