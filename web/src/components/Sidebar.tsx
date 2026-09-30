@@ -20,19 +20,27 @@ function ChannelLinks({ channels }: { channels: ChannelSummary[] }) {
   );
 }
 
-/** 왼쪽 사이드바: 내가 팔로우한 채널(북마크한 채널 먼저) + 인기 채널 바로가기 */
+/** 왼쪽 사이드바: 내가 만든 채널 · 팔로우한 채널(각각 북마크한 채널 먼저) + 인기 채널 바로가기 */
 export function ChannelSidebar() {
   const { isLoggedIn } = useAuth();
   const mine = useMyChannels(isLoggedIn);
   const { data } = useChannels();
   const joined = new Set(mine.data?.map((c) => c.slug));
+  const owned = mine.data?.filter((c) => c.owner) ?? [];
+  const followed = mine.data?.filter((c) => !c.owner) ?? [];
   return (
     <nav className={s.block} aria-label="채널">
+      {isLoggedIn && owned.length > 0 && (
+        <div className={s.section}>
+          <h2 className={s.heading}>내가 만든 채널</h2>
+          <ChannelLinks channels={owned} />
+        </div>
+      )}
       {isLoggedIn && (
         <div className={s.section}>
           <h2 className={s.heading}>팔로우한 채널</h2>
-          {mine.data && mine.data.length > 0 ? (
-            <ChannelLinks channels={mine.data} />
+          {followed.length > 0 ? (
+            <ChannelLinks channels={followed} />
           ) : mine.data ? (
             <p className={s.hint}>팔로우한 채널이 없어요. 채널을 팔로우하면 여기에 모여요.</p>
           ) : null}
