@@ -294,7 +294,7 @@ describe('커뮤니티', () => {
     // 가입 안 한 사람: 글쓰기는 막히고
     expect((await http().get('/api/channels/club').set(bearer(guest))).body.joined).toBe(false);
     const denied = await http().post('/api/posts').set(bearer(guest)).send({ channel: 'club', title: 't', content: 'c' }).expect(403);
-    expect(denied.body.message).toBe("'동호회' 채널에 가입해야 글을 쓸 수 있어요");
+    expect(denied.body.message).toBe("'동호회' 채널을 팔로우해야 글을 쓸 수 있어요");
     // 보기 · 공감 · 댓글 · 댓글 좋아요는 된다
     await http().get(`/api/posts/${postId}`).set(bearer(guest)).expect(200);
     expect((await http().post(`/api/posts/${postId}/like`).set(bearer(guest))).body.liked).toBe(true);
@@ -310,6 +310,13 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/me/channels').set(bearer(owner))).body[0].owner).toBe(true);
     expect((await http().get('/api/channels/previews').query({ q: '동호회' }).set(bearer(guest))).body[0].joined).toBe(true);
     expect((await http().get('/api/channels/previews').query({ q: '동호회' })).body[0].joined).toBe(false);
+
+    // 팔로우한 채널은 북마크한 채널이 먼저, 그다음 최근에 팔로우한 순
+    await http().post('/api/channels/free/members').set(bearer(guest)).expect(200);
+    expect((await http().get('/api/me/channels').set(bearer(guest))).body.map((c: { slug: string }) => c.slug)).toEqual(['free', 'club']);
+    await http().put('/api/channels/club/bookmark').set(bearer(guest)).expect(200);
+    expect((await http().get('/api/me/channels').set(bearer(guest))).body.map((c: { slug: string }) => c.slug)).toEqual(['club', 'free']);
+    await http().delete('/api/channels/free/members/me').set(bearer(guest)).expect(200);
 
     // 탈퇴하면 다시 못 쓴다. 만든 사람은 탈퇴할 수 없다
     expect((await http().delete('/api/channels/club/members/me').set(bearer(guest))).body).toEqual({ joined: false, memberCount: 1 });

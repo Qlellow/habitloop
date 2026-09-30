@@ -8,7 +8,7 @@ const s = {
   titleRow: 'flex gap-2 mb-4 max-[600px]:flex-col',
   category: 'flex-none w-[170px] max-[600px]:w-full',
   title: 'flex-1 min-w-0 h-[46px] text-lg font-semibold',
-  // 가입 안내
+  // 팔로우 안내
   gate: 'flex flex-col items-center px-6 py-14 text-center',
   gateTitle: 'mt-[18px] mb-1.5 text-xl font-bold text-fg-strong',
   gateDesc: 'mt-0 mb-6 text-fg-sub',

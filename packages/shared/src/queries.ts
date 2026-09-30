@@ -204,7 +204,7 @@ export function useChangeRole(slug: string) {
   });
 }
 
-/** 내가 가입한 채널 (로그인했을 때만) */
+/** 내가 팔로우한 채널, 북마크한 채널이 먼저 (로그인했을 때만) */
 export function useMyChannels(enabled: boolean) {
   return useQuery({
     queryKey: keys.myChannels,
@@ -213,7 +213,7 @@ export function useMyChannels(enabled: boolean) {
   });
 }
 
-/** 채널 가입/탈퇴. 채널 화면은 즉시 바꾸고, 채널 목록·내 채널은 다시 받는다. */
+/** 채널 팔로우/팔로우 취소. 채널 화면은 즉시 바꾸고, 채널 목록·내 채널은 다시 받는다. */
 export function useMembership(slug: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -253,7 +253,11 @@ export function useBookmark(slug: string) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(keys.channel(slug), ctx.prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: keys.bookmarkedChannels }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.bookmarkedChannels });
+      // 팔로우한 채널 목록은 북마크한 채널을 앞에 두므로 순서가 바뀐다
+      qc.invalidateQueries({ queryKey: keys.myChannels });
+    },
   });
 }
 

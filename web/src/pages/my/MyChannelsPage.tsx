@@ -43,11 +43,11 @@ function LeaveButton({ channel }: { channel: ChannelSummary }) {
       className={cn(ui.button, ui.ghost, ui.small)}
       disabled={membership.isPending}
       onClick={() => {
-        if (!confirm(`'${channel.name}' 채널에서 탈퇴할까요?\n탈퇴하면 이 채널에 글을 쓸 수 없어요.`)) return;
-        membership.mutate(false, { onSuccess: () => toast('채널에서 탈퇴했어요'), onError: (e) => toast(e.message) });
+        if (!confirm(`'${channel.name}' 채널 팔로우를 취소할까요?\n팔로우를 취소하면 이 채널에 글을 쓸 수 없어요.`)) return;
+        membership.mutate(false, { onSuccess: () => toast('채널 팔로우를 취소했어요'), onError: (e) => toast(e.message) });
       }}
     >
-      탈퇴
+      팔로우 취소
     </button>
   );
 }
@@ -76,8 +76,8 @@ export default function MyChannelsPage() {
   return (
     <>
       <div className={s.head}>
-        <h1 className={s.title}>가입 · 북마크 채널</h1>
-        <p className={s.desc}>가입한 채널에는 글을 쓸 수 있고, 북마크한 채널은 여기서 빠르게 찾아갈 수 있어요.</p>
+        <h1 className={s.title}>팔로우 · 북마크 채널</h1>
+        <p className={s.desc}>팔로우한 채널에는 글을 쓸 수 있고, 북마크한 채널은 여기서 빠르게 찾아갈 수 있어요.</p>
       </div>
       <section className={ui.card}>
         <div className={ui.tabs} role="tablist" style={{ padding: '0 14px' }}>
@@ -88,7 +88,7 @@ export default function MyChannelsPage() {
             aria-selected={tab === 'joined'}
             onClick={() => setParams({}, { replace: true })}
           >
-            가입한 채널 {joined.data ? joined.data.length : ''}
+            팔로우한 채널 {joined.data ? joined.data.length : ''}
           </button>
           <button
             type="button"
@@ -112,7 +112,7 @@ export default function MyChannelsPage() {
                   tab === 'bookmarks' ? (
                     <UnbookmarkButton channel={c} />
                   ) : 'owner' in c && c.owner ? (
-                    // 만든 채널은 탈퇴할 수 없으니 관리로 보낸다
+                    // 만든 채널은 팔로우를 취소할 수 없으니 관리로 보낸다
                     <Link to={`/c/${c.slug}/manage`} className={cn(ui.button, ui.ghost, ui.small)}>
                       채널 관리
                     </Link>
@@ -125,7 +125,7 @@ export default function MyChannelsPage() {
           </ul>
         ) : (
           <div className={ui.empty}>
-            {tab === 'joined' ? '아직 가입한 채널이 없어요' : '북마크한 채널이 없어요. 채널 페이지의 ☆ 버튼으로 추가할 수 있어요'}
+            {tab === 'joined' ? '아직 팔로우한 채널이 없어요' : '북마크한 채널이 없어요. 채널 페이지의 ☆ 버튼으로 추가할 수 있어요'}
             <div style={{ marginTop: 16 }}>
               <Link to="/channels" className={cn(ui.button, ui.secondary, ui.small)}>
                 채널 둘러보기

@@ -54,7 +54,7 @@ export interface ChannelPreview extends ChannelSummary {
   recentPosts: PostSummary[];
 }
 
-/** 내가 가입한 채널 (owner: 내가 만든 채널) */
+/** 내가 팔로우한 채널 (owner: 내가 만든 채널) */
 export interface MyChannel extends ChannelSummary {
   owner: boolean;
   role?: ChannelRole;

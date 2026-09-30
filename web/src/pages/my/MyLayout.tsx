@@ -8,7 +8,7 @@ import { cn } from '../../lib/cn';
 
 const MENU = [
   { to: '/me/posts', label: '내가 쓴 글', preload: preload.myPosts },
-  { to: '/me/channels', label: '가입 · 북마크 채널', preload: preload.myChannels },
+  { to: '/me/channels', label: '팔로우 · 북마크 채널', preload: preload.myChannels },
   { to: '/me/profile', label: '내 정보 수정', preload: preload.profile },
   { to: '/me/settings', label: '설정', preload: preload.settings },
 ];

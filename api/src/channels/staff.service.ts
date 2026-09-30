@@ -55,7 +55,7 @@ export class StaffService {
     const channel = await this.requireOwner(userId, slug);
     if (role === 'OWNER') throw ApiError.badRequest('소유자는 넘길 수 없어요');
     const current = await this.channels.roleOf(channel.id, targetUserId);
-    if (!current) throw ApiError.badRequest('채널에 가입한 사람만 운영진으로 지정할 수 있어요');
+    if (!current) throw ApiError.badRequest('채널을 팔로우한 사람만 운영진으로 지정할 수 있어요');
     if (current === 'OWNER') throw ApiError.badRequest('소유자의 역할은 바꿀 수 없어요');
     if (isStaff(role) && !isStaff(current) && (await this.findStaff(channel.id)).length > MAX_STAFF) {
       throw ApiError.badRequest(`운영진은 ${MAX_STAFF}명까지 지정할 수 있어요`);

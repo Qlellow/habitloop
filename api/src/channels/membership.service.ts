@@ -4,7 +4,7 @@ import { Database } from '../db/database';
 import { ChannelsService, SUMMARY_COLUMNS, type ChannelRow, type ChannelSummary } from './channels.service';
 import { badge, type ChannelRole } from './roles';
 
-/** 채널 가입/탈퇴와 북마크. 가입은 글쓰기 권한이고, 보기·공감·댓글에는 필요 없다. 북마크는 권한과 무관하다. */
+/** 채널 팔로우(가입)와 북마크. 팔로우는 글쓰기 권한이고, 보기·공감·댓글에는 필요 없다. 북마크는 권한과 무관하다. */
 @Injectable()
 export class MembershipService {
   constructor(
@@ -29,7 +29,7 @@ export class MembershipService {
 
   async leave(userId: number, slug: string) {
     const channel = await this.channels.findBySlug(slug);
-    if (channel.ownerId === userId) throw ApiError.badRequest('채널을 만든 사람은 탈퇴할 수 없어요');
+    if (channel.ownerId === userId) throw ApiError.badRequest('채널을 만든 사람은 팔로우를 취소할 수 없어요');
     const memberCount = await this.db.transaction(async () => {
       const removed = await this.db.execute('DELETE FROM channel_members WHERE channel_id = $1 AND user_id = $2', [channel.id, userId]);
       return this.addMemberCount(channel.id, -removed);
@@ -49,7 +49,7 @@ export class MembershipService {
   /** 글쓰기 전에 확인: 가입하지 않았으면 403 */
   async requireMember(channel: ChannelRow, userId: number) {
     if (!(await this.channels.roleOf(channel.id, userId))) {
-      throw ApiError.forbidden(`'${channel.name}' 채널에 가입해야 글을 쓸 수 있어요`);
+      throw ApiError.forbidden(`'${channel.name}' 채널을 팔로우해야 글을 쓸 수 있어요`);
     }
   }
 
@@ -76,11 +76,12 @@ export class MembershipService {
     );
   }
 
-  /** 내가 가입한 채널 (최근에 가입한 순). owner 면 탈퇴 대신 관리 버튼을 보여 준다 */
+  /** 내가 팔로우한 채널. 북마크한 채널이 먼저, 그 안에서는 최근에 팔로우한 순. owner 면 팔로우 취소 대신 관리 버튼을 보여 준다 */
   async myChannels(userId: number) {
     const rows = await this.db.query<ChannelSummary & { role: ChannelRole }>(
       `SELECT ${SUMMARY_COLUMNS}, m.role FROM channel_members m JOIN channels c ON c.id = m.channel_id
-       WHERE m.user_id = $1 ORDER BY m.id DESC`,
+       LEFT JOIN channel_bookmarks b ON b.channel_id = m.channel_id AND b.user_id = m.user_id
+       WHERE m.user_id = $1 ORDER BY (b.id IS NOT NULL) DESC, m.id DESC`,
       [userId],
     );
     return rows.map(({ role, ...c }) => ({ ...c, role: badge(role), owner: role === 'OWNER' }));

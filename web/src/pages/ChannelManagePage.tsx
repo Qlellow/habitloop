@@ -232,7 +232,7 @@ function StaffSection({ slug, isOwner }: { slug: string; isOwner: boolean }) {
           {q.trim() && search.data && (
             <ul className={s.staffList}>
               {search.data.length === 0 ? (
-                <li className={cn(ui.empty, 'py-4')}>'{q.trim()}' 닉네임의 멤버가 없어요 (채널에 가입한 사람만 지정할 수 있어요)</li>
+                <li className={cn(ui.empty, 'py-4')}>'{q.trim()}' 닉네임의 멤버가 없어요 (채널을 팔로우한 사람만 지정할 수 있어요)</li>
               ) : (
                 search.data.map((m) => (
                   <li key={m.userId} className={s.staffRow}>

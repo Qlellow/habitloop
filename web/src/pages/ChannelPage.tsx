@@ -30,7 +30,7 @@ export default function ChannelPage() {
     return <NotFoundPage message="없거나 사라진 채널이에요" />;
   }
 
-  // 글쓰기는 가입한 사람만, 운영진 전용 카테고리 탭에서는 운영진만
+  // 글쓰기는 팔로우한 사람만, 운영진 전용 카테고리 탭에서는 운영진만
   const canWrite = !!channel?.joined && (!active?.ownerOnly || channel.staff);
   const writeParams = new URLSearchParams({ channel: slug });
   if (active) writeParams.set('category', String(active.id));
@@ -54,7 +54,7 @@ export default function ChannelPage() {
                 <div className={s.bannerInfo}>
                   <h1 className={s.bannerName}>{channel.name}</h1>
                   <div className={s.bannerSlug}>
-                    멤버 {compact(channel.memberCount)}명 · 글 {compact(channel.postCount)}개
+                    팔로워 {compact(channel.memberCount)}명 · 글 {compact(channel.postCount)}개
                   </div>
                 </div>
                 <div className={s.bannerActions}>

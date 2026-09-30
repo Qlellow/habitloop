@@ -13,7 +13,7 @@ export default function MyPostsPage() {
         <p className={s.desc}>내가 여러 채널에 쓴 글을 최신순으로 모았어요.</p>
       </div>
       <section className={ui.card}>
-        <PostList query={feed} empty="아직 작성한 글이 없어요. 가입한 채널에서 첫 글을 써 보세요!" />
+        <PostList query={feed} empty="아직 작성한 글이 없어요. 팔로우한 채널에서 첫 글을 써 보세요!" />
       </section>
     </>
   );

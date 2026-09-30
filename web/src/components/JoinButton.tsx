@@ -5,14 +5,14 @@ import { ui } from './ui';
 import { cn } from '../lib/cn';
 
 /**
- * 채널 가입/탈퇴 버튼.
- * 가입 전: "가입하기" (비로그인이면 로그인으로), 가입 후: "가입됨" → 누르면 탈퇴 확인.
- * 채널을 만든 사람은 탈퇴할 수 없으므로 버튼을 보여 주지 않는다.
+ * 채널 팔로우/팔로우 취소 버튼.
+ * 팔로우 전: "팔로우" (비로그인이면 로그인으로), 팔로우 후: "팔로잉" → 누르면 팔로우 취소 확인.
+ * 채널을 만든 사람은 팔로우를 취소할 수 없으므로 버튼을 보여 주지 않는다.
  */
 export function JoinButton({
   channel,
   size,
-  joinLabel = '가입하기',
+  joinLabel = '팔로우',
   onJoined,
 }: {
   channel: ChannelDetail;
@@ -38,7 +38,7 @@ export function JoinButton({
           if (!isLoggedIn) return navigate(`/login?next=${encodeURIComponent(pathname + search)}`);
           membership.mutate(true, {
             onSuccess: () => {
-              toast(`${channel.name} 채널에 가입했어요`);
+              toast(`${channel.name} 채널을 팔로우했어요`);
               onJoined?.();
             },
             onError: (e) => toast(e.message),
@@ -54,22 +54,22 @@ export function JoinButton({
     <button
       type="button"
       className={cn(ui.button, ui.ghost, sizeClass)}
-      title="누르면 탈퇴할 수 있어요"
+      title="누르면 팔로우를 취소할 수 있어요"
       disabled={membership.isPending}
       onClick={() => {
-        if (!confirm(`'${channel.name}' 채널에서 탈퇴할까요?\n탈퇴하면 이 채널에 글을 쓸 수 없어요. (보기·댓글은 계속 가능해요)`)) return;
+        if (!confirm(`'${channel.name}' 채널 팔로우를 취소할까요?\n팔로우를 취소하면 이 채널에 글을 쓸 수 없어요. (보기·댓글은 계속 가능해요)`)) return;
         membership.mutate(false, {
-          onSuccess: () => toast('채널에서 탈퇴했어요'),
+          onSuccess: () => toast('채널 팔로우를 취소했어요'),
           onError: (e) => toast(e.message),
         });
       }}
     >
-      ✓ 가입됨
+      ✓ 팔로잉
     </button>
   );
 }
 
-/** 채널 북마크 (가입과 별개). 비로그인이면 로그인으로. */
+/** 채널 북마크 (팔로우와 별개). 비로그인이면 로그인으로. */
 export function BookmarkButton({ channel }: { channel: ChannelDetail }) {
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();

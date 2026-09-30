@@ -19,7 +19,7 @@ const ChannelBoard = memo(function ChannelBoard({ channel }: { channel: ChannelP
         <span className={b.headText}>
           <span className={b.name}>
             {name}
-            {joined && <span className={b.joined}>가입함</span>}
+            {joined && <span className={b.joined}>팔로잉</span>}
           </span>
           <span className={b.meta}>
             멤버 {compact(memberCount)} · 글 {compact(postCount)}
