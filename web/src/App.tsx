@@ -11,6 +11,7 @@ const PostDetailPage = lazy(loaders.post);
 const WritePage = lazy(loaders.write);
 const LoginPage = lazy(loaders.login);
 const SignupPage = lazy(loaders.signup);
+const ResetPasswordPage = lazy(loaders.resetPassword);
 const MyLayout = lazy(loaders.me);
 const MyPostsPage = lazy(loaders.myPosts);
 const MyChannelsPage = lazy(loaders.myChannels);
@@ -64,6 +65,7 @@ const router = createBrowserRouter([
       { path: '/c/:slug/manage', element: auth(<ChannelManagePage />) },
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
+      { path: '/password/reset', element: <ResetPasswordPage /> },
       {
         path: '/me',
         element: auth(<MyLayout />),

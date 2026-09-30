@@ -4,7 +4,7 @@ import { ApiError } from '../common/api-error';
 import { Database } from '../db/database';
 import { Mailer } from '../mail/mailer';
 import { VerificationService } from '../mail/verification.service';
-import type { LoginInput, PasswordInput, SignupInput } from './auth.dto';
+import type { LoginInput, PasswordInput, PasswordResetInput, SignupInput } from './auth.dto';
 import { JwtService } from './jwt.service';
 
 interface UserRow {
@@ -77,11 +77,49 @@ export class AuthService {
 
   /** 2단계 인증 로그인: 이메일로 받은 번호 확인 */
   async verifyLogin(challenge: string, code: string) {
-    return this.toAuth(await this.find(await this.verification.verifyChallenge(challenge, code)));
+    return this.toAuth(await this.find(await this.verification.verifyChallenge('LOGIN', challenge, code)));
   }
 
   async resendLoginCode(challenge: string) {
-    return { challenge: await this.verification.resendChallenge(challenge) };
+    return { challenge: await this.verification.resendChallenge('LOGIN', challenge) };
+  }
+
+  /**
+   * 비밀번호 재설정 1단계: 가입한 이메일로 인증번호를 보낸다.
+   * 2단계 인증을 켰는지와 상관없이 항상 이메일 인증을 거친다 (이메일만 알면 남의 비밀번호를 바꿀 수 있으면 안 된다)
+   */
+  async sendPasswordResetCode(rawEmail: string) {
+    const user = await this.db.one<UserRow>(`${SELECT_USER} WHERE email = $1`, [normalize(rawEmail)]);
+    if (!user) throw ApiError.notFound('가입된 이메일이 아니에요');
+    const challenge = await this.verification.send(user.email, 'PASSWORD_RESET', user.id);
+    return { challenge: challenge!, maskedEmail: mask(user.email) };
+  }
+
+  async resendPasswordResetCode(challenge: string) {
+    return { challenge: await this.verification.resendChallenge('PASSWORD_RESET', challenge) };
+  }
+
+  /** 비밀번호 재설정 2단계: 번호가 맞으면 새 비밀번호를 정할 때 쓸 토큰을 준다 (10분 유효, 한 번만) */
+  async verifyPasswordResetCode(challenge: string, code: string) {
+    const user = await this.find(await this.verification.verifyChallenge('PASSWORD_RESET', challenge, code));
+    return { resetToken: this.jwt.issueReset(user.id, user.password) };
+  }
+
+  /** 비밀번호 재설정 3단계: 새 비밀번호로 바꾸고 알림 메일을 보낸다 */
+  async resetPassword(input: PasswordResetInput) {
+    const expired = () => ApiError.badRequest('재설정 시간이 지났어요. 처음부터 다시 시도해 주세요');
+    const claims = this.jwt.parseReset(input.resetToken);
+    if (!claims) throw expired();
+    const user = await this.db.one<UserRow>(`${SELECT_USER} WHERE id = $1`, [claims.id]);
+    // 이미 이 토큰으로 바꿨거나 그사이 비밀번호가 바뀌었으면 다시 쓸 수 없다
+    if (!user || !this.jwt.matchesPassword(claims.pv, user.password)) throw expired();
+    if (await bcrypt.compare(input.newPassword, user.password)) throw ApiError.badRequest('지금 비밀번호와 다른 비밀번호를 입력해 주세요');
+    await this.db.execute('UPDATE users SET password = $1 WHERE id = $2', [await bcrypt.hash(input.newPassword, 10), user.id]);
+    await this.mailer.sendNotice(
+      user.email,
+      '비밀번호가 바뀌었어요',
+      '방금 비밀번호 재설정으로 루프 계정의 비밀번호가 바뀌었어요.\n직접 바꾼 것이 아니라면 바로 비밀번호를 다시 재설정하고 2단계 인증을 켜 주세요.',
+    );
   }
 
   async me(userId: number) {

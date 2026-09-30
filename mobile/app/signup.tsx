@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { useSignup, useSignupCode } from '@loop/shared';
+import { CODE_LENGTH, cleanCode, useSignup, useSignupCode } from '@loop/shared';
 import { Button, Input } from '../src/ui';
 import { auth as s } from '../src/authStyles';
 
@@ -15,7 +15,7 @@ export default function SignupScreen() {
   const email = form.email.trim().toLowerCase();
   const emailOk = /^\S+@\S+\.\S+$/.test(email);
   const sent = !!sentTo && sentTo === email;
-  const valid = emailOk && sent && form.code.length === 6 && form.password.length >= 8 && form.nickname.trim().length >= 2;
+  const valid = emailOk && sent && form.code.length === CODE_LENGTH && form.password.length >= 8 && form.nickname.trim().length >= 2;
 
   return (
     <KeyboardAvoidingView className={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -41,11 +41,12 @@ export default function SignupScreen() {
             <Text className={s.label}>인증번호</Text>
             <Input
               value={form.code}
-              onChangeText={(v) => set('code')(v.replace(/\D/g, '').slice(0, 6))}
-              keyboardType="number-pad"
+              onChangeText={(v) => set('code')(cleanCode(v))}
+              autoCapitalize="characters"
+              autoCorrect={false}
               textContentType="oneTimeCode"
               autoComplete="one-time-code"
-              placeholder="메일로 받은 숫자 6자리"
+              placeholder="메일로 받은 6자리 (영문·숫자)"
             />
           </>
         ) : null}

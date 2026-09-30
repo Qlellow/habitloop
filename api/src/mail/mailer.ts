@@ -3,15 +3,16 @@ import { ApiError } from '../common/api-error';
 import { HttpStatus } from '@nestjs/common';
 
 /** 인증번호를 어디에 쓰는지. 메일 제목과 안내 문구가 달라진다 */
-export type CodePurpose = 'SIGNUP' | 'LOGIN' | 'ENABLE_2FA';
+export type CodePurpose = 'SIGNUP' | 'LOGIN' | 'ENABLE_2FA' | 'PASSWORD_RESET';
 
 const PURPOSE: Record<CodePurpose, { label: string; guide: string }> = {
   SIGNUP: { label: '회원가입', guide: '루프 회원가입을 마치려면 아래 인증번호를 입력해 주세요.' },
   LOGIN: { label: '로그인', guide: '2단계 인증이 켜진 계정에 로그인하려면 아래 인증번호를 입력해 주세요.' },
   ENABLE_2FA: { label: '2단계 인증 설정', guide: '2단계 인증을 켜려면 아래 인증번호를 입력해 주세요.' },
+  PASSWORD_RESET: { label: '비밀번호 재설정', guide: '비밀번호를 다시 설정하려면 아래 인증번호를 입력해 주세요.' },
 };
 
-export const CODE_TTL_MINUTES = 10;
+export const CODE_TTL_MINUTES = 5;
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 

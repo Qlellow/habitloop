@@ -1,6 +1,9 @@
 import { IsEmail, Length, Matches, MaxLength } from 'class-validator';
 import { NotBlank } from '../common/validators';
 
+const CODE_FORMAT = /^\s*[A-Za-z1-9]{6}\s*$/;
+const CODE_MESSAGE = '인증번호 6자리를 입력해 주세요';
+
 export class EmailCodeInput {
   @NotBlank('이메일을 입력해 주세요')
   @IsEmail({}, { message: '이메일 형식이 아니에요' })
@@ -23,7 +26,7 @@ export class SignupInput {
   nickname!: string;
 
   @NotBlank('이메일로 받은 인증번호를 입력해 주세요')
-  @Matches(/^\s*\d{6}\s*$/, { message: '인증번호 6자리를 입력해 주세요' })
+  @Matches(CODE_FORMAT, { message: CODE_MESSAGE })
   code!: string;
 }
 
@@ -68,6 +71,16 @@ export class ProfileInput {
 export class PasswordInput {
   @NotBlank('지금 비밀번호를 입력해 주세요')
   currentPassword!: string;
+
+  @NotBlank('새 비밀번호를 입력해 주세요')
+  @Length(8, 64, { message: '새 비밀번호는 8자 이상이어야 해요' })
+  newPassword!: string;
+}
+
+/** 비밀번호 재설정 3단계: 이메일 인증 뒤 받은 토큰 + 새 비밀번호 */
+export class PasswordResetInput {
+  @NotBlank('처음부터 다시 시도해 주세요')
+  resetToken!: string;
 
   @NotBlank('새 비밀번호를 입력해 주세요')
   @Length(8, 64, { message: '새 비밀번호는 8자 이상이어야 해요' })

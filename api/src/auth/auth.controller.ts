@@ -7,6 +7,7 @@ import {
   LoginVerifyInput,
   PasswordConfirmInput,
   PasswordInput,
+  PasswordResetInput,
   ProfileInput,
   SignupInput,
 } from './auth.dto';
@@ -53,6 +54,35 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   resendLoginCode(@Body() input: ChallengeInput) {
     return this.auth.resendLoginCode(input.challenge);
+  }
+
+  /** 비밀번호 재설정: 이메일로 번호 받기 → 번호 확인(resetToken) → 새 비밀번호 */
+  @Public()
+  @Post('auth/password/code')
+  @HttpCode(HttpStatus.OK)
+  passwordResetCode(@Body() input: EmailCodeInput) {
+    return this.auth.sendPasswordResetCode(input.email);
+  }
+
+  @Public()
+  @Post('auth/password/resend')
+  @HttpCode(HttpStatus.OK)
+  resendPasswordResetCode(@Body() input: ChallengeInput) {
+    return this.auth.resendPasswordResetCode(input.challenge);
+  }
+
+  @Public()
+  @Post('auth/password/verify')
+  @HttpCode(HttpStatus.OK)
+  verifyPasswordResetCode(@Body() input: LoginVerifyInput) {
+    return this.auth.verifyPasswordResetCode(input.challenge, input.code);
+  }
+
+  @Public()
+  @Post('auth/password/reset')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  resetPassword(@Body() input: PasswordResetInput) {
+    return this.auth.resetPassword(input);
   }
 
   @Get('me')

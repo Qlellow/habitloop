@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
-import { useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
+import { cleanCode, CODE_LENGTH, useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
 import { Button, Input } from '../src/ui';
 import { auth as s } from '../src/authStyles';
 
@@ -36,17 +36,18 @@ export default function LoginScreen() {
           <Text className={s.label}>{twoFactor.maskedEmail ?? '가입한 이메일'}(으)로 보냈어요</Text>
           <Input
             value={code}
-            onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
-            keyboardType="number-pad"
+            onChangeText={(v) => setCode(cleanCode(v))}
+            autoCapitalize="characters"
+            autoCorrect={false}
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
-            placeholder="숫자 6자리"
+            placeholder="6자리 (영문·숫자)"
             autoFocus
             onSubmitEditing={confirm}
           />
           {verify.error ? <Text className={s.error}>{verify.error.message}</Text> : null}
           {resend.error ? <Text className={s.error}>{resend.error.message}</Text> : null}
-          <Button title="확인" size="lg" full className="mt-7" loading={verify.isPending} disabled={code.length !== 6} onPress={confirm} />
+          <Button title="확인" size="lg" full className="mt-7" loading={verify.isPending} disabled={code.length !== CODE_LENGTH} onPress={confirm} />
           <Button
             title="번호 다시 받기"
             variant="text"
