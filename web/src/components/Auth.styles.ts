@@ -67,11 +67,12 @@ const s = {
   brandShapeD: 'absolute -right-24 -bottom-24 w-[380px] h-[380px] rounded-full bg-[#3a2fc0]/45',
   brandHead: 'relative flex flex-col gap-5',
   brandTitle: 'm-0 text-[26px] leading-[1.35] font-extrabold tracking-[-0.02em] text-white',
-  // 떠 있는 카드: 0.9초 동안 천천히 올라온 뒤 위아래로 둥실둥실 (키프레임은 global.css)
+  // 떠 있는 카드: 0.9초 동안 천천히 올라온 뒤 4초 주기로 둥실둥실 (키프레임은 global.css).
+  // 동그라미끼리, 네모끼리 같은 박자로 움직이고 네모가 0.3초 늦게 따라간다
   floatCard:
     'absolute flex flex-col gap-2.5 p-5 rounded-[20px] bg-white text-[#191f28] shadow-[0_20px_40px_rgba(0,30,90,0.25)]',
-  popularCard: 'left-12 right-20 top-[46%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_150ms_both,auth-float_6.5s_ease-in-out_1.05s_infinite]',
-  channelCard: 'right-10 bottom-12 w-[250px] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_7.5s_ease-in-out_1.25s_infinite]',
+  popularCard: 'left-12 right-20 top-[46%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_150ms_both,auth-float_4s_ease-in-out_2.0s_infinite]',
+  channelCard: 'right-10 bottom-12 w-[250px] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_4s_ease-in-out_2.0s_infinite]',
   floatLabel: 'text-[12px] font-bold text-[#f5a700]',
   rankRow: 'flex items-baseline gap-3 text-[14px] font-semibold truncate',
   rankNo: 'flex-none w-3 text-[#3182f6]',
@@ -80,17 +81,17 @@ const s = {
   chipIcon: 'grid place-items-center w-6 h-6 rounded-full text-[11px] font-bold text-white',
   bubble:
     'absolute grid place-items-center w-14 h-14 rounded-full bg-white text-2xl shadow-[0_14px_30px_rgba(0,30,90,0.25)]',
-  bubbleA: 'right-12 top-[30%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_550ms_both,auth-float_5.5s_ease-in-out_1.45s_infinite]',
-  bubbleB: 'left-16 bottom-16 w-12 h-12 text-xl [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_750ms_both,auth-float_6s_ease-in-out_1.65s_infinite]',
-  benefitCard: 'left-12 right-16 top-[42%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_150ms_both,auth-float_6.5s_ease-in-out_1.05s_infinite]',
+  bubbleA: 'right-12 top-[30%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_550ms_both,auth-float_4s_ease-in-out_1.7s_infinite]',
+  bubbleB: 'left-16 bottom-16 w-12 h-12 text-xl [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_750ms_both,auth-float_4s_ease-in-out_1.7s_infinite]',
+  benefitCard: 'left-12 right-16 top-[42%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_150ms_both,auth-float_4s_ease-in-out_2.0s_infinite]',
   benefitRow: 'flex items-center gap-2.5 text-[14px] font-semibold',
   benefitCheck: 'grid place-items-center w-5 h-5 rounded-full bg-[#efedff] text-[11px] font-black text-[#6b5cf6]',
-  safeCard: 'right-10 bottom-12 w-[260px] gap-1 [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_7.5s_ease-in-out_1.25s_infinite]',
+  safeCard: 'right-10 bottom-12 w-[260px] gap-1 [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_4s_ease-in-out_2.0s_infinite]',
   safeIcon: 'text-2xl mb-1',
   safeTitle: 'text-[15px] font-bold',
   safeDesc: 'text-[13px] text-[#6b7684]',
-  bubbleC: 'right-14 top-[30%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_550ms_both,auth-float_5.5s_ease-in-out_1.45s_infinite]',
-  bubbleD: 'left-14 bottom-20 w-12 h-12 text-xl [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_750ms_both,auth-float_6s_ease-in-out_1.65s_infinite]',
+  bubbleC: 'right-14 top-[30%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_550ms_both,auth-float_4s_ease-in-out_1.7s_infinite]',
+  bubbleD: 'left-14 bottom-20 w-12 h-12 text-xl [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_750ms_both,auth-float_4s_ease-in-out_1.7s_infinite]',
 };
 
 export default s;
