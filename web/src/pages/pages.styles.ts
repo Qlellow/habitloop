@@ -70,17 +70,6 @@ const s = {
   iconPickerBody: 'flex flex-col gap-2 min-w-0',
   iconPickerActions: 'flex flex-wrap gap-1.5',
 
-  // 로그인 / 가입
-  authCard: 'px-9 pt-9 pb-7 max-[860px]:px-[22px] max-[860px]:pt-7 max-[860px]:pb-[22px]',
-  authTitle: 'mt-0 mb-1.5 text-2xl font-bold text-fg-strong',
-  authDesc: 'mt-0 mb-7 text-fg-sub',
-  authSwitch: 'mt-5 mb-0 text-center text-sm text-fg-sub [&_a]:ml-1.5 [&_a]:text-primary [&_a]:font-semibold',
-  codeActions: 'flex justify-between gap-2 mt-4',
-  codeRow: 'flex gap-2 [&>input]:flex-1',
-  labelRow: 'flex items-baseline justify-between gap-2 [&>label]:mb-0 mb-1.5',
-  forgot: 'text-[13px] font-medium text-fg-sub hover:text-primary hover:underline',
-  hint: 'mt-4 px-3.5 py-3 rounded-sm bg-field text-[13px] text-fg-sub',
-
   // 채널 카드 (사이드바)
   sideChannel: 'p-5',
   sideChannelTop: 'flex items-center gap-3 mb-2.5',

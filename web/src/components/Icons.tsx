@@ -124,3 +124,65 @@ export const GridIcon = (p: P) => (
     <rect x="13" y="13" width="7" height="7" rx="2" fill="currentColor" />
   </svg>
 );
+
+/* ───────── 로그인 · 회원가입 입력칸 (외곽선 아이콘) ───────── */
+const line = { stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' } as const;
+
+export const MailLineIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" {...line} />
+    <path d="M4.5 7.5l7.5 5.5 7.5-5.5" {...line} />
+  </svg>
+);
+
+export const LockLineIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" {...line} />
+    <path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" {...line} />
+  </svg>
+);
+
+export const UserLineIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="8.5" r="3.8" {...line} />
+    <path d="M4.8 19.5c.9-3.3 3.8-5.3 7.2-5.3s6.3 2 7.2 5.3" {...line} />
+  </svg>
+);
+
+/** 비밀번호 보기 (눈 외곽선) */
+export const EyeIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M2.8 12S6.2 5.8 12 5.8 21.2 12 21.2 12 17.8 18.2 12 18.2 2.8 12 2.8 12z" {...line} />
+    <circle cx="12" cy="12" r="3" {...line} />
+  </svg>
+);
+
+/** 비밀번호 숨기기 (사선이 그어진 눈 외곽선) */
+export const EyeOffIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M10.6 6c.46-.1.92-.2 1.4-.2 5.8 0 9.2 6.2 9.2 6.2a17 17 0 01-2.6 3.3M6.4 7.6A16.6 16.6 0 002.8 12S6.2 18.2 12 18.2c1.7 0 3.2-.5 4.5-1.3" {...line} />
+    <path d="M9.9 9.9a3 3 0 004.2 4.2" {...line} />
+    <path d="M4 4l16 16" {...line} />
+  </svg>
+);
+
+export const CheckCircleIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="12" r="8.5" {...line} />
+    <path d="M8.3 12.2l2.5 2.5 4.9-5" {...line} />
+  </svg>
+);
+
+export const AlertCircleIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="12" r="8.5" {...line} />
+    <path d="M12 7.8v5" {...line} />
+    <circle cx="12" cy="16.2" r="1" fill="currentColor" />
+  </svg>
+);
+
+export const ArrowRightIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M5 12h14M13 6l6 6-6 6" {...line} strokeWidth={2.2} />
+  </svg>
+);

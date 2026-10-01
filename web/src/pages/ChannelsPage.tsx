@@ -22,7 +22,7 @@ const ChannelBoard = memo(function ChannelBoard({ channel }: { channel: ChannelP
             {joined && <span className={b.joined}>팔로잉</span>}
           </span>
           <span className={b.meta}>
-            멤버 {compact(memberCount)} · 글 {compact(postCount)}
+            팔로워 {compact(memberCount)} · 글 {compact(postCount)}
           </span>
         </span>
         <span className={b.go} aria-hidden>
@@ -91,13 +91,15 @@ export default function ChannelsPage() {
           <p className={s.pageDesc}>채널마다 최근에 올라온 글을 한눈에 볼 수 있어요.</p>
         </div>
         <div className={b.tools}>
+          {/* 넓은 화면은 헤더 검색을 쓰고, 헤더 검색이 숨는 폰에서만 여기서 찾는다 */}
           <input
             type="search"
-            className={ui.input}
+            className={cn(ui.input, b.search)}
             placeholder="채널 이름으로 찾기"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             aria-label="채널 검색"
+            onDrop={(e) => e.preventDefault()}
           />
           <Link to={createTo} className={cn(ui.button, ui.primary)} onPointerEnter={preload.channelForm}>
             채널 만들기
