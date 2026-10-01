@@ -80,14 +80,26 @@ export function mmss(seconds: number): string {
 const PW_SPECIAL = /[!-/:-@[-`{-~]/;
 const PW_ALLOWED = /^[A-Za-z0-9!-/:-@[-`{-~]*$/;
 
-/** 회원가입·비밀번호 바꾸기 화면에 보여 줄 조건 목록 */
-export function passwordRules(v: string) {
-  return [
-    { label: '8자 이상', ok: v.length >= 8 && v.length <= 64 },
-    { label: '숫자 포함', ok: /[0-9]/.test(v) },
-    { label: '특수문자 포함', ok: PW_SPECIAL.test(v) },
-    { label: '영문·숫자·특수문자만', ok: v.length > 0 && PW_ALLOWED.test(v) },
-  ];
+export type PasswordLevel = 0 | 1 | 2 | 3 | 4;
+
+/**
+ * 비밀번호 강도: 0 없음 · 1 약함 · 2 보통 · 3 강함 · 4 매우 강함.
+ * 조건 세 가지(8자 이상 · 숫자 · 특수문자)를 몇 개 채웠는지로 정하고, 셋 다 채우면 '강함'(= 쓸 수 있는 비밀번호).
+ * 여기에 12자 이상이거나 영문 대·소문자를 섞으면 '매우 강함'. 허용되지 않는 글자가 있으면 '약함'.
+ */
+export function passwordStrength(v: string): { level: PasswordLevel; label: string; missing: string[] } {
+  if (!v) return { level: 0, label: '', missing: ['8자 이상', '숫자', '특수문자'] };
+  const missing = [
+    v.length < 8 && '8자 이상',
+    !/[0-9]/.test(v) && '숫자',
+    !PW_SPECIAL.test(v) && '특수문자',
+  ].filter(Boolean) as string[];
+  if (!PW_ALLOWED.test(v) || v.length > 64) return { level: 1, label: '약함', missing };
+  const met = 3 - missing.length;
+  if (met <= 1) return { level: 1, label: '약함', missing };
+  if (met === 2) return { level: 2, label: '보통', missing };
+  const extra = v.length >= 12 || (/[a-z]/.test(v) && /[A-Z]/.test(v));
+  return extra ? { level: 4, label: '매우 강함', missing } : { level: 3, label: '강함', missing };
 }
 
 /** 비밀번호가 규칙에 맞지 않으면 무엇이 문제인지 한 가지 (맞으면 undefined) */

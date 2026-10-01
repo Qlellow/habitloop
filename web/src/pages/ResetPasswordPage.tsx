@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CODE_LENGTH, usePasswordReset } from '@loop/shared';
-import { AuthField, AuthShell, AuthSubmit, PasswordRules, authStyles as a, useFieldCheck } from '../components/Auth';
+import { AuthField, AuthShell, AuthSubmit, PasswordStrength, authStyles as a, useFieldCheck } from '../components/Auth';
 import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
 import { AlertCircleIcon, LockLineIcon, MailLineIcon } from '../components/Icons';
 import { toast } from '../components/Toast';
-import { EMAIL, confirmError, emailError, passwordError, passwordRules } from '../lib/validate';
+import { EMAIL, confirmError, emailError, passwordError } from '../lib/validate';
 
 type Step =
   | { name: 'email' }
@@ -60,7 +60,6 @@ export default function ResetPasswordPage() {
             메일이 안 보이면 스팸함도 확인해 주세요.
           </>
         }
-        onBack={() => (setStep({ name: 'email' }), verify.reset())}
         onSubmit={submitCode}
       >
         <div className="mb-6">
@@ -86,6 +85,11 @@ export default function ResetPasswordPage() {
         <AuthSubmit pending={verify.isPending} disabled={code.length !== CODE_LENGTH || timer.expired}>
           확인
         </AuthSubmit>
+        <div className={a.subActions}>
+          <button type="button" className={a.textButton} onClick={() => (setStep({ name: 'email' }), verify.reset())}>
+            ← 이메일 다시 입력
+          </button>
+        </div>
       </AuthShell>
     );
   }
@@ -105,7 +109,7 @@ export default function ResetPasswordPage() {
       );
     };
     return (
-      <AuthShell title="새 비밀번호" desc="앞으로 로그인할 때 쓸 비밀번호를 정해 주세요." onBack={() => setStep({ name: 'email' })} onSubmit={submitPassword}>
+      <AuthShell title="새 비밀번호" desc="앞으로 로그인할 때 쓸 비밀번호를 정해 주세요." onSubmit={submitPassword}>
         <AuthField
           icon={<LockLineIcon />}
           label="새 비밀번호"
@@ -118,7 +122,7 @@ export default function ResetPasswordPage() {
           error={pwCheck.error('password')}
           valid={!passwordError(password)}
           shake={pwCheck.attempt}
-          hint={<PasswordRules rules={passwordRules(password)} />}
+          hint={<PasswordStrength value={password} />}
         hintLines={2}
         />
         <AuthField

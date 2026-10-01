@@ -538,6 +538,16 @@ describe('커뮤니티', () => {
     expect((await http().post('/api/auth/login').send(login)).body.token).toBeDefined();
   });
 
+  it('닉네임 중복 확인', async () => {
+    await signup('nick@test.dev', '먼저쓴닉');
+    expect((await http().get('/api/auth/nickname').query({ nickname: '먼저쓴닉' }).expect(200)).body).toEqual({
+      available: false,
+      reason: '이미 사용 중인 닉네임이에요',
+    });
+    expect((await http().get('/api/auth/nickname').query({ nickname: ' 아무도안쓴닉 ' })).body).toEqual({ available: true });
+    expect((await http().get('/api/auth/nickname').query({ nickname: '가' })).body.available).toBe(false);
+  });
+
   it('비밀번호 재설정은 항상 이메일 인증을 거친다', async () => {
     await signup('reset@test.dev', '재설정');
     await http().post('/api/auth/password/code').send({ email: 'nobody@test.dev' }).expect(404);

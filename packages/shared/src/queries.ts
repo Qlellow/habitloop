@@ -623,6 +623,17 @@ export function useChangePassword() {
   });
 }
 
+/** 회원가입: 닉네임을 쓸 수 있는지 (이미 누가 쓰는지). 입력이 멈춘 뒤의 값으로 부른다 */
+export function useNicknameAvailability(nickname: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['auth', 'nickname', nickname],
+    queryFn: ({ signal }) =>
+      api<{ available: boolean; reason?: string }>('/api/auth/nickname', { query: { nickname }, signal }),
+    enabled: enabled && nickname.length > 0,
+    staleTime: 10_000,
+  });
+}
+
 /** 회원가입 1단계: 이메일로 인증번호 받기 */
 export function useSignupCode() {
   return useMutation({

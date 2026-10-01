@@ -112,7 +112,6 @@ export function ChannelSearch() {
 
   return (
     <div className={s.root} ref={rootRef}>
-      <SearchIcon className={s.icon} />
       <input
         ref={inputRef}
         className={cn(ui.input, s.input)}
@@ -140,6 +139,8 @@ export function ChannelSearch() {
         }}
         onKeyDown={onKeyDown}
       />
+      {/* 입력칸 뒤에 두어야 포커스될 때(peer-focus) 돋보기 색을 바꿀 수 있다 */}
+      <SearchIcon className={s.icon} />
       {showMenu && (
         <div className={s.menu}>
           <ul className={s.list} id={listId} role="listbox" aria-label="채널 검색 결과" ref={listRef}>

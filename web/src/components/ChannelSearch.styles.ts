@@ -2,8 +2,9 @@
 const s = {
   // 폰(520px 이하)에서는 헤더에서 빼고 채널 페이지 안의 검색칸을 쓴다
   root: 'relative flex-1 min-w-[120px] max-w-[440px] max-[520px]:hidden',
-  icon: 'absolute left-3 top-5 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none z-[1]',
-  input: 'h-10 pl-[38px] rounded-md',
+  // 밑줄형 검색칸: 왼쪽 돋보기, 포커스되면 돋보기도 브랜드 색
+  icon: 'absolute left-0.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none z-[1] peer-focus:text-primary',
+  input: 'peer h-10 pl-7',
   // 좁은 화면에서는 드롭다운을 화면 폭에 맞춘다
   menu:
     'absolute z-40 top-[calc(100%+6px)] inset-x-0 overflow-hidden rounded-md border border-border bg-surface shadow-pop ' +
