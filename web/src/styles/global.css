@@ -220,6 +220,37 @@
     opacity: 0;
   }
 }
+/*
+ * 모서리 둥글기: 평소에는 바깥 카드가 잘라 주지만, 움직이는 동안의 그림판에는 그게 없어서 도착한 뒤에야 둥글어졌다.
+ * 움직이는 그림판 자체를 잘라서, 왼쪽 모서리가 둥근 모양 → 오른쪽 모서리가 둥근 모양으로 이동하며 함께 바뀌게 한다.
+ */
+::view-transition-image-pair(auth-brand) {
+  overflow: hidden;
+  border-radius: 24px;
+  animation: 0.6s ease-in-out both;
+}
+:root[data-auth-switch='to-right']::view-transition-image-pair(auth-brand) {
+  animation-name: auth-radius-to-right;
+}
+:root[data-auth-switch='to-left']::view-transition-image-pair(auth-brand) {
+  animation-name: auth-radius-to-left;
+}
+@keyframes auth-radius-to-right {
+  from {
+    border-radius: 24px 0 0 24px;
+  }
+  to {
+    border-radius: 0 24px 24px 0;
+  }
+}
+@keyframes auth-radius-to-left {
+  from {
+    border-radius: 0 24px 24px 0;
+  }
+  to {
+    border-radius: 24px 0 0 24px;
+  }
+}
 /* 그림판이 입력판 위로 지나가게 */
 ::view-transition-group(auth-brand) {
   z-index: 2;
