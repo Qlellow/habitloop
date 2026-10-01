@@ -135,6 +135,7 @@ export default function LoginPage() {
       switchLink="회원가입"
       switchTo={`/signup?next=${encodeURIComponent(next)}`}
       onSubmit={submit}
+      after={import.meta.env.DEV && <p className={a.demo}>체험 계정: demo@loop.dev / password1234</p>}
     >
       <AuthField
         icon={<MailLineIcon />}
@@ -167,7 +168,6 @@ export default function LoginPage() {
         }
       />
       <AuthSubmit pending={login.isPending}>로그인</AuthSubmit>
-      {import.meta.env.DEV && <p className={a.demo}>체험 계정: demo@loop.dev / password1234</p>}
     </AuthShell>
   );
 }
