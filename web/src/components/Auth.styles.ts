@@ -49,13 +49,13 @@ const s = {
   ruleDot: 'grid place-items-center w-4 h-4 before:w-1.5 before:h-1.5 before:rounded-full before:bg-current before:content-[""]',
 
   // 알약 버튼
+  // 알약 버튼 (마우스를 올렸을 때의 유리 효과는 global.css 의 .glass-button)
   submit:
-    'flex items-center gap-3 w-full h-14 mt-4 pl-6 pr-2 rounded-full bg-primary text-white text-[16px] font-bold ' +
-    'shadow-[0_10px_24px_rgba(49,130,246,0.28)] transition-[background-color,transform,box-shadow] ' +
-    '[&:not(:disabled)]:hover:bg-primary-pressed [&:not(:disabled)]:active:scale-[0.99] ' +
-    'disabled:opacity-50 disabled:shadow-none disabled:cursor-default',
-  submitArrow: 'grid place-items-center w-10 h-10 rounded-full bg-white/20',
-  spinner: 'w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin',
+    'flex items-center justify-center gap-2.5 w-full h-14 mt-4 px-6 rounded-full bg-primary text-white text-[16px] font-bold ' +
+    'shadow-[0_10px_24px_rgba(49,130,246,0.28)] transition-[transform,box-shadow] duration-500 ease-in-out ' +
+    '[&:not(:disabled)]:active:scale-[0.99] disabled:opacity-50 disabled:shadow-none disabled:cursor-default',
+  submitLabel: 'relative',
+  spinner: 'relative w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin',
   formError:
     'flex items-center gap-2 mt-0 mb-4 px-3.5 py-3 rounded-md bg-danger-weak text-sm font-medium text-danger animate-fade-up',
   subActions: 'flex items-center justify-between gap-2 mt-5',

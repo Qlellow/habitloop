@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircleIcon, ArrowRightIcon, BackIcon, CheckCircleIcon, EyeIcon, EyeOffIcon } from './Icons';
+import { AlertCircleIcon, BackIcon, CheckCircleIcon, EyeIcon, EyeOffIcon } from './Icons';
 import { LogoMark } from './Layout';
 import { useAuthState } from '../lib/authNav';
 import { loaders } from '../lib/preload';
@@ -298,12 +298,12 @@ export function PasswordRules({ rules }: { rules: { label: string; ok: boolean }
   );
 }
 
-/** 알약 모양 주 버튼 + 오른쪽 화살표 */
+/** 알약 모양 주 버튼. 마우스를 올리면 유리처럼 빛나는 효과 (global.css 의 .glass-button) */
 export function AuthSubmit({ children, pending, disabled }: { children: ReactNode; pending?: boolean; disabled?: boolean }) {
   return (
-    <button type="submit" className={s.submit} disabled={pending || disabled}>
-      <span className="flex-1 text-center">{children}</span>
-      <span className={s.submitArrow}>{pending ? <span className={s.spinner} /> : <ArrowRightIcon className="w-4 h-4" />}</span>
+    <button type="submit" className={cn(s.submit, 'glass-button')} disabled={pending || disabled}>
+      {pending && <span className={s.spinner} />}
+      <span className={s.submitLabel}>{children}</span>
     </button>
   );
 }
