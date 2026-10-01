@@ -141,10 +141,21 @@ export class PostsService {
     return rows.map(toSummary);
   }
 
-  async detail(postId: number, viewerId?: number) {
-    // 서버리스라 메모리에 모아 두지 않고 바로 반영한다 (원자적 UPDATE 한 번)
-    const updated = await this.db.execute('UPDATE posts SET view_count = view_count + 1 WHERE id = $1', [postId]);
-    if (!updated) throw notFound();
+  /**
+   * 글 보기. viewer(계정 또는 비로그인 브라우저·앱을 가리키는 값)가 이 글을 처음 볼 때만 조회수가 오른다.
+   * 본 기록 넣기와 조회수 올리기를 쿼리 하나로 한다 (이미 봤으면 INSERT 가 아무것도 안 해서 UPDATE 도 건너뛴다)
+   */
+  async detail(postId: number, viewerId?: number, viewer?: string) {
+    if (viewer) {
+      await this.db.execute(
+        `WITH seen AS (
+           INSERT INTO post_views (post_id, viewer) SELECT $1, $2 WHERE EXISTS (SELECT 1 FROM posts WHERE id = $1)
+           ON CONFLICT DO NOTHING RETURNING 1
+         )
+         UPDATE posts SET view_count = view_count + 1 WHERE id = $1 AND EXISTS (SELECT 1 FROM seen)`,
+        [postId, viewer],
+      );
+    }
     const post = await this.find(postId);
     const liked = viewerId != null && !!(await this.db.one('SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2', [postId, viewerId]));
     return this.toDetail(post, viewerId, liked);

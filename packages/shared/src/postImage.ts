@@ -108,6 +108,15 @@ export function findImageToken(source: string, index: number): { start: number; 
   return undefined;
 }
 
+/** 글자 위치 pos 가 들어 있는 이미지가 몇 번째인지 (작성 화면에서 커서가 이미지 위에 있는지 볼 때) */
+export function imageIndexAt(source: string, pos: number): number | undefined {
+  for (let i = 0; ; i++) {
+    const t = findImageToken(source, i);
+    if (!t || t.start > pos) return undefined;
+    if (pos <= t.end) return i;
+  }
+}
+
 /** n 번째 이미지의 캡션·주소를 바꾼 새 본문 */
 export function replaceImageToken(source: string, index: number, alt: string, src: string): string {
   const t = findImageToken(source, index);

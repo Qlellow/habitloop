@@ -32,7 +32,7 @@ export async function createApp(): Promise<INestApplication> {
   app.enableCors({
     origin: origins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Authorization', 'Content-Type'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Viewer'],
     maxAge: 3600, // preflight 결과 캐시
   });
 

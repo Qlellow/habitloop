@@ -119,10 +119,18 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/posts').query({ q: '제목 2' })).body.items).toHaveLength(7); // 2, 20~25
     expect((await http().get('/api/posts').query({ q: '%' })).body.items).toHaveLength(0);
 
-    // 조회수
-    expect((await http().get(`/api/posts/${lastId}`)).body.viewCount).toBe(1);
-    expect((await http().get(`/api/posts/${lastId}`)).body.viewCount).toBe(2);
-    expect((await http().get(`/api/posts/${lastId}`)).body.viewCount).toBe(3);
+    // 조회수: 같은 사람이 다시 보거나 새로고침해도 한 번만 오른다
+    const views = async (headers: Record<string, string> = {}) => (await http().get(`/api/posts/${lastId}`).set(headers)).body.viewCount;
+    expect(await views(bearer(bob))).toBe(1);
+    expect(await views(bearer(bob))).toBe(1);
+    expect(await views(bearer(alice))).toBe(2);
+    expect(await views({ 'X-Viewer': 'guest-browser-1' })).toBe(3);
+    expect(await views({ 'X-Viewer': 'guest-browser-1' })).toBe(3);
+    expect(await views({ 'X-Viewer': 'guest-browser-2' })).toBe(4);
+    // 비로그인 표식이 없으면 IP + 브라우저로 구분한다
+    expect(await views({ 'User-Agent': 'test-agent' })).toBe(5);
+    expect(await views({ 'User-Agent': 'test-agent' })).toBe(5);
+    await http().get('/api/posts/999999').expect(404);
 
     // 좋아요 (중복 요청은 멱등)
     let like = await http().post(`/api/posts/${lastId}/like`).set(bearer(bob)).expect(200);

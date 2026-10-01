@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
+import { createHash } from 'node:crypto';
+import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Param, Post, Put, Query, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { CurrentUser, LoginUser, Public } from '../auth/auth.guard';
 import type { AuthUser } from '../auth/jwt.service';
 import { ApiError } from '../common/api-error';
@@ -12,6 +14,18 @@ const id = (value: string) => {
   if (n === undefined) throw ApiError.badRequest('잘못된 요청이에요');
   return n;
 };
+
+/**
+ * 조회수를 한 번만 세기 위한 "본 사람" 값.
+ * 로그인: 계정 / 비로그인: 웹·앱이 처음 실행할 때 만들어 저장해 둔 X-Viewer 값 / 그것도 없으면 IP + User-Agent 해시
+ */
+function viewerKey(user: AuthUser | undefined, req: Request): string {
+  if (user) return `u:${user.id}`;
+  const anon = req.header('x-viewer');
+  if (anon && /^[A-Za-z0-9_-]{8,40}$/.test(anon)) return `a:${anon}`;
+  const ip = String(req.header('x-forwarded-for') ?? req.socket.remoteAddress ?? '').split(',')[0].trim();
+  return `h:${createHash('sha256').update(`${ip}|${req.header('user-agent') ?? ''}`).digest('base64url').slice(0, 32)}`;
+}
 
 @Controller()
 export class PostsController {
@@ -44,8 +58,8 @@ export class PostsController {
 
   @Public()
   @Get('posts/:id')
-  detail(@Param('id') postId: string, @CurrentUser() user?: AuthUser) {
-    return this.posts.detail(id(postId), user?.id);
+  detail(@Param('id') postId: string, @CurrentUser() user: AuthUser | undefined, @Req() req: Request) {
+    return this.posts.detail(id(postId), user?.id, viewerKey(user, req));
   }
 
   @Post('posts')

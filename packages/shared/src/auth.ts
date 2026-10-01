@@ -16,6 +16,29 @@ export interface AuthStorage {
 }
 
 const STORAGE_KEY = 'loop.auth';
+const VIEWER_KEY = 'loop.viewer';
+
+/**
+ * 이 브라우저·앱을 가리키는 무작위 값. 비로그인으로 글을 볼 때 조회수를 한 번만 세는 데만 쓴다 (X-Viewer 헤더).
+ * 저장소를 읽기 전에도 쓸 수 있게 먼저 하나 만들어 두고, 저장된 값이 있으면 그 값으로 바꾼다.
+ */
+const randomId = () => Array.from({ length: 24 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
+let viewerId = randomId();
+
+function loadViewerId(adapter: AuthStorage) {
+  const fresh = viewerId;
+  const keep = (saved: string | null) => {
+    if (saved && /^[a-z0-9]{8,40}$/.test(saved)) viewerId = saved;
+    else void Promise.resolve(adapter.setItem(VIEWER_KEY, fresh)).catch(() => undefined);
+  };
+  try {
+    const saved = adapter.getItem(VIEWER_KEY);
+    if (saved instanceof Promise) saved.then(keep, () => undefined);
+    else keep(saved);
+  } catch {
+    // 저장소를 못 쓰면 이번 실행 동안만 같은 값을 쓴다
+  }
+}
 const signedOut = { token: null, user: null };
 
 let state: AuthState = { ...signedOut, ready: false };
@@ -52,6 +75,7 @@ export const authStore = {
    */
   init(adapter: AuthStorage): void | Promise<void> {
     storage = adapter;
+    loadViewerId(adapter);
     let raw: string | null | Promise<string | null>;
     try {
       raw = adapter.getItem(STORAGE_KEY);
@@ -85,6 +109,7 @@ export const authStore = {
     }
   },
   getToken: () => state.token,
+  getViewerId: () => viewerId,
   getUser: () => state.user,
   signIn(res: AuthResponse) {
     const next = { token: res.token, user: res.user };
