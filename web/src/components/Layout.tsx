@@ -4,6 +4,7 @@ import { useAuth, useSignOut } from '@loop/shared';
 import { ChannelSearch } from './ChannelSearch';
 import { preload } from '../lib/preload';
 import { GridIcon, HomeIcon, PencilIcon, UserIcon } from './Icons';
+import { useAuthState } from '../lib/authNav';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 import s from './Layout.styles';
@@ -81,8 +82,8 @@ function UserMenu() {
 
 export function SiteHeader() {
   const { isLoggedIn } = useAuth();
-  const { pathname, search } = useLocation();
-  const next = encodeURIComponent(pathname + search);
+  // 로그인 · 회원가입 뒤 돌아올 곳은 주소가 아니라 state 로 넘긴다 (lib/authNav)
+  const authState = useAuthState();
 
   return (
     <header className={s.header}>
@@ -106,10 +107,10 @@ export function SiteHeader() {
             <UserMenu />
           ) : (
             <>
-              <Link to={`/login?next=${next}`} className={cn(ui.button, ui.text)} onPointerEnter={preload.login} draggable={false}>
+              <Link to="/login" state={authState} className={cn(ui.button, ui.text)} onPointerEnter={preload.login} draggable={false}>
                 로그인
               </Link>
-              <Link to={`/signup?next=${next}`} className={cn(ui.button, ui.primary)} onPointerEnter={preload.signup} draggable={false}>
+              <Link to="/signup" state={authState} className={cn(ui.button, ui.primary)} onPointerEnter={preload.signup} draggable={false}>
                 회원가입
               </Link>
             </>
@@ -126,14 +127,16 @@ export function SiteHeader() {
  */
 export function MobileTabBar() {
   const { isLoggedIn } = useAuth();
-  const { pathname, search } = useLocation();
+  const { pathname } = useLocation();
+  const authState = useAuthState();
   const slug = pathname.match(/^\/c\/([^/]+)/)?.[1];
   const tabs = [
     { to: '/', label: '홈', icon: <HomeIcon />, active: pathname === '/' },
     { to: '/channels', label: '채널', icon: <GridIcon />, active: pathname.startsWith('/channels') || !!slug },
     { to: slug ? `/write?channel=${slug}` : '/write', label: '글쓰기', icon: <PencilIcon />, active: pathname.startsWith('/write') },
     {
-      to: isLoggedIn ? '/me' : `/login?next=${encodeURIComponent(pathname + search)}`,
+      to: isLoggedIn ? '/me' : '/login',
+      state: isLoggedIn ? undefined : authState,
       label: isLoggedIn ? '내 정보' : '로그인',
       icon: <UserIcon />,
       active: pathname.startsWith('/me') || pathname === '/login',
@@ -142,7 +145,7 @@ export function MobileTabBar() {
   return (
     <nav className={s.tabBar} aria-label="하단 메뉴">
       {tabs.map((t) => (
-        <Link key={t.label} to={t.to} className={s.tab} aria-current={t.active ? 'page' : undefined}>
+        <Link key={t.label} to={t.to} state={t.state} className={s.tab} aria-current={t.active ? 'page' : undefined}>
           {t.icon}
           {t.label}
         </Link>

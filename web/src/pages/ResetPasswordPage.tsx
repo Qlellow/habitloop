@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CODE_LENGTH, usePasswordReset } from '@loop/shared';
 import { AuthField, AuthShell, AuthSubmit, PasswordRules, authStyles as a, useFieldCheck } from '../components/Auth';
 import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
@@ -27,12 +27,13 @@ function FormError({ message }: { message?: string }) {
  * 2단계 인증을 켰는지와 상관없이 항상 이메일 인증을 거친다 (이메일만 알면 남의 비밀번호를 바꿀 수 있으면 안 된다).
  */
 export default function ResetPasswordPage() {
-  const [params] = useSearchParams();
+  // 로그인 화면에서 적어 둔 이메일 (주소에 넣지 않고 state 로 받는다)
+  const prefill = (useLocation().state as { email?: string } | null)?.email ?? '';
   const navigate = useNavigate();
   const { sendCode, resend, verify, reset } = usePasswordReset();
   const timer = useCodeTimer();
   const [step, setStep] = useState<Step>({ name: 'email' });
-  const [email, setEmail] = useState(params.get('email') ?? '');
+  const [email, setEmail] = useState(prefill);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');

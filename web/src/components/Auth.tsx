@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } fr
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertCircleIcon, ArrowRightIcon, BackIcon, CheckCircleIcon, EyeIcon, EyeOffIcon } from './Icons';
 import { LogoMark } from './Layout';
+import { useAuthState } from '../lib/authNav';
 import { loaders } from '../lib/preload';
 import { cn } from '../lib/cn';
 import s from './Auth.styles';
@@ -10,7 +11,6 @@ import s from './Auth.styles';
  * 로그인 · 회원가입 · 비밀번호 찾기 화면의 틀. 860px 이하에서는 입력만 보인다.
  * - login: 왼쪽 브랜드 그림 / 오른쪽 입력 (비밀번호 찾기도 같은 배치)
  * - signup: 왼쪽 입력 / 오른쪽 브랜드 그림
- * 로그인 ↔ 회원가입으로 바꿀 때는 View Transitions 로 두 판이 서로 자리를 바꾸며 미끄러진다 (global.css).
  */
 export function AuthShell({
   variant = 'login',
@@ -42,7 +42,8 @@ export function AuthShell({
   after?: ReactNode;
 }) {
   const navigate = useNavigate();
-  // 전환 애니메이션이 비어 보이지 않도록 반대쪽 화면 코드를 미리 받아 둔다
+  const authState = useAuthState();
+  // 반대쪽 화면(로그인 ↔ 회원가입) 코드를 미리 받아 두어 바로 넘어가게 한다
   useEffect(() => {
     void loaders.login();
     void loaders.signup();
@@ -50,9 +51,9 @@ export function AuthShell({
   const brand = variant === 'login' ? <LoginBrand /> : <SignupBrand />;
   return (
     <main className={s.page}>
-      <div className={cn(s.card, 'auth-card')}>
+      <div className={s.card}>
         {variant === 'login' && brand}
-        <form className={cn(s.formPane, 'auth-form')} onSubmit={onSubmit} noValidate>
+        <form className={s.formPane} onSubmit={onSubmit} noValidate>
           <div className={s.top}>
             <button
               type="button"
@@ -72,14 +73,8 @@ export function AuthShell({
             {switchTo && (
               <p className={s.switch}>
                 {switchText}
-                <Link
-                  to={switchTo}
-                  replace
-                  viewTransition
-                  className={s.switchLink}
-                  // 그림판이 어느 쪽으로 가는지 알려 줘서 모서리 둥글기도 같이 옮겨 간다 (global.css)
-                  onClick={() => markAuthSwitch(variant === 'login' ? 'to-right' : 'to-left')}
-                >
+                {/* 돌아갈 곳(from)은 주소가 아니라 state 로 그대로 넘긴다 → 주소는 /login, /signup 그대로 */}
+                <Link to={switchTo} replace state={authState} className={s.switchLink}>
                   {switchLink}
                 </Link>
               </p>
@@ -93,18 +88,10 @@ export function AuthShell({
   );
 }
 
-/**
- * 그림판이 어느 쪽으로 가는지 <html data-auth-switch> 에 적어 둔다.
- * 전환 애니메이션(::view-transition-*)에만 쓰이므로 다음 전환 때까지 남아 있어도 괜찮다.
- */
-function markAuthSwitch(direction: 'to-right' | 'to-left') {
-  document.documentElement.dataset.authSwitch = direction;
-}
-
 /** 로그인 쪽 그림: 루프에서 보게 될 화면(인기 글, 팔로우한 채널)을 카드로 미리 보여 준다. 장식이라 스크린 리더에는 숨김 */
 function LoginBrand() {
   return (
-    <aside className={cn(s.brand, s.brandLogin, 'auth-brand')} aria-hidden>
+    <aside className={cn(s.brand, s.brandLogin)} aria-hidden>
       <div className={s.brandShapeA} />
       <div className={s.brandShapeB} />
       <div className={s.brandHead}>
@@ -150,7 +137,7 @@ function LoginBrand() {
 /** 회원가입 쪽 그림: 가입하면 할 수 있는 것과 안전하게 지키는 방법 */
 function SignupBrand() {
   return (
-    <aside className={cn(s.brand, s.brandSignup, 'auth-brand')} aria-hidden>
+    <aside className={cn(s.brand, s.brandSignup)} aria-hidden>
       <div className={s.brandShapeC} />
       <div className={s.brandShapeD} />
       <div className={s.brandHead}>

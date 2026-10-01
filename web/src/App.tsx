@@ -26,7 +26,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 function RequireAuth({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth();
   const { pathname, search } = useLocation();
-  if (!isLoggedIn) return <Navigate to={`/login?next=${encodeURIComponent(pathname + search)}`} replace />;
+  if (!isLoggedIn) return <Navigate to="/login" state={{ from: pathname + search }} replace />;
   return children;
 }
 

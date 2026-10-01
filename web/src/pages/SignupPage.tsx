@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CODE_LENGTH, safeNext, useSignup, useSignupCode } from '@loop/shared';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { CODE_LENGTH, useSignup, useSignupCode } from '@loop/shared';
 import { AuthField, AuthShell, AuthSubmit, PasswordRules, authStyles as a, useFieldCheck } from '../components/Auth';
 import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
 import { AlertCircleIcon, LockLineIcon, MailLineIcon, UserLineIcon } from '../components/Icons';
 import { toast } from '../components/Toast';
+import { useReturnTo } from '../lib/authNav';
 import { EMAIL, confirmError, emailError, nicknameError, passwordError, passwordRules } from '../lib/validate';
 
 type Field = 'nickname' | 'email' | 'password' | 'confirm';
@@ -15,7 +16,8 @@ type Field = 'nickname' | 'email' | 'password' | 'confirm';
  */
 export default function SignupPage() {
   const [params, setParams] = useSearchParams();
-  const next = safeNext(params.get('next'));
+  const location = useLocation();
+  const next = useReturnTo();
   const navigate = useNavigate();
   const signup = useSignup();
   const sendCode = useSignupCode();
@@ -46,7 +48,8 @@ export default function SignupPage() {
   const goVerify = () => {
     const p = new URLSearchParams(params);
     p.set('step', 'verify');
-    setParams(p);
+    // 돌아갈 곳(state)을 잃지 않게 그대로 들고 간다
+    setParams(p, { state: location.state });
   };
 
   const requestCode = (then?: () => void) =>
@@ -139,7 +142,7 @@ export default function SignupPage() {
       desc="몇 가지만 알려 주시면 바로 함께할 수 있어요."
       switchText="이미 회원이신가요?"
       switchLink="로그인"
-      switchTo={`/login?next=${encodeURIComponent(next)}`}
+      switchTo="/login"
       onSubmit={startVerify}
     >
       <AuthField

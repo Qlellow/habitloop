@@ -34,7 +34,7 @@ import { cn } from '../lib/cn';
 
 function useLoginRedirect(postId: number) {
   const navigate = useNavigate();
-  return () => navigate(`/login?next=${encodeURIComponent(`/posts/${postId}`)}`);
+  return () => navigate('/login', { state: { from: `/posts/${postId}` } });
 }
 
 function LikeButton({ post }: { post: PostDetail }) {
@@ -149,7 +149,7 @@ function Comments({ postId, count }: { postId: number; count?: number }) {
         </form>
       ) : (
         <p className={s.loginPrompt}>
-          <Link to={`/login?next=${encodeURIComponent(pathname)}`} onPointerEnter={preload.login}>
+          <Link to="/login" state={{ from: pathname }} onPointerEnter={preload.login}>
             로그인
           </Link>
           하고 댓글을 남겨 보세요

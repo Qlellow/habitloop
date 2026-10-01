@@ -9,7 +9,7 @@ import { cn } from '../lib/cn';
 
 export function MakeChannelCard() {
   const { isLoggedIn } = useAuth();
-  const to = isLoggedIn ? '/channels/new' : '/login?next=/channels/new';
+  const to = isLoggedIn ? '/channels/new' : '/login';
   return (
     <section className={ui.card} style={{ padding: 20 }}>
       <h2 className={ui.sectionTitle} style={{ fontSize: 16 }}>
@@ -18,7 +18,7 @@ export function MakeChannelCard() {
       <p style={{ margin: '6px 0 14px', fontSize: 14, color: 'var(--text-sub)' }}>
         좋아하는 주제로 사람들이 모이는 공간을 만들 수 있어요.
       </p>
-      <Link to={to} className={cn(ui.button, ui.secondary, ui.full)} onPointerEnter={preload.channelForm}>
+      <Link to={to} state={isLoggedIn ? undefined : { from: '/channels/new' }} className={cn(ui.button, ui.secondary, ui.full)} onPointerEnter={preload.channelForm}>
         채널 만들기
       </Link>
     </section>
