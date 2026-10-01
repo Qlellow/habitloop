@@ -109,3 +109,18 @@ export const WrenchIcon = (p: P) => (
     />
   </svg>
 );
+
+export const HomeIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M4 10.5L12 4l8 6.5V19a1 1 0 01-1 1h-4.5v-5.5h-5V20H5a1 1 0 01-1-1v-8.5z" fill="currentColor" />
+  </svg>
+);
+
+export const GridIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="4" y="4" width="7" height="7" rx="2" fill="currentColor" />
+    <rect x="13" y="4" width="7" height="7" rx="2" fill="currentColor" />
+    <rect x="4" y="13" width="7" height="7" rx="2" fill="currentColor" />
+    <rect x="13" y="13" width="7" height="7" rx="2" fill="currentColor" />
+  </svg>
+);

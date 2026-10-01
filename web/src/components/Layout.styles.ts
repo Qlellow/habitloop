@@ -39,6 +39,14 @@ const s = {
   leftInThree: 'max-[1100px]:hidden',
   main: 'min-w-0 flex flex-col gap-4',
 
+  // 폰 하단 탭바: 헤더의 글자 메뉴가 숨는 폭(520px 이하)에서만 보인다
+  tabBar:
+    'hidden max-[520px]:flex fixed inset-x-0 bottom-0 z-30 border-t border-border pb-[env(safe-area-inset-bottom)] ' +
+    'bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] backdrop-blur-[14px] backdrop-saturate-[1.8]',
+  tab:
+    'flex-1 flex flex-col items-center justify-center gap-0.5 h-14 text-[11px] font-semibold text-fg-weak ' +
+    'aria-[current=page]:text-fg-strong active:bg-pressed [&>svg]:w-6 [&>svg]:h-6',
+
   // 사이트 푸터: 페이지가 짧아도 화면 맨 아래에 붙는다 (App 의 Root 가 세로 flex)
   footer: 'mt-auto border-t border-border bg-surface',
   footerInner:
@@ -51,7 +59,7 @@ const s = {
     'hover:bg-field-hover hover:text-fg-strong',
   copyright: 'm-0 ml-auto max-[520px]:ml-0 max-[520px]:w-full',
   toast:
-    'fixed left-1/2 bottom-8 -translate-x-1/2 z-50 max-w-[calc(100vw-40px)] px-5 py-3 rounded-md bg-toast ' +
+    'fixed left-1/2 bottom-8 max-[520px]:bottom-[calc(var(--tabbar-h)+16px)] -translate-x-1/2 z-50 max-w-[calc(100vw-40px)] px-5 py-3 rounded-md bg-toast ' +
     'text-white text-[15px] font-medium shadow-pop animate-toast-in',
 };
 

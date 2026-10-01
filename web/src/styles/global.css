@@ -161,3 +161,13 @@
 .theme-switching *::after {
   transition: none !important;
 }
+
+/* 폰 하단 탭바 높이 (Layout 의 MobileTabBar). 탭바가 없는 넓은 화면에서는 0 */
+:root {
+  --tabbar-h: 0px;
+}
+@media (max-width: 520px) {
+  :root {
+    --tabbar-h: calc(56px + env(safe-area-inset-bottom));
+  }
+}

@@ -10,6 +10,18 @@ const s = {
     'hover:bg-field aria-[current=page]:bg-primary-weak aria-[current=page]:text-primary aria-[current=page]:font-bold',
   channelName: 'flex-1 min-w-0 truncate',
   more: 'block px-2.5 py-2 text-sm font-medium text-fg-sub hover:text-primary',
+  // 왼쪽 사이드바가 숨는 폭(1100px 이하)에서 홈 본문 위에 보이는 가로 채널 줄
+  strip: 'hidden max-[1100px]:block',
+  stripHead: 'flex items-baseline justify-between px-1 mb-2',
+  stripTitle: 'm-0 text-[13px] font-bold text-fg-weak',
+  stripMore: 'text-[13px] font-medium text-fg-sub hover:text-primary',
+  stripList:
+    'flex gap-2 overflow-x-auto list-none m-0 p-0 pb-1 -mx-4 px-4 ' +
+    '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+  stripItem:
+    'flex-none flex items-center gap-2 h-10 pl-1.5 pr-3.5 rounded-full border border-border bg-surface ' +
+    'text-[14px] font-semibold text-fg whitespace-nowrap transition-colors hover:bg-field',
+  stripBadge: 'text-[11px] font-bold text-primary',
   rank: 'flex items-baseline gap-3 px-5 py-2.5 transition-colors hover:bg-pressed [li:last-child>&]:pb-4',
   rankNo: 'flex-none w-4 font-bold text-primary',
   rankBody: 'flex-1 min-w-0',
