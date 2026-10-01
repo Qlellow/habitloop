@@ -39,7 +39,7 @@ async function signup(email: string, nickname: string): Promise<string> {
   await http().post('/api/auth/signup/code').send({ email }).expect(204);
   const res = await http()
     .post('/api/auth/signup')
-    .send({ email, password: 'password1234', nickname, code: lastCode(email) })
+    .send({ email, password: 'password1234!', nickname, code: lastCode(email) })
     .expect(201);
   return res.body.token;
 }
@@ -448,12 +448,12 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/me').set(bearer(renamed.token))).body.nickname).toBe('새닉네임');
 
     // 비밀번호 변경: 지금 비밀번호가 맞아야 한다
-    const wrong = await http().put('/api/me/password').set(bearer(me)).send({ currentPassword: 'wrong-password', newPassword: 'newpassword123' }).expect(400);
+    const wrong = await http().put('/api/me/password').set(bearer(me)).send({ currentPassword: 'wrong-password', newPassword: 'newpassword123!' }).expect(400);
     expect(wrong.body.message).toBe('지금 비밀번호가 맞지 않아요');
-    await http().put('/api/me/password').set(bearer(me)).send({ currentPassword: 'password1234', newPassword: 'short' }).expect(400);
-    await http().put('/api/me/password').set(bearer(me)).send({ currentPassword: 'password1234', newPassword: 'newpassword123' }).expect(204);
-    await http().post('/api/auth/login').send({ email: 'mypage@test.dev', password: 'password1234' }).expect(401);
-    const login = await http().post('/api/auth/login').send({ email: 'mypage@test.dev', password: 'newpassword123' }).expect(200);
+    await http().put('/api/me/password').set(bearer(me)).send({ currentPassword: 'password1234!', newPassword: 'short' }).expect(400);
+    await http().put('/api/me/password').set(bearer(me)).send({ currentPassword: 'password1234!', newPassword: 'newpassword123!' }).expect(204);
+    await http().post('/api/auth/login').send({ email: 'mypage@test.dev', password: 'password1234!' }).expect(401);
+    const login = await http().post('/api/auth/login').send({ email: 'mypage@test.dev', password: 'newpassword123!' }).expect(200);
     expect(login.body.user.nickname).toBe('새닉네임');
   });
 
@@ -486,7 +486,7 @@ describe('커뮤니티', () => {
   });
 
   it('회원가입은 이메일 인증번호가 필요하다', async () => {
-    const form = { email: 'code@test.dev', password: 'password1234', nickname: '인증', code: '123456' };
+    const form = { email: 'code@test.dev', password: 'password1234!', nickname: '인증', code: '123456' };
     expect((await http().post('/api/auth/signup').send(form).expect(400)).body.message).toBe('인증번호를 먼저 받아 주세요');
     await http().post('/api/auth/signup/code').send({ email: 'Code@test.dev' }).expect(204);
     const code = lastCode('code@test.dev');
@@ -503,7 +503,7 @@ describe('커뮤니티', () => {
 
   it('2단계 인증 로그인', async () => {
     const token = await signup('2fa@test.dev', '이단계');
-    const login = { email: '2fa@test.dev', password: 'password1234' };
+    const login = { email: '2fa@test.dev', password: 'password1234!' };
 
     // 켜기: 내 이메일로 받은 번호를 확인해야 켜진다
     await http().post('/api/me/2fa/enable').set(bearer(token)).send({ code: '000000' }).expect(400);
@@ -534,7 +534,7 @@ describe('커뮤니티', () => {
 
     // 끄기: 비밀번호 확인
     await http().post('/api/me/2fa/disable').set(bearer(newToken)).send({ password: 'wrong-password' }).expect(400);
-    expect((await http().post('/api/me/2fa/disable').set(bearer(newToken)).send({ password: 'password1234' })).body.twoFactorEnabled).toBe(false);
+    expect((await http().post('/api/me/2fa/disable').set(bearer(newToken)).send({ password: 'password1234!' })).body.twoFactorEnabled).toBe(false);
     expect((await http().post('/api/auth/login').send(login)).body.token).toBeDefined();
   });
 
@@ -557,24 +557,30 @@ describe('커뮤니티', () => {
     await http().get('/api/me').set('Authorization', `Bearer ${resetToken}`).expect(401);
 
     // 3) 새 비밀번호로 바꾸기
-    expect((await http().post('/api/auth/password/reset').send({ resetToken, newPassword: 'password1234' }).expect(400)).body.message).toBe(
+    expect((await http().post('/api/auth/password/reset').send({ resetToken, newPassword: 'password1234!' }).expect(400)).body.message).toBe(
       '지금 비밀번호와 다른 비밀번호를 입력해 주세요',
     );
     await http().post('/api/auth/password/reset').send({ resetToken, newPassword: 'new-password-99' }).expect(204);
     expect(mailer.lastNotice('reset@test.dev')).toBe('비밀번호가 바뀌었어요');
     // 한 번 쓴 토큰은 다시 못 쓴다
-    await http().post('/api/auth/password/reset').send({ resetToken, newPassword: 'another-password' }).expect(400);
-    await http().post('/api/auth/login').send({ email: 'reset@test.dev', password: 'password1234' }).expect(401);
+    await http().post('/api/auth/password/reset').send({ resetToken, newPassword: 'another-password1' }).expect(400);
+    await http().post('/api/auth/login').send({ email: 'reset@test.dev', password: 'password1234!' }).expect(401);
     expect((await http().post('/api/auth/login').send({ email: 'reset@test.dev', password: 'new-password-99' }).expect(200)).body.token).toBeDefined();
   });
 
   it('인증 입력 검사', async () => {
     await signup('dup@test.dev', '중복');
-    await http().post('/api/auth/signup').send({ email: 'dup@test.dev', password: 'password1234', nickname: '다른닉', code: 'AAAAAA' }).expect(409);
+    await http().post('/api/auth/signup').send({ email: 'dup@test.dev', password: 'password1234!', nickname: '다른닉', code: 'AAAAAA' }).expect(409);
     const short = await http().post('/api/auth/signup').send({ email: 'short@test.dev', password: '123', nickname: '짧은비번', code: 'AAAAAA' }).expect(400);
     expect(short.body.message).toBe('비밀번호는 8자 이상이어야 해요');
+    // 비밀번호 규칙: 숫자·특수문자 포함, 영문·숫자·특수문자만
+    const bad = (password: string) => http().post('/api/auth/signup').send({ email: 'rule@test.dev', password, nickname: '규칙', code: 'AAAAAA' });
+    expect((await bad('abcdefgh!').expect(400)).body.message).toBe('비밀번호에 숫자를 하나 이상 넣어 주세요');
+    expect((await bad('abcdefgh1').expect(400)).body.message).toBe('비밀번호에 특수문자를 하나 이상 넣어 주세요');
+    expect((await bad('비밀번호1234!').expect(400)).body.message).toBe('비밀번호는 영문, 숫자, 특수문자만 쓸 수 있어요');
+    expect((await bad('pass word1!').expect(400)).body.message).toBe('비밀번호는 영문, 숫자, 특수문자만 쓸 수 있어요');
     await http().post('/api/auth/login').send({ email: 'dup@test.dev', password: 'wrong-password' }).expect(401);
-    const token = (await http().post('/api/auth/login').send({ email: 'DUP@test.dev', password: 'password1234' }).expect(200)).body.token;
+    const token = (await http().post('/api/auth/login').send({ email: 'DUP@test.dev', password: 'password1234!' }).expect(200)).body.token;
     expect((await http().get('/api/me').set(bearer(token))).body.nickname).toBe('중복');
     await http().get('/api/me').set('Authorization', 'Bearer invalid').expect(401);
   });

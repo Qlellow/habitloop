@@ -129,8 +129,9 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="로그인"
-      desc="루프에 다시 오신 걸 환영해요."
+      variant="login"
+      title="다시 만나서 반가워요"
+      desc="이메일로 로그인하고 오늘의 이야기를 이어 가세요."
       switchText="처음이신가요?"
       switchLink="회원가입"
       switchTo={`/signup?next=${encodeURIComponent(next)}`}

@@ -117,7 +117,8 @@ export default function ResetPasswordPage() {
           error={pwCheck.error('password')}
           valid={!passwordError(password)}
           shake={pwCheck.attempt}
-          hint={password && !pwCheck.error('password') ? <PasswordRules rules={passwordRules(password)} /> : undefined}
+          hint={<PasswordRules rules={passwordRules(password)} />}
+        hintLines={2}
         />
         <AuthField
           icon={<LockLineIcon />}
