@@ -168,7 +168,7 @@ export function Page({
   return (
     <div className={cn(s.page, variant === 'nav' ? s.withNav : s[variant])}>
       {(variant === 'three' || variant === 'nav') && (
-        <aside className={cn(s.side, variant === 'three' && s.leftInThree)}>{left}</aside>
+        <aside className={cn(s.side, variant === 'three' && s.leftInThree, variant === 'nav' && s.sideStatic)}>{left}</aside>
       )}
       <main className={s.main}>{children}</main>
       {(variant === 'three' || variant === 'twoRight') && <aside className={s.side}>{right}</aside>}
