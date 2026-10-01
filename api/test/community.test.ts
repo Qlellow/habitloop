@@ -399,6 +399,27 @@ describe('커뮤니티', () => {
     expect((await http().get(`/api/posts/${staffPost.body.id}`)).body.author.role).toBeUndefined();
   });
 
+  it('본문 이미지 올리기', async () => {
+    const me = await signup('img@test.dev', '사진가');
+    const webp = Buffer.from([0x52, 0x49, 0x46, 0x46, 1, 2, 3, 4]);
+    const upload = (type: string, body: Buffer, token?: string) => {
+      const req = http().post('/api/images').set('Content-Type', type);
+      return (token ? req.set(bearer(token)) : req).send(body);
+    };
+    await upload('image/webp', webp).expect(401);
+    await upload('text/html', webp, me).expect(400);
+    expect((await upload('image/webp', Buffer.alloc(3 * 1024 * 1024 + 1), me).expect(400)).body.message).toBe('이미지는 3MB 이하로 올려 주세요');
+    const { id, url } = (await upload('image/webp', webp, me).expect(201)).body;
+    expect(url).toBe(`/api/images/${id}`);
+    // 누구나 볼 수 있고, 바뀌지 않으므로 오래 캐시한다
+    const res = await http().get(url).buffer(true).parse(binary).expect(200);
+    expect(res.headers['content-type']).toBe('image/webp');
+    expect(res.headers['cache-control']).toContain('immutable');
+    expect(Buffer.compare(res.body as Buffer, webp)).toBe(0);
+    await http().get('/api/images/doesnotexist0000000').expect(404);
+    await http().get('/api/images/..%2Fetc').expect(404);
+  });
+
   it('채널 프로필 이미지', async () => {
     const owner = await signup('icon-owner@test.dev', '아이콘');
     const stranger = await signup('icon-other@test.dev', '남남');

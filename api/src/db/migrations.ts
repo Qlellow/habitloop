@@ -154,4 +154,18 @@ INSERT INTO channels (slug, name, description) VALUES
     ('daily', '일상', '오늘 하루는 어땠나요?');
 `,
   },
+  {
+    // 글 본문 이미지. 편집(자르기·크기 등)은 주소 뒤 #설정으로 하므로 올린 원본은 바뀌지 않는다
+    name: '002_images',
+    sql: `
+CREATE TABLE images (
+    id            VARCHAR(32)  PRIMARY KEY,
+    owner_id      INTEGER      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content_type  VARCHAR(20)  NOT NULL,
+    data          BYTEA        NOT NULL,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_images_owner ON images (owner_id, created_at);
+`,
+  },
 ];

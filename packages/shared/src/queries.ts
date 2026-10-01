@@ -623,6 +623,11 @@ export function useChangePassword() {
   });
 }
 
+/** 글 본문 이미지 올리기 (이미지 바이트를 그대로). 돌려받은 url 을 마크다운 ![](url) 로 넣는다 */
+export function uploadPostImage(image: Blob) {
+  return api<{ id: string; url: string }>('/api/images', { method: 'POST', blob: image });
+}
+
 /** 회원가입: 닉네임을 쓸 수 있는지 (이미 누가 쓰는지). 입력이 멈춘 뒤의 값으로 부른다 */
 export function useNicknameAvailability(nickname: string, enabled: boolean) {
   return useQuery({
