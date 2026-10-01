@@ -4,14 +4,15 @@ const s = {
     'sticky top-0 z-30 border-b border-border bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] ' +
     'backdrop-blur-[14px] backdrop-saturate-[1.8]',
   headerInner: 'flex items-center gap-5 h-header max-w-page mx-auto px-6 max-[860px]:gap-3 max-[860px]:px-4',
-  logo: 'flex-none flex items-center gap-2 text-xl font-extrabold tracking-[-0.03em] text-fg-strong',
+  // 로고·메뉴는 드래그로 글자가 선택되지 않게 (select-none)
+  logo: 'flex-none flex items-center gap-2 text-xl font-extrabold tracking-[-0.03em] text-fg-strong select-none',
   logoMark: 'w-7 h-7',
   // 아주 좁은 화면: 홈은 로고로, 채널은 검색으로 갈 수 있으니 글자 메뉴를 숨겨 검색창 자리를 만든다
-  nav: 'flex gap-0.5 max-[520px]:hidden',
+  nav: 'flex gap-0.5 select-none max-[520px]:hidden',
   navLink:
     'flex items-center h-9 px-3 rounded-sm text-[15px] font-semibold text-fg-sub transition-colors ' +
     'hover:bg-field hover:text-fg-strong aria-[current=page]:text-fg-strong',
-  actions: 'ml-auto flex items-center gap-2',
+  actions: 'ml-auto flex items-center gap-2 select-none',
 
   menuWrap: 'relative',
   userButton:

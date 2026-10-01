@@ -1,12 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CODE_LENGTH, safeNext, useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
+import { AuthField, AuthShell, AuthSubmit, authStyles as a, useFieldCheck } from '../components/Auth';
 import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
-import { Page } from '../components/Layout';
+import { AlertCircleIcon, LockLineIcon, MailLineIcon } from '../components/Icons';
 import { toast } from '../components/Toast';
-import { ui } from '../components/ui';
-import s from './pages.styles';
-import { cn } from '../lib/cn';
+import { EMAIL, emailError } from '../lib/validate';
 
 /** 2단계 인증: 비밀번호를 확인한 뒤 이메일로 받은 번호를 입력한다 */
 function TwoFactorStep({
@@ -34,12 +33,17 @@ function TwoFactorStep({
   };
 
   return (
-    <form className={cn(ui.card, s.authCard)} onSubmit={submit} noValidate>
-      <h1 className={s.authTitle}>2단계 인증</h1>
-      <p className={s.authDesc}>
-        {maskedEmail ?? '가입한 이메일'}(으)로 보낸 인증번호 {CODE_LENGTH}자리를 입력해 주세요.
-      </p>
-      <div className={ui.field}>
+    <AuthShell
+      title="2단계 인증"
+      desc={
+        <>
+          <b className="text-fg-strong">{maskedEmail ?? '가입한 이메일'}</b>(으)로 보낸 인증번호 {CODE_LENGTH}자리를 입력해 주세요.
+        </>
+      }
+      onBack={onBack}
+      onSubmit={submit}
+    >
+      <div className="mb-6">
         <CodeField value={code} onChange={setCode} autoFocus invalid={!!verify.error && !code} />
         <CodeTimer
           timer={timer}
@@ -58,16 +62,21 @@ function TwoFactorStep({
           }
         />
       </div>
-      {verify.error && <p className={ui.error}>{verify.error.message}</p>}
-      <button type="submit" className={cn(ui.button, ui.primary, ui.large, ui.full)} disabled={code.length !== CODE_LENGTH || timer.expired || verify.isPending}>
-        {verify.isPending ? '확인 중…' : '확인'}
-      </button>
-      <div className={s.codeActions}>
-        <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={onBack}>
+      {verify.error && (
+        <p className={a.formError} role="alert">
+          <AlertCircleIcon className="flex-none w-4 h-4" />
+          {verify.error.message}
+        </p>
+      )}
+      <AuthSubmit pending={verify.isPending} disabled={code.length !== CODE_LENGTH || timer.expired}>
+        확인
+      </AuthSubmit>
+      <div className={a.subActions}>
+        <button type="button" className={a.textButton} onClick={onBack}>
           ← 다른 계정으로 로그인
         </button>
       </div>
-    </form>
+    </AuthShell>
   );
 }
 
@@ -81,10 +90,18 @@ export default function LoginPage() {
   const [twoFactor, setTwoFactor] = useState<{ challenge: string; maskedEmail?: string }>();
   const done = () => navigate(next, { replace: true });
 
+  const check = useFieldCheck({
+    email: emailError(email),
+    password: password ? undefined : '비밀번호를 입력해 주세요',
+  });
+  // 서버가 "이메일 또는 비밀번호가 맞지 않아요"라고 하면 두 칸을 함께 강조하고 메시지는 비밀번호 칸 아래에
+  const wrong = login.error?.message;
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (!check.submit()) return;
     login.mutate(
-      { email, password },
+      { email: email.trim(), password },
       {
         onSuccess: (res) => {
           if (res.twoFactorRequired && res.challenge) setTwoFactor({ challenge: res.challenge, maskedEmail: res.maskedEmail });
@@ -96,71 +113,61 @@ export default function LoginPage() {
 
   if (twoFactor) {
     return (
-      <Page variant="narrow">
-        <TwoFactorStep
-          challenge={twoFactor.challenge}
-          maskedEmail={twoFactor.maskedEmail}
-          onDone={done}
-          onBack={() => {
-            setTwoFactor(undefined);
-            setPassword('');
-            login.reset();
-          }}
-        />
-      </Page>
+      <TwoFactorStep
+        challenge={twoFactor.challenge}
+        maskedEmail={twoFactor.maskedEmail}
+        onDone={done}
+        onBack={() => {
+          setTwoFactor(undefined);
+          setPassword('');
+          login.reset();
+          check.reset();
+        }}
+      />
     );
   }
 
   return (
-    <Page variant="narrow">
-      <form className={cn(ui.card, s.authCard)} onSubmit={submit} noValidate>
-        <h1 className={s.authTitle}>로그인</h1>
-        <p className={s.authDesc}>루프에 다시 오신 걸 환영해요.</p>
-        <label className={ui.field}>
-          <span className={ui.label}>이메일</span>
-          <input
-            className={ui.input}
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoFocus
-          />
-        </label>
-        <div className={ui.field}>
-          <div className={s.labelRow}>
-            <label className={ui.label} htmlFor="login-password">
-              비밀번호
-            </label>
-            <Link to={`/password/reset${email ? `?email=${encodeURIComponent(email.trim())}` : ''}`} className={s.forgot}>
-              비밀번호를 잊으셨나요?
-            </Link>
-          </div>
-          <input
-            id="login-password"
-            className={ui.input}
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        {login.error && <p className={ui.error}>{login.error.message}</p>}
-        <button
-          type="submit"
-          className={cn(ui.button, ui.primary, ui.large, ui.full)}
-          disabled={!email || !password || login.isPending}
-        >
-          {login.isPending ? '확인 중…' : '로그인'}
-        </button>
-        <p className={s.authSwitch}>
-          처음이신가요?
-          <Link to={`/signup?next=${encodeURIComponent(next)}`} replace>
-            회원가입
+    <AuthShell
+      title="로그인"
+      desc="루프에 다시 오신 걸 환영해요."
+      switchText="처음이신가요?"
+      switchLink="회원가입"
+      switchTo={`/signup?next=${encodeURIComponent(next)}`}
+      onSubmit={submit}
+    >
+      <AuthField
+        icon={<MailLineIcon />}
+        label="이메일"
+        type="email"
+        autoComplete="email"
+        autoFocus
+        value={email}
+        onChange={(v) => (setEmail(v), login.reset())}
+        onBlur={check.blur('email')}
+        error={check.error('email')}
+        invalid={!!wrong}
+        valid={EMAIL.test(email.trim())}
+        shake={check.attempt}
+      />
+      <AuthField
+        icon={<LockLineIcon />}
+        label="비밀번호"
+        type="password"
+        autoComplete="current-password"
+        value={password}
+        onChange={(v) => (setPassword(v), login.reset())}
+        onBlur={check.blur('password')}
+        error={check.error('password') ?? wrong}
+        shake={check.attempt}
+        aside={
+          <Link to={`/password/reset${email ? `?email=${encodeURIComponent(email.trim())}` : ''}`} className={a.aside}>
+            비밀번호 찾기
           </Link>
-        </p>
-        {import.meta.env.DEV && <p className={s.hint}>체험 계정: demo@loop.dev / password1234</p>}
-      </form>
-    </Page>
+        }
+      />
+      <AuthSubmit pending={login.isPending}>로그인</AuthSubmit>
+      {import.meta.env.DEV && <p className={a.demo}>체험 계정: demo@loop.dev / password1234</p>}
+    </AuthShell>
   );
 }

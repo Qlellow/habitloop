@@ -1,14 +1,13 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, type FormEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CODE_LENGTH, safeNext, useSignup, useSignupCode } from '@loop/shared';
+import { AuthField, AuthShell, AuthSubmit, PasswordRules, authStyles as a, useFieldCheck } from '../components/Auth';
 import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
-import { Page } from '../components/Layout';
+import { AlertCircleIcon, LockLineIcon, MailLineIcon, UserLineIcon } from '../components/Icons';
 import { toast } from '../components/Toast';
-import { ui } from '../components/ui';
-import s from './pages.styles';
-import { cn } from '../lib/cn';
+import { EMAIL, confirmError, emailError, nicknameError, passwordError, passwordRules } from '../lib/validate';
 
-const EMAIL = /^\S+@\S+\.\S+$/;
+type Field = 'nickname' | 'email' | 'password' | 'confirm';
 
 /**
  * 회원가입: 정보 입력 → '인증하기'를 누르면 이메일 인증 화면으로 넘어간다.
@@ -21,14 +20,26 @@ export default function SignupPage() {
   const signup = useSignup();
   const sendCode = useSignupCode();
   const timer = useCodeTimer();
-  const [form, setForm] = useState({ email: '', password: '', nickname: '' });
+  const [form, setForm] = useState({ nickname: '', email: '', password: '', confirm: '' });
   const [code, setCode] = useState('');
   // 인증번호를 보낸 이메일. 이메일을 고치면 다시 받아야 한다
   const [sentTo, setSentTo] = useState<string>();
-  const set = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  // 서버가 알려 준 칸별 오류 (이미 가입된 이메일, 이미 쓰는 닉네임). 그 칸을 고치면 지운다
+  const [serverError, setServerError] = useState<Partial<Record<Field, string>>>({});
 
   const email = form.email.trim().toLowerCase();
-  const formValid = EMAIL.test(form.email) && form.password.length >= 8 && form.nickname.trim().length >= 2;
+  const check = useFieldCheck<Field>({
+    nickname: nicknameError(form.nickname),
+    email: emailError(form.email),
+    password: passwordError(form.password),
+    confirm: confirmError(form.password, form.confirm),
+  });
+  const set = (k: Field) => (v: string) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    setServerError((e) => ({ ...e, [k]: undefined }));
+  };
+  const errorOf = (k: Field) => serverError[k] ?? check.error(k);
+
   // 새로고침 등으로 보낸 기록이 없으면 인증 화면 대신 입력 화면을 보여 준다
   const verifying = params.get('step') === 'verify' && !!sentTo && sentTo === email;
 
@@ -48,11 +59,15 @@ export default function SignupPage() {
         toast(`${email}(으)로 인증번호를 보냈어요`);
         then?.();
       },
+      onError: (e) => {
+        // "이미 가입된 이메일이에요" 는 이메일 칸 아래에
+        if (e.message.includes('이메일')) setServerError((s) => ({ ...s, email: e.message }));
+      },
     });
 
   const startVerify = (e: FormEvent) => {
     e.preventDefault();
-    if (!formValid || sendCode.isPending) return;
+    if (!check.submit() || serverError.email || serverError.nickname || sendCode.isPending) return;
     // 같은 이메일로 방금 받은 번호가 아직 살아 있으면 다시 보내지 않고 넘어간다
     if (sentTo === email && !timer.expired) return goVerify();
     requestCode(goVerify);
@@ -61,76 +76,126 @@ export default function SignupPage() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (code.length !== CODE_LENGTH) return;
-    signup.mutate({ ...form, email, code }, { onSuccess: () => navigate(next, { replace: true }), onError: () => setCode('') });
+    signup.mutate(
+      { nickname: form.nickname, email, password: form.password, code },
+      {
+        onSuccess: () => navigate(next, { replace: true }),
+        onError: (err) => {
+          setCode('');
+          // 닉네임·이메일 문제는 번호와 상관없으니 입력 화면으로 돌아가 그 칸에 보여 준다
+          const field: Field | undefined = err.message.includes('닉네임') ? 'nickname' : err.message.includes('가입된 이메일') ? 'email' : undefined;
+          if (field) {
+            setServerError((s) => ({ ...s, [field]: err.message }));
+            navigate(-1);
+          }
+        },
+      },
+    );
   };
 
   if (verifying) {
     return (
-      <Page variant="narrow">
-        <form className={cn(ui.card, s.authCard)} onSubmit={submit} noValidate>
-          <h1 className={s.authTitle}>이메일 인증</h1>
-          <p className={s.authDesc}>
+      <AuthShell
+        title="이메일 인증"
+        desc={
+          <>
             <b className="text-fg-strong">{email}</b>(으)로 보낸 인증번호 {CODE_LENGTH}자리를 입력해 주세요.
             <br />
             메일이 안 보이면 스팸함도 확인해 주세요.
+          </>
+        }
+        onBack={() => navigate(-1)}
+        onSubmit={submit}
+      >
+        <div className="mb-6">
+          <CodeField value={code} onChange={setCode} autoFocus invalid={!!signup.error && !code} />
+          <CodeTimer timer={timer} pending={sendCode.isPending} onResend={() => requestCode()} />
+        </div>
+        {(signup.error ?? sendCode.error) && (
+          <p className={a.formError} role="alert">
+            <AlertCircleIcon className="flex-none w-4 h-4" />
+            {(signup.error ?? sendCode.error)!.message}
           </p>
-          <div className={ui.field}>
-            <CodeField value={code} onChange={setCode} autoFocus invalid={!!signup.error && !code} />
-            <CodeTimer timer={timer} pending={sendCode.isPending} onResend={() => requestCode()} />
-          </div>
-          {(signup.error ?? sendCode.error) && <p className={ui.error}>{(signup.error ?? sendCode.error)!.message}</p>}
-          <button
-            type="submit"
-            className={cn(ui.button, ui.primary, ui.large, ui.full)}
-            disabled={code.length !== CODE_LENGTH || timer.expired || signup.isPending}
-          >
-            {signup.isPending ? '가입 중…' : '인증하고 가입하기'}
+        )}
+        <AuthSubmit pending={signup.isPending} disabled={code.length !== CODE_LENGTH || timer.expired}>
+          인증하고 가입하기
+        </AuthSubmit>
+        <div className={a.subActions}>
+          <button type="button" className={a.textButton} onClick={() => navigate(-1)}>
+            ← 입력한 정보 고치기
           </button>
-          <div className={s.codeActions}>
-            <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={() => navigate(-1)}>
-              ← 입력한 정보 고치기
-            </button>
-          </div>
-        </form>
-      </Page>
+        </div>
+      </AuthShell>
     );
   }
 
   return (
-    <Page variant="narrow">
-      <form className={cn(ui.card, s.authCard)} onSubmit={startVerify} noValidate>
-        <h1 className={s.authTitle}>회원가입</h1>
-        <p className={s.authDesc}>이메일 인증만 거치면 바로 시작할 수 있어요.</p>
-        <label className={ui.field}>
-          <span className={ui.label}>닉네임</span>
-          <input className={ui.input} value={form.nickname} onChange={set('nickname')} maxLength={20} placeholder="2~20자" autoFocus />
-        </label>
-        <label className={ui.field}>
-          <span className={ui.label}>이메일</span>
-          <input className={ui.input} type="email" autoComplete="email" value={form.email} onChange={set('email')} />
-        </label>
-        <label className={ui.field}>
-          <span className={ui.label}>비밀번호</span>
-          <input
-            className={ui.input}
-            type="password"
-            autoComplete="new-password"
-            value={form.password}
-            onChange={set('password')}
-            placeholder="8자 이상"
-          />
-        </label>
-        {sendCode.error && <p className={ui.error}>{sendCode.error.message}</p>}
-        <button type="submit" className={cn(ui.button, ui.primary, ui.large, ui.full)} disabled={!formValid || sendCode.isPending}>
-          {sendCode.isPending ? '인증번호 보내는 중…' : '인증하기'}
-        </button>
-        <p className={s.authSwitch}>
-          이미 계정이 있나요?
-          <Link to={`/login?next=${encodeURIComponent(next)}`} replace>
-            로그인
-          </Link>
+    <AuthShell
+      title="회원가입"
+      desc="이메일 인증만 거치면 바로 시작할 수 있어요."
+      switchText="이미 회원이신가요?"
+      switchLink="로그인"
+      switchTo={`/login?next=${encodeURIComponent(next)}`}
+      onSubmit={startVerify}
+    >
+      <AuthField
+        icon={<UserLineIcon />}
+        label="닉네임 (2~20자)"
+        autoComplete="nickname"
+        autoFocus
+        maxLength={20}
+        value={form.nickname}
+        onChange={set('nickname')}
+        onBlur={check.blur('nickname')}
+        error={errorOf('nickname')}
+        valid={!nicknameError(form.nickname) && !serverError.nickname}
+        shake={check.attempt}
+      />
+      <AuthField
+        icon={<MailLineIcon />}
+        label="이메일"
+        type="email"
+        autoComplete="email"
+        value={form.email}
+        onChange={set('email')}
+        onBlur={check.blur('email')}
+        error={errorOf('email')}
+        valid={EMAIL.test(email) && !serverError.email}
+        shake={check.attempt}
+      />
+      <AuthField
+        icon={<LockLineIcon />}
+        label="비밀번호"
+        type="password"
+        autoComplete="new-password"
+        value={form.password}
+        onChange={set('password')}
+        onBlur={check.blur('password')}
+        error={check.error('password')}
+        valid={!passwordError(form.password)}
+        shake={check.attempt}
+        hint={form.password && !check.error('password') ? <PasswordRules rules={passwordRules(form.password)} /> : undefined}
+      />
+      <AuthField
+        icon={<LockLineIcon />}
+        label="비밀번호 확인"
+        type="password"
+        autoComplete="new-password"
+        value={form.confirm}
+        onChange={set('confirm')}
+        onBlur={check.blur('confirm')}
+        // 확인 칸은 다 입력하기 전에도, 앞부분부터 다르면 바로 알려 준다
+        error={check.error('confirm') ?? (form.confirm && !form.password.startsWith(form.confirm) ? '비밀번호가 일치하지 않습니다.' : undefined)}
+        valid={!!form.confirm && form.confirm === form.password}
+        shake={check.attempt}
+      />
+      {sendCode.error && !sendCode.error.message.includes('이메일') && (
+        <p className={a.formError} role="alert">
+          <AlertCircleIcon className="flex-none w-4 h-4" />
+          {sendCode.error.message}
         </p>
-      </form>
-    </Page>
+      )}
+      <AuthSubmit pending={sendCode.isPending}>인증하기</AuthSubmit>
+    </AuthShell>
   );
 }

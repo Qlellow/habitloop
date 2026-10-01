@@ -1,22 +1,29 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CODE_LENGTH, usePasswordReset } from '@loop/shared';
+import { AuthField, AuthShell, AuthSubmit, PasswordRules, authStyles as a, useFieldCheck } from '../components/Auth';
 import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
-import { Page } from '../components/Layout';
+import { AlertCircleIcon, LockLineIcon, MailLineIcon } from '../components/Icons';
 import { toast } from '../components/Toast';
-import { ui } from '../components/ui';
-import s from './pages.styles';
-import { cn } from '../lib/cn';
-
-const EMAIL = /^\S+@\S+\.\S+$/;
+import { EMAIL, confirmError, emailError, passwordError, passwordRules } from '../lib/validate';
 
 type Step =
   | { name: 'email' }
   | { name: 'code'; challenge: string; maskedEmail: string }
   | { name: 'password'; resetToken: string };
 
+function FormError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className={a.formError} role="alert">
+      <AlertCircleIcon className="flex-none w-4 h-4" />
+      {message}
+    </p>
+  );
+}
+
 /**
- * 비밀번호 재설정: 가입한 이메일 입력 → 이메일로 받은 인증번호 확인 → 새 비밀번호.
+ * 비밀번호 찾기: 가입한 이메일 입력 → 이메일로 받은 인증번호 확인 → 새 비밀번호.
  * 2단계 인증을 켰는지와 상관없이 항상 이메일 인증을 거친다 (이메일만 알면 남의 비밀번호를 바꿀 수 있으면 안 된다).
  */
 export default function ResetPasswordPage() {
@@ -30,17 +37,8 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
 
-  const submitEmail = (e: FormEvent) => {
-    e.preventDefault();
-    if (!EMAIL.test(email.trim())) return;
-    sendCode.mutate(email.trim(), {
-      onSuccess: (res) => {
-        setStep({ name: 'code', ...res });
-        setCode('');
-        timer.restart();
-      },
-    });
-  };
+  const emailCheck = useFieldCheck({ email: emailError(email) });
+  const pwCheck = useFieldCheck({ password: passwordError(password), confirm: confirmError(password, confirm) });
 
   if (step.name === 'code') {
     const submitCode = (e: FormEvent) => {
@@ -52,64 +50,49 @@ export default function ResetPasswordPage() {
       );
     };
     return (
-      <Page variant="narrow">
-        <form className={cn(ui.card, s.authCard)} onSubmit={submitCode} noValidate>
-          <h1 className={s.authTitle}>이메일 인증</h1>
-          <p className={s.authDesc}>
+      <AuthShell
+        title="이메일 인증"
+        desc={
+          <>
             <b className="text-fg-strong">{step.maskedEmail}</b>(으)로 보낸 인증번호 {CODE_LENGTH}자리를 입력해 주세요.
             <br />
             메일이 안 보이면 스팸함도 확인해 주세요.
-          </p>
-          <div className={ui.field}>
-            <CodeField value={code} onChange={setCode} autoFocus invalid={!!verify.error && !code} />
-            <CodeTimer
-              timer={timer}
-              pending={resend.isPending}
-              onResend={() =>
-                resend.mutate(step.challenge, {
-                  onSuccess: (res) => {
-                    setStep({ ...step, challenge: res.challenge });
-                    setCode('');
-                    verify.reset();
-                    timer.restart();
-                    toast('인증번호를 다시 보냈어요');
-                  },
-                  onError: (e) => toast(e.message),
-                })
-              }
-            />
-          </div>
-          {verify.error && <p className={ui.error}>{verify.error.message}</p>}
-          <button
-            type="submit"
-            className={cn(ui.button, ui.primary, ui.large, ui.full)}
-            disabled={code.length !== CODE_LENGTH || timer.expired || verify.isPending}
-          >
-            {verify.isPending ? '확인 중…' : '확인'}
-          </button>
-          <div className={s.codeActions}>
-            <button
-              type="button"
-              className={cn(ui.button, ui.text, ui.small)}
-              onClick={() => {
-                setStep({ name: 'email' });
-                verify.reset();
-              }}
-            >
-              ← 이메일 다시 입력
-            </button>
-          </div>
-        </form>
-      </Page>
+          </>
+        }
+        onBack={() => (setStep({ name: 'email' }), verify.reset())}
+        onSubmit={submitCode}
+      >
+        <div className="mb-6">
+          <CodeField value={code} onChange={setCode} autoFocus invalid={!!verify.error && !code} />
+          <CodeTimer
+            timer={timer}
+            pending={resend.isPending}
+            onResend={() =>
+              resend.mutate(step.challenge, {
+                onSuccess: (res) => {
+                  setStep({ ...step, challenge: res.challenge });
+                  setCode('');
+                  verify.reset();
+                  timer.restart();
+                  toast('인증번호를 다시 보냈어요');
+                },
+                onError: (e) => toast(e.message),
+              })
+            }
+          />
+        </div>
+        <FormError message={verify.error?.message} />
+        <AuthSubmit pending={verify.isPending} disabled={code.length !== CODE_LENGTH || timer.expired}>
+          확인
+        </AuthSubmit>
+      </AuthShell>
     );
   }
 
   if (step.name === 'password') {
-    const mismatch = confirm.length > 0 && confirm !== password;
-    const valid = password.length >= 8 && password === confirm;
     const submitPassword = (e: FormEvent) => {
       e.preventDefault();
-      if (!valid) return;
+      if (!pwCheck.submit()) return;
       reset.mutate(
         { resetToken: step.resetToken, newPassword: password },
         {
@@ -121,73 +104,75 @@ export default function ResetPasswordPage() {
       );
     };
     return (
-      <Page variant="narrow">
-        <form className={cn(ui.card, s.authCard)} onSubmit={submitPassword} noValidate>
-          <h1 className={s.authTitle}>새 비밀번호</h1>
-          <p className={s.authDesc}>앞으로 로그인할 때 쓸 비밀번호를 정해 주세요.</p>
-          <label className={ui.field}>
-            <span className={ui.label}>새 비밀번호</span>
-            <input
-              className={ui.input}
-              type="password"
-              autoComplete="new-password"
-              placeholder="8자 이상"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoFocus
-            />
-          </label>
-          <label className={ui.field}>
-            <span className={ui.label}>새 비밀번호 확인</span>
-            <input
-              className={ui.input}
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
-            {mismatch && <p className={cn(ui.error, 'mt-1.5 mb-0')}>비밀번호가 서로 달라요</p>}
-          </label>
-          {reset.error && <p className={ui.error}>{reset.error.message}</p>}
-          <button type="submit" className={cn(ui.button, ui.primary, ui.large, ui.full)} disabled={!valid || reset.isPending}>
-            {reset.isPending ? '바꾸는 중…' : '비밀번호 바꾸기'}
-          </button>
-        </form>
-      </Page>
+      <AuthShell title="새 비밀번호" desc="앞으로 로그인할 때 쓸 비밀번호를 정해 주세요." onBack={() => setStep({ name: 'email' })} onSubmit={submitPassword}>
+        <AuthField
+          icon={<LockLineIcon />}
+          label="새 비밀번호"
+          type="password"
+          autoComplete="new-password"
+          autoFocus
+          value={password}
+          onChange={setPassword}
+          onBlur={pwCheck.blur('password')}
+          error={pwCheck.error('password')}
+          valid={!passwordError(password)}
+          shake={pwCheck.attempt}
+          hint={password && !pwCheck.error('password') ? <PasswordRules rules={passwordRules(password)} /> : undefined}
+        />
+        <AuthField
+          icon={<LockLineIcon />}
+          label="새 비밀번호 확인"
+          type="password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={setConfirm}
+          onBlur={pwCheck.blur('confirm')}
+          error={pwCheck.error('confirm') ?? (confirm && !password.startsWith(confirm) ? '비밀번호가 일치하지 않습니다.' : undefined)}
+          valid={!!confirm && confirm === password}
+          shake={pwCheck.attempt}
+        />
+        <FormError message={reset.error?.message} />
+        <AuthSubmit pending={reset.isPending}>비밀번호 바꾸기</AuthSubmit>
+      </AuthShell>
     );
   }
 
+  const submitEmail = (e: FormEvent) => {
+    e.preventDefault();
+    if (!emailCheck.submit()) return;
+    sendCode.mutate(email.trim(), {
+      onSuccess: (res) => {
+        setStep({ name: 'code', ...res });
+        setCode('');
+        timer.restart();
+      },
+    });
+  };
+
   return (
-    <Page variant="narrow">
-      <form className={cn(ui.card, s.authCard)} onSubmit={submitEmail} noValidate>
-        <h1 className={s.authTitle}>비밀번호 재설정</h1>
-        <p className={s.authDesc}>가입한 이메일을 입력하면 인증번호를 보내 드려요.</p>
-        <label className={ui.field}>
-          <span className={ui.label}>이메일</span>
-          <input
-            className={ui.input}
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoFocus
-          />
-        </label>
-        {sendCode.error && <p className={ui.error}>{sendCode.error.message}</p>}
-        <button
-          type="submit"
-          className={cn(ui.button, ui.primary, ui.large, ui.full)}
-          disabled={!EMAIL.test(email.trim()) || sendCode.isPending}
-        >
-          {sendCode.isPending ? '보내는 중…' : '인증번호 받기'}
-        </button>
-        <p className={s.authSwitch}>
-          비밀번호가 기억났나요?
-          <Link to="/login" replace>
-            로그인
-          </Link>
-        </p>
-      </form>
-    </Page>
+    <AuthShell
+      title="비밀번호 찾기"
+      desc="가입한 이메일을 입력하면 인증번호를 보내 드려요."
+      switchText="비밀번호가 기억났나요?"
+      switchLink="로그인"
+      switchTo="/login"
+      onSubmit={submitEmail}
+    >
+      <AuthField
+        icon={<MailLineIcon />}
+        label="가입한 이메일"
+        type="email"
+        autoComplete="email"
+        autoFocus
+        value={email}
+        onChange={(v) => (setEmail(v), sendCode.reset())}
+        onBlur={emailCheck.blur('email')}
+        // "가입된 이메일이 아니에요" 같은 서버 응답도 이메일 칸 아래에
+        error={emailCheck.error('email') ?? sendCode.error?.message}
+        valid={EMAIL.test(email.trim()) && !sendCode.error}
+        shake={emailCheck.attempt}
+      />
+      <AuthSubmit pending={sendCode.isPending}>인증번호 받기</AuthSubmit>
+    </AuthShell>
   );
 }

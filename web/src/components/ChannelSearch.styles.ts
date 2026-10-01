@@ -1,6 +1,7 @@
 /** 헤더 채널 검색 드롭다운 (Tailwind) */
 const s = {
-  root: 'relative flex-1 min-w-[120px] max-w-[440px]',
+  // 폰(520px 이하)에서는 헤더에서 빼고 채널 페이지 안의 검색칸을 쓴다
+  root: 'relative flex-1 min-w-[120px] max-w-[440px] max-[520px]:hidden',
   icon: 'absolute left-3 top-5 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none z-[1]',
   input: 'h-10 pl-[38px] rounded-md',
   // 좁은 화면에서는 드롭다운을 화면 폭에 맞춘다

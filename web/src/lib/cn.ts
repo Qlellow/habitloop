@@ -10,7 +10,7 @@ const twMerge = extendTailwindMerge({
       'max-w': [{ 'max-w': ['page'] }],
       h: [{ h: ['header'] }],
       shadow: [{ shadow: ['pop', 'glow'] }],
-      animate: [{ animate: ['pop', 'toast-in'] }],
+      animate: [{ animate: ['pop', 'toast-in', 'fade-up'] }],
       ease: [{ ease: ['toss'] }],
     },
   },

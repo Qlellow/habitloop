@@ -124,6 +124,8 @@ export function ChannelSearch() {
         aria-autocomplete="list"
         aria-activedescendant={showMenu && active >= 0 ? `${listId}-${active}` : undefined}
         placeholder="채널 검색"
+        // 링크나 글자를 끌어다 놓아 검색칸에 들어가지 않게
+        onDrop={(e) => e.preventDefault()}
         value={input}
         autoComplete="off"
         onChange={(e) => {

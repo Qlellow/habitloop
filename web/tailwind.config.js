@@ -17,10 +17,12 @@ export default {
       keyframes: {
         pop: { from: { opacity: '0', transform: 'translateY(-4px)' } },
         'toast-in': { from: { opacity: '0', transform: 'translate(-50%, 8px)' } },
+        'fade-up': { from: { opacity: '0', transform: 'translateY(6px)' } },
       },
       animation: {
         pop: 'pop 0.12s ease-out',
         'toast-in': 'toast-in 0.2s ease-out',
+        'fade-up': 'fade-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both',
       },
       transitionTimingFunction: { toss: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
       // 글 본문(마크다운): typography 플러그인의 prose 를 디자인 토큰 색에 맞춘다 (다크 모드도 자동)
