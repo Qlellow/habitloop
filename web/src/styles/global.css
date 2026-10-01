@@ -341,3 +341,32 @@
     animation: none !important;
   }
 }
+
+/*
+ * 밑줄형 입력칸 (ui.input, 로그인·회원가입 입력칸).
+ * 회색 밑줄(1.5px)과 파란 밑줄(2px)을 같은 자리(맨 아래)에 겹쳐 그린다. 파란 선이 위에 있어서
+ * 포커스되면 폭이 0% → 100% 로 늘어나며 회색 선을 왼쪽부터 완전히 덮는다 (0.22초 ease-in-out).
+ * 오류일 때는 두 선 모두 빨강.
+ */
+.underline-field {
+  --line: color-mix(in srgb, var(--text-weak) 45%, transparent);
+  --line-active: var(--primary);
+  background:
+    linear-gradient(var(--line-active), var(--line-active)) 0 100% / 0% 2px no-repeat,
+    linear-gradient(var(--line), var(--line)) 0 100% / 100% 1.5px no-repeat;
+  transition: background-size 0.22s ease-in-out;
+}
+.underline-field:hover {
+  --line: color-mix(in srgb, var(--text-weak) 80%, transparent);
+}
+.underline-field:focus,
+.underline-field:focus-within {
+  background-size:
+    100% 2px,
+    100% 1.5px;
+}
+.underline-field.underline-error,
+.underline-field[aria-invalid='true'] {
+  --line: var(--danger);
+  --line-active: var(--danger);
+}

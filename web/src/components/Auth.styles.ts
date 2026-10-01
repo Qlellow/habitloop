@@ -22,13 +22,9 @@ const s = {
   // 밑줄형 입력칸. 밑줄은 다크 모드에서도 배경과 구분되도록 회색 글자색을 섞어 만든다
   field: 'mb-2',
   // 포커스되면 밑줄이 왼쪽부터 브랜드 색으로 빠르게 칠해진다 (::after 를 scaleX 0 → 1, 0.22초 ease-in-out)
-  inputRow:
-    'group relative flex items-center gap-3 h-[52px] border-b-[1.5px] border-[color-mix(in_srgb,var(--text-weak)_45%,transparent)] transition-colors ' +
-    'hover:border-[color-mix(in_srgb,var(--text-weak)_80%,transparent)] ' +
-    "after:absolute after:left-0 after:right-0 after:-bottom-[1.5px] after:h-[2px] after:bg-primary after:content-[''] " +
-    'after:origin-left after:scale-x-0 after:transition-transform after:duration-[220ms] after:ease-in-out ' +
-    'focus-within:after:scale-x-100',
-  inputRowError: 'border-danger hover:border-danger after:bg-danger',
+  // 밑줄은 global.css 의 .underline-field: 회색 선 위를 파란 선이 왼쪽부터 덮는다
+  inputRow: 'underline-field group relative flex items-center gap-3 h-[52px]',
+  inputRowError: 'underline-error',
   icon: 'flex-none text-fg-weak group-focus-within:text-primary [&>svg]:w-[22px] [&>svg]:h-[22px]',
   iconError: 'text-danger group-focus-within:text-danger',
   input:
