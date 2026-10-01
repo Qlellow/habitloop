@@ -196,11 +196,11 @@
 
 /*
  * 로그인 ↔ 회원가입 전환 (View Transitions, Auth.tsx 의 전환 링크). 모든 구간 ease-in-out.
- * 카드 전체를 하나의 직사각형으로 보고, 판을 따로 움직이지 않는다. 전체 1.6초:
- * 1) collapse 0.7초 (0 → 43.75%): 이전 화면 카드의 왼쪽 끝과 오른쪽 끝이 동시에 가운데로 들어오며 가로 폭이 0 이 된다.
+ * 카드 전체를 하나의 직사각형으로 보고, 판을 따로 움직이지 않는다. 전체 1.9초:
+ * 1) collapse 0.7초 (0 → 36.84%): 이전 화면 카드의 왼쪽 끝과 오른쪽 끝이 동시에 가운데로 들어오며 가로 폭이 0 이 된다.
  *    안의 내용은 제자리에 둔 채 바깥부터 가려진다 (clip-path inset).
- * 2) 멈춤 0.2초 (43.75 → 56.25%): 다 접혀 아무것도 보이지 않는다. 이때 이전 화면 → 새 화면(두 판의 자리가 바뀐 화면)으로 바뀐다.
- * 3) expand 0.7초 (56.25 → 100%): 새 화면 카드가 가운데에서 좌우로 펼쳐지며 원래 폭으로 돌아온다.
+ * 2) 멈춤 0.5초 (36.84 → 63.16%): 다 접혀 아무것도 보이지 않는다. 이때 이전 화면 → 새 화면(두 판의 자리가 바뀐 화면)으로 바뀐다.
+ * 3) expand 0.7초 (63.16 → 100%): 새 화면 카드가 가운데에서 좌우로 펼쳐지며 원래 폭으로 돌아온다.
  * 두 화면의 카드 크기(680px)가 같으므로 위치·크기는 그대로 두고 가려지는 범위만 바꾼다.
  */
 .auth-card {
@@ -211,7 +211,7 @@
 }
 ::view-transition-old(auth-card),
 ::view-transition-new(auth-card) {
-  animation-duration: 1.6s;
+  animation-duration: 1.9s;
   animation-fill-mode: both;
   /* 두 장면이 겹쳐 보이는 순간이 없으므로 섞지 않는다 */
   mix-blend-mode: normal;
@@ -227,12 +227,12 @@
     clip-path: inset(0 0 0 0 round 24px);
     animation-timing-function: ease-in-out;
   }
-  43.75% {
+  36.84% {
     clip-path: inset(0 50% 0 50% round 24px);
     opacity: 1;
   }
   /* 다 접힌 뒤로는 이전 화면을 숨긴다 */
-  43.76%,
+  36.85%,
   100% {
     clip-path: inset(0 50% 0 50% round 24px);
     opacity: 0;
@@ -241,11 +241,11 @@
 @keyframes auth-expand {
   /* 접히는 동안과 멈춤 동안에는 새 화면을 보이지 않는다 */
   0%,
-  56.24% {
+  63.15% {
     clip-path: inset(0 50% 0 50% round 24px);
     opacity: 0;
   }
-  56.25% {
+  63.16% {
     clip-path: inset(0 50% 0 50% round 24px);
     opacity: 1;
     animation-timing-function: ease-in-out;
