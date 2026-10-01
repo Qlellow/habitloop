@@ -38,6 +38,8 @@ const s = {
   narrow: 'grid-cols-1 max-w-[440px] pt-16',
   side: 'sticky top-[calc(64px+28px)] flex flex-col gap-4 max-[860px]:static',
   leftInThree: 'max-[1100px]:hidden',
+  // 마이페이지 메뉴: 화면에 붙어 따라오지 않고 페이지와 함께 스크롤된다
+  sideStatic: 'static',
   main: 'min-w-0 flex flex-col gap-4',
 
   // 폰 하단 탭바: 헤더의 글자 메뉴가 숨는 폭(520px 이하)에서만 보인다
