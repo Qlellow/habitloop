@@ -54,7 +54,7 @@ function PasswordForm() {
       { currentPassword: form.current, newPassword: form.next },
       {
         onSuccess: () => {
-          toast('비밀번호를 바꿨어요');
+          toast('비밀번호를 바꿨어요. 다른 기기는 모두 로그아웃했어요');
           setForm({ current: '', next: '', confirm: '' });
         },
       },

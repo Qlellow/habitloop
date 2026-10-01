@@ -5,6 +5,8 @@ import jwt from 'jsonwebtoken';
 export interface AuthUser {
   id: number;
   nickname: string;
+  /** 로그인한 기기(세션) id. 로그아웃하면 sessions 에서 지워져 이 토큰을 더는 못 쓴다 */
+  sid: string;
 }
 
 /** 비밀번호 재설정 토큰: 이메일 인증을 마친 뒤 새 비밀번호를 정할 때까지만 쓴다 */
@@ -29,12 +31,15 @@ export class JwtService {
     this.secret = secret ?? DEV_SECRET;
   }
 
-  issue(userId: number, nickname: string): string {
-    return jwt.sign({ nickname }, this.secret, {
+  /** 로그인 토큰과 만료 시각(세션도 같이 끝난다) */
+  issue(userId: number, nickname: string, sid: string): { token: string; expiresAt: Date } {
+    const token = jwt.sign({ nickname, sid }, this.secret, {
       subject: String(userId),
       expiresIn: this.ttl as jwt.SignOptions['expiresIn'],
       algorithm: 'HS256',
     });
+    const { exp } = jwt.decode(token) as jwt.JwtPayload;
+    return { token, expiresAt: new Date(exp! * 1000) };
   }
 
   parse(token: string): AuthUser | undefined {
@@ -43,7 +48,9 @@ export class JwtService {
       // 재설정 토큰 같은 다른 용도의 토큰으로는 로그인할 수 없다
       if (claims.purpose) return undefined;
       const id = Number(claims.sub);
-      return Number.isInteger(id) ? { id, nickname: String(claims.nickname ?? '') } : undefined;
+      // 세션 id 가 없는 예전 토큰은 받지 않는다 (다시 로그인)
+      if (!Number.isInteger(id) || typeof claims.sid !== 'string') return undefined;
+      return { id, nickname: String(claims.nickname ?? ''), sid: claims.sid };
     } catch {
       return undefined;
     }

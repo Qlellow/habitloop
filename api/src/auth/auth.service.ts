@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { ApiError } from '../common/api-error';
@@ -5,7 +6,8 @@ import { Database } from '../db/database';
 import { Mailer } from '../mail/mailer';
 import { VerificationService } from '../mail/verification.service';
 import type { LoginInput, PasswordInput, PasswordResetInput, SignupInput } from './auth.dto';
-import { JwtService } from './jwt.service';
+import { describeDevice } from './device';
+import { JwtService, type AuthUser } from './jwt.service';
 
 interface UserRow {
   id: number;
@@ -55,7 +57,7 @@ export class AuthService {
   }
 
   /** 회원가입 2단계: 받은 번호가 맞으면 계정을 만든다 */
-  async signup(input: SignupInput) {
+  async signup(input: SignupInput, userAgent = '') {
     const email = normalize(input.email);
     const nickname = input.nickname.trim();
     if (await this.db.one('SELECT 1 FROM users WHERE email = $1', [email])) throw ApiError.conflict('이미 가입된 이메일이에요');
@@ -67,11 +69,11 @@ export class AuthService {
        RETURNING id, email, password, nickname, two_factor_enabled AS "twoFactorEnabled"`,
       [email, await bcrypt.hash(input.password, 10), nickname],
     );
-    return this.toAuth(user!);
+    return this.toAuth(user!, userAgent);
   }
 
   /** 비밀번호가 맞으면 토큰을 준다. 2단계 인증이 켜져 있으면 대신 이메일로 번호를 보내고 challenge 를 준다 */
-  async login(input: LoginInput) {
+  async login(input: LoginInput, userAgent = '') {
     const user = await this.db.one<UserRow>(`${SELECT_USER} WHERE email = $1`, [normalize(input.email)]);
     if (!user || !(await bcrypt.compare(input.password, user.password))) {
       throw new ApiError(HttpStatus.UNAUTHORIZED, '이메일 또는 비밀번호가 맞지 않아요');
@@ -80,12 +82,12 @@ export class AuthService {
       const challenge = await this.verification.send(user.email, 'LOGIN', user.id);
       return { twoFactorRequired: true, challenge, maskedEmail: mask(user.email) };
     }
-    return { ...this.toAuth(user), twoFactorRequired: false };
+    return { ...(await this.toAuth(user, userAgent)), twoFactorRequired: false };
   }
 
   /** 2단계 인증 로그인: 이메일로 받은 번호 확인 */
-  async verifyLogin(challenge: string, code: string) {
-    return this.toAuth(await this.find(await this.verification.verifyChallenge('LOGIN', challenge, code)));
+  async verifyLogin(challenge: string, code: string, userAgent = '') {
+    return this.toAuth(await this.find(await this.verification.verifyChallenge('LOGIN', challenge, code)), userAgent);
   }
 
   async resendLoginCode(challenge: string) {
@@ -123,10 +125,12 @@ export class AuthService {
     if (!user || !this.jwt.matchesPassword(claims.pv, user.password)) throw expired();
     if (await bcrypt.compare(input.newPassword, user.password)) throw ApiError.badRequest('지금 비밀번호와 다른 비밀번호를 입력해 주세요');
     await this.db.execute('UPDATE users SET password = $1 WHERE id = $2', [await bcrypt.hash(input.newPassword, 10), user.id]);
+    // 비밀번호를 잊어서 바꾼 것이므로 로그인돼 있던 모든 기기를 로그아웃한다 (훔친 토큰도 함께 막힌다)
+    await this.db.execute('DELETE FROM sessions WHERE user_id = $1', [user.id]);
     await this.mailer.sendNotice(
       user.email,
       '비밀번호가 바뀌었어요',
-      '방금 비밀번호 재설정으로 루프 계정의 비밀번호가 바뀌었어요.\n직접 바꾼 것이 아니라면 바로 비밀번호를 다시 재설정하고 2단계 인증을 켜 주세요.',
+      '방금 비밀번호 재설정으로 루프 계정의 비밀번호가 바뀌었고, 로그인돼 있던 모든 기기에서 로그아웃했어요.\n직접 바꾼 것이 아니라면 바로 비밀번호를 다시 재설정하고 2단계 인증을 켜 주세요.',
     );
   }
 
@@ -134,22 +138,59 @@ export class AuthService {
     return userResponse(await this.find(userId));
   }
 
-  /** 닉네임은 토큰에도 들어 있으므로 새 토큰을 함께 돌려준다 */
-  async updateProfile(userId: number, rawNickname: string) {
+  /** 닉네임은 토큰에도 들어 있으므로 새 토큰을 함께 돌려준다 (같은 기기 세션을 그대로 쓴다) */
+  async updateProfile(me: AuthUser, rawNickname: string) {
+    const userId = me.id;
     const user = await this.find(userId);
     const nickname = rawNickname.trim();
     if (nickname !== user.nickname && (await this.db.one('SELECT 1 FROM users WHERE nickname = $1', [nickname]))) {
       throw ApiError.conflict('이미 사용 중인 닉네임이에요');
     }
     await this.db.execute('UPDATE users SET nickname = $1 WHERE id = $2', [nickname, userId]);
-    return this.toAuth({ ...user, nickname });
+    const { token } = this.jwt.issue(userId, nickname, me.sid);
+    return { token, user: userResponse({ ...user, nickname }) };
   }
 
-  async changePassword(userId: number, input: PasswordInput) {
+  /** 비밀번호를 바꾸면 지금 기기만 남기고 다른 기기는 모두 로그아웃한다 */
+  async changePassword(me: AuthUser, input: PasswordInput) {
+    const userId = me.id;
     const user = await this.find(userId);
     if (!(await bcrypt.compare(input.currentPassword, user.password))) throw ApiError.badRequest('지금 비밀번호가 맞지 않아요');
     if (input.currentPassword === input.newPassword) throw ApiError.badRequest('지금 비밀번호와 다른 비밀번호를 입력해 주세요');
     await this.db.execute('UPDATE users SET password = $1 WHERE id = $2', [await bcrypt.hash(input.newPassword, 10), userId]);
+    await this.db.execute('DELETE FROM sessions WHERE user_id = $1 AND id <> $2', [userId, me.sid]);
+  }
+
+  /** 로그아웃: 이 기기의 세션만 지운다. 이 토큰은 바로 못 쓰게 되고 다른 기기는 그대로다 */
+  async logout(me: AuthUser | undefined) {
+    if (me) await this.db.execute('DELETE FROM sessions WHERE id = $1 AND user_id = $2', [me.sid, me.id]);
+  }
+
+  /** 로그인한 기기 목록 (최근에 쓴 순) */
+  async sessions(me: AuthUser) {
+    const rows = await this.db.query<{ id: string; userAgent: string; createdAt: Date; lastUsedAt: Date }>(
+      `SELECT id, user_agent AS "userAgent", created_at AS "createdAt", last_used_at AS "lastUsedAt" FROM sessions
+       WHERE user_id = $1 AND expires_at > now() ORDER BY (id = $2) DESC, last_used_at DESC`,
+      [me.id, me.sid],
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      device: describeDevice(r.userAgent),
+      createdAt: new Date(r.createdAt).toISOString(),
+      lastUsedAt: new Date(r.lastUsedAt).toISOString(),
+      current: r.id === me.sid,
+    }));
+  }
+
+  /** 다른 기기 하나 로그아웃 */
+  async revokeSession(me: AuthUser, id: string) {
+    const removed = await this.db.execute('DELETE FROM sessions WHERE id = $1 AND user_id = $2', [id, me.id]);
+    if (!removed) throw ApiError.notFound('이미 로그아웃된 기기예요');
+  }
+
+  /** 지금 기기만 남기고 모두 로그아웃 */
+  async revokeOtherSessions(me: AuthUser) {
+    await this.db.execute('DELETE FROM sessions WHERE user_id = $1 AND id <> $2', [me.id, me.sid]);
   }
 
   /** 2단계 인증 켜기 1단계: 내 이메일로 번호 보내기 */
@@ -193,7 +234,18 @@ export class AuthService {
     return user;
   }
 
-  private toAuth(user: UserRow) {
-    return { token: this.jwt.issue(user.id, user.nickname), user: userResponse(user) };
+  /** 로그인 성공: 이 기기의 세션을 만들고 그 세션 id 가 든 토큰을 준다 */
+  private async toAuth(user: UserRow, userAgent: string) {
+    const sid = randomBytes(16).toString('base64url');
+    const { token, expiresAt } = this.jwt.issue(user.id, user.nickname, sid);
+    // 만료된 세션은 로그인할 때 같이 치운다
+    await this.db.execute('DELETE FROM sessions WHERE user_id = $1 AND expires_at <= now()', [user.id]);
+    await this.db.execute('INSERT INTO sessions (id, user_id, user_agent, expires_at) VALUES ($1, $2, $3, $4)', [
+      sid,
+      user.id,
+      userAgent.slice(0, 300),
+      expiresAt,
+    ]);
+    return { token, user: userResponse(user) };
   }
 }

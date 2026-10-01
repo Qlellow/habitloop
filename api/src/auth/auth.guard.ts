@@ -2,7 +2,6 @@ import { CanActivate, createParamDecorator, ExecutionContext, Injectable, SetMet
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { ApiError } from '../common/api-error';
-import { TtlCache } from '../common/ttl-cache';
 import { Database } from '../db/database';
 import { AuthUser, JwtService } from './jwt.service';
 
@@ -23,14 +22,12 @@ export const LoginUser = createParamDecorator(
 
 /**
  * 모든 요청: Bearer 토큰이 있으면 풀어서 req.user 에 넣는다.
- * 서명이 맞아도 사용자가 없으면(예: DB 초기화 뒤 남은 토큰) 비로그인으로 본다 → 쓰기 요청은 401.
+ * 서명이 맞아도 그 기기의 세션이 없으면(로그아웃 · 비밀번호 변경 · 탈퇴 · DB 초기화) 비로그인으로 본다 → 쓰기 요청은 401.
+ * 로그아웃이 바로 반영되도록 세션은 캐시하지 않고 요청마다 확인한다 (기본 키 조회 한 번).
  * @Public() 이 없는 API 는 로그인이 필요하다.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
-  // 있는 사용자만 60초 기억한다 (없는 id 는 매번 확인해서 탈퇴·초기화를 바로 반영)
-  private readonly exists = new TtlCache<true>(60_000);
-
   constructor(
     private readonly reflector: Reflector,
     private readonly jwt: JwtService,
@@ -42,18 +39,23 @@ export class AuthGuard implements CanActivate {
     const header = req.headers.authorization;
     if (header?.startsWith('Bearer ')) {
       const user = this.jwt.parse(header.slice(7));
-      if (user && (await this.userExists(user.id))) req.user = user;
+      if (user && (await this.sessionAlive(user))) req.user = user;
     }
     const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC, [ctx.getHandler(), ctx.getClass()]);
     if (!isPublic && !req.user) throw ApiError.unauthorized();
     return true;
   }
 
-  private async userExists(id: number) {
-    const key = String(id);
-    if (this.exists.get(key)) return true;
-    const found = await this.db.one('SELECT 1 FROM users WHERE id = $1', [id]);
-    if (found) this.exists.set(key, true);
-    return !!found;
+  private async sessionAlive(user: AuthUser) {
+    const row = await this.db.one<{ stale: boolean }>(
+      `SELECT last_used_at < now() - interval '5 minutes' AS stale FROM sessions
+       WHERE id = $1 AND user_id = $2 AND expires_at > now()`,
+      [user.sid, user.id],
+    );
+    // 마지막 사용 시각은 5분에 한 번만 고친다 (요청마다 쓰지 않게)
+    if (row?.stale) {
+      void this.db.execute('UPDATE sessions SET last_used_at = now() WHERE id = $1', [user.sid]).catch(() => undefined);
+    }
+    return !!row;
   }
 }

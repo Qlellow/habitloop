@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { CODE_LENGTH, useAuth, useTwoFactor } from '@loop/shared';
+import { CODE_LENGTH, timeAgo, useAuth, useLoginSessions, useRevokeSession, useTwoFactor } from '@loop/shared';
 import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
 import { toast } from '../../components/Toast';
 import { updateSettings, useSettings, type Settings } from '../../lib/settings';
@@ -154,6 +154,71 @@ function TwoFactorOption() {
   );
 }
 
+const isPhone = (device: string) => /iOS|Android|앱/.test(device);
+
+/**
+ * 로그인한 기기: 기기마다 따로 로그인(세션)돼 있다. 다른 기기를 골라 로그아웃하면 그 기기의 토큰은 서버에서 바로 폐기된다.
+ */
+function LoginSessions() {
+  const sessions = useLoginSessions();
+  const revoke = useRevokeSession();
+  const list = sessions.data ?? [];
+  const others = list.filter((d) => !d.current).length;
+
+  const logout = (id?: string) =>
+    revoke.mutate(id, {
+      onSuccess: () => toast(id ? '그 기기에서 로그아웃했어요' : '다른 기기에서 모두 로그아웃했어요'),
+      onError: (e) => toast(e.message),
+    });
+
+  return (
+    <>
+      <div className={s.option}>
+        <div>
+          <div className={s.optionLabel}>로그인한 기기</div>
+          <div className={s.optionDesc}>모르는 기기가 있으면 로그아웃하고 비밀번호를 바꿔 주세요. 로그아웃한 기기는 다시 로그인해야 해요.</div>
+        </div>
+        {others > 0 && (
+          <button type="button" className={cn(ui.button, ui.ghost, ui.small)} disabled={revoke.isPending} onClick={() => logout()}>
+            다른 기기 모두 로그아웃
+          </button>
+        )}
+      </div>
+      {sessions.isPending && <p className={s.optionDesc}>불러오는 중…</p>}
+      {sessions.error && <p className={cn(ui.error, 'mb-0')}>{sessions.error.message}</p>}
+      {list.length > 0 && (
+        <ul className={s.sessionList}>
+          {list.map((d) => (
+            <li key={d.id} className={s.session}>
+              <span className={s.sessionIcon} aria-hidden>
+                {isPhone(d.device) ? '📱' : '💻'}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className={s.optionLabel}>
+                  {d.device} {d.current && <span className={cn(ui.badge, 'ml-1 align-[1px]')}>이 기기</span>}
+                </div>
+                <div className={s.optionDesc}>
+                  {d.current ? '지금 사용 중' : `최근 사용 ${timeAgo(d.lastUsedAt)}`} · {timeAgo(d.createdAt)} 로그인
+                </div>
+              </div>
+              {!d.current && (
+                <button
+                  type="button"
+                  className={cn(ui.button, ui.text, ui.danger, ui.small)}
+                  disabled={revoke.isPending}
+                  onClick={() => logout(d.id)}
+                >
+                  로그아웃
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
 export default function SettingsPage() {
   const settings = useSettings();
   return (
@@ -165,6 +230,7 @@ export default function SettingsPage() {
       <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>보안</h2>
         <TwoFactorOption />
+        <LoginSessions />
       </section>
       <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>화면</h2>

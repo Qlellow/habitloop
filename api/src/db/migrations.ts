@@ -168,4 +168,19 @@ CREATE TABLE images (
 CREATE INDEX idx_images_owner ON images (owner_id, created_at);
 `,
   },
+  {
+    // 로그인한 기기(세션). 토큰에 세션 id 를 넣고 요청마다 확인해서, 로그아웃하면 그 기기의 토큰만 바로 못 쓰게 한다
+    name: '003_sessions',
+    sql: `
+CREATE TABLE sessions (
+    id            VARCHAR(32)  PRIMARY KEY,
+    user_id       INTEGER      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_agent    VARCHAR(300) NOT NULL DEFAULT '',
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    last_used_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    expires_at    TIMESTAMPTZ  NOT NULL
+);
+CREATE INDEX idx_sessions_user ON sessions (user_id, last_used_at);
+`,
+  },
 ];

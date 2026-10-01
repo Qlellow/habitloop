@@ -10,6 +10,7 @@ import { api, ApiError } from './client';
 import type {
   AuthResponse,
   LoginResponse,
+  LoginSession,
   ChannelCategory,
   ChannelDetail,
   ChannelInput,
@@ -591,11 +592,18 @@ function clearUserScopedCache(qc: QueryClient) {
   qc.removeQueries({ queryKey: ['channel'] });
   // 가입 여부(joined)·내 채널이 들어 있다
   qc.removeQueries({ queryKey: ['channels'] });
+  qc.removeQueries({ queryKey: ['sessions'] });
 }
 
+/**
+ * 로그아웃: 서버에서 이 기기의 토큰(세션)을 폐기하고, 저장된 토큰을 지운다.
+ * 요청은 지금 토큰을 실어 바로 보내고(api 는 호출하는 순간 헤더를 만든다) 응답은 기다리지 않는다.
+ * 네트워크가 끊겨 폐기를 못 해도 이 기기에서는 로그아웃되고, 남은 세션은 설정의 "로그인한 기기"에서 지울 수 있다.
+ */
 export function useSignOut() {
   const qc = useQueryClient();
   return () => {
+    if (authStore.getToken()) void api<void>('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
     authStore.signOut();
     clearUserScopedCache(qc);
   };
@@ -616,10 +624,28 @@ export function useUpdateProfile() {
   });
 }
 
+/** 비밀번호 변경. 서버가 지금 기기만 남기고 다른 기기를 모두 로그아웃한다 */
 export function useChangePassword() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: { currentPassword: string; newPassword: string }) =>
       api<void>('/api/me/password', { method: 'PUT', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
+  });
+}
+
+/** 로그인한 기기 목록 (지금 기기가 맨 위) */
+export function useLoginSessions(enabled = true) {
+  return useQuery({ queryKey: ['sessions'], queryFn: () => api<LoginSession[]>('/api/me/sessions'), enabled });
+}
+
+/** 다른 기기 로그아웃: id 를 주면 그 기기만, 없으면 지금 기기를 뺀 전부 */
+export function useRevokeSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id?: string) =>
+      api<void>(id ? `/api/me/sessions/${encodeURIComponent(id)}` : '/api/me/sessions', { method: 'DELETE' }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
   });
 }
 
