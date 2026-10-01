@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
 import {
   ChallengeInput,
   CodeInput,
@@ -11,7 +11,7 @@ import {
   ProfileInput,
   SignupInput,
 } from './auth.dto';
-import { LoginUser, Public } from './auth.guard';
+import { CurrentUser, LoginUser, Public } from './auth.guard';
 import { AuthService } from './auth.service';
 import type { AuthUser } from './jwt.service';
 
@@ -36,23 +36,31 @@ export class AuthController {
 
   @Public()
   @Post('auth/signup')
-  signup(@Body() input: SignupInput) {
-    return this.auth.signup(input);
+  signup(@Body() input: SignupInput, @Headers('user-agent') ua = '') {
+    return this.auth.signup(input, ua);
   }
 
   /** 2단계 인증이 켜져 있으면 token 대신 twoFactorRequired + challenge 가 온다 */
   @Public()
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() input: LoginInput) {
-    return this.auth.login(input);
+  login(@Body() input: LoginInput, @Headers('user-agent') ua = '') {
+    return this.auth.login(input, ua);
   }
 
   @Public()
   @Post('auth/login/verify')
   @HttpCode(HttpStatus.OK)
-  verifyLogin(@Body() input: LoginVerifyInput) {
-    return this.auth.verifyLogin(input.challenge, input.code);
+  verifyLogin(@Body() input: LoginVerifyInput, @Headers('user-agent') ua = '') {
+    return this.auth.verifyLogin(input.challenge, input.code, ua);
+  }
+
+  /** 로그아웃: 이 기기의 토큰을 서버에서 폐기한다 (이미 만료된 토큰이어도 204) */
+  @Public()
+  @Post('auth/logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  logout(@CurrentUser() user: AuthUser | undefined) {
+    return this.auth.logout(user);
   }
 
   /** 로그인 인증번호 다시 받기: 새 challenge 를 돌려준다 */
@@ -99,13 +107,31 @@ export class AuthController {
 
   @Put('me/profile')
   updateProfile(@LoginUser() user: AuthUser, @Body() input: ProfileInput) {
-    return this.auth.updateProfile(user.id, input.nickname);
+    return this.auth.updateProfile(user, input.nickname);
   }
 
   @Put('me/password')
   @HttpCode(HttpStatus.NO_CONTENT)
   changePassword(@LoginUser() user: AuthUser, @Body() input: PasswordInput) {
-    return this.auth.changePassword(user.id, input);
+    return this.auth.changePassword(user, input);
+  }
+
+  /** 로그인한 기기 목록 · 다른 기기 로그아웃 */
+  @Get('me/sessions')
+  sessions(@LoginUser() user: AuthUser) {
+    return this.auth.sessions(user);
+  }
+
+  @Delete('me/sessions')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  revokeOtherSessions(@LoginUser() user: AuthUser) {
+    return this.auth.revokeOtherSessions(user);
+  }
+
+  @Delete('me/sessions/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  revokeSession(@LoginUser() user: AuthUser, @Param('id') id: string) {
+    return this.auth.revokeSession(user, id);
   }
 
   /** 2단계 인증 켜기: 내 이메일로 번호 보내기 → 번호 확인 */

@@ -6,6 +6,17 @@ export interface User {
   twoFactorEnabled?: boolean;
 }
 
+/** 로그인한 기기 (마이페이지 > 설정 > 로그인한 기기) */
+export interface LoginSession {
+  id: string;
+  /** "Chrome · Windows" 처럼 사람이 알아볼 이름 */
+  device: string;
+  createdAt: string;
+  lastUsedAt: string;
+  /** 지금 이 기기 */
+  current: boolean;
+}
+
 export interface AuthResponse {
   token: string;
   user: User;

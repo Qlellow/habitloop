@@ -494,7 +494,7 @@ describe('커뮤니티', () => {
   });
 
   it('DB 에 없는 사용자의 토큰은 비로그인으로 본다', async () => {
-    const ghost = jwt.issue(999_999, '유령');
+    const ghost = jwt.issue(999_999, '유령', 'no-such-session').token;
     const real = await signup('ghost-check@test.dev', '진짜회원');
     await http().post('/api/channels').set(bearer(real)).send({ slug: 'ghost-ch', name: '유령확인' });
     const postId = (await http().post('/api/posts').set(bearer(real)).send({ channel: 'ghost-ch', title: 't', content: 'c' })).body.id;
@@ -570,7 +570,7 @@ describe('커뮤니티', () => {
   });
 
   it('비밀번호 재설정은 항상 이메일 인증을 거친다', async () => {
-    await signup('reset@test.dev', '재설정');
+    const before = await signup('reset@test.dev', '재설정');
     await http().post('/api/auth/password/code').send({ email: 'nobody@test.dev' }).expect(404);
 
     // 1) 이메일로 번호 받기 (2단계 인증을 끈 계정도 번호가 필요하다)
@@ -593,10 +593,63 @@ describe('커뮤니티', () => {
     );
     await http().post('/api/auth/password/reset').send({ resetToken, newPassword: 'new-password-99' }).expect(204);
     expect(mailer.lastNotice('reset@test.dev')).toBe('비밀번호가 바뀌었어요');
+    // 재설정 전에 로그인돼 있던 기기는 모두 로그아웃된다
+    await http().get('/api/me').set(bearer(before)).expect(401);
     // 한 번 쓴 토큰은 다시 못 쓴다
     await http().post('/api/auth/password/reset').send({ resetToken, newPassword: 'another-password1' }).expect(400);
     await http().post('/api/auth/login').send({ email: 'reset@test.dev', password: 'password1234!' }).expect(401);
     expect((await http().post('/api/auth/login').send({ email: 'reset@test.dev', password: 'new-password-99' }).expect(200)).body.token).toBeDefined();
+  });
+
+  it('로그아웃하면 그 기기의 토큰만 폐기된다', async () => {
+    await signup('device@test.dev', '여러기기');
+    const login = async (ua: string) =>
+      (await http().post('/api/auth/login').set('User-Agent', ua).send({ email: 'device@test.dev', password: 'password1234!' }).expect(200)).body
+        .token as string;
+    const pc = await login('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36');
+    const phone = await login('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1');
+    const app = await login('okhttp/4.12.0');
+
+    // 로그인한 기기 목록: 지금 기기가 맨 위
+    const list = (await http().get('/api/me/sessions').set(bearer(pc)).expect(200)).body as { id: string; device: string; current: boolean }[];
+    expect(list.map((d) => d.device)).toEqual(expect.arrayContaining(['Chrome · Windows', 'Safari · iOS', '루프 앱 · Android']));
+    expect(list[0]).toMatchObject({ device: 'Chrome · Windows', current: true });
+
+    // 휴대폰에서 로그아웃 → 휴대폰 토큰만 바로 막히고, 같은 토큰이 남아 있어도 못 쓴다
+    await http().post('/api/auth/logout').set(bearer(phone)).expect(204);
+    await http().get('/api/me').set(bearer(phone)).expect(401);
+    await http().get('/api/me').set(bearer(pc)).expect(200);
+    // 이미 폐기된 토큰으로 다시 로그아웃해도 괜찮다
+    await http().post('/api/auth/logout').set(bearer(phone)).expect(204);
+
+    // PC 에서 앱 기기를 로그아웃시키기 (남의 세션은 못 지운다)
+    const appSession = (await http().get('/api/me/sessions').set(bearer(pc))).body.find((d: { device: string }) => d.device === '루프 앱 · Android');
+    const stranger = await signup('stranger@test.dev', '남의기기');
+    await http().delete(`/api/me/sessions/${appSession.id}`).set(bearer(stranger)).expect(404);
+    await http().get('/api/me').set(bearer(app)).expect(200);
+    await http().delete(`/api/me/sessions/${appSession.id}`).set(bearer(pc)).expect(204);
+    await http().get('/api/me').set(bearer(app)).expect(401);
+
+    // 닉네임을 바꿔 새 토큰을 받아도 같은 기기 세션이라 로그아웃 한 번에 둘 다 막힌다
+    const renamed = (await http().put('/api/me/profile').set(bearer(pc)).send({ nickname: '바뀐기기닉' }).expect(200)).body.token;
+    const after = (await http().get('/api/me/sessions').set(bearer(renamed))).body as { id: string; current: boolean }[];
+    expect(after.find((d) => d.current)?.id).toBe(list[0].id);
+    expect(after).toHaveLength(list.length - 2);
+
+    // 비밀번호를 바꾸면 지금 기기만 남는다
+    const tablet = await login('Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36');
+    await http().put('/api/me/password').set(bearer(renamed)).send({ currentPassword: 'password1234!', newPassword: 'password5678!' }).expect(204);
+    await http().get('/api/me').set(bearer(tablet)).expect(401);
+    await http().get('/api/me').set(bearer(renamed)).expect(200);
+
+    // 다른 기기 모두 로그아웃
+    const again = (await http().post('/api/auth/login').send({ email: 'device@test.dev', password: 'password5678!' }).expect(200)).body.token;
+    await http().delete('/api/me/sessions').set(bearer(renamed)).expect(204);
+    await http().get('/api/me').set(bearer(again)).expect(401);
+
+    await http().post('/api/auth/logout').set(bearer(renamed)).expect(204);
+    await http().get('/api/me').set(bearer(pc)).expect(401);
+    await http().get('/api/me').set(bearer(renamed)).expect(401);
   });
 
   it('인증 입력 검사', async () => {
