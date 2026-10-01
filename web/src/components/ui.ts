@@ -38,13 +38,9 @@ export const ui = {
   field: 'block mb-[18px]',
   label: 'block mb-1.5 text-sm font-semibold text-fg-sub',
   help: 'mt-1.5 mb-0 text-[13px] text-fg-weak',
-  // 한 줄 입력칸: 밑줄형. 포커스되면 밑줄이 왼쪽부터 브랜드 색으로 칠해진다
-  // (input 에는 ::after 를 못 붙이므로 아래쪽 배경 그라디언트의 너비를 0% → 100% 로 늘린다, 0.22초 ease-in-out)
+  // 한 줄 입력칸: 밑줄형 (global.css 의 .underline-field). 포커스되면 회색 밑줄 위를 파란 선이 왼쪽부터 덮는다
   input:
-    'w-full h-11 border-0 border-b-[1.5px] border-[color-mix(in_srgb,var(--text-weak)_45%,transparent)] rounded-none ' +
-    'bg-transparent bg-[linear-gradient(var(--primary),var(--primary))] bg-no-repeat bg-[length:0%_2px] bg-[position:0_100%] ' +
-    'px-0.5 text-[15px] outline-none transition-[background-size,border-color] duration-[220ms] ease-in-out ' +
-    'hover:border-[color-mix(in_srgb,var(--text-weak)_80%,transparent)] focus:bg-[length:100%_2px] focus-visible:outline-none ' +
+    'underline-field w-full h-11 border-0 rounded-none px-0.5 text-[15px] outline-none focus-visible:outline-none ' +
     'placeholder:text-fg-weak disabled:text-fg-weak',
   textarea:
     'w-full border border-transparent rounded-sm bg-field px-3.5 py-[11px] text-[15px] outline-none transition-colors ' +
