@@ -24,6 +24,7 @@ import { HeartIcon } from '../components/Icons';
 import { Page } from '../components/Layout';
 import { RoleBadge } from '../components/RoleBadge';
 import { Markdown } from '../components/Markdown';
+import { CollapsibleBody } from '../components/CollapsibleBody';
 import { PopularCard } from '../components/Sidebar';
 import { toast } from '../components/Toast';
 import { preload } from '../lib/preload';
@@ -307,7 +308,9 @@ export default function PostDetailPage() {
                   <div className={ui.skeleton} style={{ width: '60%', height: 18, marginTop: 10 }} />
                 </>
               ) : (
-                <Markdown source={post.content} />
+                <CollapsibleBody key={post.id}>
+                  <Markdown source={post.content} />
+                </CollapsibleBody>
               )}
             </div>
             {!isPlaceholderData && (

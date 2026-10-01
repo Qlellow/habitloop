@@ -2,7 +2,7 @@ import { lazy, Suspense, useRef, useState, type ClipboardEvent, type DragEvent }
 import { uploadPostImage } from '@loop/shared';
 import { flushSync } from 'react-dom';
 import { getSettings } from '../lib/settings';
-import { prepareUpload } from '../lib/postImage';
+import { findImageToken, imageIndexAt, prepareUpload } from '../lib/postImage';
 import { ImageEditLayer } from './ImageEditLayer';
 import { toast } from './Toast';
 import { ui } from './ui';
@@ -11,6 +11,7 @@ import s from './MarkdownEditor.styles';
 
 // 미리보기를 켜기 전에는 마크다운 파서를 받지 않는다
 const Preview = lazy(() => import('./Markdown').then((m) => ({ default: m.Markdown })));
+const ImageOnly = lazy(() => import('./Markdown').then((m) => ({ default: m.MarkdownImage })));
 const preloadPreview = () => void import('./Markdown');
 
 type Mode = 'write' | 'split' | 'preview';
@@ -59,6 +60,11 @@ export function MarkdownEditor({
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewHostRef = useRef<HTMLDivElement>(null);
+  const panelHostRef = useRef<HTMLDivElement>(null);
+  /** 작성 화면에서 커서가 놓인 이미지 (몇 번째) → 아래에 그 이미지 편집 칸을 연다 */
+  const [caret, setCaret] = useState<{ index: number; seq: number }>();
+  const caretImage = caret?.index;
+  const caretToken = caretImage !== undefined ? findImageToken(value, caretImage) : undefined;
   // 사진을 올리는 동안 사용자가 계속 글을 써도 최신 본문에 반영되도록
   const valueRef = useRef(value);
   valueRef.current = value;
@@ -144,7 +150,7 @@ export function MarkdownEditor({
           <button
             type="button"
             className={s.tool}
-            title="사진 넣기 (붙여넣기 · 끌어다 놓기도 돼요)"
+            title="사진 넣기 (붙여넣기 · 끌어다 놓기도 돼요). 넣은 사진 줄을 클릭하면 바로 편집할 수 있어요"
             aria-label="사진 넣기"
             onClick={() => fileRef.current?.click()}
           >
@@ -197,6 +203,11 @@ export function MarkdownEditor({
             onChange={(e) => onChange(e.target.value)}
             onPaste={onPaste}
             onDrop={onDrop}
+            onSelect={(e) => {
+              const i = imageIndexAt(e.currentTarget.value, e.currentTarget.selectionStart);
+              if (i !== undefined) preloadPreview();
+              setCaret((c) => (i === undefined ? undefined : { index: i, seq: (c?.seq ?? 0) + 1 }));
+            }}
             onKeyDown={(e) => {
               const idx = SHORTCUTS[e.key.toLowerCase()];
               if ((e.ctrlKey || e.metaKey) && idx !== undefined) {
@@ -206,6 +217,25 @@ export function MarkdownEditor({
             }}
             aria-label={label}
           />
+        )}
+        {mode === 'write' && caretToken && caretImage !== undefined && (
+          // 작성 화면에서도 이미지를 바로 고칠 수 있게: 커서가 놓인 이미지만 본문과 같은 너비로 보여 주고 편집 도구를 띄운다
+          <div className={s.imagePanel} aria-label="이미지 편집 칸">
+            <div className={s.imagePanelHead}>
+              <span>이미지 편집 · 꼭짓점을 끌면 크기, 위 메뉴로 자르기·캡션</span>
+              <button type="button" className={s.imagePanelClose} aria-label="이미지 편집 칸 닫기" onClick={() => setCaret(undefined)}>
+                ✕
+              </button>
+            </div>
+            <div ref={panelHostRef} className={s.imagePanelHost}>
+              <Suspense fallback={<div className={ui.spinner} />}>
+                <div className={s.imagePanelImage}>
+                  <ImageOnly markdown={value.slice(caretToken.start, caretToken.end)} index={caretImage} />
+                </div>
+              </Suspense>
+              <ImageEditLayer hostRef={panelHostRef} source={value} onChange={onChange} uploadFile={uploadImageFile} autoSelect={caret} />
+            </div>
+          </div>
         )}
         {showPreview && (
           <div

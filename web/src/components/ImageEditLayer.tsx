@@ -44,7 +44,8 @@ const tool =
 /**
  * 편집 미리보기 위의 이미지 편집 도구 (Notion · 한글처럼 본문 안에서 바로 보며 고친다).
  * - 이미지에 마우스를 1초 올리거나, 클릭·Tab 으로 포커스하면 선택된다
- * - 모서리·변의 점을 끌면 크기가 실시간으로 바뀐다 (그림판처럼 가로세로 따로, Shift 를 누르면 비율 유지)
+ * - 꼭짓점을 끌면 비율을 지킨 채로, 변의 점을 끌면 가로·세로 따로 크기가 실시간으로 바뀐다 (꼭짓점 + Shift: 자유롭게)
+ * - 메뉴와 펼침 칸은 이 상자(미리보기) 밖으로 나가지 않는다 (나란히 보기에서 작성 칸에 가려지지 않게)
  * - 위에 뜨는 메뉴: 자르기(사각형·원형) · 이미지 바꾸기 · 모서리 둥글기 · 정렬 · 크기 · 캡션 · 원래대로 · 삭제
  * 바뀐 설정은 마크다운의 이미지 주소 뒤 #설정으로 저장된다 (원본 이미지는 그대로).
  */
@@ -53,6 +54,7 @@ export function ImageEditLayer({
   source,
   onChange,
   uploadFile,
+  autoSelect,
 }: {
   /** 렌더링된 본문을 감싸는 상자 (position: relative) */
   hostRef: RefObject<HTMLDivElement | null>;
@@ -60,6 +62,8 @@ export function ImageEditLayer({
   onChange: (next: string) => void;
   /** 이미지 바꾸기: 파일을 올리고 주소를 돌려준다 */
   uploadFile: (file: File) => Promise<string>;
+  /** 이 이미지를 바로 선택해 메뉴를 띄운다 (작성 화면의 이미지 편집 칸). seq 가 바뀔 때마다 다시 선택한다 */
+  autoSelect?: { index: number; seq: number };
 }) {
   const [selected, setSelected] = useState<number>();
   const [box, setBox] = useState<Box>();
@@ -67,6 +71,9 @@ export function ImageEditLayer({
   const [cropping, setCropping] = useState(false);
   const [captionDraft, setCaptionDraft] = useState('');
   const layerRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [widths, setWidths] = useState({ host: 0, toolbar: 0, toolbarH: 40, pop: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
   const leaveTimer = useRef<number | undefined>(undefined);
@@ -111,6 +118,8 @@ export function ImageEditLayer({
       if (el.tabIndex !== 0) el.tabIndex = 0;
       el.setAttribute('aria-label', '이미지 편집');
       el.classList.add('loop-img-editable');
+      // 이미지를 끌면 브라우저가 복사해서 놓아 버린다 (같은 자리에 놓아도 이미지가 하나 더 생긴다)
+      el.querySelector('img')?.setAttribute('draggable', 'false');
     });
     measure();
   }, [hostRef, measure]);
@@ -173,11 +182,16 @@ export function ImageEditLayer({
       if (i !== selected) setPopover(undefined);
       setSelected(i);
     };
+    const noDrag = (e: DragEvent) => {
+      if (indexOf(e.target) !== undefined) e.preventDefault();
+    };
+    host.addEventListener('dragstart', noDrag);
     host.addEventListener('pointerover', over);
     host.addEventListener('pointerout', out);
     host.addEventListener('click', pick);
     host.addEventListener('focusin', pick);
     return () => {
+      host.removeEventListener('dragstart', noDrag);
       host.removeEventListener('pointerover', over);
       host.removeEventListener('pointerout', out);
       host.removeEventListener('click', pick);
@@ -206,6 +220,29 @@ export function ImageEditLayer({
       document.removeEventListener('keydown', key);
     };
   }, [selected, popover, cropping, deselect]);
+
+  // 작성 화면의 편집 칸: 커서가 놓인 이미지를 바로 선택한다
+  const autoIndex = autoSelect?.index;
+  const autoSeq = autoSelect?.seq;
+  useEffect(() => {
+    if (autoIndex === undefined) return;
+    byHover.current = false;
+    setSelected((cur) => {
+      if (cur !== autoIndex) setPopover(undefined);
+      return autoIndex;
+    });
+  }, [autoIndex, autoSeq]);
+
+  // 메뉴·펼침 칸의 너비를 재서, 미리보기 상자 밖으로 나가지 않게 자리를 맞춘다 (그리기 전에 한 번 더 그린다)
+  useLayoutEffect(() => {
+    const next = {
+      host: hostRef.current?.clientWidth ?? 0,
+      toolbar: toolbarRef.current?.offsetWidth ?? 0,
+      toolbarH: toolbarRef.current?.offsetHeight ?? 40,
+      pop: popRef.current?.offsetWidth ?? 0,
+    };
+    setWidths((w) => (w.host === next.host && w.toolbar === next.toolbar && w.toolbarH === next.toolbarH && w.pop === next.pop ? w : next));
+  });
 
   // 이미지가 지워지거나 본문에서 사라지면 선택 해제
   useEffect(() => {
@@ -247,7 +284,14 @@ export function ImageEditLayer({
     if (d.handle.includes('n')) h = d.startH - dy;
     w = clamp(w, d.contentW * 0.1, d.contentW);
     h = clamp(h, 24, 4000);
-    if (e.shiftKey && d.handle.length === 2) h = (w * d.startH) / d.startW;
+    // 꼭짓점: 가로를 기준으로 처음 비율을 지킨다 (Shift 를 누르면 가로·세로 따로)
+    if (d.handle.length === 2 && !e.shiftKey) {
+      h = (w * d.startH) / d.startW;
+      if (h < 24) {
+        h = 24;
+        w = (h * d.startW) / d.startH;
+      }
+    }
     const next: ImageParams = { ...d.params, w: (w / d.contentW) * 100, ar: h / w, nr: d.nr };
     applyImageStyles(el, next);
     measure();
@@ -280,7 +324,15 @@ export function ImageEditLayer({
     setPopover(undefined);
   };
 
-  const toolbarTop = box.top - 48 < 0 ? box.top + box.height + 8 : box.top - 48;
+  // 메뉴는 이미지 위에 (자리가 없으면 아래에). 좁은 미리보기에서는 메뉴가 두 줄로 접힌다
+  const toolbarTop = box.top - widths.toolbarH - 8 < 0 ? box.top + box.height + 8 : box.top - widths.toolbarH - 8;
+  const fit = (left: number, width: number) => clamp(left, 0, Math.max(0, widths.host - width));
+  // 메뉴는 이미지 가운데 위에, 캡션 칸은 이미지 왼쪽 끝에 맞춘다. 둘 다 상자 안에서만
+  const toolbarLeft = fit(box.left + box.width / 2 - widths.toolbar / 2, widths.toolbar);
+  const popLeft = fit(popover === 'caption' ? box.left : toolbarLeft, widths.pop);
+  // 캡션 칸은 캡션이 보일 자리(이미지 바로 아래)에 연다. 메뉴가 이미지 아래에 있으면 메뉴 아래에
+  const toolbarAbove = toolbarTop < box.top;
+  const popTop = popover === 'caption' && toolbarAbove ? box.top + box.height + 8 : toolbarTop + widths.toolbarH + 6;
   const align = (a: ImageAlign) => commit({ ...params, align: a });
 
   return (
@@ -295,7 +347,7 @@ export function ImageEditLayer({
           <span
             key={h}
             role="presentation"
-            title="끌어서 크기 조절 (Shift: 비율 유지)"
+            title={h.length === 2 ? '끌어서 크기 조절 (비율 유지, Shift: 자유롭게)' : '끌어서 가로·세로 따로 조절'}
             className={cn('absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white border-2 border-primary shadow pointer-events-auto touch-none', HANDLE_POS[h])}
             onPointerDown={startResize(h)}
           />
@@ -304,10 +356,11 @@ export function ImageEditLayer({
 
       {/* 이미지 바로 위 메뉴 (Notion 처럼) */}
       <div
+        ref={toolbarRef}
         role="toolbar"
         aria-label="이미지 편집"
-        className="absolute flex items-center gap-0.5 p-1 rounded-lg border border-border bg-surface shadow-pop pointer-events-auto animate-pop max-w-[calc(100%-8px)] overflow-x-auto [scrollbar-width:none]"
-        style={{ left: clamp(box.left + box.width / 2, 4, Number.MAX_SAFE_INTEGER), top: toolbarTop, transform: 'translateX(-50%)' }}
+        className="absolute flex flex-wrap items-center gap-0.5 p-1 rounded-lg border border-border bg-surface shadow-pop pointer-events-auto animate-pop max-w-full"
+        style={{ left: toolbarLeft, top: toolbarTop }}
       >
         <button type="button" className={tool} onClick={() => setCropping(true)} title="자르기 (사각형·원형)">
           ✂ 자르기
@@ -377,8 +430,9 @@ export function ImageEditLayer({
       {/* 메뉴 아래 펼침: 크기 / 모서리 / 캡션 */}
       {popover && (
         <div
-          className="absolute p-3 rounded-lg border border-border bg-surface shadow-pop pointer-events-auto animate-pop"
-          style={{ left: clamp(box.left + box.width / 2, 4, Number.MAX_SAFE_INTEGER), top: toolbarTop + 46, transform: 'translateX(-50%)' }}
+          ref={popRef}
+          className="absolute max-w-full p-3 rounded-lg border border-border bg-surface shadow-pop pointer-events-auto animate-pop"
+          style={{ left: popLeft, top: popTop }}
         >
           {popover === 'size' && (
             <div className="flex gap-1">
@@ -408,7 +462,7 @@ export function ImageEditLayer({
             <div className="flex items-center gap-2">
               <input
                 autoFocus
-                className="w-64 h-9 px-2.5 rounded-md bg-field text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-64 min-w-0 flex-1 h-9 px-2.5 rounded-md bg-field text-sm outline-none focus:ring-2 focus:ring-primary/40"
                 placeholder="이미지 아래에 보일 설명"
                 aria-label="캡션"
                 maxLength={120}

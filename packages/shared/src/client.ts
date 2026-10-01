@@ -35,6 +35,7 @@ export async function api<T>(
   const headers: Record<string, string> = { Accept: 'application/json' };
   const token = authStore.getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  else headers['X-Viewer'] = authStore.getViewerId();
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   // 이미지 같은 바이너리는 그대로 보낸다 (Content-Type 은 blob 의 type)
   if (blob) headers['Content-Type'] = blob.type;

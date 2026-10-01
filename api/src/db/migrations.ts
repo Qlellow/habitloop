@@ -183,4 +183,16 @@ CREATE TABLE sessions (
 CREATE INDEX idx_sessions_user ON sessions (user_id, last_used_at);
 `,
   },
+  {
+    // 글을 본 사람. 같은 계정(비로그인은 같은 브라우저·앱)이 다시 보거나 새로고침해도 조회수는 한 번만 오른다
+    name: '004_post_views',
+    sql: `
+CREATE TABLE post_views (
+    post_id     INTEGER      NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    viewer      VARCHAR(64)  NOT NULL,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    PRIMARY KEY (post_id, viewer)
+);
+`,
+  },
 ];

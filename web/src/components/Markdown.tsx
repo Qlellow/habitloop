@@ -62,3 +62,12 @@ export const Markdown = memo(function Markdown({ source, className }: { source: 
   const html = useMemo(() => renderMarkdown(source), [source]);
   return <div className={className ? `prose ${className}` : 'prose'} dangerouslySetInnerHTML={{ __html: html }} />;
 });
+
+/**
+ * 작성 화면의 이미지 편집 칸: 이미지 하나만 본문과 같은 모양으로 그린다.
+ * 편집 도구가 본문의 몇 번째 이미지인지 찾을 수 있게 data-i 를 그 순서로 바꿔 둔다.
+ */
+export const MarkdownImage = memo(function MarkdownImage({ markdown, index }: { markdown: string; index: number }) {
+  const html = useMemo(() => renderMarkdown(markdown).replace('data-i="0"', `data-i="${index}"`), [markdown, index]);
+  return <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />;
+});

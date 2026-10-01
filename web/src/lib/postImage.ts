@@ -6,6 +6,7 @@ export {
   buildImageSrc,
   displayRatio,
   findImageToken,
+  imageIndexAt,
   parseImageSrc,
   removeImageToken,
   replaceImageToken,

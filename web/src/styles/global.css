@@ -399,7 +399,7 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-weak);
-  text-align: center;
+  text-align: left;
 }
 
 /* 편집 미리보기 안의 이미지: 고를 수 있다는 걸 보여 준다 (ImageEditLayer) */

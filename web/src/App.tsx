@@ -4,6 +4,7 @@ import { useAuth } from '@loop/shared';
 import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
 import { loaders } from './lib/preload';
+import { useReturnTo } from './lib/authNav';
 import HomePage from './pages/HomePage';
 
 // 첫 화면(홈)만 메인 번들에 넣고 나머지 화면은 라우트 단위로 쪼개서 필요할 때 받는다
@@ -30,6 +31,17 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return children;
 }
 
+/**
+ * 로그인 · 회원가입 · 비밀번호 찾기는 로그인하지 않은 사람만. 로그인한 채로 주소를 직접 쳐서 들어오면
+ * 돌아갈 곳(없으면 홈)으로 보낸다. 로그인에 성공한 순간에도 같은 곳으로 간다.
+ */
+function GuestOnly({ children }: { children: ReactNode }) {
+  const { isLoggedIn } = useAuth();
+  const to = useReturnTo();
+  if (isLoggedIn) return <Navigate to={to} replace />;
+  return children;
+}
+
 function Root() {
   return (
     <>
@@ -49,6 +61,7 @@ function Root() {
 }
 
 const auth = (el: ReactNode) => <RequireAuth>{el}</RequireAuth>;
+const guest = (el: ReactNode) => <GuestOnly>{el}</GuestOnly>;
 
 const router = createBrowserRouter([
   {
@@ -65,9 +78,9 @@ const router = createBrowserRouter([
       { path: '/c/:slug', element: <ChannelPage /> },
       { path: '/c/:slug/edit', element: auth(<ChannelFormPage />) },
       { path: '/c/:slug/manage', element: auth(<ChannelManagePage />) },
-      { path: '/login', element: <LoginPage /> },
-      { path: '/signup', element: <SignupPage /> },
-      { path: '/password/reset', element: <ResetPasswordPage /> },
+      { path: '/login', element: guest(<LoginPage />) },
+      { path: '/signup', element: guest(<SignupPage />) },
+      { path: '/password/reset', element: guest(<ResetPasswordPage />) },
       {
         path: '/me',
         element: auth(<MyLayout />),

@@ -58,7 +58,7 @@ function RemoteImage({ src, alt }: { src: string; alt: string }) {
           }
         />
       </View>
-      {caption ? <Text className="mt-1.5 text-[13px] text-center text-fg-weak">{caption}</Text> : null}
+      {caption ? <Text className="mt-1.5 text-[13px] text-left text-fg-weak">{caption}</Text> : null}
     </View>
   );
 }
