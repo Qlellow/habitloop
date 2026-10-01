@@ -2,26 +2,29 @@
 const ICON_SIZE = 256;
 
 /**
- * 고른 사진을 가운데 기준 정사각형으로 자르고 256px 로 줄인다.
+ * 고른 사진을 정사각형으로 자르고(자르기 창에서 고른 영역, 없으면 가운데) 256px 로 줄인다.
  * 서버에는 수십 KB 짜리 작은 이미지만 올라가고, 사진 속 위치 정보(EXIF) 같은 메타데이터도 떨어진다.
  * WebP 를 못 만드는 브라우저(구형 Safari)는 PNG 로 만든다.
  */
-export async function toSquareIcon(file: File): Promise<Blob> {
+export async function toSquareIcon(file: File, crop?: { x: number; y: number; w: number; h: number }): Promise<Blob> {
   if (!file.type.startsWith('image/')) throw new Error('이미지 파일을 골라 주세요');
   if (file.size > 20 * 1024 * 1024) throw new Error('20MB 이하의 사진을 골라 주세요');
 
   const bitmap = await createImageBitmap(file).catch(() => {
     throw new Error('사진을 읽지 못했어요. 다른 사진을 골라 주세요');
   });
-  const side = Math.min(bitmap.width, bitmap.height);
+  // 자르기 창에서 고른 영역(1:1)이 있으면 그 영역, 없으면 가운데 정사각형
+  const side = crop ? Math.min(crop.w * bitmap.width, crop.h * bitmap.height) : Math.min(bitmap.width, bitmap.height);
+  const sx = crop ? crop.x * bitmap.width : (bitmap.width - side) / 2;
+  const sy = crop ? crop.y * bitmap.height : (bitmap.height - side) / 2;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = ICON_SIZE;
   const ctx = canvas.getContext('2d')!;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(
     bitmap,
-    (bitmap.width - side) / 2,
-    (bitmap.height - side) / 2,
+    sx,
+    sy,
     side,
     side,
     0,

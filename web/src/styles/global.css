@@ -370,3 +370,44 @@
   --line: var(--danger);
   --line-active: var(--danger);
 }
+
+/*
+ * 글 본문 이미지 (Markdown.tsx 의 .loop-img). 크기·정렬·비율·자르기·모서리는 편집 설정에서
+ * applyImageStyles 가 인라인 스타일로 입히고, 여기서는 기본 모양만 정한다.
+ */
+.loop-img {
+  display: block;
+  max-width: 100%;
+  margin: 1.4em auto;
+}
+.loop-img-frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.prose .loop-img img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+  border-radius: 0;
+}
+.loop-img-cap {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-weak);
+  text-align: center;
+}
+
+/* 편집 미리보기 안의 이미지: 고를 수 있다는 걸 보여 준다 (ImageEditLayer) */
+.loop-img-editable {
+  cursor: pointer;
+  outline: none;
+}
+.loop-img-editable:hover .loop-img-frame,
+.loop-img-editable:focus-visible .loop-img-frame {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent);
+}

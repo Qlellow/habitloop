@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import express from 'express';
 import { AppModule } from './app.module';
-import { MAX_ICON_BYTES } from './channels/icons.service';
+import { MAX_IMAGE_BYTES } from './images/images.service';
 
 /**
  * 앱 설정을 한곳에: 서버(main.ts) · 테스트가 같은 설정을 쓴다.
@@ -17,10 +17,10 @@ export async function createApp(): Promise<INestApplication> {
   });
   app.setGlobalPrefix('api');
 
-  // JSON 본문 (글은 2만 자까지라 넉넉히) + 프로필 이미지 바이트
+  // JSON 본문 (글은 2만 자까지라 넉넉히) + 프로필·본문 이미지 바이트
   app.use(express.json({ limit: '1mb' }));
-  // 크기(512KB)는 IconsService 가 확인해서 알아듣기 쉬운 메시지로 돌려준다
-  app.use(express.raw({ type: ['image/*'], limit: MAX_ICON_BYTES * 2 }));
+  // 크기(프로필 512KB, 본문 3MB)는 각 서비스가 확인해서 알아듣기 쉬운 메시지로 돌려준다
+  app.use(express.raw({ type: ['image/*'], limit: MAX_IMAGE_BYTES + 512 * 1024 }));
   // null 필드는 응답에서 뺀다 (예전 Spring 응답과 같은 모양)
   app.getHttpAdapter().getInstance().set('json replacer', (_key: string, value: unknown) => (value === null ? undefined : value));
   app.getHttpAdapter().getInstance().disable('x-powered-by');

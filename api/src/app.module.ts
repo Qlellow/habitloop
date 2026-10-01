@@ -12,6 +12,8 @@ import { MembershipService } from './channels/membership.service';
 import { PreviewsService } from './channels/previews.service';
 import { StaffService } from './channels/staff.service';
 import { HttpExceptionFilter } from './common/http-exception.filter';
+import { ImagesController } from './images/images.controller';
+import { ImagesService } from './images/images.service';
 import { Database } from './db/database';
 import { Seeder } from './db/seed';
 import { Mailer } from './mail/mailer';
@@ -31,9 +33,10 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, ChannelsController, PostsController],
+  controllers: [HealthController, AuthController, ChannelsController, PostsController, ImagesController],
   providers: [
     Database,
+    ImagesService,
     Seeder,
     JwtService,
     Mailer,

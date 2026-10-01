@@ -7,6 +7,7 @@ import { MarkdownEditor } from '../components/MarkdownEditor';
 import { toast } from '../components/Toast';
 import { ui } from '../components/ui';
 import { toSquareIcon } from '../lib/image';
+import { CropModal } from '../components/CropModal';
 import s from './pages.styles';
 import { cn } from '../lib/cn';
 
@@ -31,19 +32,33 @@ function IconPicker({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  // 고른 사진은 먼저 자르기 창(1:1)에서 영역을 고른 뒤 정사각형으로 만든다
+  const [cropping, setCropping] = useState<{ file: File; url: string }>();
   const preview = change === null ? undefined : (change?.url ?? current);
 
-  const pick = async (file: File | undefined) => {
+  const pick = (file: File | undefined) => {
+    if (input.current) input.current.value = '';
     if (!file) return;
+    if (!file.type.startsWith('image/')) return toast('이미지 파일을 골라 주세요');
+    setCropping({ file, url: URL.createObjectURL(file) });
+  };
+
+  const closeCrop = () => {
+    if (cropping) URL.revokeObjectURL(cropping.url);
+    setCropping(undefined);
+  };
+
+  const applyCrop = async (crop: { x: number; y: number; w: number; h: number }) => {
+    if (!cropping) return;
     setBusy(true);
     try {
-      const blob = await toSquareIcon(file);
+      const blob = await toSquareIcon(cropping.file, crop);
       onChange({ blob, url: URL.createObjectURL(blob) });
+      closeCrop();
     } catch (e) {
       toast((e as Error).message);
     } finally {
       setBusy(false);
-      if (input.current) input.current.value = '';
     }
   };
 
@@ -63,7 +78,7 @@ function IconPicker({
               </button>
             )}
           </div>
-          <p className={cn(ui.help, 'mt-0')}>정사각형으로 잘려요. 사진이 없으면 채널 이름 첫 글자로 보여요.</p>
+          <p className={cn(ui.help, 'mt-0')}>사진을 고르면 정사각형으로 자를 영역을 정할 수 있어요. 사진이 없으면 채널 이름 첫 글자로 보여요.</p>
         </div>
         <input
           ref={input}
@@ -75,6 +90,17 @@ function IconPicker({
           onChange={(e) => pick(e.target.files?.[0])}
         />
       </div>
+      {cropping && (
+        <CropModal
+          src={cropping.url}
+          title="채널 프로필 자르기"
+          shapes={false}
+          aspect={1}
+          applyLabel={busy ? '만드는 중…' : '이 영역으로 설정'}
+          onApply={({ crop }) => void applyCrop(crop)}
+          onClose={closeCrop}
+        />
+      )}
     </div>
   );
 }

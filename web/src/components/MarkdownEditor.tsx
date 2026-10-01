@@ -1,6 +1,10 @@
-import { lazy, Suspense, useRef, useState } from 'react';
+import { lazy, Suspense, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
+import { uploadPostImage } from '@loop/shared';
 import { flushSync } from 'react-dom';
 import { getSettings } from '../lib/settings';
+import { prepareUpload } from '../lib/postImage';
+import { ImageEditLayer } from './ImageEditLayer';
+import { toast } from './Toast';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 import s from './MarkdownEditor.styles';
@@ -20,8 +24,14 @@ const ACTIONS: Action[] = [
   { label: '“', title: '인용', apply: (t) => ['\n> ', t || '인용문', '\n'] },
   { label: '</>', title: '코드', apply: (t) => (t.includes('\n') ? ['\n```\n', t, '\n```\n'] : ['`', t || 'code', '`']) },
   { label: '🔗', title: '링크 (Ctrl+K)', apply: (t) => ['[', t || '링크 텍스트', '](https://)'] },
-  { label: '🖼', title: '이미지', apply: (t) => ['![', t || '설명', '](https://)'] },
 ];
+
+/** 사진 파일을 올리고 본문에 넣을 주소를 돌려준다 (긴 변 1920px WebP 로 줄여서) */
+async function uploadImageFile(file: File): Promise<string> {
+  return (await uploadPostImage(await prepareUpload(file))).url;
+}
+
+let uploadSeq = 0;
 
 const SHORTCUTS: Record<string, number> = { b: 0, i: 1, k: 6 };
 
@@ -47,6 +57,57 @@ export function MarkdownEditor({
     return preferred === 'split' && window.innerWidth < 1000 ? 'write' : preferred;
   });
   const ref = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const previewHostRef = useRef<HTMLDivElement>(null);
+  // 사진을 올리는 동안 사용자가 계속 글을 써도 최신 본문에 반영되도록
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const [uploading, setUploading] = useState(0);
+  // 비동기로 고칠 때는 다시 그려지기 전에도 최신 본문을 쓰도록 바로 기억해 둔다
+  const setValue = (next: string) => {
+    valueRef.current = next;
+    onChange(next);
+  };
+
+  /**
+   * 사진 넣기 (🖼 버튼 · 붙여넣기 · 끌어다 놓기): 커서 자리에 '올리는 중' 표시를 넣고,
+   * 다 올라가면 그 자리를 ![](이미지 주소) 로 바꾼다. 실패하면 표시를 지운다.
+   */
+  const insertImages = (files: File[]) => {
+    const images = files.filter((f) => f.type.startsWith('image/'));
+    if (!images.length) return;
+    const el = ref.current;
+    const at = el && mode !== 'preview' ? el.selectionEnd : valueRef.current.length;
+    const markers = images.map(() => `[⏳ 이미지 올리는 중… #${++uploadSeq}]`);
+    const before = valueRef.current.slice(0, at);
+    const pad = before && !before.endsWith('\n') ? '\n' : '';
+    setValue(before + pad + markers.join('\n') + '\n' + valueRef.current.slice(at));
+    setUploading((n) => n + images.length);
+    images.forEach((file, i) => {
+      uploadImageFile(file)
+        .then((url) => setValue(valueRef.current.replace(markers[i], `![](${url})`)))
+        .catch((e: Error) => {
+          setValue(valueRef.current.replace(`${markers[i]}\n`, '').replace(markers[i], ''));
+          toast(e.message);
+        })
+        .finally(() => setUploading((n) => n - 1));
+    });
+  };
+
+  const onPaste = (e: ClipboardEvent) => {
+    const files = Array.from(e.clipboardData.files);
+    if (files.some((f) => f.type.startsWith('image/'))) {
+      e.preventDefault();
+      insertImages(files);
+    }
+  };
+  const onDrop = (e: DragEvent) => {
+    const files = Array.from(e.dataTransfer.files);
+    if (files.some((f) => f.type.startsWith('image/'))) {
+      e.preventDefault();
+      insertImages(files);
+    }
+  };
 
   const apply = (action: Action) => {
     const el = ref.current;
@@ -80,6 +141,28 @@ export function MarkdownEditor({
               {a.label}
             </button>
           ))}
+          <button
+            type="button"
+            className={s.tool}
+            title="사진 넣기 (붙여넣기 · 끌어다 놓기도 돼요)"
+            aria-label="사진 넣기"
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading > 0 ? '⏳' : '🖼'}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => {
+              insertImages(Array.from(e.target.files ?? []));
+              e.target.value = '';
+            }}
+          />
         </div>
         <div className={s.modes} role="tablist" aria-label="보기 방식">
           {(
@@ -112,6 +195,8 @@ export function MarkdownEditor({
             maxLength={maxLength}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onPaste={onPaste}
+            onDrop={onDrop}
             onKeyDown={(e) => {
               const idx = SHORTCUTS[e.key.toLowerCase()];
               if ((e.ctrlKey || e.metaKey) && idx !== undefined) {
@@ -123,11 +208,20 @@ export function MarkdownEditor({
           />
         )}
         {showPreview && (
-          <div className={cn(s.preview, compact && s.compactPreview, mode === 'split' && s.previewInSplit)} aria-label="미리보기">
+          <div
+            className={cn(s.preview, compact && s.compactPreview, mode === 'split' && s.previewInSplit)}
+            aria-label="미리보기"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={onDrop}
+          >
             {value.trim() ? (
-              <Suspense fallback={<div className={ui.spinner} />}>
-                <Preview source={value} />
-              </Suspense>
+              // 미리보기 안의 이미지는 바로 편집할 수 있다 (크기 조절 · 자르기 · 모서리 · 캡션 …)
+              <div ref={previewHostRef} className="relative">
+                <Suspense fallback={<div className={ui.spinner} />}>
+                  <Preview source={value} />
+                </Suspense>
+                <ImageEditLayer hostRef={previewHostRef} source={value} onChange={onChange} uploadFile={uploadImageFile} />
+              </div>
             ) : (
               <p className={s.empty}>미리 볼 내용이 없어요</p>
             )}

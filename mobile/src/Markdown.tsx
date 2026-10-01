@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Image, Linking, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Linking, ScrollView, Text, View } from 'react-native';
 import { marked, type Token, type Tokens } from 'marked';
+import { apiUrl, displayRatio, parseImageSrc } from '@loop/shared';
 import { cn } from './cn';
 
 /**
@@ -23,25 +24,42 @@ function decode(text: string) {
     .replace(/&amp;/g, '&');
 }
 
-function RemoteImage({ uri, alt }: { uri: string; alt: string }) {
-  const { width } = useWindowDimensions();
-  const [ratio, setRatio] = useState(16 / 9);
+/**
+ * 본문 이미지. 웹에서 편집한 설정(주소 뒤 #: 크기 · 비율 · 자르기 · 모양 · 정렬 · 캡션)을 같은 방식으로 그린다.
+ * 루프에 올린 이미지(/api/images/…)는 서버 주소를 붙여서 받는다.
+ */
+function RemoteImage({ src, alt }: { src: string; alt: string }) {
+  const { url, params } = parseImageSrc(src);
+  const uri = url.startsWith('/api/') ? apiUrl(url) : url;
+  const [natural, setNatural] = useState<number>();
   useEffect(() => {
+    if (!SAFE_URL.test(uri)) return;
     Image.getSize(
       uri,
-      (w, h) => h > 0 && setRatio(w / h),
+      (w, h) => w > 0 && setNatural(h / w),
       () => undefined,
     );
   }, [uri]);
   if (!SAFE_URL.test(uri)) return null;
+  const ratio = displayRatio({ ...params, nr: params.nr ?? natural }) ?? natural ?? 9 / 16;
+  const c = params.crop;
+  const caption = alt.trim();
   return (
-    <Image
-      source={{ uri }}
-      accessibilityLabel={alt}
-      className="w-full rounded-[12px] mb-3.5"
-      style={{ maxWidth: width, aspectRatio: ratio }}
-      resizeMode="cover"
-    />
+    <View className="mb-3.5" style={{ width: `${params.w}%`, alignSelf: params.align === 'left' ? 'flex-start' : params.align === 'right' ? 'flex-end' : 'center' }}>
+      <View style={{ width: '100%', aspectRatio: 1 / ratio, overflow: 'hidden', borderRadius: params.shape === 'circle' ? 9999 : params.r }}>
+        <Image
+          source={{ uri }}
+          accessibilityLabel={caption}
+          resizeMode="stretch"
+          style={
+            c
+              ? { position: 'absolute', width: `${100 / c.w}%`, height: `${100 / c.h}%`, left: `${(-c.x / c.w) * 100}%`, top: `${(-c.y / c.h) * 100}%` }
+              : { width: '100%', height: '100%' }
+          }
+        />
+      </View>
+      {caption ? <Text className="mt-1.5 text-[13px] text-center text-fg-weak">{caption}</Text> : null}
+    </View>
   );
 }
 
@@ -114,7 +132,7 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
         const images = p.tokens.filter((x) => x.type === 'image') as Tokens.Image[];
         const rest = p.tokens.filter((x) => x.type !== 'image' && !(x.type === 'text' && !x.raw.trim()));
         if (images.length && !rest.length) {
-          return images.map((img, i) => <RemoteImage key={`${key}-${i}`} uri={img.href} alt={img.text} />);
+          return images.map((img, i) => <RemoteImage key={`${key}-${i}`} src={img.href} alt={img.text} />);
         }
         return (
           <Text key={key} className={s.p}>
