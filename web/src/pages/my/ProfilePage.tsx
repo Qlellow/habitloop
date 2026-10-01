@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useAuth, useChangePassword, useUpdateProfile } from '@loop/shared';
+import { passwordProblem, useAuth, useChangePassword, useUpdateProfile } from '@loop/shared';
 import { toast } from '../../components/Toast';
 import { ui } from '../../components/ui';
 import s from './my.styles';
@@ -44,7 +44,8 @@ function PasswordForm() {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
   const mismatch = form.confirm.length > 0 && form.next !== form.confirm;
-  const valid = form.current.length > 0 && form.next.length >= 8 && form.next === form.confirm;
+  const problem = form.next ? passwordProblem(form.next) : undefined;
+  const valid = form.current.length > 0 && !problem && !!form.next && form.next === form.confirm;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -76,8 +77,15 @@ function PasswordForm() {
           autoComplete="new-password"
           value={form.next}
           onChange={set('next')}
-          placeholder="8자 이상"
+          placeholder="8자 이상, 숫자·특수문자 포함"
         />
+        {problem ? (
+          <p className={ui.help} style={{ color: 'var(--danger)' }}>
+            {problem}
+          </p>
+        ) : (
+          <p className={ui.help}>영문·숫자·특수문자로 8자 이상, 숫자와 특수문자를 하나 이상 넣어 주세요.</p>
+        )}
       </label>
       <label className={ui.field}>
         <span className={ui.label}>새 비밀번호 확인</span>

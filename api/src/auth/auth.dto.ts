@@ -1,5 +1,5 @@
 import { IsEmail, Length, Matches, MaxLength } from 'class-validator';
-import { NotBlank } from '../common/validators';
+import { NotBlank, StrongPassword } from '../common/validators';
 
 const CODE_FORMAT = /^\s*[A-Za-z1-9]{6}\s*$/;
 const CODE_MESSAGE = '인증번호 6자리를 입력해 주세요';
@@ -18,7 +18,7 @@ export class SignupInput {
   email!: string;
 
   @NotBlank('비밀번호를 입력해 주세요')
-  @Length(8, 64, { message: '비밀번호는 8자 이상이어야 해요' })
+  @StrongPassword()
   password!: string;
 
   @NotBlank('닉네임을 입력해 주세요')
@@ -73,7 +73,7 @@ export class PasswordInput {
   currentPassword!: string;
 
   @NotBlank('새 비밀번호를 입력해 주세요')
-  @Length(8, 64, { message: '새 비밀번호는 8자 이상이어야 해요' })
+  @StrongPassword()
   newPassword!: string;
 }
 
@@ -83,6 +83,6 @@ export class PasswordResetInput {
   resetToken!: string;
 
   @NotBlank('새 비밀번호를 입력해 주세요')
-  @Length(8, 64, { message: '새 비밀번호는 8자 이상이어야 해요' })
+  @StrongPassword()
   newPassword!: string;
 }

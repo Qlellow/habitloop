@@ -96,6 +96,8 @@ export default function SignupPage() {
   if (verifying) {
     return (
       <AuthShell
+        variant="signup"
+        step="2 / 2 · 이메일 인증"
         title="이메일 인증"
         desc={
           <>
@@ -131,8 +133,10 @@ export default function SignupPage() {
 
   return (
     <AuthShell
-      title="회원가입"
-      desc="이메일 인증만 거치면 바로 시작할 수 있어요."
+      variant="signup"
+      step="1 / 2 · 정보 입력"
+      title="루프 시작하기"
+      desc="몇 가지만 알려 주시면 바로 함께할 수 있어요."
       switchText="이미 회원이신가요?"
       switchLink="로그인"
       switchTo={`/login?next=${encodeURIComponent(next)}`}
@@ -174,7 +178,8 @@ export default function SignupPage() {
         error={check.error('password')}
         valid={!passwordError(form.password)}
         shake={check.attempt}
-        hint={form.password && !check.error('password') ? <PasswordRules rules={passwordRules(form.password)} /> : undefined}
+        hint={<PasswordRules rules={passwordRules(form.password)} />}
+        hintLines={2}
       />
       <AuthField
         icon={<LockLineIcon />}
@@ -195,7 +200,7 @@ export default function SignupPage() {
           {sendCode.error.message}
         </p>
       )}
-      <AuthSubmit pending={sendCode.isPending}>인증하기</AuthSubmit>
+      <AuthSubmit pending={sendCode.isPending}>이메일 인증하기</AuthSubmit>
     </AuthShell>
   );
 }

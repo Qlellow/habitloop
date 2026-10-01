@@ -2,14 +2,19 @@ import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } fr
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertCircleIcon, ArrowRightIcon, BackIcon, CheckCircleIcon, EyeIcon, EyeOffIcon } from './Icons';
 import { LogoMark } from './Layout';
+import { loaders } from '../lib/preload';
 import { cn } from '../lib/cn';
 import s from './Auth.styles';
 
 /**
- * 로그인 · 회원가입 · 비밀번호 찾기 화면의 틀.
- * 넓은 화면: 왼쪽 입력 / 오른쪽 브랜드 그림. 860px 이하: 입력만.
+ * 로그인 · 회원가입 · 비밀번호 찾기 화면의 틀. 860px 이하에서는 입력만 보인다.
+ * - login: 왼쪽 브랜드 그림 / 오른쪽 입력 (비밀번호 찾기도 같은 배치)
+ * - signup: 왼쪽 입력 / 오른쪽 브랜드 그림
+ * 로그인 ↔ 회원가입으로 바꿀 때는 View Transitions 로 두 판이 서로 자리를 바꾸며 미끄러진다 (global.css).
  */
 export function AuthShell({
+  variant = 'login',
+  step,
   title,
   desc,
   switchText,
@@ -20,6 +25,9 @@ export function AuthShell({
   children,
   after,
 }: {
+  variant?: 'login' | 'signup';
+  /** 회원가입 단계 표시 (예: "1 / 2 · 정보 입력") */
+  step?: string;
   title: ReactNode;
   desc?: ReactNode;
   /** 주 버튼 아래: "이미 회원이신가요? 로그인" */
@@ -34,10 +42,17 @@ export function AuthShell({
   after?: ReactNode;
 }) {
   const navigate = useNavigate();
+  // 전환 애니메이션이 비어 보이지 않도록 반대쪽 화면 코드를 미리 받아 둔다
+  useEffect(() => {
+    void loaders.login();
+    void loaders.signup();
+  }, []);
+  const brand = variant === 'login' ? <LoginBrand /> : <SignupBrand />;
   return (
     <main className={s.page}>
-      <div className={s.card}>
-        <form className={s.formPane} onSubmit={onSubmit} noValidate>
+      <div className={cn(s.card, 'auth-card')}>
+        {variant === 'login' && brand}
+        <form className={cn(s.formPane, 'auth-form')} onSubmit={onSubmit} noValidate>
           <div className={s.top}>
             <button
               type="button"
@@ -47,6 +62,7 @@ export function AuthShell({
             >
               <BackIcon className="w-5 h-5" />
             </button>
+            {step && <span className={s.step}>{step}</span>}
           </div>
           <div className={s.body}>
             <h1 className={s.title}>{title}</h1>
@@ -56,7 +72,7 @@ export function AuthShell({
             {switchTo && (
               <p className={s.switch}>
                 {switchText}
-                <Link to={switchTo} replace className={s.switchLink}>
+                <Link to={switchTo} replace viewTransition className={s.switchLink}>
                   {switchLink}
                 </Link>
               </p>
@@ -64,16 +80,16 @@ export function AuthShell({
             {after}
           </div>
         </form>
-        <BrandPanel />
+        {variant === 'signup' && brand}
       </div>
     </main>
   );
 }
 
-/** 오른쪽 브랜드 그림: 루프에서 보게 될 화면을 카드 몇 장으로 미리 보여 준다 (장식이라 스크린 리더에는 숨김) */
-function BrandPanel() {
+/** 로그인 쪽 그림: 루프에서 보게 될 화면(인기 글, 팔로우한 채널)을 카드로 미리 보여 준다. 장식이라 스크린 리더에는 숨김 */
+function LoginBrand() {
   return (
-    <aside className={s.brand} aria-hidden>
+    <aside className={cn(s.brand, s.brandLogin, 'auth-brand')} aria-hidden>
       <div className={s.brandShapeA} />
       <div className={s.brandShapeB} />
       <div className={s.brandHead}>
@@ -116,6 +132,40 @@ function BrandPanel() {
   );
 }
 
+/** 회원가입 쪽 그림: 가입하면 할 수 있는 것과 안전하게 지키는 방법 */
+function SignupBrand() {
+  return (
+    <aside className={cn(s.brand, s.brandSignup, 'auth-brand')} aria-hidden>
+      <div className={s.brandShapeC} />
+      <div className={s.brandShapeD} />
+      <div className={s.brandHead}>
+        <LogoMark className="w-9 h-9" inverted />
+        <p className={s.brandTitle}>
+          지금 가입하고
+          <br />
+          나만의 고리를 만들어 보세요
+        </p>
+      </div>
+      <div className={cn(s.floatCard, s.benefitCard)}>
+        <span className={cn(s.floatLabel, 'text-[#6b5cf6]')}>가입하면 할 수 있어요</span>
+        {['관심 있는 채널 팔로우', '글과 댓글로 함께 이야기', '나만의 채널 만들기'].map((t) => (
+          <span key={t} className={s.benefitRow}>
+            <span className={s.benefitCheck}>✓</span>
+            {t}
+          </span>
+        ))}
+      </div>
+      <div className={cn(s.floatCard, s.safeCard)}>
+        <span className={s.safeIcon}>🔒</span>
+        <span className={s.safeTitle}>내 계정은 안전하게</span>
+        <span className={s.safeDesc}>이메일 인증과 2단계 인증으로 지켜요</span>
+      </div>
+      <div className={cn(s.bubble, s.bubbleC)}>✨</div>
+      <div className={cn(s.bubble, s.bubbleD)}>🎉</div>
+    </aside>
+  );
+}
+
 /**
  * 밑줄형 입력칸. 왼쪽 아이콘, 오른쪽엔 맞으면 ✓ / 비밀번호면 눈 아이콘.
  * error 가 있으면 빨간 밑줄 + 아이콘 + 왼쪽 아래 메시지, shake 가 바뀌면 칸을 살짝 흔든다.
@@ -133,6 +183,7 @@ export function AuthField({
   valid,
   aside,
   hint,
+  hintLines = 1,
   shake,
   autoComplete,
   autoFocus,
@@ -151,6 +202,8 @@ export function AuthField({
   aside?: ReactNode;
   /** 오류가 없을 때 같은 자리에 보여 줄 안내 (예: 비밀번호 조건) */
   hint?: ReactNode;
+  /** 안내 자리 줄 수 (비밀번호 조건처럼 두 줄이면 2). 오류가 떠도 높이는 이만큼으로 고정 */
+  hintLines?: 1 | 2;
   shake?: number;
   autoComplete?: string;
   autoFocus?: boolean;
@@ -184,7 +237,8 @@ export function AuthField({
           aria-describedby={error ? `${id}-error` : undefined}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onBlur={onBlur}
+          // 아무것도 안 쓰고 지나간 칸은 '입력해 주세요'를 제출할 때까지 미룬다
+          onBlur={value ? onBlur : undefined}
           autoComplete={autoComplete}
           autoFocus={autoFocus}
           maxLength={maxLength}
@@ -204,7 +258,7 @@ export function AuthField({
           </button>
         )}
       </div>
-      <div className={s.below}>
+      <div className={cn(s.below, hintLines === 2 && s.belowTall)}>
         {error ? (
           <p id={`${id}-error`} className={s.error} role="alert" title={error}>
             <AlertCircleIcon className="flex-none w-4 h-4" />

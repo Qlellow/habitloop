@@ -17,15 +17,8 @@ export function nicknameError(v: string) {
   return undefined;
 }
 
-/** 비밀번호 조건 (서버와 같은 기준: 8~64자) */
-export const passwordRules = (v: string) => [{ label: '8자 이상 64자 이하', ok: v.length >= 8 && v.length <= 64 }];
-
-export function passwordError(v: string) {
-  if (!v) return '비밀번호를 입력해 주세요';
-  if (v.length < 8) return `비밀번호는 8자 이상이어야 해요 (지금 ${v.length}자)`;
-  if (v.length > 64) return '비밀번호는 64자까지 쓸 수 있어요';
-  return undefined;
-}
+/** 비밀번호 조건·검사는 앱과 같이 쓰도록 공용 패키지에 있다 (서버와 같은 기준) */
+export { passwordRules, passwordProblem as passwordError } from '@loop/shared';
 
 export function confirmError(password: string, confirm: string) {
   if (!confirm) return '비밀번호를 한 번 더 입력해 주세요';

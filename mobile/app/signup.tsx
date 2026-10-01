@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { CODE_LENGTH, cleanCode, useSignup, useSignupCode } from '@loop/shared';
+import { CODE_LENGTH, cleanCode, passwordProblem, useSignup, useSignupCode } from '@loop/shared';
 import { Button, Input } from '../src/ui';
 import { auth as s } from '../src/authStyles';
 
@@ -15,7 +15,7 @@ export default function SignupScreen() {
   const email = form.email.trim().toLowerCase();
   const emailOk = /^\S+@\S+\.\S+$/.test(email);
   const sent = !!sentTo && sentTo === email;
-  const valid = emailOk && sent && form.code.length === CODE_LENGTH && form.password.length >= 8 && form.nickname.trim().length >= 2;
+  const valid = emailOk && sent && form.code.length === CODE_LENGTH && !passwordProblem(form.password) && form.nickname.trim().length >= 2;
 
   return (
     <KeyboardAvoidingView className={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -51,7 +51,8 @@ export default function SignupScreen() {
           </>
         ) : null}
         <Text className={s.label}>비밀번호</Text>
-        <Input value={form.password} onChangeText={set('password')} secureTextEntry placeholder="8자 이상" textContentType="newPassword" />
+        <Input value={form.password} onChangeText={set('password')} secureTextEntry placeholder="8자 이상, 숫자·특수문자 포함" textContentType="newPassword" />
+        {form.password && passwordProblem(form.password) ? <Text className={s.error}>{passwordProblem(form.password)}</Text> : null}
         {signup.error ? <Text className={s.error}>{signup.error.message}</Text> : null}
         <Button
           title="가입하기"
