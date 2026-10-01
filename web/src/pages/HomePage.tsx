@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth, useFeed } from '@loop/shared';
 import { Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
-import { ChannelSidebar, PopularCard } from '../components/Sidebar';
+import { ChannelSidebar, ChannelStrip, PopularCard } from '../components/Sidebar';
 import { preload } from '../lib/preload';
 import { ui } from '../components/ui';
 import { cn } from '../lib/cn';
@@ -37,6 +37,7 @@ export default function HomePage() {
         </>
       }
     >
+      <ChannelStrip />
       <section className={ui.card}>
         <div className={ui.cardHead}>
           <h1 className={ui.sectionTitle}>전체 글</h1>

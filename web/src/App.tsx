@@ -1,7 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, ScrollRestoration, useLocation } from 'react-router-dom';
 import { useAuth } from '@loop/shared';
-import { SiteFooter, SiteHeader } from './components/Layout';
+import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
 import { loaders } from './lib/preload';
 import HomePage from './pages/HomePage';
@@ -33,12 +33,14 @@ function RequireAuth({ children }: { children: ReactNode }) {
 function Root() {
   return (
     <>
-      <div className="flex flex-col min-h-dvh">
+      {/* 폰에서는 하단 탭바 높이만큼 아래를 비워 둔다 (--tabbar-h, global.css) */}
+      <div className="flex flex-col min-h-dvh pb-[var(--tabbar-h)]">
         <SiteHeader />
         <Suspense fallback={null}>
           <Outlet />
         </Suspense>
         <SiteFooter />
+        <MobileTabBar />
       </div>
       <ScrollRestoration />
       <Toaster />

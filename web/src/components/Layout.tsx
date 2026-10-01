@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useSignOut } from '@loop/shared';
 import { ChannelSearch } from './ChannelSearch';
 import { preload } from '../lib/preload';
+import { GridIcon, HomeIcon, PencilIcon, UserIcon } from './Icons';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 import s from './Layout.styles';
@@ -116,6 +117,37 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * 폰 하단 탭바 (520px 이하). 헤더의 '홈·채널' 메뉴가 숨는 대신 여기서 바로 갈 수 있다.
+ * 글쓰기는 채널 안에서 하므로, 채널을 보고 있으면 그 채널 글쓰기로, 아니면 채널을 고르러 간다.
+ */
+export function MobileTabBar() {
+  const { isLoggedIn } = useAuth();
+  const { pathname, search } = useLocation();
+  const slug = pathname.match(/^\/c\/([^/]+)/)?.[1];
+  const tabs = [
+    { to: '/', label: '홈', icon: <HomeIcon />, active: pathname === '/' },
+    { to: '/channels', label: '채널', icon: <GridIcon />, active: pathname.startsWith('/channels') || !!slug },
+    { to: slug ? `/write?channel=${slug}` : '/write', label: '글쓰기', icon: <PencilIcon />, active: pathname.startsWith('/write') },
+    {
+      to: isLoggedIn ? '/me' : `/login?next=${encodeURIComponent(pathname + search)}`,
+      label: isLoggedIn ? '내 정보' : '로그인',
+      icon: <UserIcon />,
+      active: pathname.startsWith('/me') || pathname === '/login',
+    },
+  ];
+  return (
+    <nav className={s.tabBar} aria-label="하단 메뉴">
+      {tabs.map((t) => (
+        <Link key={t.label} to={t.to} className={s.tab} aria-current={t.active ? 'page' : undefined}>
+          {t.icon}
+          {t.label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 

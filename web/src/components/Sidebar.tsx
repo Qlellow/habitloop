@@ -74,6 +74,43 @@ export function ChannelSidebar() {
   );
 }
 
+/**
+ * 좁은 화면(1100px 이하)용: 왼쪽 사이드바 대신 홈 본문 위에 내 채널을 가로로 넘겨 보는 줄.
+ * 로그인하면 내가 만든 채널 → 팔로우한 채널 순(각각 북마크한 채널 먼저), 아니면(또는 하나도 없으면) 인기 채널.
+ */
+export function ChannelStrip() {
+  const { isLoggedIn } = useAuth();
+  const mine = useMyChannels(isLoggedIn);
+  const popular = useChannels();
+  const owned = mine.data?.filter((c) => c.owner) ?? [];
+  const followed = mine.data?.filter((c) => !c.owner) ?? [];
+  const showMine = isLoggedIn && owned.length + followed.length > 0;
+  const channels: (ChannelSummary & { owner?: boolean })[] = showMine ? [...owned, ...followed] : (popular.data?.slice(0, 12) ?? []);
+  if (channels.length === 0) return null;
+  return (
+    <nav className={s.strip} aria-label={showMine ? '내 채널' : '인기 채널'}>
+      <div className={s.stripHead}>
+        <h2 className={s.stripTitle}>{showMine ? '내 채널' : '인기 채널'}</h2>
+        <Link to={showMine ? '/me/channels' : '/channels'} className={s.stripMore} onPointerEnter={preload.channels}>
+          전체 보기
+        </Link>
+      </div>
+      {/* 인기 채널 → 내 채널로 바뀌면 새 목록으로 갈아 끼워 가로 스크롤을 처음 위치로 */}
+      <ul key={showMine ? 'mine' : 'popular'} className={s.stripList}>
+        {channels.map((c) => (
+          <li key={c.slug} className="flex-none">
+            <Link to={`/c/${c.slug}`} className={s.stripItem} onPointerEnter={preload.channel}>
+              <ChannelIcon channel={c} size={28} />
+              {c.name}
+              {c.owner && <span className={s.stripBadge}>내 채널</span>}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 /** 오른쪽 사이드바: 인기글 (전체 또는 채널별) */
 export function PopularCard({ channel, title = '지금 인기 있는 글' }: { channel?: string; title?: string }) {
   const { data } = usePopular(channel);
