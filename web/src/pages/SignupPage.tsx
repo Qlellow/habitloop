@@ -1,12 +1,12 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { CODE_LENGTH, useSignup, useSignupCode } from '@loop/shared';
-import { AuthField, AuthShell, AuthSubmit, PasswordRules, authStyles as a, useFieldCheck } from '../components/Auth';
+import { CODE_LENGTH, useNicknameAvailability, useSignup, useSignupCode } from '@loop/shared';
+import { AuthField, AuthShell, AuthSubmit, PasswordStrength, authStyles as a, useFieldCheck } from '../components/Auth';
 import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
 import { AlertCircleIcon, LockLineIcon, MailLineIcon, UserLineIcon } from '../components/Icons';
 import { toast } from '../components/Toast';
 import { useReturnTo } from '../lib/authNav';
-import { EMAIL, confirmError, emailError, nicknameError, passwordError, passwordRules } from '../lib/validate';
+import { EMAIL, confirmError, emailError, nicknameError, passwordError } from '../lib/validate';
 
 type Field = 'nickname' | 'email' | 'password' | 'confirm';
 
@@ -42,6 +42,18 @@ export default function SignupPage() {
   };
   const errorOf = (k: Field) => serverError[k] ?? check.error(k);
 
+  // 닉네임 중복 확인: 입력이 0.4초 멈추면 서버에 물어본다
+  const nickname = form.nickname.trim();
+  const [nickToCheck, setNickToCheck] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setNickToCheck(nickname), 400);
+    return () => clearTimeout(t);
+  }, [nickname]);
+  const nickCheck = useNicknameAvailability(nickToCheck, !nicknameError(nickToCheck));
+  const nickChecked = nickToCheck === nickname && nickCheck.data;
+  // 이미 쓰는 닉네임이면 칸을 벗어나기 전에도 바로 알려 준다
+  const nickTaken = nickChecked && !nickCheck.data!.available ? nickCheck.data!.reason : undefined;
+
   // 새로고침 등으로 보낸 기록이 없으면 인증 화면 대신 입력 화면을 보여 준다
   const verifying = params.get('step') === 'verify' && !!sentTo && sentTo === email;
 
@@ -70,7 +82,7 @@ export default function SignupPage() {
 
   const startVerify = (e: FormEvent) => {
     e.preventDefault();
-    if (!check.submit() || serverError.email || serverError.nickname || sendCode.isPending) return;
+    if (!check.submit() || nickTaken || serverError.email || serverError.nickname || sendCode.isPending) return;
     // 같은 이메일로 방금 받은 번호가 아직 살아 있으면 다시 보내지 않고 넘어간다
     if (sentTo === email && !timer.expired) return goVerify();
     requestCode(goVerify);
@@ -109,7 +121,6 @@ export default function SignupPage() {
             메일이 안 보이면 스팸함도 확인해 주세요.
           </>
         }
-        onBack={() => navigate(-1)}
         onSubmit={submit}
       >
         <div className="mb-6">
@@ -154,8 +165,8 @@ export default function SignupPage() {
         value={form.nickname}
         onChange={set('nickname')}
         onBlur={check.blur('nickname')}
-        error={errorOf('nickname')}
-        valid={!nicknameError(form.nickname) && !serverError.nickname}
+        error={serverError.nickname ?? nickTaken ?? check.error('nickname')}
+        valid={!!nickChecked && nickCheck.data!.available && !serverError.nickname}
         shake={check.attempt}
       />
       <AuthField
@@ -181,7 +192,7 @@ export default function SignupPage() {
         error={check.error('password')}
         valid={!passwordError(form.password)}
         shake={check.attempt}
-        hint={<PasswordRules rules={passwordRules(form.password)} />}
+        hint={<PasswordStrength value={form.password} />}
         hintLines={2}
       />
       <AuthField

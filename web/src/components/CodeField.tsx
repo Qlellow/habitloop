@@ -29,7 +29,7 @@ export function useCodeTimer(startRunning = false) {
 }
 
 /**
- * 6칸으로 나뉜 인증번호 입력칸 (영문 대문자 + 1~9).
+ * 6칸으로 나뉜 밑줄형 인증번호 입력칸 (영문 대문자 + 1~9).
  * 실제 입력은 칸 위에 투명하게 겹친 input 하나가 받으므로 붙여넣기·휴대폰 자동 완성·지우기가 그대로 된다.
  * 소문자로 쳐도 대문자로 바뀐다.
  */
@@ -55,9 +55,16 @@ export function CodeField({
           <span
             key={i}
             className={cn(
-              'flex items-center justify-center w-12 h-14 rounded-md border-2 bg-field text-2xl font-bold text-fg-strong transition-colors',
+              // 다른 입력칸처럼 밑줄형: 칸마다 밑줄 하나, 지금 입력할 칸은 브랜드 색
+              'flex items-center justify-center w-12 h-14 border-b-2 text-2xl font-bold text-fg-strong transition-colors duration-200 ease-in-out',
               'max-[380px]:w-10 max-[380px]:h-12 max-[380px]:text-xl',
-              invalid ? 'border-danger' : focused && i === active ? 'border-primary bg-surface' : 'border-transparent',
+              invalid
+                ? 'border-danger'
+                : focused && i === active
+                  ? 'border-primary'
+                  : value[i]
+                    ? 'border-fg-sub'
+                    : 'border-[color-mix(in_srgb,var(--text-weak)_45%,transparent)]',
             )}
           >
             {value[i] ?? ''}

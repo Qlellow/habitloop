@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Put, Query } from '@nestjs/common';
 import {
   ChallengeInput,
   CodeInput,
@@ -25,6 +25,13 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   signupCode(@Body() input: EmailCodeInput) {
     return this.auth.sendSignupCode(input.email);
+  }
+
+  /** 회원가입 화면에서 닉네임을 입력하는 동안 이미 쓰는 닉네임인지 확인 */
+  @Public()
+  @Get('auth/nickname')
+  nicknameAvailable(@Query('nickname') nickname = '') {
+    return this.auth.nicknameAvailable(nickname);
   }
 
   @Public()

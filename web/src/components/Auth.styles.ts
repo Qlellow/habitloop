@@ -9,13 +9,12 @@ const s = {
     'max-[860px]:grid-cols-1 max-[860px]:max-w-[480px] max-[860px]:min-h-0 ' +
     'max-[520px]:rounded-none max-[520px]:border-0 max-[520px]:shadow-none',
   formPane: 'flex flex-col px-14 py-7 [@media(max-height:820px)]:py-5 max-[860px]:px-8 max-[860px]:py-8 max-[520px]:px-5 max-[520px]:py-5',
-  top: 'flex items-center justify-between gap-3',
+  top: 'flex items-center justify-end gap-3',
   step: 'px-3 py-1 rounded-full bg-primary-weak text-[12px] font-bold text-primary',
-  back:
-    'grid place-items-center w-10 h-10 rounded-full border border-border text-fg-sub transition-colors ' +
-    'hover:bg-field hover:text-fg-strong',
   switch: 'mt-5 mb-0 text-center text-sm text-fg-sub',
-  switchLink: 'ml-2 font-semibold text-primary hover:underline underline-offset-4',
+  switchLink:
+    "relative ml-2 font-semibold text-primary after:absolute after:left-0 after:right-0 after:-bottom-0.5 after:h-px after:bg-current " +
+    "after:content-[''] after:origin-left after:scale-x-0 after:transition-transform after:duration-200 after:ease-in-out hover:after:scale-x-100",
   body: 'flex-1 flex flex-col justify-center w-full max-w-[400px] mx-auto pt-4 pb-1 max-[520px]:pt-6',
   title: 'm-0 text-[30px] leading-tight font-extrabold tracking-[-0.02em] text-fg-strong max-[520px]:text-[28px]',
   desc: 'mt-2 mb-6 text-[15px] text-fg-weak leading-relaxed',
@@ -24,13 +23,14 @@ const s = {
   field: 'mb-2',
   // 포커스되면 밑줄이 왼쪽부터 브랜드 색으로 빠르게 칠해진다 (::after 를 scaleX 0 → 1, 0.22초 ease-in-out)
   inputRow:
-    'relative flex items-center gap-3 h-[52px] border-b-[1.5px] border-[color-mix(in_srgb,var(--text-weak)_45%,transparent)] transition-colors ' +
+    'group relative flex items-center gap-3 h-[52px] border-b-[1.5px] border-[color-mix(in_srgb,var(--text-weak)_45%,transparent)] transition-colors ' +
     'hover:border-[color-mix(in_srgb,var(--text-weak)_80%,transparent)] ' +
     "after:absolute after:left-0 after:right-0 after:-bottom-[1.5px] after:h-[2px] after:bg-primary after:content-[''] " +
     'after:origin-left after:scale-x-0 after:transition-transform after:duration-[220ms] after:ease-in-out ' +
     'focus-within:after:scale-x-100',
   inputRowError: 'border-danger hover:border-danger after:bg-danger',
-  icon: 'flex-none text-fg-weak [&>svg]:w-[22px] [&>svg]:h-[22px]',
+  icon: 'flex-none text-fg-weak group-focus-within:text-primary [&>svg]:w-[22px] [&>svg]:h-[22px]',
+  iconError: 'text-danger group-focus-within:text-danger',
   input:
     'flex-1 min-w-0 h-full bg-transparent text-[16px] font-medium text-fg-strong outline-none ' +
     'placeholder:text-fg-weak placeholder:font-normal',
@@ -40,13 +40,26 @@ const s = {
   below: 'flex items-center justify-between gap-3 h-5 mt-1.5',
   belowTall: 'h-[42px] items-start',
   error: 'flex items-center gap-1.5 min-w-0 m-0 text-[13px] font-medium text-danger animate-fade-up [&>span]:truncate',
-  aside: 'flex-none ml-auto text-[13px] font-semibold text-fg-sub hover:text-primary',
+  // 글자 링크(비밀번호 찾기 등): 마우스를 올리면 파랗게 바뀌며 밑줄이 왼쪽부터 그어진다 (ease-in-out)
+  aside:
+    "relative flex-none ml-auto text-[13px] font-semibold text-fg-sub transition-colors duration-200 ease-in-out hover:text-primary " +
+    "after:absolute after:left-0 after:right-0 after:-bottom-0.5 after:h-px after:bg-current after:content-[''] " +
+    'after:origin-left after:scale-x-0 after:transition-transform after:duration-200 after:ease-in-out hover:after:scale-x-100',
 
-  // 비밀번호 조건
-  rules: 'list-none m-0 p-0 grid grid-cols-2 gap-x-4 gap-y-1.5 min-w-0',
-  rule: 'flex items-center gap-1.5 text-[12.5px] leading-[18px] text-fg-weak transition-colors whitespace-nowrap',
-  ruleOk: 'text-[var(--role-admin)]',
-  ruleDot: 'grid place-items-center w-4 h-4 before:w-1.5 before:h-1.5 before:rounded-full before:bg-current before:content-[""]',
+  // 비밀번호 강도 (4칸 막대 + 한 줄 안내)
+  meterWrap: 'flex flex-col gap-1.5 w-full min-w-0',
+  meter: 'grid grid-cols-4 gap-1.5',
+  meterBar: 'h-1 rounded-full bg-field transition-colors duration-300 ease-in-out',
+  barWeak: 'bg-danger',
+  barFair: 'bg-[#f5a700]',
+  barStrong: 'bg-primary',
+  barVeryStrong: 'bg-[var(--role-admin)]',
+  textWeak: 'text-danger',
+  textFair: 'text-[#f5a700]',
+  textStrong: 'text-primary',
+  textVeryStrong: 'text-[var(--role-admin)]',
+  meterText: 'flex items-center gap-2 m-0 min-w-0 text-[12.5px] leading-[18px] text-fg-weak',
+  meterLabel: 'flex-none font-bold',
 
   // 알약 버튼
   // 알약 버튼 (마우스를 올렸을 때의 유리 효과는 global.css 의 .glass-button)
@@ -77,13 +90,15 @@ const s = {
   floatCard:
     'absolute flex flex-col gap-2.5 p-5 rounded-[20px] bg-white text-[#191f28] shadow-[0_20px_40px_rgba(0,30,90,0.25)]',
   popularCard: 'left-12 right-20 top-[46%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_150ms_both,auth-float_4s_ease-in-out_1.4s_infinite]',
-  channelCard: 'right-10 bottom-12 w-[250px] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_4s_ease-in-out_1.4s_infinite]',
+  channelCard: 'right-10 bottom-12 w-[290px] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_4s_ease-in-out_1.4s_infinite]',
   floatLabel: 'text-[12px] font-bold text-[#f5a700]',
-  rankRow: 'flex items-baseline gap-3 text-[14px] font-semibold truncate',
+  rankRow: 'flex items-baseline gap-3 min-w-0 text-[14px] font-semibold',
+  rankSkeleton: 'h-[21px] rounded-md bg-[#f2f4f6] animate-pulse',
   rankNo: 'flex-none w-3 text-[#3182f6]',
   chips: 'flex flex-wrap gap-1.5',
   chip: 'flex items-center gap-1.5 h-8 pl-1 pr-2.5 rounded-full bg-[#f2f4f6] text-[13px] font-semibold',
-  chipIcon: 'grid place-items-center w-6 h-6 rounded-full text-[11px] font-bold text-white',
+  chipMeta: 'text-[11px] font-medium text-[#8b95a1]',
+  chipSkeleton: 'w-20 h-8 rounded-full bg-[#f2f4f6] animate-pulse',
   bubble:
     'absolute grid place-items-center w-14 h-14 rounded-full bg-white text-2xl shadow-[0_14px_30px_rgba(0,30,90,0.25)]',
   bubbleA: 'right-12 top-[30%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_550ms_both,auth-float_4s_ease-in-out_1.0s_infinite]',

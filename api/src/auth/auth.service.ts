@@ -46,6 +46,14 @@ export class AuthService {
     await this.verification.send(email, 'SIGNUP', null);
   }
 
+  /** 닉네임을 쓸 수 있는지 (2~20자, 아직 아무도 안 쓰는지) */
+  async nicknameAvailable(raw: string) {
+    const nickname = String(raw ?? '').trim();
+    if (nickname.length < 2 || nickname.length > 20) return { available: false, reason: '닉네임은 2~20자로 정해 주세요' };
+    const taken = !!(await this.db.one('SELECT 1 FROM users WHERE nickname = $1', [nickname]));
+    return taken ? { available: false, reason: '이미 사용 중인 닉네임이에요' } : { available: true };
+  }
+
   /** 회원가입 2단계: 받은 번호가 맞으면 계정을 만든다 */
   async signup(input: SignupInput) {
     const email = normalize(input.email);

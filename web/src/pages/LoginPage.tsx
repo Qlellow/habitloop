@@ -6,7 +6,7 @@ import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
 import { AlertCircleIcon, LockLineIcon, MailLineIcon } from '../components/Icons';
 import { toast } from '../components/Toast';
 import { useReturnTo } from '../lib/authNav';
-import { EMAIL, emailError } from '../lib/validate';
+import { emailError } from '../lib/validate';
 
 /** 2단계 인증: 비밀번호를 확인한 뒤 이메일로 받은 번호를 입력한다 */
 function TwoFactorStep({
@@ -41,7 +41,6 @@ function TwoFactorStep({
           <b className="text-fg-strong">{maskedEmail ?? '가입한 이메일'}</b>(으)로 보낸 인증번호 {CODE_LENGTH}자리를 입력해 주세요.
         </>
       }
-      onBack={onBack}
       onSubmit={submit}
     >
       <div className="mb-6">
@@ -149,7 +148,6 @@ export default function LoginPage() {
         onBlur={check.blur('email')}
         error={check.error('email')}
         invalid={!!wrong}
-        valid={EMAIL.test(email.trim())}
         shake={check.attempt}
       />
       <AuthField

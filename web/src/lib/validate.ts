@@ -18,7 +18,7 @@ export function nicknameError(v: string) {
 }
 
 /** 비밀번호 조건·검사는 앱과 같이 쓰도록 공용 패키지에 있다 (서버와 같은 기준) */
-export { passwordRules, passwordProblem as passwordError } from '@loop/shared';
+export { passwordStrength, passwordProblem as passwordError } from '@loop/shared';
 
 export function confirmError(password: string, confirm: string) {
   if (!confirm) return '비밀번호를 한 번 더 입력해 주세요';

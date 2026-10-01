@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircleIcon, BackIcon, CheckCircleIcon, EyeIcon, EyeOffIcon } from './Icons';
+import { Link } from 'react-router-dom';
+import { compact, passwordStrength, useChannels, usePopular } from '@loop/shared';
+import { ChannelIcon } from './ChannelIcon';
+import { AlertCircleIcon, CheckCircleIcon, EyeIcon, EyeOffIcon } from './Icons';
 import { LogoMark } from './Layout';
 import { useAuthState } from '../lib/authNav';
 import { loaders } from '../lib/preload';
@@ -22,7 +24,6 @@ export function AuthShell({
   switchText,
   switchLink,
   switchTo,
-  onBack,
   onSubmit,
   children,
   after,
@@ -36,14 +37,11 @@ export function AuthShell({
   switchText?: string;
   switchLink?: string;
   switchTo?: string;
-  /** 왼쪽 위 ← 버튼. 없으면 브라우저 뒤로 가기 */
-  onBack?: () => void;
   onSubmit: (e: FormEvent) => void;
   children: ReactNode;
   /** 맨 아래 덧붙일 내용 (예: 개발용 체험 계정 안내) */
   after?: ReactNode;
 }) {
-  const navigate = useNavigate();
   const authState = useAuthState();
   // 반대쪽 화면(로그인 ↔ 회원가입) 코드를 미리 받아 두어 바로 넘어가게 한다
   useEffect(() => {
@@ -56,17 +54,11 @@ export function AuthShell({
       <div className={cn(s.card, 'auth-card')}>
         {variant === 'login' && brand}
         <form className={s.formPane} onSubmit={onSubmit} noValidate>
-          <div className={s.top}>
-            <button
-              type="button"
-              className={s.back}
-              aria-label="뒤로 가기"
-              onClick={onBack ?? (() => (window.history.length > 1 ? navigate(-1) : navigate('/')))}
-            >
-              <BackIcon className="w-5 h-5" />
-            </button>
-            {step && <span className={s.step}>{step}</span>}
-          </div>
+          {step && (
+            <div className={s.top}>
+              <span className={s.step}>{step}</span>
+            </div>
+          )}
           <div className={s.body}>
             <h1 className={s.title}>{title}</h1>
             {desc && <p className={s.desc}>{desc}</p>}
@@ -96,8 +88,10 @@ export function AuthShell({
   );
 }
 
-/** 로그인 쪽 그림: 루프에서 보게 될 화면(인기 글, 팔로우한 채널)을 카드로 미리 보여 준다. 장식이라 스크린 리더에는 숨김 */
+/** 로그인 쪽 그림: 지금 루프의 실제 인기 글 3개와 인기 채널 TOP3 를 카드로 보여 준다. 장식이라 스크린 리더에는 숨김 */
 function LoginBrand() {
+  const { data: popular } = usePopular();
+  const { data: channels } = useChannels();
   return (
     <aside className={cn(s.brand, s.brandLogin)} aria-hidden>
       <div className={s.brandShapeA} />
@@ -112,28 +106,27 @@ function LoginBrand() {
       </div>
       <div className={cn(s.floatCard, s.popularCard)}>
         <span className={s.floatLabel}>지금 인기 있는 글</span>
-        {['첫 월급 관리 어떻게 하셨어요?', '3개월째 아침 운동 성공 중', '자취 필수템 정리'].map((t, i) => (
-          <span key={t} className={s.rankRow}>
-            <b className={s.rankNo}>{i + 1}</b>
-            {t}
-          </span>
-        ))}
+        {popular
+          ? popular.slice(0, 3).map((p, i) => (
+              <span key={p.id} className={s.rankRow}>
+                <b className={s.rankNo}>{i + 1}</b>
+                <span className="truncate">{p.title}</span>
+              </span>
+            ))
+          : [0, 1, 2].map((i) => <span key={i} className={s.rankSkeleton} />)}
       </div>
       <div className={cn(s.floatCard, s.channelCard)}>
-        <span className={s.floatLabel}>팔로우한 채널</span>
+        <span className={s.floatLabel}>인기 TOP3 채널</span>
         <span className={s.chips}>
-          {[
-            ['일', '일상', '#03b26c'],
-            ['재', '재테크', '#3182f6'],
-            ['개', '개발', '#00b8d9'],
-          ].map(([ch, name, color]) => (
-            <span key={name} className={s.chip}>
-              <span className={s.chipIcon} style={{ background: color }}>
-                {ch}
-              </span>
-              {name}
-            </span>
-          ))}
+          {channels
+            ? channels.slice(0, 3).map((c) => (
+                <span key={c.slug} className={s.chip}>
+                  <ChannelIcon channel={c} size={24} />
+                  {c.name}
+                  <span className={s.chipMeta}>{compact(c.memberCount)}</span>
+                </span>
+              ))
+            : [0, 1, 2].map((i) => <span key={i} className={s.chipSkeleton} />)}
         </span>
       </div>
       <div className={cn(s.bubble, s.bubbleA)}>💬</div>
@@ -236,7 +229,8 @@ export function AuthField({
   return (
     <div className={s.field}>
       <div ref={rowRef} className={cn(s.inputRow, bad && s.inputRowError)}>
-        <span className={cn(s.icon, bad && 'text-danger')}>{icon}</span>
+        {/* 포커스되면 아이콘도 밑줄과 같은 색으로 (아이콘은 바로 바뀐다) */}
+        <span className={cn(s.icon, bad && s.iconError)}>{icon}</span>
         <input
           id={id}
           className={s.input}
@@ -283,17 +277,35 @@ export function AuthField({
   );
 }
 
-/** 비밀번호 조건 목록: 맞으면 초록 ✓ */
-export function PasswordRules({ rules }: { rules: { label: string; ok: boolean }[] }) {
+/**
+ * 비밀번호 강도 막대: 약함 · 보통 · 강함 · 매우 강함 (4칸). '강함' 이상이어야 쓸 수 있다.
+ * 아래 줄에는 강도 이름과, 모자란 조건(8자 이상 · 숫자 · 특수문자)이 있으면 그것만 짧게 알려 준다.
+ */
+export function PasswordStrength({ value }: { value: string }) {
+  const { level, label, missing } = passwordStrength(value);
+  const bar = ['', s.barWeak, s.barFair, s.barStrong, s.barVeryStrong][level];
+  const text = ['', s.textWeak, s.textFair, s.textStrong, s.textVeryStrong][level];
+  // 모자란 조건만 짧게: "숫자 · 특수문자가 필요해요" (마지막 말에 따라 이/가)
+  const last = missing[missing.length - 1];
+  const message = !value
+    ? '8자 이상, 숫자와 특수문자를 넣어 주세요'
+    : missing.length > 0
+      ? `${missing.join(' · ')}${last === '8자 이상' ? '이' : '가'} 필요해요`
+      : level === 3
+        ? '사용할 수 있어요. 12자 이상이나 대·소문자를 섞으면 더 안전해요'
+        : '아주 안전한 비밀번호예요';
   return (
-    <ul className={s.rules}>
-      {rules.map((r) => (
-        <li key={r.label} className={cn(s.rule, r.ok && s.ruleOk)}>
-          {r.ok ? <CheckCircleIcon className="w-4 h-4" /> : <span className={s.ruleDot} />}
-          {r.label}
-        </li>
-      ))}
-    </ul>
+    <div className={s.meterWrap}>
+      <div className={s.meter} role="meter" aria-label="비밀번호 강도" aria-valuemin={0} aria-valuemax={4} aria-valuenow={level} aria-valuetext={label || '없음'}>
+        {[1, 2, 3, 4].map((n) => (
+          <span key={n} className={cn(s.meterBar, n <= level && bar)} />
+        ))}
+      </div>
+      <p className={s.meterText}>
+        {label && <b className={cn(s.meterLabel, text)}>{label}</b>}
+        <span className="truncate">{message}</span>
+      </p>
+    </div>
   );
 }
 
