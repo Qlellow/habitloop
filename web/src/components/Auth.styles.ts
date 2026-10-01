@@ -1,9 +1,10 @@
 /** 로그인 · 회원가입 · 비밀번호 찾기 (Tailwind) */
 const s = {
-  // 화면 가운데 큰 카드. 860px 이하는 입력만, 520px 이하는 카드 테두리 없이 화면 전체
+  // 화면 가운데 큰 카드. 로그인·회원가입 카드 높이를 같게(680px) 해서 서로 바꿀 때 크기가 튀지 않는다.
+  // 860px 이하는 입력만, 520px 이하는 카드 테두리 없이 화면 전체
   page: 'flex-1 flex items-center justify-center px-6 py-6 [@media(max-height:820px)]:py-3 max-[520px]:p-0 max-[520px]:items-stretch',
   card:
-    'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] w-full max-w-[1040px] min-h-[600px] rounded-[24px] overflow-hidden ' +
+    'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] w-full max-w-[1040px] min-h-[680px] rounded-[24px] overflow-hidden ' +
     'bg-surface border border-border shadow-[0_24px_60px_rgba(0,29,58,0.08)] ' +
     'max-[860px]:grid-cols-1 max-[860px]:max-w-[480px] max-[860px]:min-h-0 ' +
     'max-[520px]:rounded-none max-[520px]:border-0 max-[520px]:shadow-none',
@@ -21,10 +22,14 @@ const s = {
 
   // 밑줄형 입력칸. 밑줄은 다크 모드에서도 배경과 구분되도록 회색 글자색을 섞어 만든다
   field: 'mb-2',
+  // 포커스되면 밑줄이 왼쪽부터 브랜드 색으로 칠해진다 (::after 를 scaleX 0 → 1, ease-in-out)
   inputRow:
-    'flex items-center gap-3 h-[52px] border-b-[1.5px] border-[color-mix(in_srgb,var(--text-weak)_45%,transparent)] transition-colors ' +
-    'focus-within:border-primary hover:border-[color-mix(in_srgb,var(--text-weak)_80%,transparent)] focus-within:hover:border-primary',
-  inputRowError: 'border-danger hover:border-danger focus-within:border-danger focus-within:hover:border-danger',
+    'relative flex items-center gap-3 h-[52px] border-b-[1.5px] border-[color-mix(in_srgb,var(--text-weak)_45%,transparent)] transition-colors ' +
+    'hover:border-[color-mix(in_srgb,var(--text-weak)_80%,transparent)] ' +
+    "after:absolute after:left-0 after:right-0 after:-bottom-[1.5px] after:h-[2px] after:bg-primary after:content-[''] " +
+    'after:origin-left after:scale-x-0 after:transition-transform after:duration-[400ms] after:ease-in-out ' +
+    'focus-within:after:scale-x-100',
+  inputRowError: 'border-danger hover:border-danger after:bg-danger',
   icon: 'flex-none text-fg-weak [&>svg]:w-[22px] [&>svg]:h-[22px]',
   input:
     'flex-1 min-w-0 h-full bg-transparent text-[16px] font-medium text-fg-strong outline-none ' +
@@ -71,8 +76,8 @@ const s = {
   // 동그라미끼리, 네모끼리 같은 박자로 움직이고 네모가 0.3초 늦게 따라간다
   floatCard:
     'absolute flex flex-col gap-2.5 p-5 rounded-[20px] bg-white text-[#191f28] shadow-[0_20px_40px_rgba(0,30,90,0.25)]',
-  popularCard: 'left-12 right-20 top-[46%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_150ms_both,auth-float_4s_ease-in-out_2.0s_infinite]',
-  channelCard: 'right-10 bottom-12 w-[250px] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_4s_ease-in-out_2.0s_infinite]',
+  popularCard: 'left-12 right-20 top-[46%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_150ms_both,auth-float_4s_ease-in-out_1.4s_infinite]',
+  channelCard: 'right-10 bottom-12 w-[250px] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_4s_ease-in-out_1.4s_infinite]',
   floatLabel: 'text-[12px] font-bold text-[#f5a700]',
   rankRow: 'flex items-baseline gap-3 text-[14px] font-semibold truncate',
   rankNo: 'flex-none w-3 text-[#3182f6]',
@@ -81,17 +86,17 @@ const s = {
   chipIcon: 'grid place-items-center w-6 h-6 rounded-full text-[11px] font-bold text-white',
   bubble:
     'absolute grid place-items-center w-14 h-14 rounded-full bg-white text-2xl shadow-[0_14px_30px_rgba(0,30,90,0.25)]',
-  bubbleA: 'right-12 top-[30%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_550ms_both,auth-float_4s_ease-in-out_1.7s_infinite]',
-  bubbleB: 'left-16 bottom-16 w-12 h-12 text-xl [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_750ms_both,auth-float_4s_ease-in-out_1.7s_infinite]',
-  benefitCard: 'left-12 right-16 top-[42%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_150ms_both,auth-float_4s_ease-in-out_2.0s_infinite]',
+  bubbleA: 'right-12 top-[30%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_550ms_both,auth-float_4s_ease-in-out_1.0s_infinite]',
+  bubbleB: 'left-16 bottom-16 w-12 h-12 text-xl [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_750ms_both,auth-float_4s_ease-in-out_1.0s_infinite]',
+  benefitCard: 'left-12 right-16 top-[42%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_150ms_both,auth-float_4s_ease-in-out_1.4s_infinite]',
   benefitRow: 'flex items-center gap-2.5 text-[14px] font-semibold',
   benefitCheck: 'grid place-items-center w-5 h-5 rounded-full bg-[#efedff] text-[11px] font-black text-[#6b5cf6]',
-  safeCard: 'right-10 bottom-12 w-[260px] gap-1 [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_4s_ease-in-out_2.0s_infinite]',
+  safeCard: 'right-10 bottom-12 w-[260px] gap-1 [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_350ms_both,auth-float_4s_ease-in-out_1.4s_infinite]',
   safeIcon: 'text-2xl mb-1',
   safeTitle: 'text-[15px] font-bold',
   safeDesc: 'text-[13px] text-[#6b7684]',
-  bubbleC: 'right-14 top-[30%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_550ms_both,auth-float_4s_ease-in-out_1.7s_infinite]',
-  bubbleD: 'left-14 bottom-20 w-12 h-12 text-xl [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_750ms_both,auth-float_4s_ease-in-out_1.7s_infinite]',
+  bubbleC: 'right-14 top-[30%] [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_550ms_both,auth-float_4s_ease-in-out_1.0s_infinite]',
+  bubbleD: 'left-14 bottom-20 w-12 h-12 text-xl [animation:auth-rise_0.9s_cubic-bezier(0.22,1,0.36,1)_750ms_both,auth-float_4s_ease-in-out_1.0s_infinite]',
 };
 
 export default s;
