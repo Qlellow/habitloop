@@ -72,7 +72,14 @@ export function AuthShell({
             {switchTo && (
               <p className={s.switch}>
                 {switchText}
-                <Link to={switchTo} replace viewTransition className={s.switchLink}>
+                <Link
+                  to={switchTo}
+                  replace
+                  viewTransition
+                  className={s.switchLink}
+                  // 그림판이 어느 쪽으로 가는지 알려 줘서 모서리 둥글기도 같이 옮겨 간다 (global.css)
+                  onClick={() => markAuthSwitch(variant === 'login' ? 'to-right' : 'to-left')}
+                >
                   {switchLink}
                 </Link>
               </p>
@@ -84,6 +91,14 @@ export function AuthShell({
       </div>
     </main>
   );
+}
+
+/**
+ * 그림판이 어느 쪽으로 가는지 <html data-auth-switch> 에 적어 둔다.
+ * 전환 애니메이션(::view-transition-*)에만 쓰이므로 다음 전환 때까지 남아 있어도 괜찮다.
+ */
+function markAuthSwitch(direction: 'to-right' | 'to-left') {
+  document.documentElement.dataset.authSwitch = direction;
 }
 
 /** 로그인 쪽 그림: 루프에서 보게 될 화면(인기 글, 팔로우한 채널)을 카드로 미리 보여 준다. 장식이라 스크린 리더에는 숨김 */
