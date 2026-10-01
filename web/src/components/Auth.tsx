@@ -11,7 +11,8 @@ import s from './Auth.styles';
  * 로그인 · 회원가입 · 비밀번호 찾기 화면의 틀. 860px 이하에서는 입력만 보인다.
  * - login: 왼쪽 브랜드 그림 / 오른쪽 입력 (비밀번호 찾기도 같은 배치)
  * - signup: 왼쪽 입력 / 오른쪽 브랜드 그림
- * 로그인 ↔ 회원가입으로 바꿀 때: 카드가 가운데로 모였다가 → 두 판이 자리를 바꾸고 → 다시 펼쳐진다 (global.css)
+ * 로그인 ↔ 회원가입으로 바꿀 때: 카드 전체가 양 끝에서 가운데로 접혀 사라졌다가(collapse) → 안 보일 때 두 판이 바뀌고(swap)
+ *   → 가운데에서 다시 펼쳐진다(expand) (global.css)
  */
 export function AuthShell({
   variant = 'login',
@@ -54,7 +55,7 @@ export function AuthShell({
     <main className={s.page}>
       <div className={cn(s.card, 'auth-card')}>
         {variant === 'login' && brand}
-        <form className={cn(s.formPane, 'auth-form')} onSubmit={onSubmit} noValidate>
+        <form className={s.formPane} onSubmit={onSubmit} noValidate>
           <div className={s.top}>
             <button
               type="button"
@@ -81,8 +82,6 @@ export function AuthShell({
                   state={authState}
                   viewTransition
                   className={s.switchLink}
-                  // 그림판이 어느 쪽으로 가는지 알려 준다 (global.css 의 전환 애니메이션 방향)
-                  onClick={() => (document.documentElement.dataset.authSwitch = variant === 'login' ? 'to-right' : 'to-left')}
                 >
                   {switchLink}
                 </Link>
@@ -100,7 +99,7 @@ export function AuthShell({
 /** 로그인 쪽 그림: 루프에서 보게 될 화면(인기 글, 팔로우한 채널)을 카드로 미리 보여 준다. 장식이라 스크린 리더에는 숨김 */
 function LoginBrand() {
   return (
-    <aside className={cn(s.brand, s.brandLogin, 'auth-brand')} aria-hidden>
+    <aside className={cn(s.brand, s.brandLogin)} aria-hidden>
       <div className={s.brandShapeA} />
       <div className={s.brandShapeB} />
       <div className={s.brandHead}>
@@ -146,7 +145,7 @@ function LoginBrand() {
 /** 회원가입 쪽 그림: 가입하면 할 수 있는 것과 안전하게 지키는 방법 */
 function SignupBrand() {
   return (
-    <aside className={cn(s.brand, s.brandSignup, 'auth-brand')} aria-hidden>
+    <aside className={cn(s.brand, s.brandSignup)} aria-hidden>
       <div className={s.brandShapeC} />
       <div className={s.brandShapeD} />
       <div className={s.brandHead}>
