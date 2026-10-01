@@ -1,4 +1,5 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useAuthState } from '../lib/authNav';
 import { useAuth, useBookmark, useMembership, type ChannelDetail } from '@loop/shared';
 import { toast } from './Toast';
 import { ui } from './ui';
@@ -22,7 +23,7 @@ export function JoinButton({
 }) {
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
-  const { pathname, search } = useLocation();
+  const authState = useAuthState();
   const membership = useMembership(channel.slug);
   const sizeClass = size === 'small' ? ui.small : size === 'large' ? ui.large : '';
 
@@ -35,7 +36,7 @@ export function JoinButton({
         className={cn(ui.button, ui.primary, sizeClass)}
         disabled={membership.isPending}
         onClick={() => {
-          if (!isLoggedIn) return navigate(`/login?next=${encodeURIComponent(pathname + search)}`);
+          if (!isLoggedIn) return navigate('/login', { state: authState });
           membership.mutate(true, {
             onSuccess: () => {
               toast(`${channel.name} 채널을 팔로우했어요`);
@@ -73,7 +74,7 @@ export function JoinButton({
 export function BookmarkButton({ channel }: { channel: ChannelDetail }) {
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
-  const { pathname, search } = useLocation();
+  const authState = useAuthState();
   const bookmark = useBookmark(channel.slug);
   const on = channel.bookmarked;
   return (
@@ -84,7 +85,7 @@ export function BookmarkButton({ channel }: { channel: ChannelDetail }) {
       title={on ? '북마크 해제' : '북마크'}
       style={on ? { color: 'var(--primary)' } : undefined}
       onClick={() => {
-        if (!isLoggedIn) return navigate(`/login?next=${encodeURIComponent(pathname + search)}`);
+        if (!isLoggedIn) return navigate('/login', { state: authState });
         bookmark.mutate(!on, {
           onSuccess: () => toast(on ? '북마크를 해제했어요' : '북마크했어요. 마이페이지에서 모아 볼 수 있어요'),
           onError: (e) => toast(e.message),

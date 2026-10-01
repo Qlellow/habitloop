@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { CODE_LENGTH, safeNext, useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
+import { Link, useNavigate } from 'react-router-dom';
+import { CODE_LENGTH, useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
 import { AuthField, AuthShell, AuthSubmit, authStyles as a, useFieldCheck } from '../components/Auth';
 import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
 import { AlertCircleIcon, LockLineIcon, MailLineIcon } from '../components/Icons';
 import { toast } from '../components/Toast';
+import { useReturnTo } from '../lib/authNav';
 import { EMAIL, emailError } from '../lib/validate';
 
 /** 2단계 인증: 비밀번호를 확인한 뒤 이메일로 받은 번호를 입력한다 */
@@ -81,8 +82,7 @@ function TwoFactorStep({
 }
 
 export default function LoginPage() {
-  const [params] = useSearchParams();
-  const next = safeNext(params.get('next'));
+  const next = useReturnTo();
   const navigate = useNavigate();
   const login = useLogin();
   const [email, setEmail] = useState('');
@@ -134,7 +134,7 @@ export default function LoginPage() {
       desc="이메일로 로그인하고 오늘의 이야기를 이어 가세요."
       switchText="처음이신가요?"
       switchLink="회원가입"
-      switchTo={`/signup?next=${encodeURIComponent(next)}`}
+      switchTo="/signup"
       onSubmit={submit}
       after={import.meta.env.DEV && <p className={a.demo}>체험 계정: demo@loop.dev / password1234</p>}
     >
@@ -163,7 +163,7 @@ export default function LoginPage() {
         error={check.error('password') ?? wrong}
         shake={check.attempt}
         aside={
-          <Link to={`/password/reset${email ? `?email=${encodeURIComponent(email.trim())}` : ''}`} className={a.aside}>
+          <Link to="/password/reset" state={{ email: email.trim() }} className={a.aside}>
             비밀번호 찾기
           </Link>
         }

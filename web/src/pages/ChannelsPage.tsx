@@ -81,7 +81,7 @@ export default function ChannelsPage() {
   // 입력은 즉시 반영하고, 검색 요청은 렌더가 한가할 때 보낸다
   const q = useDeferredValue(input);
   const { data, isPending } = useChannelPreviews(q);
-  const createTo = isLoggedIn ? '/channels/new' : '/login?next=/channels/new';
+  const createTo = isLoggedIn ? '/channels/new' : '/login';
 
   return (
     <Page variant="wide">
@@ -101,7 +101,7 @@ export default function ChannelsPage() {
             aria-label="채널 검색"
             onDrop={(e) => e.preventDefault()}
           />
-          <Link to={createTo} className={cn(ui.button, ui.primary)} onPointerEnter={preload.channelForm}>
+          <Link to={createTo} state={isLoggedIn ? undefined : { from: '/channels/new' }} className={cn(ui.button, ui.primary)} onPointerEnter={preload.channelForm}>
             채널 만들기
           </Link>
         </div>
@@ -122,7 +122,7 @@ export default function ChannelsPage() {
         <div className={cn(ui.card, ui.empty)}>
           찾는 채널이 없어요
           <div style={{ marginTop: 16 }}>
-            <Link to={createTo} className={cn(ui.button, ui.secondary, ui.small)}>
+            <Link to={createTo} state={isLoggedIn ? undefined : { from: '/channels/new' }} className={cn(ui.button, ui.secondary, ui.small)}>
               새 채널 만들기
             </Link>
           </div>
