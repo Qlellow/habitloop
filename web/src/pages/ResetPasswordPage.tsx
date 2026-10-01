@@ -162,6 +162,7 @@ export default function ResetPasswordPage() {
       switchText="비밀번호가 기억났나요?"
       switchLink="로그인"
       switchTo="/login"
+      switchTransition={false}
       onSubmit={submitEmail}
     >
       <AuthField
