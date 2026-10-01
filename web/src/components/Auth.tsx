@@ -24,6 +24,7 @@ export function AuthShell({
   switchText,
   switchLink,
   switchTo,
+  switchTransition = true,
   onSubmit,
   children,
   after,
@@ -37,6 +38,8 @@ export function AuthShell({
   switchText?: string;
   switchLink?: string;
   switchTo?: string;
+  /** 접혔다 펼쳐지는 전환 애니메이션을 쓸지 (로그인 ↔ 회원가입만. 비밀번호 찾기 → 로그인은 바로 바꾼다) */
+  switchTransition?: boolean;
   onSubmit: (e: FormEvent) => void;
   children: ReactNode;
   /** 맨 아래 덧붙일 내용 (예: 개발용 체험 계정 안내) */
@@ -72,7 +75,7 @@ export function AuthShell({
                   to={switchTo}
                   replace
                   state={authState}
-                  viewTransition
+                  viewTransition={switchTransition}
                   className={s.switchLink}
                 >
                   {switchLink}

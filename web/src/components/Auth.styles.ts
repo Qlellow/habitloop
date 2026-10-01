@@ -38,9 +38,8 @@ const s = {
   error: 'flex items-center gap-1.5 min-w-0 m-0 text-[13px] font-medium text-danger animate-fade-up [&>span]:truncate',
   // 글자 링크(비밀번호 찾기 등): 마우스를 올리면 파랗게 바뀌며 밑줄이 왼쪽부터 그어진다 (ease-in-out)
   aside:
-    "relative flex-none ml-auto text-[13px] font-semibold text-fg-sub transition-colors duration-200 ease-in-out hover:text-primary " +
-    "after:absolute after:left-0 after:right-0 after:-bottom-0.5 after:h-px after:bg-current after:content-[''] " +
-    'after:origin-left after:scale-x-0 after:transition-transform after:duration-200 after:ease-in-out hover:after:scale-x-100',
+    // 밑줄 없이 hover 때 글자색만 부드럽게 바뀐다
+    'flex-none ml-auto text-[13px] font-semibold text-fg-sub transition-colors duration-200 ease-in-out hover:text-primary',
 
   // 비밀번호 강도 (4칸 막대 + 한 줄 안내)
   meterWrap: 'flex flex-col gap-1.5 w-full min-w-0',
