@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { compact, timeAgo, useAuth, useChannelPreviews, plainText, type ChannelPreview } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { Page } from '../components/Layout';
+import { Masonry } from '../components/Masonry';
 import { preload } from '../lib/preload';
 import { ui } from '../components/ui';
 import s from './pages.styles';
@@ -56,6 +57,16 @@ const ChannelBoard = memo(function ChannelBoard({ channel }: { channel: ChannelP
     </section>
   );
 });
+
+/** 채널 카드 높이 추정(px): 머리 64 + 소개 26 + 글 한 줄 34 (없으면 빈 안내 69) + 전체 보기 41 */
+function boardHeight({ description, recentPosts, postCount }: ChannelPreview) {
+  return (
+    66 +
+    (description ? 26 : 0) +
+    (recentPosts.length ? 13 + recentPosts.length * 34 : 69) +
+    (postCount > recentPosts.length ? 41 : 0)
+  );
+}
 
 function BoardSkeleton() {
   return (
@@ -113,11 +124,8 @@ export default function ChannelsPage() {
           ))}
         </div>
       ) : data && data.length > 0 ? (
-        <div className={b.grid}>
-          {data.map((c) => (
-            <ChannelBoard key={c.slug} channel={c} />
-          ))}
-        </div>
+        // 글이 많은 채널과 적은 채널의 높이가 달라도 빈틈 없이 쌓는다 (메이슨리)
+        <Masonry items={data} keyOf={(c) => c.slug} estimate={boardHeight} render={(c) => <ChannelBoard channel={c} />} />
       ) : (
         <div className={cn(ui.card, ui.empty)}>
           찾는 채널이 없어요
