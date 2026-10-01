@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react';
 /**
  * SPA 라서 /c/free 같은 주소는 실제 파일이 없다. 새 창·새로고침으로 바로 열면 호스팅이 404 를 내므로
  * 빌드 결과에 index.html 과 같은 404.html 을 두어, 정적 호스팅이 404 페이지로 앱을 띄우게 한다.
- * (Vercel 은 web/vercel.json 의 rewrite, Docker 는 nginx try_files 가 먼저 처리하고 이건 마지막 안전망)
+ * (Vercel 은 루트 vercel.json 의 services.web.rewrites, Docker 는 nginx try_files 가 먼저 처리하고 이건 마지막 안전망)
  */
 function spaFallback(): Plugin {
   let outDir = 'dist';
