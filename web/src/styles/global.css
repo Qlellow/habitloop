@@ -195,172 +195,69 @@
 }
 
 /*
- * 로그인 ↔ 회원가입 전환 (View Transitions, Auth.tsx 의 전환 링크).
- * 1초 동안: 카드 전체가 가운데로 모이고(0→30%) → 두 판이 서로 자리를 바꾸고(30→70%) → 다시 펼쳐진다(70→100%).
- * 구간마다 ease-in-out. 방향은 링크를 누를 때 <html data-auth-switch="to-right|to-left"> 로 정해진다
- * (to-right: 그림판이 왼쪽 → 오른쪽). 두 화면의 카드 크기가 같으므로 크기 변화 없이 위치·배율만 움직인다.
- * - 위치: 그룹의 translate 속성 (그룹의 transform 은 브라우저가 화면 위치로 쓰므로 건드리지 않는다)
- * - 배율·모서리: 그룹 안의 image-pair 에 준다 (그룹에 scale 을 주면 화면 위치까지 함께 줄어 어긋난다)
+ * 로그인 ↔ 회원가입 전환 (View Transitions, Auth.tsx 의 전환 링크). 1초, 구간마다 ease-in-out.
+ * 카드 전체를 하나의 직사각형으로 보고, 판을 따로 움직이지 않는다.
+ * 1) collapse (0→50%): 이전 화면 카드의 왼쪽 끝과 오른쪽 끝이 동시에 가운데로 들어오며 가로 폭이 0 이 된다.
+ *    안의 내용은 제자리에 둔 채 바깥부터 가려진다 (clip-path inset).
+ * 2) swap (50%): 폭이 0 이라 아무것도 보이지 않는 순간에 이전 화면 → 새 화면으로 바뀐다 (두 판의 자리가 바뀐 화면).
+ * 3) expand (50→100%): 새 화면 카드가 가운데에서 좌우로 펼쳐지며 원래 폭으로 돌아온다.
+ * 두 화면의 카드 크기(680px)가 같으므로 위치·크기는 그대로 두고 가려지는 범위만 바꾼다.
  */
 .auth-card {
   view-transition-name: auth-card;
 }
-.auth-form {
-  view-transition-name: auth-form;
-}
-.auth-brand {
-  view-transition-name: auth-brand;
-}
-::view-transition-group(auth-card),
-::view-transition-group(auth-form),
-::view-transition-group(auth-brand),
-::view-transition-image-pair(auth-card),
-::view-transition-image-pair(auth-form),
-::view-transition-image-pair(auth-brand) {
-  animation-duration: 1s;
-  animation-timing-function: ease-in-out;
-  animation-fill-mode: both;
-}
-/* 카드 바탕: 제자리에서 88% 로 모였다가 다시 펼친다 */
 ::view-transition-group(auth-card) {
-  animation-name: none;
-}
-::view-transition-image-pair(auth-card),
-::view-transition-image-pair(auth-form) {
-  animation-name: auth-gather;
-}
-::view-transition-old(auth-card) {
-  display: none;
-}
-::view-transition-new(auth-card) {
   animation: none;
 }
-/* 두 판의 위치: 자기 반쪽에서 가운데 쪽으로 모이고 → 반대쪽으로 건너가고 → 펼친다 (% 는 판 너비 기준) */
-:root[data-auth-switch='to-right']::view-transition-group(auth-brand),
-:root[data-auth-switch='to-left']::view-transition-group(auth-form) {
-  animation-name: auth-move-to-right;
+::view-transition-old(auth-card),
+::view-transition-new(auth-card) {
+  animation-duration: 1s;
+  animation-fill-mode: both;
+  /* 두 장면이 겹쳐 보이는 순간이 없으므로 섞지 않는다 */
+  mix-blend-mode: normal;
 }
-:root[data-auth-switch='to-left']::view-transition-group(auth-brand),
-:root[data-auth-switch='to-right']::view-transition-group(auth-form) {
-  animation-name: auth-move-to-left;
+::view-transition-old(auth-card) {
+  animation-name: auth-collapse;
 }
-/* 그림판이 입력판 위로 지나가게 */
-::view-transition-group(auth-brand) {
-  z-index: 2;
+::view-transition-new(auth-card) {
+  animation-name: auth-expand;
 }
-/* 그림판: 배율 + 모서리 (원래 쪽만 둥근 모양 → 모여 있는 동안 네 모서리 → 도착한 쪽만) */
-::view-transition-image-pair(auth-brand) {
-  overflow: hidden;
-}
-:root[data-auth-switch='to-right']::view-transition-image-pair(auth-brand) {
-  animation-name: auth-brand-to-right;
-}
-:root[data-auth-switch='to-left']::view-transition-image-pair(auth-brand) {
-  animation-name: auth-brand-to-left;
-}
-/* 내용은 서로 엇갈리는 한가운데(48~52%)에서 짧게 이전 화면 → 새 화면으로 바뀐다 */
-::view-transition-old(auth-form),
-::view-transition-old(auth-brand) {
-  animation: 1s ease-in-out both auth-swap-out;
-}
-::view-transition-new(auth-form),
-::view-transition-new(auth-brand) {
-  animation: 1s ease-in-out both auth-swap-in;
-}
-@keyframes auth-gather {
-  0%,
-  100% {
-    scale: 1;
-  }
-  30%,
-  70% {
-    scale: 0.88;
-  }
-}
-/* 모인 위치: 카드가 88% 로 줄면 반쪽의 가운데는 판 너비의 6% 만큼 안쪽으로 온다 */
-@keyframes auth-move-to-right {
+@keyframes auth-collapse {
   0% {
-    translate: -100% 0;
+    clip-path: inset(0 0 0 0 round 24px);
+    animation-timing-function: ease-in-out;
   }
-  30% {
-    translate: -94% 0;
-  }
-  70% {
-    translate: -6% 0;
-  }
-  100% {
-    translate: 0 0;
-  }
-}
-@keyframes auth-move-to-left {
-  0% {
-    translate: 100% 0;
-  }
-  30% {
-    translate: 94% 0;
-  }
-  70% {
-    translate: 6% 0;
-  }
-  100% {
-    translate: 0 0;
-  }
-}
-@keyframes auth-brand-to-right {
-  0% {
-    scale: 1;
-    border-radius: 24px 0 0 24px;
-  }
-  30%,
-  70% {
-    scale: 0.88;
-    border-radius: 24px;
-  }
-  100% {
-    scale: 1;
-    border-radius: 0 24px 24px 0;
-  }
-}
-@keyframes auth-brand-to-left {
-  0% {
-    scale: 1;
-    border-radius: 0 24px 24px 0;
-  }
-  30%,
-  70% {
-    scale: 0.88;
-    border-radius: 24px;
-  }
-  100% {
-    scale: 1;
-    border-radius: 24px 0 0 24px;
-  }
-}
-@keyframes auth-swap-out {
-  0%,
-  48% {
+  50% {
+    clip-path: inset(0 50% 0 50% round 24px);
     opacity: 1;
   }
-  52%,
+  /* 다 접힌 뒤로는 이전 화면을 숨긴다 */
+  50.01%,
   100% {
+    clip-path: inset(0 50% 0 50% round 24px);
     opacity: 0;
   }
 }
-@keyframes auth-swap-in {
+@keyframes auth-expand {
+  /* 다 접히기 전에는 새 화면을 보이지 않는다 */
   0%,
-  48% {
+  49.99% {
+    clip-path: inset(0 50% 0 50% round 24px);
     opacity: 0;
   }
-  52%,
+  50% {
+    clip-path: inset(0 50% 0 50% round 24px);
+    opacity: 1;
+    animation-timing-function: ease-in-out;
+  }
   100% {
+    clip-path: inset(0 0 0 0 round 24px);
     opacity: 1;
   }
 }
 /* 그림판이 숨는 좁은 화면이나 움직임 줄이기 설정에서는 전환 애니메이션 없이 바로 바꾼다 */
 @media (max-width: 860px) {
-  .auth-card,
-  .auth-form,
-  .auth-brand {
+  .auth-card {
     view-transition-name: none;
   }
 }
