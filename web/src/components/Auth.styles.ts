@@ -1,28 +1,28 @@
 /** 로그인 · 회원가입 · 비밀번호 찾기 (Tailwind) */
 const s = {
   // 화면 가운데 큰 카드. 860px 이하는 입력만, 520px 이하는 카드 테두리 없이 화면 전체
-  page: 'flex-1 flex items-center justify-center px-6 py-10 max-[860px]:py-6 max-[520px]:p-0 max-[520px]:items-stretch',
+  page: 'flex-1 flex items-center justify-center px-6 py-6 [@media(max-height:820px)]:py-3 max-[520px]:p-0 max-[520px]:items-stretch',
   card:
-    'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] w-full max-w-[1040px] min-h-[640px] rounded-[24px] overflow-hidden ' +
+    'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] w-full max-w-[1040px] min-h-[600px] rounded-[24px] overflow-hidden ' +
     'bg-surface border border-border shadow-[0_24px_60px_rgba(0,29,58,0.08)] ' +
     'max-[860px]:grid-cols-1 max-[860px]:max-w-[480px] max-[860px]:min-h-0 ' +
     'max-[520px]:rounded-none max-[520px]:border-0 max-[520px]:shadow-none',
-  formPane: 'flex flex-col px-14 py-10 max-[860px]:px-8 max-[860px]:py-8 max-[520px]:px-5 max-[520px]:py-5',
+  formPane: 'flex flex-col px-14 py-7 [@media(max-height:820px)]:py-5 max-[860px]:px-8 max-[860px]:py-8 max-[520px]:px-5 max-[520px]:py-5',
   top: 'flex items-center justify-between gap-3',
   back:
     'grid place-items-center w-10 h-10 rounded-full border border-border text-fg-sub transition-colors ' +
     'hover:bg-field hover:text-fg-strong',
-  switch: 'm-0 text-sm text-fg-sub',
+  switch: 'mt-5 mb-0 text-center text-sm text-fg-sub',
   switchLink: 'ml-2 font-semibold text-primary hover:underline underline-offset-4',
-  body: 'flex-1 flex flex-col justify-center w-full max-w-[400px] mx-auto pt-10 pb-6 max-[520px]:pt-8',
-  title: 'm-0 text-[32px] leading-tight font-extrabold tracking-[-0.02em] text-fg-strong max-[520px]:text-[28px]',
-  desc: 'mt-2 mb-9 text-[15px] text-fg-weak leading-relaxed',
+  body: 'flex-1 flex flex-col justify-center w-full max-w-[400px] mx-auto pt-4 pb-1 max-[520px]:pt-6',
+  title: 'm-0 text-[30px] leading-tight font-extrabold tracking-[-0.02em] text-fg-strong max-[520px]:text-[28px]',
+  desc: 'mt-2 mb-6 text-[15px] text-fg-weak leading-relaxed',
 
-  // 밑줄형 입력칸
-  field: 'mb-6',
+  // 밑줄형 입력칸. 밑줄은 다크 모드에서도 배경과 구분되도록 회색 글자색을 섞어 만든다
+  field: 'mb-2',
   inputRow:
-    'flex items-center gap-3 h-14 border-b-[1.5px] border-border transition-colors ' +
-    'focus-within:border-primary hover:border-[color-mix(in_srgb,var(--text-weak)_60%,transparent)] focus-within:hover:border-primary',
+    'flex items-center gap-3 h-[52px] border-b-[1.5px] border-[color-mix(in_srgb,var(--text-weak)_45%,transparent)] transition-colors ' +
+    'focus-within:border-primary hover:border-[color-mix(in_srgb,var(--text-weak)_80%,transparent)] focus-within:hover:border-primary',
   inputRowError: 'border-danger hover:border-danger focus-within:border-danger focus-within:hover:border-danger',
   icon: 'flex-none text-fg-weak [&>svg]:w-[22px] [&>svg]:h-[22px]',
   input:
@@ -30,12 +30,13 @@ const s = {
     'placeholder:text-fg-weak placeholder:font-normal',
   validIcon: 'flex-none w-[22px] h-[22px] text-[var(--role-admin)]',
   eye: 'flex-none grid place-items-center w-9 h-9 -mr-1.5 rounded-full text-fg-weak transition-colors hover:bg-field hover:text-fg-strong',
-  below: 'flex items-start justify-between gap-3 mt-2',
-  error: 'flex items-center gap-1.5 m-0 text-[13px] font-medium text-danger animate-fade-up',
+  // 안내 문구 자리는 항상 한 줄만큼 비워 둔다 → 오류가 떠도 칸 높이·화면이 늘어나지 않는다
+  below: 'flex items-center justify-between gap-3 h-5 mt-1.5',
+  error: 'flex items-center gap-1.5 min-w-0 m-0 text-[13px] font-medium text-danger animate-fade-up [&>span]:truncate',
   aside: 'flex-none ml-auto text-[13px] font-semibold text-fg-sub hover:text-primary',
 
   // 비밀번호 조건
-  rules: 'list-none m-0 mt-3 p-0 flex flex-col gap-1.5',
+  rules: 'list-none m-0 p-0 flex min-w-0 gap-3',
   rule: 'flex items-center gap-2 text-[13px] text-fg-weak transition-colors',
   ruleOk: 'text-[var(--role-admin)]',
   ruleDot: 'grid place-items-center w-4 h-4 before:w-1.5 before:h-1.5 before:rounded-full before:bg-current before:content-[""]',

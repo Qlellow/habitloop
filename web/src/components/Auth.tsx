@@ -18,10 +18,11 @@ export function AuthShell({
   onBack,
   onSubmit,
   children,
+  after,
 }: {
   title: ReactNode;
   desc?: ReactNode;
-  /** 오른쪽 위: "이미 회원이신가요? 로그인" */
+  /** 주 버튼 아래: "이미 회원이신가요? 로그인" */
   switchText?: string;
   switchLink?: string;
   switchTo?: string;
@@ -29,6 +30,8 @@ export function AuthShell({
   onBack?: () => void;
   onSubmit: (e: FormEvent) => void;
   children: ReactNode;
+  /** 맨 아래 덧붙일 내용 (예: 개발용 체험 계정 안내) */
+  after?: ReactNode;
 }) {
   const navigate = useNavigate();
   return (
@@ -44,6 +47,12 @@ export function AuthShell({
             >
               <BackIcon className="w-5 h-5" />
             </button>
+          </div>
+          <div className={s.body}>
+            <h1 className={s.title}>{title}</h1>
+            {desc && <p className={s.desc}>{desc}</p>}
+            {children}
+            {/* 주 버튼 바로 아래: "처음이신가요? 회원가입" */}
             {switchTo && (
               <p className={s.switch}>
                 {switchText}
@@ -52,11 +61,7 @@ export function AuthShell({
                 </Link>
               </p>
             )}
-          </div>
-          <div className={s.body}>
-            <h1 className={s.title}>{title}</h1>
-            {desc && <p className={s.desc}>{desc}</p>}
-            {children}
+            {after}
           </div>
         </form>
         <BrandPanel />
@@ -144,7 +149,7 @@ export function AuthField({
   invalid?: boolean;
   valid?: boolean;
   aside?: ReactNode;
-  /** 입력칸 아래 안내 (예: 비밀번호 조건) */
+  /** 오류가 없을 때 같은 자리에 보여 줄 안내 (예: 비밀번호 조건) */
   hint?: ReactNode;
   shake?: number;
   autoComplete?: string;
@@ -199,20 +204,17 @@ export function AuthField({
           </button>
         )}
       </div>
-      {(error || aside) && (
-        <div className={s.below}>
-          {error ? (
-            <p id={`${id}-error`} className={s.error} role="alert">
-              <AlertCircleIcon className="flex-none w-4 h-4" />
-              {error}
-            </p>
-          ) : (
-            <span />
-          )}
-          {aside}
-        </div>
-      )}
-      {hint}
+      <div className={s.below}>
+        {error ? (
+          <p id={`${id}-error`} className={s.error} role="alert" title={error}>
+            <AlertCircleIcon className="flex-none w-4 h-4" />
+            <span>{error}</span>
+          </p>
+        ) : (
+          (hint ?? <span />)
+        )}
+        {aside}
+      </div>
     </div>
   );
 }
