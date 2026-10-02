@@ -4,6 +4,7 @@ export const loaders = {
   home: () => import('../pages/HomePage'),
   post: () => import('../pages/PostDetailPage'),
   user: () => import('../pages/UserPage'),
+  invite: () => import('../pages/InvitePage'),
   write: () => import('../pages/WritePage'),
   login: () => import('../pages/LoginPage'),
   signup: () => import('../pages/SignupPage'),

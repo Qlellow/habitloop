@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
 import {
+  AgeInput,
   ChallengeInput,
   CodeInput,
   EmailCodeInput,
@@ -132,6 +133,12 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   revokeSession(@LoginUser() user: AuthUser, @Param('id') id: string) {
     return this.auth.revokeSession(user, id);
+  }
+
+  /** 나이 확인 (생년월일 한 번 저장) */
+  @Put('me/age')
+  verifyAge(@LoginUser() user: AuthUser, @Body() input: AgeInput) {
+    return this.auth.verifyAge(user.id, input.birthDate);
   }
 
   /** 2단계 인증 켜기: 내 이메일로 번호 보내기 → 번호 확인 */

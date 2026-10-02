@@ -5,7 +5,7 @@ import type { AuthUser } from '../auth/jwt.service';
 import { ApiError } from '../common/api-error';
 import { intParam } from '../common/cursor-page';
 import { CategoriesService } from './categories.service';
-import { CategoryInput, CategoryOrderInput, ChannelInput, ChannelUpdateInput, RoleInput } from './channels.dto';
+import { CategoryInput, CategoryOrderInput, ChannelInput, ChannelUpdateInput, InviteJoinInput, RoleInput } from './channels.dto';
 import { ChannelsService } from './channels.service';
 import { IconsService } from './icons.service';
 import { MembershipService } from './membership.service';
@@ -32,8 +32,9 @@ export class ChannelsController {
   /** q 가 없으면 인기 채널, 있으면 채널 이름 검색 */
   @Public()
   @Get('channels')
-  list(@Query('q') q?: string) {
-    return q?.trim() ? this.channels.search(q) : this.channels.popular();
+  async list(@Query('q') q: string | undefined, @CurrentUser() user?: AuthUser) {
+    const adult = await this.channels.isAdult(user?.id);
+    return q?.trim() ? this.channels.search(q, adult) : this.channels.popular(adult);
   }
 
   /** 채널 목록 페이지용: 채널마다 최근 글 size 개(최대 8)를 함께 돌려준다 */
@@ -64,8 +65,35 @@ export class ChannelsController {
   /** 채널 가입 (이미 가입했으면 그대로) */
   @Post('channels/:slug/members')
   @HttpCode(HttpStatus.OK)
-  join(@LoginUser() user: AuthUser, @Param('slug') slug: string) {
-    return this.membership.join(user.id, slug);
+  join(@LoginUser() user: AuthUser, @Param('slug') slug: string, @Body() input: InviteJoinInput) {
+    return this.membership.join(user.id, slug, input?.code);
+  }
+
+  /* ───── 초대 (비공개 채널) ───── */
+
+  /** 초대 링크 · 코드 · QR 로 들어온 화면: 채널 이름과 프로필만 보여 준다 */
+  @Public()
+  @Get('invites/:code')
+  async invite(@Param('code') code: string, @CurrentUser() user?: AuthUser) {
+    const c = await this.channels.byInvite(code);
+    const joined = !!(await this.channels.roleOf(c.id, user?.id));
+    return { slug: c.slug, name: c.name, iconVersion: c.iconVersion, color: c.color, memberCount: c.memberCount, adult: c.adult, joined };
+  }
+
+  /** 초대 코드로 팔로우 */
+  @Post('invites/:code')
+  @HttpCode(HttpStatus.OK)
+  async acceptInvite(@LoginUser() user: AuthUser, @Param('code') code: string) {
+    const c = await this.channels.byInvite(code);
+    await this.membership.join(user.id, c.slug, code);
+    return { slug: c.slug };
+  }
+
+  /** 초대 코드 새로 만들기 (소유자·관리자). 예전 링크·코드·QR 은 막힌다 */
+  @Post('channels/:slug/invite')
+  @HttpCode(HttpStatus.OK)
+  regenerateInvite(@LoginUser() user: AuthUser, @Param('slug') slug: string) {
+    return this.channels.regenerateInvite(user.id, slug);
   }
 
   /** 채널 탈퇴 (만든 사람은 탈퇴할 수 없다) */

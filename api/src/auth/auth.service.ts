@@ -15,11 +15,23 @@ interface UserRow {
   password: string;
   nickname: string;
   twoFactorEnabled: boolean;
+  /** 생년월일로 나이를 확인했는지 · 만 19세 이상인지 */
+  ageChecked?: boolean;
+  adult?: boolean;
 }
 
-const SELECT_USER = 'SELECT id, email, password, nickname, two_factor_enabled AS "twoFactorEnabled" FROM users';
+const USER_COLUMNS = `id, email, password, nickname, two_factor_enabled AS "twoFactorEnabled",
+  birth_date IS NOT NULL AS "ageChecked", coalesce(birth_date <= (current_date - interval '19 years'), false) AS adult`;
+const SELECT_USER = `SELECT ${USER_COLUMNS} FROM users`;
 
-export const userResponse = (u: UserRow) => ({ id: u.id, email: u.email, nickname: u.nickname, twoFactorEnabled: u.twoFactorEnabled });
+export const userResponse = (u: UserRow) => ({
+  id: u.id,
+  email: u.email,
+  nickname: u.nickname,
+  twoFactorEnabled: u.twoFactorEnabled,
+  ageChecked: !!u.ageChecked,
+  adult: !!u.adult,
+});
 
 const normalize = (email: string) => email.trim().toLowerCase();
 
@@ -66,7 +78,7 @@ export class AuthService {
     await this.verification.verify(email, 'SIGNUP', input.code);
     const user = await this.db.one<UserRow>(
       `INSERT INTO users (email, password, nickname) VALUES ($1, $2, $3)
-       RETURNING id, email, password, nickname, two_factor_enabled AS "twoFactorEnabled"`,
+       RETURNING ${USER_COLUMNS}`,
       [email, await bcrypt.hash(input.password, 10), nickname],
     );
     return this.toAuth(user!, userAgent);
@@ -191,6 +203,22 @@ export class AuthService {
   /** 지금 기기만 남기고 모두 로그아웃 */
   async revokeOtherSessions(me: AuthUser) {
     await this.db.execute('DELETE FROM sessions WHERE user_id = $1 AND id <> $2', [me.id, me.sid]);
+  }
+
+  /**
+   * 나이 확인: 생년월일을 한 번 저장한다 (바꿀 수 없다). 만 19세 이상이면 19세 이상 채널·카테고리를 볼 수 있다.
+   * 지금은 본인이 입력한 생년월일로 확인한다 (휴대폰 본인인증 같은 외부 인증은 붙이지 않았다)
+   */
+  async verifyAge(userId: number, birthDate: string) {
+    const user = await this.find(userId);
+    if (user.ageChecked) throw ApiError.badRequest('이미 나이를 확인했어요');
+    const d = new Date(`${birthDate}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== birthDate) {
+      throw ApiError.badRequest('생년월일을 YYYY-MM-DD 로 입력해 주세요');
+    }
+    if (d.getUTCFullYear() < 1900 || d.getTime() > Date.now()) throw ApiError.badRequest('생년월일을 다시 확인해 주세요');
+    await this.db.execute('UPDATE users SET birth_date = $1 WHERE id = $2', [birthDate, userId]);
+    return userResponse(await this.find(userId));
   }
 
   /** 2단계 인증 켜기 1단계: 내 이메일로 번호 보내기 */

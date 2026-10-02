@@ -112,8 +112,9 @@ export class PostsService {
   /**
    * 키셋 페이지네이션. 조건이 없는 필터는 SQL 에서 아예 빼서 (channel_id, id) 같은 복합 인덱스를 그대로 탄다.
    */
-  async list(search: PostSearch, cursor: number | undefined, size: number): Promise<CursorPage<PostSummary>> {
+  async list(search: PostSearch, cursor: number | undefined, size: number, viewerId?: number): Promise<CursorPage<PostSummary>> {
     const pageSize = clamp(size, 1, MAX_PAGE_SIZE);
+    const adult = await this.channels.isAdult(viewerId);
     const where: string[] = [];
     const params: unknown[] = [];
     const add = (sql: string, value: unknown) => {
@@ -121,7 +122,16 @@ export class PostsService {
       where.push(sql.replace('?', `$${params.length}`));
     };
     if (cursor != null) add('p.id < ?', cursor);
-    if (search.channel) add('c.slug = ?', search.channel);
+    if (search.channel) {
+      // 채널 안: 볼 수 없는 채널(비공개·19세 이상)이면 403
+      await this.channels.requireAccess(await this.channels.findBySlug(search.channel), viewerId);
+      add('c.slug = ?', search.channel);
+    } else {
+      // 홈 · 프로필처럼 여러 채널을 섞는 목록: 비공개 채널 글은 빼고, 19세 이상 채널은 나이를 확인한 사람에게만
+      where.push("c.visibility = 'public'");
+      if (!adult) where.push('NOT c.adult');
+    }
+    if (!adult) where.push('cat.adult IS NOT TRUE');
     if (search.category != null) add('p.category_id = ?', search.category);
     if (search.authorId != null) add('p.author_id = ?', search.authorId);
     if (search.q?.trim()) add("lower(p.title) LIKE ? ESCAPE '\\'", `%${escapeLike(search.q.trim().toLowerCase())}%`);
@@ -137,7 +147,9 @@ export class PostsService {
    * 채널 글 목록 (번호 페이지): 검색(제목·본문) · 카테고리 · 정렬. 전체 개수도 함께 돌려준다.
    * 공지(운영진 전용 카테고리 글)는 전체 탭에서 위에 따로 고정하므로 excludeNotices 면 뺀다.
    */
-  async page(query: PostPageQuery, page: number, size: number) {
+  async page(query: PostPageQuery, page: number, size: number, viewerId?: number) {
+    await this.channels.requireAccess(await this.channels.findBySlug(query.channel), viewerId);
+    const adult = await this.channels.isAdult(viewerId);
     const pageSize = clamp(size, 1, MAX_PAGE_SIZE);
     const where: string[] = ['c.slug = $1'];
     const params: unknown[] = [query.channel];
@@ -147,6 +159,7 @@ export class PostsService {
     };
     if (query.category != null) add('p.category_id = ?', query.category);
     if (query.excludeNotices) where.push('(cat.owner_only IS NOT TRUE)');
+    if (!adult) where.push('cat.adult IS NOT TRUE');
     const q = query.q?.trim().toLowerCase();
     if (q) add("(lower(p.title) LIKE ? ESCAPE '\\' OR lower(p.content) LIKE ? ESCAPE '\\')", `%${escapeLike(q)}%`);
     const whereSql = `WHERE ${where.join(' AND ')}`;
@@ -166,10 +179,12 @@ export class PostsService {
   }
 
   /** 채널 공지: 운영진 전용 카테고리의 글 (최신순). 전체 탭 위에 고정한다 */
-  async notices(channel: string): Promise<PostSummary[]> {
+  async notices(channel: string, viewerId?: number): Promise<PostSummary[]> {
+    await this.channels.requireAccess(await this.channels.findBySlug(channel), viewerId);
+    const adult = await this.channels.isAdult(viewerId);
     const rows = await this.db.query(
-      `${SELECT_SUMMARY} WHERE c.slug = $1 AND cat.owner_only ORDER BY p.id DESC LIMIT $2`,
-      [channel, NOTICE_LIMIT],
+      `${SELECT_SUMMARY} WHERE c.slug = $1 AND cat.owner_only AND ($3 OR cat.adult IS NOT TRUE) ORDER BY p.id DESC LIMIT $2`,
+      [channel, NOTICE_LIMIT, adult],
     );
     return rows.map(toSummary);
   }
@@ -179,12 +194,14 @@ export class PostsService {
       const since = new Date(Date.now() - POPULAR_DAYS * 24 * 3600 * 1000);
       const rows = channel
         ? await this.db.query(
-            `${SELECT_SUMMARY} WHERE c.slug = $1 AND p.created_at >= $2
+            `${SELECT_SUMMARY} WHERE c.slug = $1 AND p.created_at >= $2 AND cat.adult IS NOT TRUE
              ORDER BY p.like_count DESC, p.comment_count DESC, p.id DESC LIMIT $3`,
             [channel, since, POPULAR_SIZE],
           )
         : await this.db.query(
-            `${SELECT_SUMMARY} WHERE p.created_at >= $1 ORDER BY p.like_count DESC, p.comment_count DESC, p.id DESC LIMIT $2`,
+            // 모두에게 같은 결과(캐시): 비공개·19세 이상 채널과 19세 이상 카테고리 글은 빼다
+            `${SELECT_SUMMARY} WHERE p.created_at >= $1 AND c.visibility = 'public' AND NOT c.adult AND cat.adult IS NOT TRUE
+             ORDER BY p.like_count DESC, p.comment_count DESC, p.id DESC LIMIT $2`,
             [since, POPULAR_SIZE],
           );
       return rows.map(toSummary);
@@ -192,15 +209,16 @@ export class PostsService {
   }
 
   /** 여러 채널의 최근 글 N개씩 (채널 목록 미리보기). 채널마다 (channel_id, id) 인덱스로 N행만 읽는다 */
-  async recentByChannels(channelIds: number[], perChannel: number): Promise<PostSummary[]> {
+  async recentByChannels(channelIds: number[], perChannel: number, adult = false): Promise<PostSummary[]> {
     if (channelIds.length === 0 || perChannel <= 0) return [];
     const rows = await this.db.query(
       `${SELECT_SUMMARY}
        WHERE p.id IN (
          SELECT r.id FROM unnest($1::int[]) AS ch(id)
          CROSS JOIN LATERAL (SELECT id FROM posts WHERE channel_id = ch.id ORDER BY id DESC LIMIT $2) r)
+         AND ($3 OR cat.adult IS NOT TRUE)
        ORDER BY p.id DESC`,
-      [channelIds, perChannel],
+      [channelIds, perChannel, adult],
     );
     return rows.map(toSummary);
   }
@@ -209,7 +227,33 @@ export class PostsService {
    * 글 보기. viewer(계정 또는 비로그인 브라우저·앱을 가리키는 값)가 이 글을 처음 볼 때만 조회수가 오른다.
    * 본 기록 넣기와 조회수 올리기를 쿼리 하나로 한다 (이미 봤으면 INSERT 가 아무것도 안 해서 UPDATE 도 건너뛴다)
    */
+  /**
+   * 이 글을 볼 수 있는지: 비공개 채널은 팔로워만, 19세 이상 채널·카테고리는 나이를 확인한 사람만.
+   * 글 · 댓글 · 좋아요 모두 이걸 먼저 확인한다.
+   */
+  async requirePostAccess(postId: number, viewerId?: number) {
+    const row = await this.db.one<{ channelId: number; visibility: string; adult: boolean; catAdult: boolean | null }>(
+      `SELECT c.id AS "channelId", c.visibility, c.adult, cat.adult AS "catAdult"
+       FROM posts p JOIN channels c ON c.id = p.channel_id LEFT JOIN channel_categories cat ON cat.id = p.category_id
+       WHERE p.id = $1`,
+      [postId],
+    );
+    if (!row) throw notFound();
+    if ((row.adult || row.catAdult) && !(await this.channels.isAdult(viewerId))) {
+      throw ApiError.forbidden('만 19세 이상만 볼 수 있는 글이에요. 설정에서 나이를 확인해 주세요');
+    }
+    if (row.visibility === 'private' && !(await this.channels.roleOf(row.channelId, viewerId))) {
+      throw ApiError.forbidden('비공개 채널의 글이에요. 초대를 받아 팔로우한 사람만 볼 수 있어요');
+    }
+  }
+
+  /** 채널 인기글을 보기 전에: 볼 수 없는 채널이면 403 */
+  async requireChannelAccess(slug: string, viewerId?: number) {
+    await this.channels.requireAccess(await this.channels.findBySlug(slug), viewerId);
+  }
+
   async detail(postId: number, viewerId?: number, viewer?: string) {
+    await this.requirePostAccess(postId, viewerId);
     if (viewer) {
       await this.db.execute(
         `WITH seen AS (
@@ -230,6 +274,7 @@ export class PostsService {
     // 글쓰기는 채널 가입자만 (보기·공감·댓글은 가입 없이 가능)
     await this.membership.requireMember(channel, userId);
     const categoryId = await this.categories.resolveForPost(channel, input.categoryId, userId);
+    await this.requireAdultCategory(categoryId, userId);
     const id = await this.db.transaction(async () => {
       const row = await this.db.one<{ id: number }>(
         `INSERT INTO posts (author_id, channel_id, category_id, title, content, excerpt)
@@ -259,6 +304,13 @@ export class PostsService {
     ]);
     const liked = !!(await this.db.one('SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2', [postId, userId]));
     return this.toDetail(await this.find(postId), userId, liked);
+  }
+
+  /** 19세 이상 카테고리에 쓰려면 나이를 확인해야 한다 */
+  private async requireAdultCategory(categoryId: number | null, userId: number) {
+    if (categoryId == null) return;
+    const cat = await this.db.one<{ adult: boolean }>('SELECT adult FROM channel_categories WHERE id = $1', [categoryId]);
+    if (cat?.adult && !(await this.channels.isAdult(userId))) throw ApiError.forbidden('19세 이상 카테고리는 나이를 확인한 사람만 쓸 수 있어요');
   }
 
   async remove(userId: number, postId: number) {

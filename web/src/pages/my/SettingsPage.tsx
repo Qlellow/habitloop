@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { CODE_LENGTH, timeAgo, useAuth, useLoginSessions, useRevokeSession, useTwoFactor } from '@loop/shared';
+import { CODE_LENGTH, timeAgo, useAuth, useLoginSessions, useRevokeSession, useTwoFactor, useVerifyAge } from '@loop/shared';
 import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
 import { toast } from '../../components/Toast';
 import { usePhone } from '../../lib/media';
@@ -155,6 +155,69 @@ function TwoFactorOption() {
   );
 }
 
+/**
+ * 나이 확인: 생년월일을 한 번 입력하면 만 19세 이상 채널·카테고리를 볼 수 있다. 입력한 뒤에는 바꿀 수 없다.
+ * (휴대폰 본인인증 같은 외부 인증은 아직 붙이지 않았다)
+ */
+function AgeOption() {
+  const { user } = useAuth();
+  const verify = useVerifyAge();
+  const [open, setOpen] = useState(false);
+  const [birth, setBirth] = useState('');
+  const today = new Date().toISOString().slice(0, 10);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!birth) return;
+    if (!confirm(`생년월일을 ${birth}(으)로 저장할까요?\n저장한 뒤에는 바꿀 수 없어요.`)) return;
+    verify.mutate(birth, {
+      onSuccess: (u) => {
+        setOpen(false);
+        toast(u.adult ? '만 19세 이상으로 확인했어요' : '만 19세 미만이라 19세 이상 채널은 볼 수 없어요');
+      },
+    });
+  };
+  return (
+    <>
+      <div className={s.option}>
+        <div>
+          <div className={s.optionLabel}>
+            나이 확인{' '}
+            {user?.ageChecked && <span className={cn(ui.badge, 'ml-1 align-[1px]')}>{user.adult ? '만 19세 이상' : '만 19세 미만'}</span>}
+          </div>
+          <div className={s.optionDesc}>
+            {user?.ageChecked
+              ? '나이를 확인했어요. 생년월일은 바꿀 수 없어요.'
+              : '생년월일을 확인하면 만 19세 이상만 볼 수 있는 채널·카테고리를 볼 수 있어요. 한 번 저장하면 바꿀 수 없어요.'}
+          </div>
+        </div>
+        {!user?.ageChecked && !open && (
+          <button type="button" className={cn(ui.button, ui.secondary, ui.small)} onClick={() => setOpen(true)}>
+            확인하기
+          </button>
+        )}
+      </div>
+      {open && (
+        <form className={s.inlineForm} onSubmit={submit} noValidate>
+          <label className="flex flex-col gap-1.5">
+            <span className={s.optionDesc}>생년월일</span>
+            <input className={ui.input} type="date" min="1900-01-01" max={today} value={birth} onChange={(e) => setBirth(e.target.value)} autoFocus />
+          </label>
+          {verify.error && <p className={cn(ui.error, 'mb-0')}>{verify.error.message}</p>}
+          <div className={s.inlineActions}>
+            <span className="flex-1" />
+            <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => setOpen(false)}>
+              취소
+            </button>
+            <button type="submit" className={cn(ui.button, ui.primary, ui.small)} disabled={!birth || verify.isPending}>
+              {verify.isPending ? '확인 중…' : '확인'}
+            </button>
+          </div>
+        </form>
+      )}
+    </>
+  );
+}
+
 const isPhone = (device: string) => /iOS|Android|앱/.test(device);
 
 /**
@@ -232,6 +295,7 @@ export default function SettingsPage() {
       <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>보안</h2>
         <TwoFactorOption />
+        <AgeOption />
         <LoginSessions />
       </section>
       <section className={cn(ui.card, s.section)}>

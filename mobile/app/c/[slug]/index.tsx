@@ -14,7 +14,8 @@ export default function ChannelScreen() {
   const { data: channel, error } = useChannel(slug);
   const categories = channel?.categories ?? [];
   const active = categories.find((c) => String(c.id) === params.category);
-  const feed = useFeed({ channel: slug, category: active?.id });
+  // 잠긴 채널(비공개 · 19세 이상)은 글을 받지 않는다
+  const feed = useFeed({ channel: slug, category: active?.id }, !!channel && !channel.locked);
   // 관리자 전용 카테고리에서는 관리자만 글쓰기 버튼을 본다
   const canWrite = !active?.ownerOnly || channel?.mine;
 
@@ -34,6 +35,8 @@ export default function ChannelScreen() {
   }, [navigation, channel, slug, active, canWrite, isLoggedIn]);
 
   if (error instanceof ApiError && error.status === 404) return <Empty>없거나 사라진 채널이에요</Empty>;
+  if (channel?.locked === 'private') return <Empty>{`🔒 ${channel.name}\n비공개 채널이에요. 받은 초대 링크로 팔로우해 주세요`}</Empty>;
+  if (channel?.locked === 'adult') return <Empty>{`${channel.name}\n만 19세 이상만 볼 수 있는 채널이에요. 웹의 설정에서 나이를 확인해 주세요`}</Empty>;
 
   const selectTab = (id?: number) => router.setParams({ category: id ? String(id) : undefined });
 

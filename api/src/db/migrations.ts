@@ -200,4 +200,16 @@ CREATE TABLE post_views (
     name: '005_channel_color',
     sql: `ALTER TABLE channels ADD COLUMN color SMALLINT;`,
   },
+  {
+    // 비공개 채널(초대 코드로만 가입) · 만 19세 이상 채널/카테고리 · 나이 확인용 생년월일
+    name: '006_private_adult',
+    sql: `
+ALTER TABLE channels ADD COLUMN visibility VARCHAR(10) NOT NULL DEFAULT 'public';
+ALTER TABLE channels ADD COLUMN invite_code VARCHAR(16);
+ALTER TABLE channels ADD COLUMN adult BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE UNIQUE INDEX uk_channels_invite_code ON channels (invite_code);
+ALTER TABLE channel_categories ADD COLUMN adult BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN birth_date DATE;
+`,
+  },
 ];

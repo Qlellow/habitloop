@@ -18,11 +18,12 @@ export class PreviewsService {
   async previews(keyword: string | undefined, postsPerChannel: number, viewerId?: number) {
     const perChannel = clamp(postsPerChannel, 0, MAX_POSTS_PER_CHANNEL);
     // 인기 채널 목록은 캐시되어 있어 대부분 DB 를 타지 않는다
-    const list = keyword?.trim() ? await this.channels.search(keyword) : await this.channels.popular();
+    const adult = await this.channels.isAdult(viewerId);
+    const list = keyword?.trim() ? await this.channels.search(keyword, adult) : await this.channels.popular(adult);
     const ids = list.map((c) => c.id);
     const [joined, recent] = await Promise.all([
       this.membership.joinedAmong(viewerId, ids),
-      this.posts.recentByChannels(ids, perChannel),
+      this.posts.recentByChannels(ids, perChannel, adult),
     ]);
     const byChannel = new Map<string, PostSummary[]>();
     for (const post of recent) {

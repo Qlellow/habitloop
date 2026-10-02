@@ -1,8 +1,10 @@
-import { useDeferredValue, useState, type CSSProperties, type FormEvent } from 'react';
+import { useDeferredValue, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   plainText,
   useCategoryMutation,
+  useRegenerateInvite,
+  type ChannelDetail,
   useChangeRole,
   useChannel,
   useMemberSearch,
@@ -44,12 +46,13 @@ function CategoryRow({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(category.name);
   const [ownerOnly, setOwnerOnly] = useState(category.ownerOnly);
+  const [adult, setAdult] = useState(!!category.adult);
 
   const save = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     mutation.mutate(
-      { type: 'update', id: category.id, name: name.trim(), ownerOnly },
+      { type: 'update', id: category.id, name: name.trim(), ownerOnly, adult },
       { onSuccess: () => setEditing(false), onError: (err) => toast(err.message) },
     );
   };
@@ -97,6 +100,10 @@ function CategoryRow({
             <input type="checkbox" checked={ownerOnly} onChange={(e) => setOwnerOnly(e.target.checked)} />
             운영진만 글쓰기
           </label>
+          <label className={s.toggle} title="설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요">
+            <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
+            19세 이상
+          </label>
           <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => setEditing(false)}>
             취소
           </button>
@@ -108,7 +115,8 @@ function CategoryRow({
         <>
           <div className={s.catName}>
             {category.name}
-            {category.ownerOnly && <span className={ui.badge}>운영진 전용</span>}
+            {category.ownerOnly && <span className={ui.badge}>운영진 전용 · 공지</span>}
+            {category.adult && <span className="inline-grid place-items-center w-5 h-5 rounded-full bg-danger text-white text-[10px] font-extrabold" aria-label="19세 이상">19</span>}
           </div>
           <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={() => setEditing(true)}>
             수정
@@ -126,16 +134,18 @@ function AddCategory({ slug, disabled }: { slug: string; disabled: boolean }) {
   const mutation = useCategoryMutation(slug);
   const [name, setName] = useState('');
   const [ownerOnly, setOwnerOnly] = useState(false);
+  const [adult, setAdult] = useState(false);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     mutation.mutate(
-      { type: 'create', name: name.trim(), ownerOnly },
+      { type: 'create', name: name.trim(), ownerOnly, adult },
       {
         onSuccess: () => {
           setName('');
           setOwnerOnly(false);
+          setAdult(false);
         },
         onError: (err) => toast(err.message),
       },
@@ -157,10 +167,99 @@ function AddCategory({ slug, disabled }: { slug: string; disabled: boolean }) {
         <input type="checkbox" checked={ownerOnly} onChange={(e) => setOwnerOnly(e.target.checked)} disabled={disabled} />
         운영진만 글쓰기
       </label>
+      <label className={s.toggle} title="설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요">
+        <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} disabled={disabled} />
+        19세 이상
+      </label>
       <button type="submit" className={cn(ui.button, ui.primary)} disabled={disabled || !name.trim() || mutation.isPending}>
         추가
       </button>
     </form>
+  );
+}
+
+/**
+ * 초대: 비공개 채널은 초대 링크 · 코드 · QR 로만 팔로우할 수 있다. 코드를 새로 만들면 예전 것은 막힌다.
+ */
+function InviteSection({ channel }: { channel: ChannelDetail }) {
+  const regenerate = useRegenerateInvite(channel.slug);
+  const [qr, setQr] = useState<string>();
+  const code = channel.inviteCode ?? '';
+  const link = `${location.origin}/invite/${code}`;
+
+  // QR 은 이 화면에서만 쓰므로 라이브러리를 그때 받는다
+  useEffect(() => {
+    if (!code) return;
+    let alive = true;
+    void import('qrcode').then((QR) =>
+      QR.toDataURL(link, { width: 360, margin: 1, color: { dark: '#191f28', light: '#ffffff' } }).then((url) => alive && setQr(url)),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [code, link]);
+
+  const copy = (text: string, what: string) =>
+    navigator.clipboard.writeText(text).then(
+      () => toast(`${what}를 복사했어요`),
+      () => toast('복사하지 못했어요. 직접 선택해서 복사해 주세요'),
+    );
+
+  return (
+    <section className={cn(ui.card, s.settingsSection)}>
+      <h2 className={s.settingsTitle}>초대 {channel.visibility === 'private' ? <span className={cn(ui.badge, 'ml-1 align-[2px]')}>🔒 비공개 채널</span> : null}</h2>
+      <p className={s.settingsDesc}>
+        {channel.visibility === 'private'
+          ? '비공개 채널은 이 링크 · 코드 · QR 로만 팔로우할 수 있어요. 새로 만들면 예전 링크와 코드는 더 이상 쓸 수 없어요.'
+          : '공개 채널은 누구나 팔로우할 수 있지만, 링크나 QR 로 초대할 수도 있어요. 비공개로 바꾸려면 채널 정보 수정에서 공개 설정을 바꿔 주세요.'}
+      </p>
+      {code ? (
+        <div className="flex flex-wrap items-start gap-5">
+          {qr ? (
+            <a href={qr} download={`loop-${channel.slug}-invite.png`} title="QR 코드 이미지로 저장" className="flex-none">
+              <img src={qr} alt="초대 QR 코드" width={144} height={144} className="block w-36 h-36 rounded-md border border-border bg-white p-1" />
+            </a>
+          ) : (
+            <span className={cn(ui.skeleton, 'block w-36 h-36')} />
+          )}
+          <div className="flex-1 min-w-[220px] flex flex-col gap-3">
+            <div>
+              <div className="text-[13px] font-semibold text-fg-sub">초대 코드</div>
+              <div className="flex items-center gap-2 mt-1">
+                <code className="px-3 py-1.5 rounded-md bg-field text-lg font-bold tracking-[0.25em] text-fg-strong">{code}</code>
+                <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => copy(code, '초대 코드')}>
+                  복사
+                </button>
+              </div>
+            </div>
+            <div>
+              <div className="text-[13px] font-semibold text-fg-sub">초대 링크</div>
+              <div className="flex items-center gap-2 mt-1 min-w-0">
+                <span className="min-w-0 truncate text-sm text-fg">{link}</span>
+                <button type="button" className={cn(ui.button, ui.ghost, ui.small, 'flex-none')} onClick={() => copy(link, '초대 링크')}>
+                  복사
+                </button>
+              </div>
+            </div>
+            <div>
+              <button
+                type="button"
+                className={cn(ui.button, ui.text, ui.small, ui.danger, '-ml-2.5')}
+                disabled={regenerate.isPending}
+                onClick={() =>
+                  confirm('초대 코드를 새로 만들까요?\n예전 링크 · 코드 · QR 로는 더 이상 팔로우할 수 없어요.') &&
+                  regenerate.mutate(undefined, { onSuccess: () => toast('새 초대 코드를 만들었어요'), onError: (e) => toast(e.message) })
+                }
+              >
+                새 코드 만들기
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className={ui.help}>초대 코드가 아직 없어요. 채널 정보를 한 번 저장하면 만들어져요.</p>
+      )}
+    </section>
   );
 }
 
@@ -322,6 +421,7 @@ export default function ChannelManagePage() {
           </Link>
         </div>
       </section>
+      <InviteSection channel={channel} />
       <section className={cn(ui.card, s.settingsSection)}>
         <h2 className={s.settingsTitle}>
           카테고리 <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-weak)' }}>{categories.length}/{MAX}</span>

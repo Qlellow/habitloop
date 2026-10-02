@@ -29,6 +29,16 @@ export class ChannelInput {
   @Min(0)
   @Max(CHANNEL_COLOR_COUNT - 1)
   color?: number;
+
+  /** 공개 설정: public(누구나) · private(초대로만) */
+  @IsOptional()
+  @IsIn(['public', 'private'], { message: '공개 설정을 다시 골라 주세요' })
+  visibility?: 'public' | 'private';
+
+  /** 만 19세 이상만 볼 수 있는 채널 */
+  @IsOptional()
+  @IsBoolean()
+  adult?: boolean;
 }
 
 export class ChannelUpdateInput {
@@ -46,6 +56,22 @@ export class ChannelUpdateInput {
   @Min(0)
   @Max(CHANNEL_COLOR_COUNT - 1)
   color?: number;
+
+  @IsOptional()
+  @IsIn(['public', 'private'], { message: '공개 설정을 다시 골라 주세요' })
+  visibility?: 'public' | 'private';
+
+  @IsOptional()
+  @IsBoolean()
+  adult?: boolean;
+}
+
+export class InviteJoinInput {
+  /** 비공개 채널에 팔로우할 때 받은 초대 코드 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  code?: string;
 }
 
 export class CategoryInput {
@@ -56,6 +82,11 @@ export class CategoryInput {
   @IsOptional()
   @IsBoolean()
   ownerOnly?: boolean;
+
+  /** 만 19세 이상만 볼 수 있는 카테고리 */
+  @IsOptional()
+  @IsBoolean()
+  adult?: boolean;
 }
 
 export class CategoryOrderInput {

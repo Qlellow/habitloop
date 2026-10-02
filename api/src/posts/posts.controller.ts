@@ -36,7 +36,7 @@ export class PostsController {
 
   @Public()
   @Get('posts')
-  list(@Query() query: Record<string, string | undefined>) {
+  list(@Query() query: Record<string, string | undefined>, @CurrentUser() user?: AuthUser) {
     return this.posts.list(
       {
         channel: query.channel?.trim() || undefined,
@@ -46,13 +46,14 @@ export class PostsController {
       },
       intParam(query.cursor),
       intParam(query.size) ?? 20,
+      user?.id,
     );
   }
 
   /** 채널 글 목록 (번호 페이지 · 검색 · 정렬) */
   @Public()
   @Get('posts/page')
-  page(@Query() query: Record<string, string | undefined>) {
+  page(@Query() query: Record<string, string | undefined>, @CurrentUser() user?: AuthUser) {
     const channel = query.channel?.trim();
     if (!channel) throw ApiError.badRequest('채널을 알려 주세요');
     const sort = (query.sort && query.sort in SORTS ? query.sort : 'latest') as PostSort;
@@ -66,21 +67,25 @@ export class PostsController {
       },
       intParam(query.page) ?? 1,
       intParam(query.size) ?? 20,
+      user?.id,
     );
   }
 
   /** 채널 공지 (전체 탭 위에 고정) */
   @Public()
   @Get('posts/notices')
-  notices(@Query('channel') channel = '') {
-    return this.posts.notices(channel.trim());
+  notices(@Query('channel') channel = '', @CurrentUser() user?: AuthUser) {
+    return this.posts.notices(channel.trim(), user?.id);
   }
 
   @Public()
   @Get('posts/popular')
-  @Header('Cache-Control', 'public, max-age=30')
-  popular(@Query('channel') channel?: string) {
-    return this.posts.popular(channel?.trim() || undefined);
+  // 비공개 채널 인기글이 공용 캐시에 남지 않게 private
+  @Header('Cache-Control', 'private, max-age=30')
+  async popular(@Query('channel') channel: string | undefined, @CurrentUser() user?: AuthUser) {
+    const slug = channel?.trim() || undefined;
+    if (slug) await this.posts.requireChannelAccess(slug, user?.id);
+    return this.posts.popular(slug);
   }
 
   @Public()
@@ -107,7 +112,8 @@ export class PostsController {
 
   @Post('posts/:id/like')
   @HttpCode(HttpStatus.OK)
-  like(@LoginUser() user: AuthUser, @Param('id') postId: string) {
+  async like(@LoginUser() user: AuthUser, @Param('id') postId: string) {
+    await this.posts.requirePostAccess(id(postId), user.id);
     return this.posts.like(user.id, id(postId));
   }
 
@@ -120,23 +126,26 @@ export class PostsController {
 
   @Public()
   @Get('posts/:id/comments')
-  commentList(
+  async commentList(
     @Param('id') postId: string,
     @Query('cursor') cursor: string | undefined,
     @Query('size') size: string | undefined,
     @CurrentUser() user?: AuthUser,
   ) {
+    await this.posts.requirePostAccess(id(postId), user?.id);
     return this.comments.list(id(postId), intParam(cursor), intParam(size) ?? 30, user?.id);
   }
 
   @Public()
   @Get('posts/:id/comments/best')
-  best(@Param('id') postId: string, @CurrentUser() user?: AuthUser) {
+  async best(@Param('id') postId: string, @CurrentUser() user?: AuthUser) {
+    await this.posts.requirePostAccess(id(postId), user?.id);
     return this.comments.best(id(postId), user?.id);
   }
 
   @Post('posts/:id/comments')
-  addComment(@LoginUser() user: AuthUser, @Param('id') postId: string, @Body() input: CommentInput) {
+  async addComment(@LoginUser() user: AuthUser, @Param('id') postId: string, @Body() input: CommentInput) {
+    await this.posts.requirePostAccess(id(postId), user.id);
     return this.comments.create(user.id, id(postId), input.content);
   }
 
@@ -148,7 +157,8 @@ export class PostsController {
 
   @Post('posts/:id/comments/:commentId/like')
   @HttpCode(HttpStatus.OK)
-  likeComment(@LoginUser() user: AuthUser, @Param('id') postId: string, @Param('commentId') commentId: string) {
+  async likeComment(@LoginUser() user: AuthUser, @Param('id') postId: string, @Param('commentId') commentId: string) {
+    await this.posts.requirePostAccess(id(postId), user.id);
     return this.comments.like(user.id, id(postId), id(commentId));
   }
 
