@@ -1,6 +1,6 @@
 import { RoleBadge } from './RoleBadge';
 import { memo, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 import { compact, timeAgo, type CursorPage, type PostSummary } from '@loop/shared';
 import { preload } from '../lib/preload';
@@ -23,6 +23,7 @@ export const PostItem = memo(function PostItem({
   showExcerpt?: boolean;
 }) {
   const label = badge === 'channel' ? post.channelName : post.categoryName;
+  const navigate = useNavigate();
   return (
     <li className={s.item}>
       <Link
@@ -49,8 +50,18 @@ export const PostItem = memo(function PostItem({
             <CommentIcon /> {compact(post.commentCount)}
           </span>
           <span>조회 {compact(post.viewCount)}</span>
-          <span className={s.author}>
-            <span className="truncate">{post.authorNickname}</span>
+          {/* 작성자를 누르면 프로필로 (글 링크 안이라 <a> 를 겹치지 않고 직접 이동한다) */}
+          <span
+            className={s.author}
+            role="link"
+            title={`${post.authorNickname} 프로필 보기`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(`/u/${post.authorId}`);
+            }}
+          >
+            <span className="truncate hover:underline underline-offset-2">{post.authorNickname}</span>
             <RoleBadge role={post.authorRole} size={16} />
           </span>
         </div>

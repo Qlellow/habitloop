@@ -7,7 +7,7 @@ import { ApiError } from '../common/api-error';
 import { intParam } from '../common/cursor-page';
 import { CommentsService } from './comments.service';
 import { CommentInput, CreatePostInput, UpdatePostInput } from './posts.dto';
-import { PostsService } from './posts.service';
+import { PostsService, SORTS, type PostSort } from './posts.service';
 
 const id = (value: string) => {
   const n = intParam(value);
@@ -47,6 +47,33 @@ export class PostsController {
       intParam(query.cursor),
       intParam(query.size) ?? 20,
     );
+  }
+
+  /** 채널 글 목록 (번호 페이지 · 검색 · 정렬) */
+  @Public()
+  @Get('posts/page')
+  page(@Query() query: Record<string, string | undefined>) {
+    const channel = query.channel?.trim();
+    if (!channel) throw ApiError.badRequest('채널을 알려 주세요');
+    const sort = (query.sort && query.sort in SORTS ? query.sort : 'latest') as PostSort;
+    return this.posts.page(
+      {
+        channel,
+        category: intParam(query.category),
+        q: query.q?.slice(0, 50),
+        sort,
+        excludeNotices: query.excludeNotices === 'true',
+      },
+      intParam(query.page) ?? 1,
+      intParam(query.size) ?? 20,
+    );
+  }
+
+  /** 채널 공지 (전체 탭 위에 고정) */
+  @Public()
+  @Get('posts/notices')
+  notices(@Query('channel') channel = '') {
+    return this.posts.notices(channel.trim());
   }
 
   @Public()

@@ -1,10 +1,11 @@
 import { useLayoutEffect, useState } from 'react';
-import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   ApiError,
+  apiUrl,
   compact,
   timeAgo,
   useAddComment,
@@ -23,6 +24,26 @@ import { Markdown } from '../../src/Markdown';
 import { Avatar, Empty, Heart, Loading, Skeleton, Button } from '../../src/ui';
 import { cn } from '../../src/cn';
 import { useColors } from '../../src/theme';
+
+/** 댓글 안의 사진 ![](/api/images/…) 은 글자 대신 작은 사진으로 */
+const COMMENT_IMAGE = /!\[[^\]\n]*\]\((\/api\/images\/[A-Za-z0-9_-]{16,32})(?:#[^)\s]*)?\)/g;
+
+function CommentContent({ content }: { content: string }) {
+  const images = [...content.matchAll(COMMENT_IMAGE)].map((m) => m[1]);
+  const text = content.replace(COMMENT_IMAGE, '').replace(/\n{3,}/g, '\n\n').trim();
+  return (
+    <>
+      {text ? <Text className="mt-1 text-[15px] leading-[22px] text-fg">{text}</Text> : null}
+      {images.length > 0 ? (
+        <View className="flex-row flex-wrap gap-2 mt-2">
+          {images.map((src, i) => (
+            <Image key={i} source={{ uri: apiUrl(src) }} style={{ width: 120, height: 120, borderRadius: 8 }} resizeMode="cover" />
+          ))}
+        </View>
+      ) : null}
+    </>
+  );
+}
 
 function toast(message: string) {
   Alert.alert(message);
@@ -118,7 +139,7 @@ function CommentItem({ comment: cm, postId, best }: { comment: Comment; postId: 
           </Text>
         ) : null}
       </View>
-      <Text className="mt-1 text-[15px] leading-[22px] text-fg">{cm.content}</Text>
+      <CommentContent content={cm.content} />
       <Pressable
         hitSlop={8}
         className="flex-row items-center gap-1 mt-2 self-start"

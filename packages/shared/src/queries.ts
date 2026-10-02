@@ -11,6 +11,8 @@ import type {
   AuthResponse,
   LoginResponse,
   LoginSession,
+  PostPage,
+  UserProfile,
   ChannelCategory,
   ChannelDetail,
   ChannelInput,
@@ -78,6 +80,49 @@ export function useFeed(filter: FeedFilter, enabled = true) {
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (last) => last.nextCursor,
     enabled,
+  });
+}
+
+export type PostSort = 'latest' | 'likes' | 'comments' | 'views';
+
+export interface ChannelPostsFilter {
+  channel: string;
+  category?: number;
+  q?: string;
+  sort?: PostSort;
+  page?: number;
+  /** 전체 탭: 위에 고정한 공지는 목록에서 뺀다 */
+  excludeNotices?: boolean;
+}
+
+/** 채널 글 목록 (번호 페이지 20개씩 · 검색 · 정렬). 페이지를 넘기는 동안 이전 페이지를 보여 준다 */
+export function useChannelPosts(filter: ChannelPostsFilter) {
+  return useQuery({
+    queryKey: ['posts', 'page', filter] as const,
+    queryFn: ({ signal }) =>
+      api<PostPage>('/api/posts/page', {
+        query: { ...filter, q: filter.q?.trim() || undefined, excludeNotices: filter.excludeNotices ? 'true' : undefined, size: PAGE_SIZE },
+        signal,
+      }),
+    placeholderData: (prev) => prev,
+  });
+}
+
+/** 채널 공지 (운영진 전용 카테고리 글): 전체 탭 위에 고정 */
+export function useNotices(channel: string, enabled = true) {
+  return useQuery({
+    queryKey: ['posts', 'notices', channel] as const,
+    queryFn: ({ signal }) => api<PostSummary[]>('/api/posts/notices', { query: { channel }, signal }),
+    enabled,
+  });
+}
+
+/** 작성자 프로필 */
+export function useUserProfile(id: number) {
+  return useQuery({
+    queryKey: ['user', id] as const,
+    queryFn: ({ signal }) => api<UserProfile>(`/api/users/${id}`, { signal }),
+    enabled: Number.isInteger(id),
   });
 }
 
@@ -313,11 +358,14 @@ export function useCategoryMutation(slug: string) {
 
 /* ───────── 게시글 ───────── */
 
+/** ['posts', ...] 아래 캐시 모양: 무한 스크롤 목록 · 번호 페이지 · 인기글/공지 배열 */
+type PostsCache = InfiniteData<CursorPage<PostSummary>> | PostPage | PostSummary[];
+
 /** 목록·인기글 캐시에 이미 있는 글 요약을 찾는다 (상세 화면을 먼저 그리는 데 쓴다) */
 function findCachedSummary(qc: QueryClient, id: number): PostSummary | undefined {
-  for (const [, data] of qc.getQueriesData<InfiniteData<CursorPage<PostSummary>> | PostSummary[]>({ queryKey: keys.posts })) {
+  for (const [, data] of qc.getQueriesData<PostsCache>({ queryKey: keys.posts })) {
     if (!data) continue;
-    const items = Array.isArray(data) ? data : data.pages.flatMap((p) => p.items);
+    const items = Array.isArray(data) ? data : 'pageParams' in data ? data.pages.flatMap((p) => p.items) : data.items;
     const hit = items.find((p) => p.id === id);
     if (hit) return hit;
   }
@@ -345,9 +393,13 @@ function syncCachedSummary(qc: QueryClient, post: PostDetail) {
     return next.some((p, i) => p !== list[i]) ? next : list;
   };
 
-  qc.setQueriesData<InfiniteData<CursorPage<PostSummary>> | PostSummary[]>({ queryKey: keys.posts }, (data) => {
+  qc.setQueriesData<PostsCache>({ queryKey: keys.posts }, (data) => {
     if (!data) return data;
     if (Array.isArray(data)) return patchList(data);
+    if (!('pageParams' in data)) {
+      const items = patchList(data.items);
+      return items === data.items ? data : { ...data, items };
+    }
     const pages = data.pages.map((page) => {
       const items = patchList(page.items);
       return items === page.items ? page : { ...page, items };

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, useChannel, usePost, useSavePost, type ChannelDetail, type PostDetail } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
-import { Dropdown, type DropdownOption } from '../components/Dropdown';
+import type { DropdownOption } from '../components/Dropdown';
 import { JoinButton } from '../components/JoinButton';
 import { Page } from '../components/Layout';
 import { MarkdownEditor } from '../components/MarkdownEditor';
@@ -75,16 +75,26 @@ function PostForm({
         <h1 className={s.pageTitle}>{initial ? '글 수정' : '글쓰기'}</h1>
       </div>
       <form className={cn(ui.card, s.formCard)} onSubmit={submit}>
+        {/* 어느 카테고리에 쓰는지 한눈에: 칩으로 고른다 */}
+        {selectable.length > 0 && (
+          <div className={w.categoryRow} role="radiogroup" aria-label="카테고리">
+            <span className={w.categoryLabel}>카테고리</span>
+            {options.map((o) => (
+              <button
+                key={String(o.value)}
+                type="button"
+                role="radio"
+                aria-checked={categoryId === o.value}
+                className={w.categoryChip}
+                onClick={() => setCategoryId(o.value)}
+              >
+                {o.value === null ? '없음' : o.label}
+                {o.hint}
+              </button>
+            ))}
+          </div>
+        )}
         <div className={w.titleRow}>
-          {selectable.length > 0 && (
-            <Dropdown
-              label="카테고리"
-              value={categoryId}
-              options={options}
-              onChange={setCategoryId}
-              className={w.category}
-            />
-          )}
           <input
             className={cn(ui.input, w.title)}
             placeholder="제목을 입력해 주세요"

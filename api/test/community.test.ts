@@ -434,6 +434,56 @@ describe('커뮤니티', () => {
     await http().get('/api/images/..%2Fetc').expect(404);
   });
 
+  it('채널 글 목록: 번호 페이지 · 검색 · 정렬 · 공지 고정 · 작성자 프로필', async () => {
+    const owner = await signup('page-owner@test.dev', '페이지주인');
+    const reader = await signup('page-reader@test.dev', '페이지독자');
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'paging', name: '페이지방' }).expect(201);
+    const base = '/api/channels/paging/categories';
+    const [notice, talk] = (
+      await http().post(base).set(bearer(owner)).send({ name: '공지사항', ownerOnly: true }).then(() =>
+        http().post(base).set(bearer(owner)).send({ name: '잡담', ownerOnly: false }),
+      )
+    ).body.map((c: { id: number }) => c.id);
+    const write = (title: string, content: string, categoryId?: number) =>
+      http().post('/api/posts').set(bearer(owner)).send({ channel: 'paging', title, content, categoryId }).expect(201).then((r) => r.body.id as number);
+    await write('공지 1', '규칙', notice);
+    await write('공지 2', '규칙 2', notice);
+    const ids: number[] = [];
+    for (let i = 1; i <= 23; i++) ids.push(await write(`글 ${i}`, i === 7 ? '본문에 사과가 있어요' : '내용', talk));
+    // 7번 글에 좋아요 → 공감순 1위
+    await http().post(`/api/posts/${ids[6]}/like`).set(bearer(reader)).expect(200);
+
+    const page = (q: Record<string, string | number>) => http().get('/api/posts/page').query({ channel: 'paging', ...q }).expect(200).then((r) => r.body);
+    // 전체 탭: 공지는 빼고 20개씩
+    const p1 = await page({ excludeNotices: 'true' });
+    expect(p1).toMatchObject({ total: 23, page: 1, size: 20, pages: 2 });
+    expect(p1.items[0].title).toBe('글 23');
+    expect(p1.items[0].authorId).toBeGreaterThan(0);
+    const p2 = await page({ excludeNotices: 'true', page: 2 });
+    expect(p2.items.map((p: { title: string }) => p.title)).toEqual(['글 3', '글 2', '글 1']);
+    // 범위를 넘는 페이지는 마지막 페이지로
+    expect((await page({ excludeNotices: 'true', page: 99 })).page).toBe(2);
+    // 공지를 빼지 않으면 25개
+    expect((await page({})).total).toBe(25);
+    // 정렬 · 카테고리 · 검색(제목·본문)
+    expect((await page({ sort: 'likes' })).items[0].title).toBe('글 7');
+    expect((await page({ category: notice })).total).toBe(2);
+    expect((await page({ q: '사과' })).items.map((p: { title: string }) => p.title)).toEqual(['글 7']);
+    expect((await page({ q: '글 2' })).total).toBe(5); // 글 2, 20~23
+    await http().get('/api/posts/page').expect(400);
+
+    // 공지 (운영진 전용 카테고리 글), 최신순
+    const notices = (await http().get('/api/posts/notices').query({ channel: 'paging' }).expect(200)).body;
+    expect(notices.map((p: { title: string }) => p.title)).toEqual(['공지 2', '공지 1']);
+
+    // 작성자 프로필: 공개 정보만
+    const profile = (await http().get(`/api/users/${p1.items[0].authorId}`).expect(200)).body;
+    expect(profile).toMatchObject({ nickname: '페이지주인', postCount: 25, commentCount: 0 });
+    expect(profile.email).toBeUndefined();
+    await http().get('/api/users/999999').expect(404);
+    await http().get('/api/users/abc').expect(404);
+  });
+
   it('채널 프로필 이미지', async () => {
     const owner = await signup('icon-owner@test.dev', '아이콘');
     const stranger = await signup('icon-other@test.dev', '남남');
