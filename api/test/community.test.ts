@@ -538,7 +538,9 @@ describe('커뮤니티', () => {
     await http().post('/api/channels').set(bearer(adult)).send({ slug: 'grown', name: '어른방', adult: true }).expect(403);
     await http().put('/api/me/age').set(bearer(adult)).send({ birthDate: '1990-05-01' }).expect(200);
     expect((await http().get('/api/me').set(bearer(adult))).body).toMatchObject({ ageChecked: true, adult: true });
-    await http().put('/api/me/age').set(bearer(adult)).send({ birthDate: '2000-01-01' }).expect(400); // 한 번만
+    // 테스트 중이라 다시 바꿀 수 있다
+    expect((await http().put('/api/me/age').set(bearer(adult)).send({ birthDate: `${new Date().getFullYear() - 10}-01-01` }).expect(200)).body.adult).toBe(false);
+    expect((await http().put('/api/me/age').set(bearer(adult)).send({ birthDate: '1990-05-01' }).expect(200)).body).toMatchObject({ adult: true, birthDate: '1990-05-01' });
     const thisYear = new Date().getFullYear();
     expect((await http().put('/api/me/age').set(bearer(minor)).send({ birthDate: `${thisYear - 15}-01-01` }).expect(200)).body.adult).toBe(false);
     await http().put('/api/me/age').set(bearer(guest)).send({ birthDate: '2001-02-30' }).expect(400);

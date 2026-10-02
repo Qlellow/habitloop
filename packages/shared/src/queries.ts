@@ -311,7 +311,7 @@ export function useRegenerateInvite(slug: string) {
   });
 }
 
-/** 나이 확인: 생년월일 한 번 저장 (바꿀 수 없다) */
+/** 나이 확인: 생년월일 저장 (테스트 중이라 다시 바꿀 수 있다) */
 export function useVerifyAge() {
   const qc = useQueryClient();
   return useMutation({
