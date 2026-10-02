@@ -8,6 +8,8 @@ export interface User {
   ageChecked?: boolean;
   /** 만 19세 이상 (19세 이상 채널·카테고리를 볼 수 있다) */
   adult?: boolean;
+  /** 확인한 생년월일 (YYYY-MM-DD) */
+  birthDate?: string;
 }
 
 /** 로그인한 기기 (마이페이지 > 설정 > 로그인한 기기) */

@@ -156,7 +156,7 @@ function TwoFactorOption() {
 }
 
 /**
- * 나이 확인: 생년월일을 한 번 입력하면 만 19세 이상 채널·카테고리를 볼 수 있다. 입력한 뒤에는 바꿀 수 없다.
+ * 나이 확인: 생년월일을 입력하면 만 19세 이상 채널·카테고리를 볼 수 있다. (테스트 중이라 다시 바꿀 수 있다)
  * (휴대폰 본인인증 같은 외부 인증은 아직 붙이지 않았다)
  */
 function AgeOption() {
@@ -168,7 +168,6 @@ function AgeOption() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!birth) return;
-    if (!confirm(`생년월일을 ${birth}(으)로 저장할까요?\n저장한 뒤에는 바꿀 수 없어요.`)) return;
     verify.mutate(birth, {
       onSuccess: (u) => {
         setOpen(false);
@@ -186,13 +185,21 @@ function AgeOption() {
           </div>
           <div className={s.optionDesc}>
             {user?.ageChecked
-              ? '나이를 확인했어요. 생년월일은 바꿀 수 없어요.'
-              : '생년월일을 확인하면 만 19세 이상만 볼 수 있는 채널·카테고리를 볼 수 있어요. 한 번 저장하면 바꿀 수 없어요.'}
+              ? `생년월일 ${user.birthDate ?? ''} 로 확인했어요. 지금은 테스트 중이라 바꿀 수 있어요.`
+              : '생년월일을 확인하면 만 19세 이상만 볼 수 있는 채널·카테고리를 볼 수 있어요.'}
           </div>
         </div>
-        {!user?.ageChecked && !open && (
-          <button type="button" className={cn(ui.button, ui.secondary, ui.small)} onClick={() => setOpen(true)}>
-            확인하기
+        {!open && (
+          <button
+            type="button"
+            className={cn(ui.button, user?.ageChecked ? ui.ghost : ui.secondary, ui.small)}
+            onClick={() => {
+              setBirth(user?.birthDate ?? '');
+              verify.reset();
+              setOpen(true);
+            }}
+          >
+            {user?.ageChecked ? '생년월일 바꾸기' : '확인하기'}
           </button>
         )}
       </div>

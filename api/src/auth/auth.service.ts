@@ -18,10 +18,11 @@ interface UserRow {
   /** 생년월일로 나이를 확인했는지 · 만 19세 이상인지 */
   ageChecked?: boolean;
   adult?: boolean;
+  birthDate?: string | null;
 }
 
 const USER_COLUMNS = `id, email, password, nickname, two_factor_enabled AS "twoFactorEnabled",
-  birth_date IS NOT NULL AS "ageChecked", coalesce(birth_date <= (current_date - interval '19 years'), false) AS adult`;
+  birth_date IS NOT NULL AS "ageChecked", to_char(birth_date, 'YYYY-MM-DD') AS "birthDate", coalesce(birth_date <= (current_date - interval '19 years'), false) AS adult`;
 const SELECT_USER = `SELECT ${USER_COLUMNS} FROM users`;
 
 export const userResponse = (u: UserRow) => ({
@@ -31,6 +32,7 @@ export const userResponse = (u: UserRow) => ({
   twoFactorEnabled: u.twoFactorEnabled,
   ageChecked: !!u.ageChecked,
   adult: !!u.adult,
+  birthDate: u.birthDate ?? undefined,
 });
 
 const normalize = (email: string) => email.trim().toLowerCase();
@@ -206,12 +208,12 @@ export class AuthService {
   }
 
   /**
-   * 나이 확인: 생년월일을 한 번 저장한다 (바꿀 수 없다). 만 19세 이상이면 19세 이상 채널·카테고리를 볼 수 있다.
+   * 나이 확인: 생년월일을 저장한다. 만 19세 이상이면 19세 이상 채널·카테고리를 볼 수 있다.
+   * 지금은 테스트 중이라 다시 바꿀 수 있다 (실서비스에서는 한 번만 저장하게 막을 것)
    * 지금은 본인이 입력한 생년월일로 확인한다 (휴대폰 본인인증 같은 외부 인증은 붙이지 않았다)
    */
   async verifyAge(userId: number, birthDate: string) {
-    const user = await this.find(userId);
-    if (user.ageChecked) throw ApiError.badRequest('이미 나이를 확인했어요');
+    await this.find(userId);
     const d = new Date(`${birthDate}T00:00:00Z`);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== birthDate) {
       throw ApiError.badRequest('생년월일을 YYYY-MM-DD 로 입력해 주세요');
