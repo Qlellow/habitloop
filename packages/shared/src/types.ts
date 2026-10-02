@@ -125,12 +125,31 @@ export interface PostSummary {
   categoryName?: string;
   title: string;
   excerpt: string;
+  authorId: number;
   authorNickname: string;
   authorRole?: ChannelRole;
   likeCount: number;
   commentCount: number;
   viewCount: number;
   createdAt: string;
+}
+
+/** 번호 페이지 목록 (채널 글 목록) */
+export interface PostPage {
+  items: PostSummary[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
+
+/** 작성자 프로필 (공개 정보만) */
+export interface UserProfile {
+  id: number;
+  nickname: string;
+  createdAt: string;
+  postCount: number;
+  commentCount: number;
 }
 
 export interface PostDetail {

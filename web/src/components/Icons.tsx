@@ -68,6 +68,34 @@ export const ChevronDownIcon = (p: P) => (
   </svg>
 );
 
+export const ChevronLeftIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M15 6l-6 6 6 6" {...stroke} />
+  </svg>
+);
+
+export const ChevronRightIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M9 6l6 6-6 6" {...stroke} />
+  </svg>
+);
+
+/** 공지 고정: 압정 */
+export const PinIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M9 3h6l-1 6 3 3v2h-4v6l-1 1-1-1v-6H7v-2l3-3-1-6z" fill="currentColor" />
+  </svg>
+);
+
+/** 이미지 */
+export const ImageIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="3.5" y="5" width="17" height="14" rx="2.5" {...stroke} />
+    <circle cx="9" cy="10" r="1.6" fill="currentColor" />
+    <path d="M5 17l4.5-4.5 3 3L15 13l4 4" {...stroke} />
+  </svg>
+);
+
 export const ChevronUpIcon = (p: P) => (
   <svg {...base} {...p}>
     <path d="M18 15l-6-6-6 6" {...stroke} />

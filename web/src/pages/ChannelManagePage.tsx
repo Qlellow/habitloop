@@ -1,4 +1,4 @@
-import { useDeferredValue, useState, type FormEvent } from 'react';
+import { useDeferredValue, useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   plainText,
@@ -15,6 +15,7 @@ import { ChannelIcon } from '../components/ChannelIcon';
 import { Page } from '../components/Layout';
 import { toast } from '../components/Toast';
 import { preload } from '../lib/preload';
+import { moveItem, useSortable } from '../lib/sortable';
 import { ui } from '../components/ui';
 import s from './pages.styles';
 import { cn } from '../lib/cn';
@@ -27,12 +28,17 @@ function CategoryRow({
   count,
   onMove,
   slug,
+  handle,
+  style,
 }: {
   category: ChannelCategory;
   index: number;
   count: number;
   onMove: (from: number, to: number) => void;
   slug: string;
+  /** 끌어서 순서 바꾸기 손잡이 */
+  handle: ReturnType<ReturnType<typeof useSortable>['handleProps']>;
+  style?: CSSProperties;
 }) {
   const mutation = useCategoryMutation(slug);
   const [editing, setEditing] = useState(false);
@@ -54,7 +60,16 @@ function CategoryRow({
   };
 
   return (
-    <li className={s.catRow}>
+    <li className={s.catRow} style={style}>
+      {/* 손잡이를 잡고 끌어서 순서를 바꾼다 (▲▼ 는 키보드·터치용) */}
+      <span
+        {...handle}
+        role="presentation"
+        title="끌어서 순서 바꾸기"
+        className="flex-none grid place-items-center w-6 h-9 rounded-sm text-fg-weak select-none hover:bg-field hover:text-fg-sub"
+      >
+        ⠿
+      </span>
       <div className={s.catOrder}>
         <button type="button" aria-label={`${category.name} 위로`} disabled={index === 0 || editing} onClick={() => onMove(index, index - 1)}>
           ▲
@@ -256,6 +271,8 @@ export default function ChannelManagePage() {
   const { slug = '' } = useParams();
   const { data: channel, isPending, isPlaceholderData, isError } = useChannel(slug);
   const reorder = useCategoryMutation(slug);
+  const [pendingOrder, setPendingOrder] = useState<number[]>();
+  const sortable = useSortable((from, to) => move(from, to));
 
   if (isPending || isPlaceholderData) {
     return (
@@ -266,11 +283,18 @@ export default function ChannelManagePage() {
   }
   if (isError || !channel.canManage) return <Navigate to={`/c/${slug}`} replace />;
 
-  const categories = channel.categories;
+  // 놓자마자 새 순서로 보여 주고(서버 응답을 기다리면 한 번 튄다), 저장이 끝나면 서버 순서를 쓴다
+  const categories = pendingOrder
+    ? pendingOrder.map((id) => channel.categories.find((c) => c.id === id)).filter((c): c is ChannelCategory => !!c)
+    : channel.categories;
   const move = (from: number, to: number) => {
-    const ids = categories.map((c) => c.id);
-    [ids[from], ids[to]] = [ids[to], ids[from]];
-    reorder.mutate({ type: 'reorder', ids }, { onError: (err) => toast(err.message) });
+    const ids = moveItem(
+      categories.map((c) => c.id),
+      from,
+      to,
+    );
+    setPendingOrder(ids);
+    reorder.mutate({ type: 'reorder', ids }, { onError: (err) => toast(err.message), onSettled: () => setPendingOrder(undefined) });
   };
 
   return (
@@ -303,12 +327,21 @@ export default function ChannelManagePage() {
           카테고리 <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-weak)' }}>{categories.length}/{MAX}</span>
         </h2>
         <p className={s.settingsDesc}>
-          채널 글을 공지사항·소설·일러스트처럼 나눠 보세요. 여기 순서대로 채널 탭에 보여요. 카테고리를 지워도 글은 남아요.
+          채널 글을 공지사항·소설·일러스트처럼 나눠 보세요. 왼쪽 ⠿ 를 끌어서 순서를 바꾸면 그 순서대로 채널 탭에 보여요. '운영진만 글쓰기' 카테고리의 글은 공지로 전체 탭 위에 고정돼요. 카테고리를 지워도 글은 남아요.
         </p>
         {categories.length > 0 ? (
-          <ul className={s.catTable}>
+          <ul className={s.catTable} ref={sortable.listRef}>
             {categories.map((c, i) => (
-              <CategoryRow key={c.id} category={c} index={i} count={categories.length} onMove={move} slug={slug} />
+              <CategoryRow
+                key={c.id}
+                category={c}
+                index={i}
+                count={categories.length}
+                onMove={move}
+                slug={slug}
+                handle={sortable.handleProps(i)}
+                style={sortable.itemStyle(i)}
+              />
             ))}
           </ul>
         ) : (

@@ -1,8 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   ApiError,
+  apiUrl,
   compact,
+  uploadPostImage,
   timeAgo,
   useAddComment,
   useAuth,
@@ -20,7 +22,8 @@ import {
   type PostSummary,
 } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
-import { HeartIcon } from '../components/Icons';
+import { HeartIcon, ImageIcon } from '../components/Icons';
+import { prepareUpload } from '../lib/postImage';
 import { Page } from '../components/Layout';
 import { RoleBadge } from '../components/RoleBadge';
 import { Markdown } from '../components/Markdown';
@@ -54,6 +57,39 @@ function LikeButton({ post }: { post: PostDetail }) {
   );
 }
 
+/** 댓글 하나에 붙일 수 있는 사진 수 */
+const MAX_COMMENT_IMAGES = 4;
+
+/** 댓글 안의 이미지 ![](주소): 글자는 그대로, 이미지는 작은 사진으로 (누르면 원본) */
+const COMMENT_IMAGE = /!\[[^\]\n]*\]\((\/api\/images\/[A-Za-z0-9_-]{16,32})(?:#[^)\s]*)?\)/g;
+
+function CommentBody({ content }: { content: string }) {
+  const parts: ReactNode[] = [];
+  const images: string[] = [];
+  let last = 0;
+  for (const m of content.matchAll(COMMENT_IMAGE)) {
+    parts.push(content.slice(last, m.index));
+    images.push(m[1]);
+    last = m.index! + m[0].length;
+  }
+  parts.push(content.slice(last));
+  const text = parts.join('').replace(/\n{3,}/g, '\n\n').trim();
+  return (
+    <>
+      {text && <p className={s.commentBody}>{text}</p>}
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {images.map((src, i) => (
+            <a key={i} href={apiUrl(src)} target="_blank" rel="noopener noreferrer" className="block">
+              <img src={apiUrl(src)} alt="" loading="lazy" className="block max-h-56 max-w-[min(100%,320px)] rounded-md border border-border object-cover" />
+            </a>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 function CommentItem({ comment: c, postId, best }: { comment: Comment; postId: number; best?: boolean }) {
   const { isLoggedIn } = useAuth();
   const toLogin = useLoginRedirect(postId);
@@ -67,15 +103,15 @@ function CommentItem({ comment: c, postId, best }: { comment: Comment; postId: n
     <li className={s.comment}>
       <div className={s.commentHead}>
         {best && <span className={s.bestBadge}>BEST</span>}
-        <span className={s.commentAuthor}>
+        <Link to={`/u/${c.authorId}`} className={cn(s.commentAuthor, 'hover:underline underline-offset-2')} onPointerEnter={preload.user}>
           {c.authorNickname}
           <RoleBadge role={c.authorRole} size={16} />
-        </span>
+        </Link>
         <time className={s.commentTime} dateTime={c.createdAt} title={new Date(c.createdAt).toLocaleString()}>
           {timeAgo(c.createdAt)}
         </time>
       </div>
-      <p className={s.commentBody}>{c.content}</p>
+      <CommentBody content={c.content} />
       <div className={s.commentActions}>
         <button
           type="button"
@@ -111,12 +147,35 @@ function Comments({ postId, count }: { postId: number; count?: number }) {
   const best = useBestComments(postId);
   const add = useAddComment(postId);
   const [text, setText] = useState('');
+  // 댓글에 붙일 사진 (올린 주소). 등록하면 본문 뒤에 ![](주소) 로 붙는다
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(0);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const attach = (files: File[]) => {
+    const picked = files.filter((f) => f.type.startsWith('image/')).slice(0, MAX_COMMENT_IMAGES - images.length);
+    if (files.length && !picked.length && images.length >= MAX_COMMENT_IMAGES) toast(`사진은 ${MAX_COMMENT_IMAGES}장까지 붙일 수 있어요`);
+    for (const file of picked) {
+      setUploading((n) => n + 1);
+      prepareUpload(file)
+        .then((blob) => uploadPostImage(blob))
+        .then(({ url }) => setImages((list) => [...list, url].slice(0, MAX_COMMENT_IMAGES)))
+        .catch((e: Error) => toast(e.message))
+        .finally(() => setUploading((n) => n - 1));
+    }
+  };
 
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
-    const content = text.trim();
-    if (!content) return;
-    add.mutate(content, { onSuccess: () => setText(''), onError: (err) => toast(err.message) });
+    const content = [text.trim(), ...images.map((url) => `![](${url})`)].filter(Boolean).join('\n');
+    if (!content || uploading) return;
+    add.mutate(content, {
+      onSuccess: () => {
+        setText('');
+        setImages([]);
+      },
+      onError: (err) => toast(err.message),
+    });
   };
 
   const comments = query.data?.pages.flatMap((p) => p.items) ?? [];
@@ -139,12 +198,69 @@ function Comments({ postId, count }: { postId: number; count?: number }) {
             onKeyDown={(e) => {
               if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submit();
             }}
+            onPaste={(e) => {
+              const files = Array.from(e.clipboardData.files);
+              if (files.some((f) => f.type.startsWith('image/'))) {
+                e.preventDefault();
+                attach(files);
+              }
+            }}
+            onDrop={(e) => {
+              const files = Array.from(e.dataTransfer.files);
+              if (files.some((f) => f.type.startsWith('image/'))) {
+                e.preventDefault();
+                attach(files);
+              }
+            }}
             aria-label="댓글"
           />
+          {(images.length > 0 || uploading > 0) && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {images.map((url) => (
+                <span key={url} className="relative">
+                  <img src={apiUrl(url)} alt="" className="block w-20 h-20 rounded-md object-cover border border-border" />
+                  <button
+                    type="button"
+                    aria-label="사진 빼기"
+                    className="absolute -top-1.5 -right-1.5 grid place-items-center w-6 h-6 rounded-full bg-toast text-white text-xs"
+                    onClick={() => setImages((list) => list.filter((u) => u !== url))}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+              {Array.from({ length: uploading }, (_, i) => (
+                <span key={`up-${i}`} className={cn(ui.skeleton, 'block w-20 h-20')} aria-label="사진 올리는 중" />
+              ))}
+            </div>
+          )}
           <div className={s.composerFoot}>
+            <button
+              type="button"
+              className={cn(ui.button, ui.text, ui.small, 'gap-1 !ml-0 [&>svg]:w-[18px] [&>svg]:h-[18px]')}
+              onClick={() => fileRef.current?.click()}
+              disabled={images.length + uploading >= MAX_COMMENT_IMAGES}
+              title={`사진 붙이기 (최대 ${MAX_COMMENT_IMAGES}장, 붙여넣기·끌어다 놓기도 돼요)`}
+            >
+              <ImageIcon />
+              사진
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden
+              onChange={(e) => {
+                attach(Array.from(e.target.files ?? []));
+                e.target.value = '';
+              }}
+            />
             {/* 폰·터치 기기에는 키보드 단축키가 없으므로 숨긴다 */}
-            <span className="max-[520px]:hidden [@media(pointer:coarse)]:hidden">Ctrl + Enter 로 등록</span>
-            <button type="submit" className={cn(ui.button, ui.primary)} disabled={!text.trim() || add.isPending}>
+            <span className="ml-3 max-[520px]:hidden [@media(pointer:coarse)]:hidden">Ctrl + Enter 로 등록</span>
+            <button type="submit" className={cn(ui.button, ui.primary)} disabled={(!text.trim() && !images.length) || uploading > 0 || add.isPending}>
               등록
             </button>
           </div>
@@ -277,10 +393,10 @@ export default function PostDetailPage() {
                 {post.author.nickname.slice(0, 1)}
               </span>
               <div>
-                <div className={s.bylineName}>
+                <Link to={`/u/${post.author.id}`} className={cn(s.bylineName, 'hover:underline underline-offset-2')} onPointerEnter={preload.user}>
                   {post.author.nickname}
                   <RoleBadge role={post.author.role} />
-                </div>
+                </Link>
                 <div className={s.bylineMeta}>
                   <time dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString()}>
                     {timeAgo(post.createdAt)}

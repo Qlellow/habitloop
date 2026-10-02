@@ -21,6 +21,7 @@ import { VerificationService } from './mail/verification.service';
 import { CommentsService } from './posts/comments.service';
 import { PostsController } from './posts/posts.controller';
 import { PostsService } from './posts/posts.service';
+import { UsersController } from './users/users.controller';
 
 @Controller()
 class HealthController {
@@ -33,7 +34,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, ChannelsController, PostsController, ImagesController],
+  controllers: [HealthController, AuthController, ChannelsController, PostsController, ImagesController, UsersController],
   providers: [
     Database,
     ImagesService,

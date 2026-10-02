@@ -17,6 +17,7 @@ export interface PostSummary {
   categoryName?: string;
   title: string;
   excerpt: string;
+  authorId: number;
   authorNickname: string;
   /** 작성자의 채널 운영진 역할 (닉네임 옆 배지). 일반 멤버는 없음 */
   authorRole?: ChannelRole;
@@ -34,6 +35,27 @@ export interface PostSearch {
 }
 
 export const MAX_PAGE_SIZE = 50;
+
+/** 채널 글 목록 정렬 */
+export const SORTS = {
+  latest: 'p.id DESC',
+  likes: 'p.like_count DESC, p.id DESC',
+  comments: 'p.comment_count DESC, p.id DESC',
+  views: 'p.view_count DESC, p.id DESC',
+} as const;
+export type PostSort = keyof typeof SORTS;
+
+export interface PostPageQuery {
+  channel: string;
+  category?: number;
+  q?: string;
+  sort: PostSort;
+  /** 전체 탭: 위에 고정되는 공지(운영진 전용 카테고리 글)는 목록에서 뺀다 */
+  excludeNotices?: boolean;
+}
+
+/** 공지로 위에 고정하는 글은 최대 이만큼 */
+const NOTICE_LIMIT = 30;
 const POPULAR_DAYS = 7;
 const POPULAR_SIZE = 5;
 
@@ -43,7 +65,7 @@ const POPULAR_SIZE = 5;
  */
 const SELECT_SUMMARY = `
   SELECT p.id, c.slug AS "channelSlug", c.name AS "channelName", cat.name AS "categoryName", p.title, p.excerpt,
-         a.nickname AS "authorNickname", m.role AS "authorRole", p.like_count AS "likeCount",
+         p.author_id AS "authorId", a.nickname AS "authorNickname", m.role AS "authorRole", p.like_count AS "likeCount",
          p.comment_count AS "commentCount", p.view_count AS "viewCount", p.created_at AS "createdAt"
   FROM posts p
   JOIN users a ON a.id = p.author_id
@@ -109,6 +131,47 @@ export class PostsService {
       params,
     );
     return cursorPage(rows.map(toSummary), pageSize);
+  }
+
+  /**
+   * 채널 글 목록 (번호 페이지): 검색(제목·본문) · 카테고리 · 정렬. 전체 개수도 함께 돌려준다.
+   * 공지(운영진 전용 카테고리 글)는 전체 탭에서 위에 따로 고정하므로 excludeNotices 면 뺀다.
+   */
+  async page(query: PostPageQuery, page: number, size: number) {
+    const pageSize = clamp(size, 1, MAX_PAGE_SIZE);
+    const where: string[] = ['c.slug = $1'];
+    const params: unknown[] = [query.channel];
+    const add = (sql: string, value: unknown) => {
+      params.push(value);
+      where.push(sql.replaceAll('?', `$${params.length}`));
+    };
+    if (query.category != null) add('p.category_id = ?', query.category);
+    if (query.excludeNotices) where.push('(cat.owner_only IS NOT TRUE)');
+    const q = query.q?.trim().toLowerCase();
+    if (q) add("(lower(p.title) LIKE ? ESCAPE '\\' OR lower(p.content) LIKE ? ESCAPE '\\')", `%${escapeLike(q)}%`);
+    const whereSql = `WHERE ${where.join(' AND ')}`;
+    const countRow = await this.db.one<{ n: string }>(
+      `SELECT count(*) AS n FROM posts p JOIN channels c ON c.id = p.channel_id
+       LEFT JOIN channel_categories cat ON cat.id = p.category_id ${whereSql}`,
+      params,
+    );
+    const total = Number(countRow?.n ?? 0);
+    const pages = Math.max(1, Math.ceil(total / pageSize));
+    const current = clamp(page, 1, pages);
+    const rows = await this.db.query(
+      `${SELECT_SUMMARY} ${whereSql} ORDER BY ${SORTS[query.sort]} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, pageSize, (current - 1) * pageSize],
+    );
+    return { items: rows.map(toSummary), total, page: current, size: pageSize, pages };
+  }
+
+  /** 채널 공지: 운영진 전용 카테고리의 글 (최신순). 전체 탭 위에 고정한다 */
+  async notices(channel: string): Promise<PostSummary[]> {
+    const rows = await this.db.query(
+      `${SELECT_SUMMARY} WHERE c.slug = $1 AND cat.owner_only ORDER BY p.id DESC LIMIT $2`,
+      [channel, NOTICE_LIMIT],
+    );
+    return rows.map(toSummary);
   }
 
   popular(channel?: string): Promise<PostSummary[]> {
