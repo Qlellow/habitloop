@@ -484,6 +484,91 @@ describe('커뮤니티', () => {
     await http().get('/api/users/abc').expect(404);
   });
 
+  it('비공개 채널: 초대 코드로만 팔로우, 팔로워만 보기', async () => {
+    const owner = await signup('priv-owner@test.dev', '비밀주인');
+    const friend = await signup('priv-friend@test.dev', '초대받은');
+    const stranger = await signup('priv-stranger@test.dev', '지나가는');
+    const made = (await http().post('/api/channels').set(bearer(owner)).send({ slug: 'secret', name: '비밀방', visibility: 'private' }).expect(201)).body;
+    expect(made.visibility).toBe('private');
+    const code = made.inviteCode as string;
+    expect(code).toMatch(/^[A-Z0-9]{8}$/);
+    const postId = (await http().post('/api/posts').set(bearer(owner)).send({ channel: 'secret', title: '비밀 글', content: '쉿' }).expect(201)).body.id;
+
+    // 목록 · 검색 · 홈 피드 · 인기글에 나오지 않는다
+    expect((await http().get('/api/channels').query({ q: '비밀' })).body).toHaveLength(0);
+    expect((await http().get('/api/channels')).body.some((c: { slug: string }) => c.slug === 'secret')).toBe(false);
+    expect((await http().get('/api/posts').set(bearer(stranger))).body.items.some((p: { id: number }) => p.id === postId)).toBe(false);
+
+    // 팔로워가 아니면 이름·프로필만 (잠김), 글·댓글은 403
+    const locked = (await http().get('/api/channels/secret').set(bearer(stranger)).expect(200)).body;
+    expect(locked).toMatchObject({ locked: 'private', name: '비밀방', categories: [] });
+    expect(locked.inviteCode).toBeUndefined();
+    await http().get(`/api/posts/${postId}`).set(bearer(stranger)).expect(403);
+    await http().get(`/api/posts/${postId}/comments`).expect(403);
+    await http().get('/api/posts/page').query({ channel: 'secret' }).set(bearer(stranger)).expect(403);
+    await http().get('/api/posts').query({ channel: 'secret' }).expect(403);
+
+    // 코드 없이 · 틀린 코드로는 팔로우할 수 없다
+    await http().post('/api/channels/secret/members').set(bearer(stranger)).send({}).expect(403);
+    await http().post('/api/channels/secret/members').set(bearer(stranger)).send({ code: 'WRONG123' }).expect(403);
+
+    // 초대 화면 → 초대 코드로 팔로우 (소문자로 입력해도 된다)
+    expect((await http().get(`/api/invites/${code}`).expect(200)).body).toMatchObject({ slug: 'secret', name: '비밀방', joined: false });
+    expect((await http().post(`/api/invites/${code.toLowerCase()}`).set(bearer(friend)).expect(200)).body.slug).toBe('secret');
+    expect((await http().get(`/api/posts/${postId}`).set(bearer(friend)).expect(200)).body.title).toBe('비밀 글');
+    expect((await http().get('/api/channels/secret').set(bearer(friend))).body.locked).toBeUndefined();
+
+    // 초대 코드 새로 만들기 → 예전 코드는 막힌다 (관리자만)
+    await http().post('/api/channels/secret/invite').set(bearer(friend)).expect(403);
+    const next = (await http().post('/api/channels/secret/invite').set(bearer(owner)).expect(200)).body.inviteCode;
+    expect(next).not.toBe(code);
+    await http().get(`/api/invites/${code}`).expect(404);
+    await http().post('/api/channels/secret/members').set(bearer(stranger)).send({ code: next }).expect(200);
+
+    // 공개로 바꾸면 누구나
+    await http().put('/api/channels/secret').set(bearer(owner)).send({ name: '비밀방', visibility: 'public' }).expect(200);
+    expect((await http().get('/api/channels').query({ q: '비밀' })).body).toHaveLength(1);
+  });
+
+  it('만 19세 이상: 나이 확인한 사람만 채널·카테고리를 본다', async () => {
+    const adult = await signup('adult@test.dev', '어른');
+    const minor = await signup('minor@test.dev', '청소년');
+    const guest = await signup('noage@test.dev', '미확인');
+    // 나이 확인 전에는 19세 이상 채널을 만들 수 없다
+    await http().post('/api/channels').set(bearer(adult)).send({ slug: 'grown', name: '어른방', adult: true }).expect(403);
+    await http().put('/api/me/age').set(bearer(adult)).send({ birthDate: '1990-05-01' }).expect(200);
+    expect((await http().get('/api/me').set(bearer(adult))).body).toMatchObject({ ageChecked: true, adult: true });
+    await http().put('/api/me/age').set(bearer(adult)).send({ birthDate: '2000-01-01' }).expect(400); // 한 번만
+    const thisYear = new Date().getFullYear();
+    expect((await http().put('/api/me/age').set(bearer(minor)).send({ birthDate: `${thisYear - 15}-01-01` }).expect(200)).body.adult).toBe(false);
+    await http().put('/api/me/age').set(bearer(guest)).send({ birthDate: '2001-02-30' }).expect(400);
+
+    await http().post('/api/channels').set(bearer(adult)).send({ slug: 'grown', name: '어른방', adult: true }).expect(201);
+    const postId = (await http().post('/api/posts').set(bearer(adult)).send({ channel: 'grown', title: '어른 글', content: 'c' }).expect(201)).body.id;
+    // 성인에게만 목록에 보이고, 아니면 잠김
+    expect((await http().get('/api/channels').query({ q: '어른' }).set(bearer(adult))).body).toHaveLength(1);
+    expect((await http().get('/api/channels').query({ q: '어른' }).set(bearer(minor))).body).toHaveLength(0);
+    expect((await http().get('/api/channels/grown').set(bearer(minor))).body.locked).toBe('adult');
+    expect((await http().get('/api/channels/grown')).body.locked).toBe('adult');
+    await http().get(`/api/posts/${postId}`).set(bearer(minor)).expect(403);
+    expect((await http().get(`/api/posts/${postId}`).set(bearer(adult)).expect(200)).body.title).toBe('어른 글');
+    await http().post('/api/channels/grown/members').set(bearer(minor)).expect(403);
+
+    // 일반 채널 안의 19세 이상 카테고리
+    await http().post('/api/channels').set(bearer(adult)).send({ slug: 'mixed', name: '섞인방' }).expect(201);
+    const cats = (await http().post('/api/channels/mixed/categories').set(bearer(adult)).send({ name: '성인', adult: true }).expect(200)).body;
+    expect(cats[0].adult).toBe(true);
+    const adultCat = cats[0].id;
+    await http().post('/api/channels/mixed/members').set(bearer(minor)).expect(200);
+    await http().post('/api/posts').set(bearer(minor)).send({ channel: 'mixed', categoryId: adultCat, title: 't', content: 'c' }).expect(403);
+    const hidden = (await http().post('/api/posts').set(bearer(adult)).send({ channel: 'mixed', categoryId: adultCat, title: '성인 카테고리 글', content: 'c' }).expect(201)).body.id;
+    await http().post('/api/posts').set(bearer(adult)).send({ channel: 'mixed', title: '보통 글', content: 'c' }).expect(201);
+    expect((await http().get('/api/channels/mixed').set(bearer(minor))).body.categories).toHaveLength(0);
+    expect((await http().get('/api/posts/page').query({ channel: 'mixed' }).set(bearer(minor))).body.items.map((p: { title: string }) => p.title)).toEqual(['보통 글']);
+    expect((await http().get('/api/posts/page').query({ channel: 'mixed' }).set(bearer(adult))).body.total).toBe(2);
+    await http().get(`/api/posts/${hidden}`).set(bearer(minor)).expect(403);
+  });
+
   it('채널 프로필 이미지', async () => {
     const owner = await signup('icon-owner@test.dev', '아이콘');
     const stranger = await signup('icon-other@test.dev', '남남');

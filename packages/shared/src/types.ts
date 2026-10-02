@@ -4,6 +4,10 @@ export interface User {
   nickname: string;
   /** 2단계 인증: 켜면 로그인할 때 이메일로 받은 인증번호를 한 번 더 입력한다 */
   twoFactorEnabled?: boolean;
+  /** 설정에서 생년월일로 나이를 확인했는지 */
+  ageChecked?: boolean;
+  /** 만 19세 이상 (19세 이상 채널·카테고리를 볼 수 있다) */
+  adult?: boolean;
 }
 
 /** 로그인한 기기 (마이페이지 > 설정 > 로그인한 기기) */
@@ -58,6 +62,10 @@ export interface ChannelSummary {
   iconVersion: number;
   /** 이미지가 없을 때 프로필 색 번호 (CHANNEL_COLORS). 없으면 고리로 정한 색 */
   color?: number | null;
+  /** public: 누구나 / private: 초대로만 팔로우, 팔로워만 볼 수 있다 */
+  visibility?: 'public' | 'private';
+  /** 만 19세 이상만 */
+  adult?: boolean;
 }
 
 /** 채널 목록용: 채널 + 최근 글 미리보기(최대 8개) */
@@ -90,9 +98,15 @@ export interface ChannelCategory {
   name: string;
   /** 운영진(소유자·관리자·매니저)만 글을 쓸 수 있는 카테고리 (공지사항 등) */
   ownerOnly: boolean;
+  /** 만 19세 이상만 볼 수 있는 카테고리 */
+  adult?: boolean;
 }
 
 export interface ChannelDetail extends ChannelSummary {
+  /** 볼 수 없는 채널: private(초대 필요) · adult(나이 확인 필요). 이때는 이름·프로필만 온다 */
+  locked?: 'private' | 'adult';
+  /** 운영진(관리)에게만: 비공개 채널 초대 코드 */
+  inviteCode?: string;
   ownerNickname?: string;
   createdAt: string;
   /** 소유자인지 */
@@ -116,6 +130,19 @@ export interface ChannelInput {
   description: string;
   /** 기본 프로필 색 번호 */
   color?: number;
+  visibility?: 'public' | 'private';
+  adult?: boolean;
+}
+
+/** 초대 화면에 보이는 채널 정보 */
+export interface InviteInfo {
+  slug: string;
+  name: string;
+  iconVersion: number;
+  color: number | null;
+  memberCount: number;
+  adult: boolean;
+  joined: boolean;
 }
 
 export interface PostSummary {

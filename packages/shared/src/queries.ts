@@ -11,6 +11,7 @@ import type {
   AuthResponse,
   LoginResponse,
   LoginSession,
+  InviteInfo,
   PostPage,
   UserProfile,
   ChannelCategory,
@@ -96,8 +97,9 @@ export interface ChannelPostsFilter {
 }
 
 /** 채널 글 목록 (번호 페이지 20개씩 · 검색 · 정렬). 페이지를 넘기는 동안 이전 페이지를 보여 준다 */
-export function useChannelPosts(filter: ChannelPostsFilter) {
+export function useChannelPosts(filter: ChannelPostsFilter, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: ['posts', 'page', filter] as const,
     queryFn: ({ signal }) =>
       api<PostPage>('/api/posts/page', {
@@ -185,7 +187,7 @@ export function useSaveChannel(slug?: string) {
       slug
         ? api<ChannelDetail>(`/api/channels/${encodeURIComponent(slug)}`, {
             method: 'PUT',
-            body: { name: input.name, description: input.description, color: input.color },
+            body: { name: input.name, description: input.description, color: input.color, visibility: input.visibility, adult: input.adult },
           })
         : api<ChannelDetail>('/api/channels', { method: 'POST', body: input }),
     onSuccess: (channel) => {
@@ -263,13 +265,63 @@ export function useMyChannels(enabled: boolean) {
 export function useMembership(slug: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (join: boolean) =>
+    /** code: 비공개 채널의 초대 코드 */
+    mutationFn: (join: boolean | { code: string }) =>
       api<MembershipResponse>(`/api/channels/${encodeURIComponent(slug)}/members${join ? '' : '/me'}`, {
         method: join ? 'POST' : 'DELETE',
+        body: typeof join === 'object' ? join : undefined,
       }),
-    onSuccess: (res) => {
+    onSuccess: (res, join) => {
       qc.setQueryData<ChannelDetail>(keys.channel(slug), (c) => c && { ...c, ...res });
       qc.invalidateQueries({ queryKey: ['channels'] });
+      // 잠겨 있던 비공개 채널: 팔로우했으니 소개·카테고리·글을 다시 받는다
+      if (typeof join === 'object') qc.invalidateQueries({ queryKey: keys.channel(slug) });
+    },
+  });
+}
+
+/** 초대 링크 화면: 채널 이름·프로필 */
+export function useInvite(code: string) {
+  return useQuery({
+    queryKey: ['invite', code] as const,
+    queryFn: ({ signal }) => api<InviteInfo>(`/api/invites/${encodeURIComponent(code)}`, { signal }),
+    retry: false,
+  });
+}
+
+/** 초대 코드로 팔로우 */
+export function useAcceptInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) => api<{ slug: string }>(`/api/invites/${encodeURIComponent(code.trim())}`, { method: 'POST' }),
+    onSuccess: ({ slug }) => {
+      qc.invalidateQueries({ queryKey: keys.channel(slug) });
+      qc.invalidateQueries({ queryKey: ['channels'] });
+      qc.invalidateQueries({ queryKey: ['invite'] });
+    },
+  });
+}
+
+/** 초대 코드 새로 만들기 (예전 링크·코드·QR 은 막힌다) */
+export function useRegenerateInvite(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ inviteCode: string }>(`/api/channels/${encodeURIComponent(slug)}/invite`, { method: 'POST' }),
+    onSuccess: ({ inviteCode }) => qc.setQueryData<ChannelDetail>(keys.channel(slug), (c) => c && { ...c, inviteCode }),
+  });
+}
+
+/** 나이 확인: 생년월일 한 번 저장 (바꿀 수 없다) */
+export function useVerifyAge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (birthDate: string) => api<User>('/api/me/age', { method: 'PUT', body: { birthDate } }),
+    onSuccess: (user) => {
+      authStore.updateUser(user);
+      // 19세 이상 채널·글이 새로 보일 수 있다
+      qc.invalidateQueries({ queryKey: ['channels'] });
+      qc.invalidateQueries({ queryKey: ['channel'] });
+      qc.invalidateQueries({ queryKey: keys.posts });
     },
   });
 }
@@ -317,8 +369,8 @@ export function useCategoryMutation(slug: string) {
   return useMutation({
     mutationFn: (
       action:
-        | { type: 'create'; name: string; ownerOnly: boolean }
-        | { type: 'update'; id: number; name: string; ownerOnly: boolean }
+        | { type: 'create'; name: string; ownerOnly: boolean; adult?: boolean }
+        | { type: 'update'; id: number; name: string; ownerOnly: boolean; adult?: boolean }
         | { type: 'delete'; id: number }
         | { type: 'reorder'; ids: number[] },
     ) => {

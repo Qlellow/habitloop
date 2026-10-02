@@ -10,6 +10,7 @@ import HomePage from './pages/HomePage';
 // 첫 화면(홈)만 메인 번들에 넣고 나머지 화면은 라우트 단위로 쪼개서 필요할 때 받는다
 const PostDetailPage = lazy(loaders.post);
 const UserPage = lazy(loaders.user);
+const InvitePage = lazy(loaders.invite);
 const WritePage = lazy(loaders.write);
 const LoginPage = lazy(loaders.login);
 const SignupPage = lazy(loaders.signup);
@@ -74,6 +75,8 @@ const router = createBrowserRouter([
       { path: '/posts/:id', element: <PostDetailPage /> },
       // 작성자 프로필
       { path: '/u/:id', element: <UserPage /> },
+      // 비공개 채널 초대 링크 · QR
+      { path: '/invite/:code', element: <InvitePage /> },
       { path: '/posts/:id/edit', element: auth(<WritePage />) },
       { path: '/write', element: auth(<WritePage />) },
       { path: '/channels', element: <ChannelsPage /> },

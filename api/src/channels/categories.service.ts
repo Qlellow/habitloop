@@ -31,9 +31,9 @@ export class CategoriesService {
       throw ApiError.conflict('같은 이름의 카테고리가 이미 있어요');
     }
     await this.db.execute(
-      `INSERT INTO channel_categories (channel_id, name, owner_only, position)
-       SELECT $1, $2, $3, coalesce(max(position), -1) + 1 FROM channel_categories WHERE channel_id = $1`,
-      [channel.id, name, !!input.ownerOnly],
+      `INSERT INTO channel_categories (channel_id, name, owner_only, adult, position)
+       SELECT $1, $2, $3, $4, coalesce(max(position), -1) + 1 FROM channel_categories WHERE channel_id = $1`,
+      [channel.id, name, !!input.ownerOnly, !!input.adult],
     );
     return this.channels.categories(channel.id);
   }
@@ -45,7 +45,12 @@ export class CategoriesService {
     if (name !== category.name && (await this.db.one('SELECT 1 FROM channel_categories WHERE channel_id = $1 AND name = $2', [channel.id, name]))) {
       throw ApiError.conflict('같은 이름의 카테고리가 이미 있어요');
     }
-    await this.db.execute('UPDATE channel_categories SET name = $1, owner_only = $2 WHERE id = $3', [name, !!input.ownerOnly, category.id]);
+    await this.db.execute('UPDATE channel_categories SET name = $1, owner_only = $2, adult = $3 WHERE id = $4', [
+      name,
+      !!input.ownerOnly,
+      !!input.adult,
+      category.id,
+    ]);
     return this.channels.categories(channel.id);
   }
 

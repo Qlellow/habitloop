@@ -86,3 +86,9 @@ export class PasswordResetInput {
   @StrongPassword()
   newPassword!: string;
 }
+
+export class AgeInput {
+  @NotBlank('생년월일을 입력해 주세요')
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: '생년월일을 YYYY-MM-DD 로 입력해 주세요' })
+  birthDate!: string;
+}

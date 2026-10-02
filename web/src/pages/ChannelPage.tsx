@@ -1,6 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ApiError, compact, timeAgo, useAuth, useChannel, useChannelPosts, useNotices, type PostSort, type PostSummary } from '@loop/shared';
+import {
+  ApiError,
+  compact,
+  timeAgo,
+  useAuth,
+  useChannel,
+  useChannelPosts,
+  useMembership,
+  useNotices,
+  type ChannelDetail,
+  type PostSort,
+  type PostSummary,
+} from '@loop/shared';
+import { toast } from '../components/Toast';
+import { useAuthState } from '../lib/authNav';
 import { Dropdown } from '../components/Dropdown';
 import { ChevronDownIcon, ChevronUpIcon, PinIcon, SearchIcon } from '../components/Icons';
 import { Pagination } from '../components/Pagination';
@@ -73,6 +87,79 @@ function Notices({ notices }: { notices: PostSummary[] }) {
   );
 }
 
+/**
+ * 볼 수 없는 채널: 비공개(초대 코드로 팔로우) · 19세 이상(설정에서 나이 확인)
+ */
+function LockedGate({ channel }: { channel: ChannelDetail }) {
+  const { isLoggedIn, user } = useAuth();
+  const authState = useAuthState();
+  const join = useMembership(channel.slug);
+  const [code, setCode] = useState('');
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (code.trim().length < 4) return;
+    join.mutate(
+      { code: code.trim() },
+      {
+        onSuccess: () => toast(`${channel.name} 채널을 팔로우했어요`),
+        onError: (err) => toast(err.message),
+      },
+    );
+  };
+  if (channel.locked === 'adult') {
+    return (
+      <section className={cn(ui.card, 'flex flex-col items-center px-6 py-14 text-center')}>
+        <span className="grid place-items-center w-14 h-14 rounded-full bg-danger text-white text-xl font-extrabold">19</span>
+        <h2 className="mt-4 mb-1.5 text-xl font-bold text-fg-strong">만 19세 이상만 볼 수 있는 채널이에요</h2>
+        <p className="mt-0 mb-6 text-fg-sub">
+          {user?.ageChecked ? '나이 확인 결과 만 19세 미만이라 볼 수 없어요.' : '설정에서 생년월일로 나이를 확인하면 볼 수 있어요.'}
+        </p>
+        {!isLoggedIn ? (
+          <Link to="/login" state={authState} className={cn(ui.button, ui.primary)}>
+            로그인
+          </Link>
+        ) : (
+          !user?.ageChecked && (
+            <Link to="/me/settings" className={cn(ui.button, ui.primary)}>
+              나이 확인하러 가기
+            </Link>
+          )
+        )}
+      </section>
+    );
+  }
+  return (
+    <section className={cn(ui.card, 'flex flex-col items-center px-6 py-14 text-center')}>
+      <span className="grid place-items-center w-14 h-14 rounded-full bg-field text-2xl" aria-hidden>
+        🔒
+      </span>
+      <h2 className="mt-4 mb-1.5 text-xl font-bold text-fg-strong">비공개 채널이에요</h2>
+      <p className="mt-0 mb-6 text-fg-sub">초대받은 사람만 볼 수 있어요. 받은 초대 링크를 열거나 초대 코드를 입력해 주세요.</p>
+      {isLoggedIn ? (
+        <form className="flex w-full max-w-[340px] gap-2" onSubmit={submit}>
+          <input
+            className={cn(ui.input, 'flex-1 text-center tracking-[0.2em] uppercase')}
+            placeholder="초대 코드"
+            aria-label="초대 코드"
+            maxLength={16}
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+            autoCapitalize="characters"
+            spellCheck={false}
+          />
+          <button type="submit" className={cn(ui.button, ui.primary)} disabled={code.length < 4 || join.isPending}>
+            팔로우
+          </button>
+        </form>
+      ) : (
+        <Link to="/login" state={authState} className={cn(ui.button, ui.primary)}>
+          로그인하고 초대 코드 입력하기
+        </Link>
+      )}
+    </section>
+  );
+}
+
 export default function ChannelPage() {
   const { slug = '' } = useParams();
   const [params, setParams] = useSearchParams();
@@ -87,8 +174,20 @@ export default function ChannelPage() {
   const page = Math.max(1, Number(params.get('page')) || 1);
   // 전체 탭(검색 중이 아닐 때): 공지는 위에 고정하고 목록에서는 뺀다
   const pinNotices = !active && !q;
-  const notices = useNotices(slug, pinNotices);
-  const list = useChannelPosts({ channel: slug, category: active?.id, q, sort, page, excludeNotices: pinNotices });
+  // 잠긴 채널(비공개 · 19세 이상)은 글을 받지 않는다 (서버도 403)
+  const open = !!channel && !channel.locked && !isPlaceholderData;
+  const notices = useNotices(slug, pinNotices && open);
+  const list = useChannelPosts(
+    {
+      channel: slug,
+      category: active?.id,
+      q,
+      sort,
+      page,
+      excludeNotices: pinNotices,
+    },
+    open,
+  );
   const { showExcerpt } = useSettings();
   /** 주소(?category·q·sort·page)를 고친다. 페이지 말고 다른 걸 바꾸면 1페이지로 */
   const update = (next: { category?: number | null; q?: string; sort?: PostSort; page?: number }) => {
@@ -130,14 +229,7 @@ export default function ChannelPage() {
   const writeTo = `/write?${writeParams}`;
 
   return (
-    <Page
-      variant="twoRight"
-      right={
-        <>
-          <PopularCard channel={slug} title="이 채널 인기글" />
-        </>
-      }
-    >
+    <Page variant="twoRight" right={<>{open && <PopularCard channel={slug} title="이 채널 인기글" />}</>}>
       <section className={ui.card} ref={headerRef}>
         <div className={cn(s.banner, categories.length === 0 && 'pb-6')}>
           {channel ? (
@@ -145,37 +237,43 @@ export default function ChannelPage() {
               <div className={s.bannerTop}>
                 <ChannelIcon channel={channel} size={56} />
                 <div className={s.bannerInfo}>
-                  <h1 className={s.bannerName}>{channel.name}</h1>
+                  <h1 className={s.bannerName}>
+                    {channel.name}
+                    {channel.visibility === 'private' && (
+                      <span className={cn(ui.badge, 'ml-2 align-[3px]')} title="초대받은 사람만 팔로우할 수 있는 채널">
+                        🔒 비공개
+                      </span>
+                    )}
+                    {channel.adult && (
+                      <span
+                        className="ml-1.5 align-[3px] inline-grid place-items-center w-6 h-6 rounded-full bg-danger text-white text-[11px] font-extrabold"
+                        title="만 19세 이상"
+                        aria-label="만 19세 이상"
+                      >
+                        19
+                      </span>
+                    )}
+                  </h1>
                   <div className={s.bannerSlug}>
                     팔로워 {compact(channel.memberCount)}명 · 글 {compact(channel.postCount)}개
                   </div>
                 </div>
                 <div className={s.bannerActions}>
-                  {!isPlaceholderData && <BookmarkButton channel={channel} />}
-                  {!isPlaceholderData && <JoinButton channel={channel} />}
+                  {!isPlaceholderData && !channel.locked && <BookmarkButton channel={channel} />}
+                  {!isPlaceholderData && !channel.locked && <JoinButton channel={channel} />}
                   {channel.canManage && (
-                    <Link
-                      to={`/c/${slug}/manage`}
-                      className={cn(ui.button, ui.ghost)}
-                      onPointerEnter={preload.channelManage}
-                    >
+                    <Link to={`/c/${slug}/manage`} className={cn(ui.button, ui.ghost)} onPointerEnter={preload.channelManage}>
                       채널 관리
                     </Link>
                   )}
                   {canWrite && isLoggedIn && (
-                    <Link
-                      to={writeTo}
-                      className={cn(ui.button, ui.primary)}
-                      onPointerEnter={preload.write}
-                    >
+                    <Link to={writeTo} className={cn(ui.button, ui.primary)} onPointerEnter={preload.write}>
                       글쓰기
                     </Link>
                   )}
                 </div>
               </div>
-              {channel.description && (
-                <ChannelIntro key={channel.slug} source={channel.description} headerRef={headerRef} />
-              )}
+              {channel.description && <ChannelIntro key={channel.slug} source={channel.description} headerRef={headerRef} />}
             </>
           ) : (
             <div className={s.bannerTop} style={{ paddingBottom: 20 }}>
@@ -190,74 +288,82 @@ export default function ChannelPage() {
               전체
             </button>
             {categories.map((c) => (
-              <button
-                type="button"
-                key={c.id}
-                role="tab"
-                className={ui.tab}
-                aria-selected={active?.id === c.id}
-                onClick={() => selectTab(c.id)}
-              >
+              <button type="button" key={c.id} role="tab" className={ui.tab} aria-selected={active?.id === c.id} onClick={() => selectTab(c.id)}>
                 {c.name}
               </button>
             ))}
           </div>
         )}
       </section>
-      <section className={ui.card} ref={listRef}>
-        {/* 목록 위: 검색(제목·본문) · 카테고리 · 정렬 (공지는 정렬과 상관없이 위에 고정) */}
-        <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3 border-b border-line">
-          <label className="relative flex-1 min-w-[180px]">
-            <SearchIcon className="absolute left-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none" />
-            <input
-              type="search"
-              className={cn(ui.input, 'pl-7')}
-              placeholder={active ? `'${active.name}'에서 검색` : '이 채널에서 검색'}
-              aria-label="채널 글 검색"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              maxLength={50}
-            />
-          </label>
-          {categories.length > 0 && (
+      {channel?.locked && !isPlaceholderData && <LockedGate channel={channel} />}
+      {open && (
+        <section className={ui.card} ref={listRef}>
+          {/* 목록 위: 검색(제목·본문) · 카테고리 · 정렬 (공지는 정렬과 상관없이 위에 고정) */}
+          <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3 border-b border-line">
+            <label className="relative flex-1 min-w-[180px]">
+              <SearchIcon className="absolute left-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none" />
+              <input
+                type="search"
+                className={cn(ui.input, 'pl-7')}
+                placeholder={active ? `'${active.name}'에서 검색` : '이 채널에서 검색'}
+                aria-label="채널 글 검색"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                maxLength={50}
+              />
+            </label>
+            {categories.length > 0 && (
+              <Dropdown
+                label="카테고리"
+                value={active?.id ?? null}
+                options={[
+                  { value: null, label: '전체 카테고리' },
+                  ...categories.map((c) => ({
+                    value: c.id as number | null,
+                    label: c.name,
+                  })),
+                ]}
+                onChange={(v) => selectTab(v ?? undefined)}
+                className="w-[150px] max-[520px]:flex-1"
+              />
+            )}
             <Dropdown
-              label="카테고리"
-              value={active?.id ?? null}
-              options={[{ value: null, label: '전체 카테고리' }, ...categories.map((c) => ({ value: c.id as number | null, label: c.name }))]}
-              onChange={(v) => selectTab(v ?? undefined)}
-              className="w-[150px] max-[520px]:flex-1"
+              label="정렬"
+              value={sort}
+              options={SORT_OPTIONS}
+              onChange={(v) => update({ sort: v })}
+              className="w-[120px] max-[520px]:flex-1"
             />
-          )}
-          <Dropdown label="정렬" value={sort} options={SORT_OPTIONS} onChange={(v) => update({ sort: v })} className="w-[120px] max-[520px]:flex-1" />
-        </div>
-        {pinNotices && notices.data && <Notices notices={notices.data} />}
-        {list.isPending ? (
-          <PostListSkeleton />
-        ) : list.isError ? (
-          <div className={ui.empty}>
-            불러오지 못했어요
-            <div style={{ marginTop: 12 }}>
-              <button type="button" className={cn(ui.button, ui.secondary, ui.small)} onClick={() => list.refetch()}>
-                다시 시도
-              </button>
+          </div>
+          {pinNotices && notices.data && <Notices notices={notices.data} />}
+          {list.isPending ? (
+            <PostListSkeleton />
+          ) : list.isError ? (
+            <div className={ui.empty}>
+              불러오지 못했어요
+              <div style={{ marginTop: 12 }}>
+                <button type="button" className={cn(ui.button, ui.secondary, ui.small)} onClick={() => list.refetch()}>
+                  다시 시도
+                </button>
+              </div>
             </div>
-          </div>
-        ) : list.data.items.length === 0 ? (
-          <div className={ui.empty}>
-            {q ? `'${q}'(으)로 찾은 글이 없어요` : active ? `'${active.name}'에 아직 글이 없어요` : '이 채널의 첫 글을 남겨 보세요!'}
-          </div>
-        ) : (
-          <>
-            {/* 페이지를 넘기는 동안에는 이전 페이지를 흐리게 보여 준다 */}
-            <ul className={cn('list-none m-0 p-0 transition-opacity', list.isPlaceholderData && 'opacity-60')}>
-              {list.data.items.map((post) => (
-                <PostItem key={post.id} post={post} badge="category" showExcerpt={showExcerpt} />
-              ))}
-            </ul>
-            <Pagination page={list.data.page} pages={list.data.pages} onChange={goPage} />
-          </>
-        )}
-      </section>
+          ) : list.data.items.length === 0 ? (
+            <div className={ui.empty}>
+              {q ? `'${q}'(으)로 찾은 글이 없어요` : active ? `'${active.name}'에 아직 글이 없어요` : '이 채널의 첫 글을 남겨 보세요!'}
+            </div>
+          ) : (
+            <>
+              {/* 페이지를 넘기는 동안에는 이전 페이지를 흐리게 보여 준다 */}
+              <ul className={cn('list-none m-0 p-0 transition-opacity', list.isPlaceholderData && 'opacity-60')}>
+                {list.data.items.map((post) => (
+                  <PostItem key={post.id} post={post} badge="category" showExcerpt={showExcerpt} />
+                ))}
+              </ul>
+              <Pagination page={list.data.page} pages={list.data.pages} onChange={goPage} />
+            </>
+          )}
+        </section>
+      )}
     </Page>
   );
 }

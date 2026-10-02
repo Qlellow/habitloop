@@ -13,8 +13,20 @@ export class MembershipService {
   ) {}
 
   /** 여러 번 눌러도 결과가 같다 (이미 가입했으면 그대로) */
-  async join(userId: number, slug: string) {
+  async join(userId: number, slug: string, code?: string) {
     const channel = await this.channels.findBySlug(slug);
+    // 이미 팔로우했으면 그대로. 아니면 19세 이상 채널은 나이 확인, 비공개 채널은 초대 코드가 필요하다
+    if (!(await this.channels.roleOf(channel.id, userId))) {
+      if (channel.adult && !(await this.channels.isAdult(userId))) {
+        throw ApiError.forbidden('만 19세 이상만 팔로우할 수 있는 채널이에요. 설정에서 나이를 확인해 주세요');
+      }
+      if (channel.visibility === 'private') {
+        const row = await this.db.one<{ code: string | null }>('SELECT invite_code AS code FROM channels WHERE id = $1', [channel.id]);
+        if (!code || !row?.code || code.trim().toUpperCase() !== row.code) {
+          throw ApiError.forbidden('비공개 채널이에요. 받은 초대 코드나 링크로 팔로우해 주세요');
+        }
+      }
+    }
     const memberCount = await this.db.transaction(async () => {
       // 동시에 두 번 눌려도 (channel_id, user_id) unique 제약 + ON CONFLICT 가 중복을 막는다
       const added = await this.db.execute(
