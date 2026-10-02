@@ -32,19 +32,12 @@ export const PostItem = memo(function PostItem({
         onPointerEnter={preload.post}
         onFocus={preload.post}
       >
+        {/* 위: 채널(또는 카테고리) ··· 시간 / 아래: 공감·댓글·조회 ··· 작성자 */}
         <div className={s.meta}>
-          {label && (
-            <>
-              <span className={s.badge}>{label}</span>
-              <span>·</span>
-            </>
-          )}
-          <span className="inline-flex items-center gap-1">
-            {post.authorNickname}
-            <RoleBadge role={post.authorRole} size={16} />
-          </span>
-          <span>·</span>
-          <time dateTime={post.createdAt}>{timeAgo(post.createdAt)}</time>
+          {label && <span className={s.badge}>{label}</span>}
+          <time className={s.time} dateTime={post.createdAt}>
+            {timeAgo(post.createdAt)}
+          </time>
         </div>
         <h3 className={s.title}>{post.title}</h3>
         {showExcerpt && <p className={s.excerpt}>{post.excerpt}</p>}
@@ -56,6 +49,10 @@ export const PostItem = memo(function PostItem({
             <CommentIcon /> {compact(post.commentCount)}
           </span>
           <span>조회 {compact(post.viewCount)}</span>
+          <span className={s.author}>
+            <span className="truncate">{post.authorNickname}</span>
+            <RoleBadge role={post.authorRole} size={16} />
+          </span>
         </div>
       </Link>
     </li>

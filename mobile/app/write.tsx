@@ -17,7 +17,7 @@ function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: s
   if (!open && selected) {
     return (
       <Pressable className="flex-row items-center gap-2.5 p-3 rounded-md bg-field mb-3 active:opacity-70" onPress={() => setOpen(true)}>
-        <ChannelIcon slug={selected.slug} name={selected.name} size={30} />
+        <ChannelIcon slug={selected.slug} name={selected.name} color={selected.color} size={30} />
         <Text className="flex-1 text-base font-semibold text-fg-strong">{selected.name}</Text>
         <Text className="text-sm font-semibold text-primary">변경</Text>
       </Pressable>
@@ -35,7 +35,7 @@ function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: s
             setOpen(false);
           }}
         >
-          <ChannelIcon slug={c.slug} name={c.name} size={30} />
+          <ChannelIcon slug={c.slug} name={c.name} color={c.color} size={30} />
           <Text className="flex-1 text-base font-semibold text-fg-strong">{c.name}</Text>
           <Text className="text-[13px] text-fg-weak">c/{c.slug}</Text>
         </Pressable>
@@ -131,7 +131,7 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
       <ScrollView contentContainerClassName="p-5 pb-10" keyboardShouldPersistTaps="handled">
         {initial ? (
           <View className="flex-row items-center gap-2.5 p-3 rounded-md bg-field mb-3">
-            <ChannelIcon slug={initial.channel.slug} name={initial.channel.name} size={30} />
+            <ChannelIcon slug={initial.channel.slug} name={initial.channel.name} color={initial.channel.color} size={30} />
             <Text className="flex-1 text-base font-semibold text-fg-strong">{initial.channel.name}</Text>
           </View>
         ) : (

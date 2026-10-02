@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { channelColor, channelIconUrl } from '@loop/shared';
 
-type IconChannel = { slug: string; name: string; iconVersion?: number };
+type IconChannel = { slug: string; name: string; iconVersion?: number; color?: number | null };
 
 /**
  * 채널 프로필. 올린 이미지가 있으면 이미지를, 없으면 채널 색 위에 첫 글자를 그린다.
@@ -37,7 +37,7 @@ export function ChannelIcon({ channel, size = 32, src }: { channel: IconChannel;
         width: size,
         height: size,
         borderRadius: radius,
-        background: channelColor(channel.slug),
+        background: channelColor(channel.slug, channel.color),
         color: '#fff',
         fontSize: size * 0.44,
         fontWeight: 800,

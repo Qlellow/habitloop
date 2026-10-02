@@ -35,7 +35,7 @@ const s = {
 
   // 댓글
   composer: 'px-5 pb-4 [&_textarea]:min-h-[84px]',
-  composerFoot: 'flex items-center justify-between mt-2 text-[13px] text-fg-weak',
+  composerFoot: 'flex items-center justify-between mt-2 [&>button]:ml-auto text-[13px] text-fg-weak',
   loginPrompt: 'mx-5 mt-0 mb-4 p-4 rounded-md bg-field text-center text-fg-sub [&_a]:text-primary [&_a]:font-semibold',
   comments: 'list-none m-0 p-0 border-t border-line',
   // 구분선은 좌우를 본문 여백만큼 들인다 (padding 안쪽에 그려짐)

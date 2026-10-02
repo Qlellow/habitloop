@@ -41,7 +41,7 @@ export default function ChannelsScreen() {
       }
       renderItem={({ item }) => (
         <Pressable onPress={() => router.push(`/c/${item.slug}`)} className="flex-row items-center gap-3.5 px-5 py-3 active:bg-pressed">
-          <ChannelIcon slug={item.slug} name={item.name} size={42} />
+          <ChannelIcon slug={item.slug} name={item.name} color={item.color} size={42} />
           <View className="flex-1">
             <Text className="text-base font-semibold text-fg-strong">{item.name}</Text>
             <Text className="mt-0.5 text-sm text-fg-sub" numberOfLines={1}>

@@ -140,7 +140,7 @@ export function useSaveChannel(slug?: string) {
       slug
         ? api<ChannelDetail>(`/api/channels/${encodeURIComponent(slug)}`, {
             method: 'PUT',
-            body: { name: input.name, description: input.description },
+            body: { name: input.name, description: input.description, color: input.color },
           })
         : api<ChannelDetail>('/api/channels', { method: 'POST', body: input }),
     onSuccess: (channel) => {

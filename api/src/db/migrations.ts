@@ -195,4 +195,9 @@ CREATE TABLE post_views (
 );
 `,
   },
+  {
+    // 이미지가 없는 채널 프로필의 색 (CHANNEL_COLORS 의 번호). 예전 채널은 NULL → 고리로 정한 색
+    name: '005_channel_color',
+    sql: `ALTER TABLE channels ADD COLUMN color SMALLINT;`,
+  },
 ];

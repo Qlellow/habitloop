@@ -85,7 +85,7 @@ const router = createBrowserRouter([
         path: '/me',
         element: auth(<MyLayout />),
         children: [
-          { index: true, element: <Navigate to="/me/posts" replace /> },
+          { index: true, element: <Navigate to="/me/profile" replace /> },
           { path: 'posts', element: <MyPostsPage /> },
           { path: 'channels', element: <MyChannelsPage /> },
           { path: 'profile', element: <ProfilePage /> },

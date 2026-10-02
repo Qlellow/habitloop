@@ -112,7 +112,6 @@ export default function SignupPage() {
     return (
       <AuthShell
         variant="signup"
-        step="2 / 2 · 이메일 인증"
         title="이메일 인증"
         desc={
           <>
@@ -148,7 +147,6 @@ export default function SignupPage() {
   return (
     <AuthShell
       variant="signup"
-      step="1 / 2 · 정보 입력"
       title="루프 시작하기"
       desc="몇 가지만 알려 주시면 바로 함께할 수 있어요."
       switchText="이미 회원이신가요?"

@@ -31,6 +31,8 @@
   --primary-pressed: var(--blue-600);
   --primary-weak: var(--blue-50);
   --danger: var(--red-500);
+  /* 글자로 쓰는 빨강: 다크 배경에서는 더 밝게 (삭제·로그아웃 같은 위험한 동작) */
+  --danger-text: var(--red-500);
   --skeleton: var(--grey-100);
   --danger-weak: var(--red-50);
   --toast-bg: rgba(25, 31, 40, 0.94);
@@ -71,6 +73,7 @@
   --primary-weak: rgba(49, 130, 246, 0.16);
   --skeleton: #2a2a31;
   --danger-weak: rgba(240, 68, 82, 0.14);
+  --danger-text: #ff7a85;
   --toast-bg: rgba(70, 70, 80, 0.96);
   --role-owner-bg: rgba(245, 167, 0, 0.18);
   --role-admin-bg: rgba(3, 178, 108, 0.18);
@@ -94,6 +97,7 @@
     --primary-weak: rgba(49, 130, 246, 0.16);
     --skeleton: #2a2a31;
     --danger-weak: rgba(240, 68, 82, 0.14);
+    --danger-text: #ff7a85;
     --toast-bg: rgba(70, 70, 80, 0.96);
   --role-owner-bg: rgba(245, 167, 0, 0.18);
   --role-admin-bg: rgba(3, 178, 108, 0.18);
@@ -203,8 +207,15 @@
  * 3) expand 0.4초 (63.64 → 100%): 새 화면 카드가 가운데에서 좌우로 펼쳐지며 원래 폭으로 돌아온다.
  * 두 화면의 카드 크기(680px)가 같으므로 위치·크기는 그대로 두고 가려지는 범위만 바꾼다.
  */
-.auth-card {
+/* 전환 링크를 누른 순간에만(data-auth-swap) 카드에 이름을 붙인다.
+   react-router 는 뒤로가기(POP)에도 예전에 쓴 전환을 다시 틀어 주므로, 이름이 없으면 그때는 그냥 바뀐다 */
+:root[data-auth-swap] .auth-card {
   view-transition-name: auth-card;
+}
+/* 페이지 전체(root)는 섞지 않고 바로 바꾼다 (전환은 카드만) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
 }
 ::view-transition-group(auth-card) {
   animation: none;
@@ -257,7 +268,7 @@
 }
 /* 그림판이 숨는 좁은 화면이나 움직임 줄이기 설정에서는 전환 애니메이션 없이 바로 바꾼다 */
 @media (max-width: 860px) {
-  .auth-card {
+  :root[data-auth-swap] .auth-card {
     view-transition-name: none;
   }
 }
@@ -410,4 +421,37 @@
 .loop-img-editable:hover .loop-img-frame,
 .loop-img-editable:focus-visible .loop-img-frame {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+/*
+ * 스크롤바: 루프 디자인에 맞춘 얇은 알약 모양. 평소에는 연하게, 올리면 조금 진하게.
+ * Chromium · Safari 는 ::-webkit-scrollbar, Firefox 는 scrollbar-color (Chromium 은 표준 속성이 있으면 그것만 쓰므로 나눈다)
+ */
+:root {
+  --scroll-thumb: color-mix(in srgb, var(--text-weak) 38%, transparent);
+  --scroll-thumb-hover: color-mix(in srgb, var(--text-weak) 70%, transparent);
+}
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--scroll-thumb) padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover) padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scroll-thumb) transparent;
+  }
 }

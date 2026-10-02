@@ -187,8 +187,14 @@ describe('커뮤니티', () => {
     const req = { slug: 'books', name: '독서', description: '책 이야기' };
 
     await http().post('/api/channels').send(req).expect(401);
-    await http().post('/api/channels').set(bearer(owner)).send(req).expect(201);
+    const made = (await http().post('/api/channels').set(bearer(owner)).send(req).expect(201)).body;
+    // 기본 프로필 색은 만들 때 정해져 고리와 상관없이 그대로 (안 주면 무작위)
+    expect(made.color).toBeGreaterThanOrEqual(0);
+    expect(made.color).toBeLessThan(8);
     await http().post('/api/channels').set(bearer(stranger)).send(req).expect(409);
+    await http().post('/api/channels').set(bearer(stranger)).send({ slug: 'colored', name: '색고른채널', color: 3 }).expect(201);
+    expect((await http().get('/api/channels/colored')).body.color).toBe(3);
+    await http().post('/api/channels').set(bearer(stranger)).send({ slug: 'badcolor', name: '잘못된색', color: 99 }).expect(400);
     await http().post('/api/channels').set(bearer(stranger)).send({ slug: 'books2', name: '독서' }).expect(409);
     await http().post('/api/channels').set(bearer(stranger)).send({ slug: 'new', name: '새채널' }).expect(409);
     await http().post('/api/channels').set(bearer(stranger)).send({ slug: 'Bad Slug!', name: '잘못된주소' }).expect(400);

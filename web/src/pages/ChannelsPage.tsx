@@ -68,7 +68,10 @@ function boardHeight({ description, recentPosts, postCount }: ChannelPreview) {
   );
 }
 
-function BoardSkeleton() {
+/** 스켈레톤도 메이슨리로: 카드마다 글 줄 수를 달리해 실제 목록처럼 높이가 제각각 */
+const SKELETON_ROWS = [8, 3, 6, 5, 8, 2];
+
+function BoardSkeleton({ rows }: { rows: number }) {
   return (
     <section className={b.board} aria-hidden>
       <div className={b.head}>
@@ -76,8 +79,8 @@ function BoardSkeleton() {
         <span className={ui.skeleton} style={{ width: 110, height: 18 }} />
       </div>
       <div className={b.list} style={{ padding: '6px 18px 14px' }}>
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className={ui.skeleton} style={{ height: 14, margin: '10px 0', width: `${90 - i * 7}%` }} />
+        {Array.from({ length: rows }, (_, i) => (
+          <div key={i} className={ui.skeleton} style={{ height: 14, margin: '10px 0', width: `${90 - ((i * 13) % 40)}%` }} />
         ))}
       </div>
     </section>
@@ -118,11 +121,12 @@ export default function ChannelsPage() {
         </div>
       </div>
       {isPending ? (
-        <div className={b.grid}>
-          {Array.from({ length: 6 }, (_, i) => (
-            <BoardSkeleton key={i} />
-          ))}
-        </div>
+        <Masonry
+          items={SKELETON_ROWS.map((rows, i) => ({ rows, i }))}
+          keyOf={(x) => String(x.i)}
+          estimate={(x) => 70 + x.rows * 34}
+          render={(x) => <BoardSkeleton rows={x.rows} />}
+        />
       ) : data && data.length > 0 ? (
         // 글이 많은 채널과 적은 채널의 높이가 달라도 빈틈 없이 쌓는다 (메이슨리)
         <Masonry items={data} keyOf={(c) => c.slug} estimate={boardHeight} render={(c) => <ChannelBoard channel={c} />} />

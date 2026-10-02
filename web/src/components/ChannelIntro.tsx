@@ -13,7 +13,7 @@ const HEADER_MAX = 200;
 const MIN_VISIBLE = 48;
 
 const s = {
-  wrap: 'relative mt-3.5 overflow-hidden transition-[max-height] duration-500 ease-in-out',
+  wrap: 'relative mt-5 overflow-hidden transition-[max-height] duration-500 ease-in-out',
   body: 'text-[15px] leading-[1.7] text-fg-sub [&>:first-child]:mt-0 [&>:last-child]:mb-0',
   // 버튼처럼 보이지 않게: 테두리·배경 없이 그라데이션 위에 회색 글자만
   fade:

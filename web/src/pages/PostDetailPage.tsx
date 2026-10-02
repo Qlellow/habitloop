@@ -142,7 +142,8 @@ function Comments({ postId, count }: { postId: number; count?: number }) {
             aria-label="댓글"
           />
           <div className={s.composerFoot}>
-            <span>Ctrl + Enter 로 등록</span>
+            {/* 폰·터치 기기에는 키보드 단축키가 없으므로 숨긴다 */}
+            <span className="max-[520px]:hidden [@media(pointer:coarse)]:hidden">Ctrl + Enter 로 등록</span>
             <button type="submit" className={cn(ui.button, ui.primary)} disabled={!text.trim() || add.isPending}>
               등록
             </button>

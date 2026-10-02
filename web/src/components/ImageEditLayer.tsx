@@ -70,6 +70,7 @@ export function ImageEditLayer({
   const [popover, setPopover] = useState<Popover>();
   const [cropping, setCropping] = useState(false);
   const [captionDraft, setCaptionDraft] = useState('');
+  const [sizeDraft, setSizeDraft] = useState('');
   const layerRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
@@ -221,6 +222,9 @@ export function ImageEditLayer({
     };
   }, [selected, popover, cropping, deselect]);
 
+  // 크기 직접 입력 칸은 지금 크기를 따라간다 (프리셋을 누르거나 끌어서 바꿨을 때)
+  useEffect(() => setSizeDraft(String(Math.round(params.w * 10) / 10)), [params.w]);
+
   // 작성 화면의 편집 칸: 커서가 놓인 이미지를 바로 선택한다
   const autoIndex = autoSelect?.index;
   const autoSeq = autoSelect?.seq;
@@ -319,6 +323,14 @@ export function ImageEditLayer({
     }
   };
 
+  const applySize = () => {
+    const n = Number(sizeDraft);
+    if (!sizeDraft.trim() || !Number.isFinite(n)) return setSizeDraft(String(Math.round(params.w)));
+    const w = Math.round(clamp(n, 5, 100) * 10) / 10;
+    setSizeDraft(String(w));
+    if (w !== params.w) commit({ ...params, w });
+  };
+
   const saveCaption = () => {
     commit(params, captionDraft.trim());
     setPopover(undefined);
@@ -369,7 +381,16 @@ export function ImageEditLayer({
           ⇄ 바꾸기
         </button>
         <span className="w-px h-5 mx-0.5 bg-border" />
-        <button type="button" className={tool} aria-pressed={popover === 'size'} onClick={() => setPopover(popover === 'size' ? undefined : 'size')} title="크기">
+        <button
+          type="button"
+          className={tool}
+          aria-pressed={popover === 'size'}
+          onClick={() => {
+            setSizeDraft(String(Math.round(params.w * 10) / 10));
+            setPopover(popover === 'size' ? undefined : 'size');
+          }}
+          title="크기 (25·50·75·100% 또는 직접 입력)"
+        >
           {Math.round(params.w)}% ▾
         </button>
         <button
@@ -416,7 +437,8 @@ export function ImageEditLayer({
         </button>
         <button
           type="button"
-          className={cn(tool, 'hover:text-danger')}
+          // 삭제는 항상 빨강 (다크 테마에서는 더 밝은 빨강)
+          className={cn(tool, 'text-danger-text hover:text-danger-text hover:bg-danger-weak')}
           onClick={() => {
             onChange(removeImageToken(source, selected));
             deselect();
@@ -435,12 +457,33 @@ export function ImageEditLayer({
           style={{ left: popLeft, top: popTop }}
         >
           {popover === 'size' && (
-            <div className="flex gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {[25, 50, 75, 100].map((w) => (
                 <button key={w} type="button" className={tool} aria-pressed={Math.round(params.w) === w} onClick={() => commit({ ...params, w })}>
                   {w}%
                 </button>
               ))}
+              <span className="w-px h-5 mx-1 bg-border" />
+              {/* 원하는 크기 직접 입력 (5 ~ 100%) */}
+              <label className="flex items-center gap-1 text-[13px] font-semibold text-fg-sub">
+                <input
+                  type="number"
+                  min={5}
+                  max={100}
+                  inputMode="numeric"
+                  aria-label="크기 직접 입력 (%)"
+                  value={sizeDraft}
+                  onChange={(e) => setSizeDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    applySize();
+                  }}
+                  onBlur={applySize}
+                  className="w-14 h-8 px-2 rounded-md bg-field text-right tabular-nums text-fg-strong outline-none focus:ring-2 focus:ring-primary/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                %
+              </label>
             </div>
           )}
           {popover === 'radius' && (

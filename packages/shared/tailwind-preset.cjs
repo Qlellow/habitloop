@@ -29,6 +29,8 @@ module.exports = {
         danger: {
           DEFAULT: 'var(--danger)',
           weak: 'var(--danger-weak)',
+          // 글자색: 다크 테마에서 더 밝은 빨강
+          text: 'var(--danger-text)',
         },
         skeleton: 'var(--skeleton)',
         toast: 'var(--toast-bg)',

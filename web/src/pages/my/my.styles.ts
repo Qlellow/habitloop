@@ -10,8 +10,10 @@ const s = {
   menu: 'list-none m-0 p-0 max-[860px]:flex max-[860px]:gap-1 max-[860px]:overflow-x-auto',
   link:
     'block w-full px-2.5 py-[9px] rounded-sm text-[15px] font-medium text-fg-sub text-left transition-colors ' +
-    'hover:bg-field hover:text-fg-strong aria-[current=page]:bg-primary-weak aria-[current=page]:text-primary ' +
+    // hover 배경은 SlideHover 가 그린다 (항목 사이를 미끄러져 움직임)
+    'hover:text-fg-strong aria-[current=page]:bg-primary-weak aria-[current=page]:text-primary ' +
     'aria-[current=page]:font-bold max-[860px]:whitespace-nowrap',
+  logoutButton: 'text-danger-text hover:text-danger-text',
   logout: 'mt-2 pt-2 border-t border-line max-[860px]:m-0 max-[860px]:p-0 max-[860px]:border-0',
 
   // 공통 섹션
