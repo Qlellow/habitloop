@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth, useFeed, useSignOut } from '@loop/shared';
 import { PostFeed } from '../../src/PostList';
@@ -35,7 +35,18 @@ export default function MeScreen() {
           </View>
           <View className="flex-row gap-2 px-5 pb-5 bg-surface mb-3">
             <Button title="채널 만들기" variant="secondary" className="flex-1" onPress={() => router.push('/channel-form')} />
-            <Button title="로그아웃" variant="ghost" className="flex-1" onPress={signOut} />
+            <Button
+              title="로그아웃"
+              variant="ghost"
+              className="flex-1"
+              // 한 번 더 확인한다
+              onPress={() =>
+                Alert.alert('로그아웃할까요?', '이 기기에서 로그아웃해요.', [
+                  { text: '취소', style: 'cancel' },
+                  { text: '로그아웃', style: 'destructive', onPress: signOut },
+                ])
+              }
+            />
           </View>
           <View className="bg-surface">
             <SectionTitle>내가 쓴 글</SectionTitle>

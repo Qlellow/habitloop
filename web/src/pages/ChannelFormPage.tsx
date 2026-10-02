@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { channelIconUrl, useChannel, useChannelIcon, useSaveChannel, type ChannelDetail } from '@loop/shared';
+import { CHANNEL_COLORS, channelColor, channelIconUrl, useChannel, useChannelIcon, useSaveChannel, type ChannelDetail } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { Page } from '../components/Layout';
 import { MarkdownEditor } from '../components/MarkdownEditor';
@@ -20,12 +20,17 @@ type IconChange = { blob: Blob; url: string } | null | undefined;
 function IconPicker({
   name,
   slug,
+  color,
+  onColor,
   current,
   change,
   onChange,
 }: {
   name: string;
   slug: string;
+  /** 사진이 없을 때의 프로필 색 번호 */
+  color: number;
+  onColor: (c: number) => void;
   current?: string;
   change: IconChange;
   onChange: (c: IconChange) => void;
@@ -66,7 +71,8 @@ function IconPicker({
     <div className={ui.field}>
       <span className={ui.label}>채널 프로필</span>
       <div className={s.iconPicker}>
-        <ChannelIcon channel={{ slug: slug || 'loop', name: name.trim() || '루' }} src={preview} size={72} />
+        {/* 색은 고리가 아니라 고른 번호로 정한다 (고리를 입력해도 색이 바뀌지 않게) */}
+        <ChannelIcon channel={{ slug: slug || 'loop', name: name.trim() || '루', color }} src={preview} size={72} />
         <div className={s.iconPickerBody}>
           <div className={s.iconPickerActions}>
             <button type="button" className={cn(ui.button, ui.secondary, ui.small)} disabled={busy} onClick={() => input.current?.click()}>
@@ -78,7 +84,25 @@ function IconPicker({
               </button>
             )}
           </div>
-          <p className={cn(ui.help, 'mt-0')}>사진을 고르면 정사각형으로 자를 영역을 정할 수 있어요. 사진이 없으면 채널 이름 첫 글자로 보여요.</p>
+          {!preview && (
+            <div className="flex flex-wrap gap-1.5 mt-2.5" role="radiogroup" aria-label="기본 프로필 색">
+              {CHANNEL_COLORS.map((c, i) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={color === i}
+                  aria-label={`색 ${i + 1}`}
+                  onClick={() => onColor(i)}
+                  className="w-6 h-6 rounded-full transition-transform hover:scale-110 aria-checked:ring-2 aria-checked:ring-offset-2 aria-checked:ring-offset-surface aria-checked:ring-[var(--text-sub)]"
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+          )}
+          <p className={cn(ui.help, 'mt-2')}>
+            사진을 고르면 정사각형으로 자를 영역을 정할 수 있어요. 사진이 없으면 고른 색 위에 채널 이름 첫 글자로 보여요.
+          </p>
         </div>
         <input
           ref={input}
@@ -112,6 +136,12 @@ function ChannelForm({ initial }: { initial?: ChannelDetail }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [icon, setIcon] = useState<IconChange>();
+  // 기본 프로필 색: 수정이면 지금 색(예전 채널은 고리로 정해진 색), 새 채널이면 무작위로 하나
+  const [color, setColor] = useState(() =>
+    initial
+      ? (initial.color ?? Math.max(0, CHANNEL_COLORS.indexOf(channelColor(initial.slug))))
+      : Math.floor(Math.random() * CHANNEL_COLORS.length),
+  );
   const iconMutation = useChannelIcon(initial?.slug ?? slug);
 
   // 미리보기용으로 만든 blob 주소는 바뀌거나 화면을 떠날 때 풀어 준다
@@ -125,7 +155,7 @@ function ChannelForm({ initial }: { initial?: ChannelDetail }) {
     e.preventDefault();
     if (!valid || pending) return;
     save.mutate(
-      { slug, name: name.trim(), description: description.trim() },
+      { slug, name: name.trim(), description: description.trim(), color },
       {
         onSuccess: async (c) => {
           if (icon !== undefined) {
@@ -145,7 +175,7 @@ function ChannelForm({ initial }: { initial?: ChannelDetail }) {
 
   return (
     <form className={cn(ui.card, s.formCard)} onSubmit={submit} noValidate>
-      <IconPicker name={name} slug={slug} current={initial && channelIconUrl(initial)} change={icon} onChange={setIcon} />
+      <IconPicker name={name} slug={slug} color={color} onColor={setColor} current={initial && channelIconUrl(initial)} change={icon} onChange={setIcon} />
       <label className={ui.field}>
         <span className={ui.label}>채널 이름</span>
         <input className={ui.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="예) 고양이" autoFocus />

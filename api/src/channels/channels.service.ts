@@ -3,7 +3,7 @@ import { ApiError } from '../common/api-error';
 import { escapeLike } from '../common/cursor-page';
 import { TtlCache } from '../common/ttl-cache';
 import { Database } from '../db/database';
-import type { ChannelInput, ChannelUpdateInput } from './channels.dto';
+import { CHANNEL_COLOR_COUNT, type ChannelInput, type ChannelUpdateInput } from './channels.dto';
 import { badge, canManage, isStaff, type ChannelRole } from './roles';
 
 export interface ChannelSummary {
@@ -15,6 +15,8 @@ export interface ChannelSummary {
   memberCount: number;
   /** 0 보다 크면 프로필 이미지가 있다: /api/channels/{slug}/icon?v={iconVersion} */
   iconVersion: number;
+  /** 이미지가 없을 때 프로필 색 번호 (null 이면 고리로 정한 색) */
+  color: number | null;
 }
 
 export interface CategoryResponse {
@@ -31,7 +33,7 @@ export interface ChannelRow extends ChannelSummary {
 
 /** 목록용 채널 컬럼 (별칭 c) */
 export const SUMMARY_COLUMNS = `c.id, c.slug, c.name, c.description, c.post_count AS "postCount",
-  c.member_count AS "memberCount", c.icon_version AS "iconVersion"`;
+  c.member_count AS "memberCount", c.icon_version AS "iconVersion", c.color`;
 
 const POPULAR_SIZE = 30;
 const SEARCH_SIZE = 30;
@@ -114,8 +116,8 @@ export class ChannelsService {
     }
     await this.db.transaction(async () => {
       const channel = await this.db.one<{ id: number }>(
-        'INSERT INTO channels (slug, name, description, owner_id, member_count) VALUES ($1, $2, $3, $4, 1) RETURNING id',
-        [slug, name, (input.description ?? '').trim(), userId],
+        'INSERT INTO channels (slug, name, description, owner_id, member_count, color) VALUES ($1, $2, $3, $4, 1, $5) RETURNING id',
+        [slug, name, (input.description ?? '').trim(), userId, input.color ?? Math.floor(Math.random() * CHANNEL_COLOR_COUNT)],
       );
       // 만든 사람은 자동으로 가입된다
       await this.db.execute("INSERT INTO channel_members (channel_id, user_id, role) VALUES ($1, $2, 'OWNER')", [channel!.id, userId]);
@@ -130,10 +132,11 @@ export class ChannelsService {
     if (name !== channel.name && (await this.db.one('SELECT 1 FROM channels WHERE name = $1', [name]))) {
       throw ApiError.conflict('같은 이름의 채널이 이미 있어요');
     }
-    await this.db.execute('UPDATE channels SET name = $1, description = $2 WHERE id = $3', [
+    await this.db.execute('UPDATE channels SET name = $1, description = $2, color = COALESCE($4, color) WHERE id = $3', [
       name,
       (input.description ?? '').trim(),
       channel.id,
+      input.color ?? null,
     ]);
     this.popularCache.clear();
     return this.detail(slug, userId);
@@ -159,6 +162,7 @@ export class ChannelsService {
       postCount: c.postCount,
       memberCount: c.memberCount,
       iconVersion: c.iconVersion,
+      color: c.color,
       ownerNickname: c.ownerNickname ?? undefined,
       createdAt: c.createdAt,
       mine: role === 'OWNER',

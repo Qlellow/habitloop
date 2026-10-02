@@ -275,16 +275,15 @@ export default function ChannelManagePage() {
 
   return (
     <Page variant="single">
-      <div className={s.pageHead}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {/* 채널 이름은 왼쪽, 돌아가기는 오른쪽 끝 (space-between) */}
+      <div className={cn(s.pageHead, 'items-center')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <ChannelIcon channel={channel} size={44} />
-          <div>
-            <h1 className={s.pageTitle}>{channel.name} 관리</h1>
-            <Link to={`/c/${slug}`} className={ui.cardLink}>
-              채널로 돌아가기 →
-            </Link>
-          </div>
+          <h1 className={s.pageTitle}>{channel.name} 관리</h1>
         </div>
+        <Link to={`/c/${slug}`} className={ui.cardLink}>
+          채널로 돌아가기 →
+        </Link>
       </div>
       <section className={cn(ui.card, s.settingsSection)}>
         <div className={s.pageHead}>

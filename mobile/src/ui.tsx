@@ -101,11 +101,11 @@ export function SectionTitle({ children, right }: { children: ReactNode; right?:
 }
 
 // 크기·채널 색처럼 값에 따라 바뀌는 부분만 style 로 넘긴다
-export const ChannelIcon = memo(function ChannelIcon({ slug, name, size = 36 }: { slug: string; name: string; size?: number }) {
+export const ChannelIcon = memo(function ChannelIcon({ slug, name, size = 36, color }: { slug: string; name: string; size?: number; color?: number | null }) {
   return (
     <View
       className="items-center justify-center"
-      style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: channelColor(slug) }}
+      style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: channelColor(slug, color) }}
     >
       <Text className="text-white font-extrabold" style={{ fontSize: size * 0.44 }}>
         {name.slice(0, 1)}

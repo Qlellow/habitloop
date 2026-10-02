@@ -30,9 +30,14 @@ export function compact(n: number): string {
 }
 
 // 채널마다 이미지 없이도 구분되도록 slug 로 정해지는 색
-const CHANNEL_COLORS = ['#3182f6', '#00c471', '#ff8a3d', '#8b5cf6', '#f04452', '#0ab4c9', '#e5a500', '#4e5968'];
+export const CHANNEL_COLORS = ['#3182f6', '#00c471', '#ff8a3d', '#8b5cf6', '#f04452', '#0ab4c9', '#e5a500', '#4e5968'];
 
-export function channelColor(slug: string): string {
+/**
+ * 이미지가 없는 채널 프로필 색. 채널을 만들 때 고른 색 번호(color)가 있으면 그 색,
+ * 없으면(예전 채널) 고리로 정한다. 고리를 입력하는 동안 색이 바뀌지 않게 새 채널은 번호를 쓴다.
+ */
+export function channelColor(slug: string, color?: number | null): string {
+  if (color != null && CHANNEL_COLORS[color]) return CHANNEL_COLORS[color];
   let h = 0;
   for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) | 0;
   return CHANNEL_COLORS[Math.abs(h) % CHANNEL_COLORS.length];

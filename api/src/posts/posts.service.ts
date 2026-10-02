@@ -63,6 +63,7 @@ interface PostRow {
   channelSlug: string;
   channelName: string;
   iconVersion: number;
+  channelColor: number | null;
   categoryId: number | null;
   categoryName: string | null;
   title: string;
@@ -256,7 +257,7 @@ export class PostsService {
   private async find(postId: number): Promise<PostRow> {
     const row = await this.db.one<PostRow>(
       `SELECT p.id, p.author_id AS "authorId", a.nickname AS "authorNickname", p.channel_id AS "channelId",
-              c.slug AS "channelSlug", c.name AS "channelName", c.icon_version AS "iconVersion",
+              c.slug AS "channelSlug", c.name AS "channelName", c.icon_version AS "iconVersion", c.color AS "channelColor",
               p.category_id AS "categoryId", cat.name AS "categoryName", p.title, p.content,
               p.like_count AS "likeCount", p.comment_count AS "commentCount", p.view_count AS "viewCount",
               p.created_at AS "createdAt", p.updated_at AS "updatedAt"
@@ -278,7 +279,7 @@ export class PostsService {
     const mine = viewerId === post.authorId;
     return {
       id: post.id,
-      channel: { slug: post.channelSlug, name: post.channelName, iconVersion: post.iconVersion },
+      channel: { slug: post.channelSlug, name: post.channelName, iconVersion: post.iconVersion, color: post.channelColor },
       category: post.categoryId == null ? undefined : { id: post.categoryId, name: post.categoryName },
       title: post.title,
       content: post.content,

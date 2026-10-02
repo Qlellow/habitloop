@@ -186,3 +186,19 @@ export const ArrowRightIcon = (p: P) => (
     <path d="M5 12h14M13 6l6 6-6 6" {...line} strokeWidth={2.2} />
   </svg>
 );
+
+/** 트로피 (인기 TOP 3). 색은 color 로 (금 · 은 · 동) */
+export const TrophyIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z" fill="currentColor" />
+    <path
+      d="M7 6H4.5v1.2A3.3 3.3 0 0 0 7.6 10.5M17 6h2.5v1.2a3.3 3.3 0 0 1-3.1 3.3"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    <path d="M10.6 13.2h2.8l.5 3.3h-3.8l.5-3.3z" fill="currentColor" />
+    <rect x="7.5" y="16.5" width="9" height="3.5" rx="1.2" fill="currentColor" />
+    <path d="M9.6 6.2v2.1a2.4 2.4 0 0 0 1.1 2" stroke="#fff" strokeOpacity=".55" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);

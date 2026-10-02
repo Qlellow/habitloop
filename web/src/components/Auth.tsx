@@ -76,6 +76,7 @@ export function AuthShell({
                   replace
                   state={authState}
                   viewTransition={switchTransition}
+                  onClick={switchTransition ? markAuthSwap : undefined}
                   className={s.switchLink}
                 >
                   {switchLink}
@@ -89,6 +90,13 @@ export function AuthShell({
       </div>
     </main>
   );
+}
+
+/** 전환 링크를 누를 때만 카드 전환 애니메이션을 켠다 (global.css). 전환이 끝나면 끈다 */
+function markAuthSwap() {
+  const root = document.documentElement;
+  root.dataset.authSwap = '';
+  window.setTimeout(() => delete root.dataset.authSwap, 1500);
 }
 
 /** 로그인 쪽 그림: 지금 루프의 실제 인기 글 3개와 인기 채널 TOP3 를 카드로 보여 준다. 장식이라 스크린 리더에는 숨김 */

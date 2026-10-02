@@ -23,7 +23,8 @@ const ACTIONS: Action[] = [
   { label: 'H', title: '소제목', apply: (t) => ['\n## ', t || '소제목', '\n'] },
   { label: '•', title: '목록', apply: (t) => ['\n- ', t || '항목', '\n'] },
   { label: '“', title: '인용', apply: (t) => ['\n> ', t || '인용문', '\n'] },
-  { label: '</>', title: '코드', apply: (t) => (t.includes('\n') ? ['\n```\n', t, '\n```\n'] : ['`', t || 'code', '`']) },
+  // 코드 블록(``` ```): 여러 줄을 그대로 넣을 수 있다
+  { label: '</>', title: '코드 블록', apply: (t) => ['\n```\n', t || '코드', '\n```\n'] },
   { label: '🔗', title: '링크 (Ctrl+K)', apply: (t) => ['[', t || '링크 텍스트', '](https://)'] },
 ];
 

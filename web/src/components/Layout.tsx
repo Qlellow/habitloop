@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth, useSignOut } from '@loop/shared';
+import { useAuth } from '@loop/shared';
+import { useConfirmSignOut } from './ConfirmDialog';
 import { ChannelSearch } from './ChannelSearch';
 import { preload } from '../lib/preload';
 import { GridIcon, HomeIcon, PencilIcon, UserIcon } from './Icons';
@@ -11,8 +12,8 @@ import s from './Layout.styles';
 
 function UserMenu() {
   const { user } = useAuth();
-  const signOut = useSignOut();
   const navigate = useNavigate();
+  const logout = useConfirmSignOut(() => navigate('/'));
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
@@ -60,22 +61,20 @@ function UserMenu() {
           <Link to="/me/channels" className={s.menuItem} role="menuitem">
             내 채널
           </Link>
-          <Link to="/channels/new" className={s.menuItem} role="menuitem" onPointerEnter={preload.channelForm}>
-            채널 만들기
-          </Link>
           <button
             type="button"
-            className={s.menuItem}
+            className={cn(s.menuItem, 'text-danger-text')}
             role="menuitem"
             onClick={() => {
-              signOut();
-              navigate('/');
+              setOpen(false);
+              logout.ask();
             }}
           >
             로그아웃
           </button>
         </div>
       )}
+      {logout.dialog}
     </div>
   );
 }
@@ -156,6 +155,49 @@ export function MobileTabBar() {
 
 type Variant = 'three' | 'twoRight' | 'nav' | 'single' | 'wide' | 'narrow';
 
+/**
+ * 화면에 붙어 있는(sticky) 사이드바가 스크롤을 '따라오는' 느낌: 스크롤하면 본문 쪽으로 살짝 끌려갔다가
+ * 스프링처럼 부드럽게 제자리로 돌아온다. 넓은 화면(사이드바가 붙는 폭)에서만, 움직임 줄이기 설정이면 끈다.
+ */
+function useFollowScroll(refs: React.RefObject<HTMLElement | null>[]) {
+  useEffect(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let last = window.scrollY;
+    let offset = 0;
+    let frame = 0;
+    const apply = (v: number) => {
+      for (const r of refs) if (r.current) r.current.style.transform = v ? `translate3d(0, ${v.toFixed(2)}px, 0)` : '';
+    };
+    const tick = () => {
+      offset *= 0.86; // 매 프레임 조금씩 제자리로
+      if (Math.abs(offset) < 0.15) {
+        offset = 0;
+        frame = 0;
+        apply(0);
+        return;
+      }
+      apply(offset);
+      frame = requestAnimationFrame(tick);
+    };
+    const onScroll = () => {
+      const y = window.scrollY;
+      const dy = y - last;
+      last = y;
+      if (window.innerWidth <= 860) return;
+      // 스크롤한 만큼 반대로(본문과 같은 방향으로) 끌려간다. 너무 멀리 가지 않게 ±28px
+      offset = Math.max(-28, Math.min(28, offset - dy * 0.22));
+      if (!frame) frame = requestAnimationFrame(tick);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(frame);
+      apply(0);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
 /** 페이지 그리드. left/right 는 넓은 화면에서만 옆에 붙고, 좁아지면 접히거나 아래로 내려간다. */
 export function Page({
   variant = 'three',
@@ -168,13 +210,23 @@ export function Page({
   right?: ReactNode;
   children: ReactNode;
 }) {
+  const leftRef = useRef<HTMLElement>(null);
+  const rightRef = useRef<HTMLElement>(null);
+  // 마이페이지 메뉴(nav)는 붙어 있지 않으므로 따라오지 않는다
+  useFollowScroll(variant === 'nav' ? [rightRef] : [leftRef, rightRef]);
   return (
     <div className={cn(s.page, variant === 'nav' ? s.withNav : s[variant])}>
       {(variant === 'three' || variant === 'nav') && (
-        <aside className={cn(s.side, variant === 'three' && s.leftInThree, variant === 'nav' && s.sideStatic)}>{left}</aside>
+        <aside ref={leftRef} className={cn(s.side, variant === 'three' && s.leftInThree, variant === 'nav' && s.sideStatic)}>
+          {left}
+        </aside>
       )}
       <main className={s.main}>{children}</main>
-      {(variant === 'three' || variant === 'twoRight') && <aside className={s.side}>{right}</aside>}
+      {(variant === 'three' || variant === 'twoRight') && (
+        <aside ref={rightRef} className={cn(s.side, 'will-change-transform')}>
+          {right}
+        </aside>
+      )}
     </div>
   );
 }

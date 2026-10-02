@@ -56,6 +56,8 @@ export interface ChannelSummary {
   memberCount: number;
   /** 0 보다 크면 프로필 이미지가 있다 (channelIconUrl 로 주소를 만든다) */
   iconVersion: number;
+  /** 이미지가 없을 때 프로필 색 번호 (CHANNEL_COLORS). 없으면 고리로 정한 색 */
+  color?: number | null;
 }
 
 /** 채널 목록용: 채널 + 최근 글 미리보기(최대 8개) */
@@ -112,6 +114,8 @@ export interface ChannelInput {
   slug?: string;
   name: string;
   description: string;
+  /** 기본 프로필 색 번호 */
+  color?: number;
 }
 
 export interface PostSummary {
@@ -131,7 +135,7 @@ export interface PostSummary {
 
 export interface PostDetail {
   id: number;
-  channel: { slug: string; name: string; iconVersion: number };
+  channel: { slug: string; name: string; iconVersion: number; color?: number | null };
   category?: { id: number; name: string };
   title: string;
   content: string;

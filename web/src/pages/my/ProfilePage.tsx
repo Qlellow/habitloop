@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { passwordProblem, useAuth, useChangePassword, useUpdateProfile } from '@loop/shared';
+import { passwordProblem, passwordStrength, useAuth, useChangePassword, useUpdateProfile } from '@loop/shared';
+import { PasswordStrength } from '../../components/Auth';
+import { EyeIcon, EyeOffIcon } from '../../components/Icons';
 import { toast } from '../../components/Toast';
 import { ui } from '../../components/ui';
 import s from './my.styles';
@@ -38,6 +40,41 @@ function NicknameForm({ current }: { current: string }) {
   );
 }
 
+/** 비밀번호 칸 + 오른쪽 눈 버튼 (로그인·회원가입처럼 보기/숨기기) */
+function PasswordInput({ value, onChange, autoComplete, placeholder, label }: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  autoComplete: string;
+  placeholder?: string;
+  label: string;
+}) {
+  const [reveal, setReveal] = useState(false);
+  return (
+    <span className="relative block">
+      <input
+        className={cn(ui.input, 'pr-11')}
+        type={reveal ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        aria-label={label}
+        spellCheck={false}
+        autoCapitalize="off"
+      />
+      <button
+        type="button"
+        className="absolute right-1 top-1/2 -translate-y-1/2 grid place-items-center w-9 h-9 rounded-sm text-fg-weak hover:text-fg-sub"
+        aria-label={reveal ? '비밀번호 숨기기' : '비밀번호 보기'}
+        aria-pressed={reveal}
+        onClick={() => setReveal((v) => !v)}
+      >
+        {reveal ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+      </button>
+    </span>
+  );
+}
+
 function PasswordForm() {
   const change = useChangePassword();
   const [form, setForm] = useState({ current: '', next: '', confirm: '' });
@@ -45,7 +82,9 @@ function PasswordForm() {
     setForm((f) => ({ ...f, [k]: e.target.value }));
   const mismatch = form.confirm.length > 0 && form.next !== form.confirm;
   const problem = form.next ? passwordProblem(form.next) : undefined;
-  const valid = form.current.length > 0 && !problem && !!form.next && form.next === form.confirm;
+  // 회원가입과 같이 '강함' 이상이어야 바꿀 수 있다
+  const strongEnough = passwordStrength(form.next).level >= 3;
+  const valid = form.current.length > 0 && !problem && strongEnough && !!form.next && form.next === form.confirm;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -65,33 +104,29 @@ function PasswordForm() {
     <form className={cn(ui.card, s.section)} onSubmit={submit}>
       <h2 className={s.sectionTitle}>비밀번호</h2>
       <p className={s.sectionDesc}>지금 비밀번호를 확인한 뒤에 바꿀 수 있어요.</p>
-      <label className={ui.field}>
+      <div className={ui.field}>
         <span className={ui.label}>지금 비밀번호</span>
-        <input className={ui.input} type="password" autoComplete="current-password" value={form.current} onChange={set('current')} />
-      </label>
-      <label className={ui.field}>
+        <PasswordInput label="지금 비밀번호" autoComplete="current-password" value={form.current} onChange={set('current')} />
+      </div>
+      <div className={ui.field}>
         <span className={ui.label}>새 비밀번호</span>
-        <input
-          className={ui.input}
-          type="password"
-          autoComplete="new-password"
-          value={form.next}
-          onChange={set('next')}
-          placeholder="8자 이상, 숫자·특수문자 포함"
-        />
-        {problem ? (
-          <p className={ui.help} style={{ color: 'var(--danger)' }}>
-            {problem}
-          </p>
-        ) : (
-          <p className={ui.help}>영문·숫자·특수문자로 8자 이상, 숫자와 특수문자를 하나 이상 넣어 주세요.</p>
-        )}
-      </label>
-      <label className={ui.field}>
+        <PasswordInput label="새 비밀번호" autoComplete="new-password" value={form.next} onChange={set('next')} placeholder="8자 이상, 숫자·특수문자 포함" />
+        {/* 회원가입처럼 강도 막대로 보여 준다 */}
+        <div className="mt-2">
+          <PasswordStrength value={form.next} />
+          {/* 길이·숫자·특수문자는 막대 아래에 나오므로, 쓸 수 없는 글자 같은 그 밖의 문제만 따로 */}
+          {problem && passwordStrength(form.next).missing.length === 0 && (
+            <p className={ui.help} style={{ color: 'var(--danger-text)' }}>
+              {problem}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className={ui.field}>
         <span className={ui.label}>새 비밀번호 확인</span>
-        <input className={ui.input} type="password" autoComplete="new-password" value={form.confirm} onChange={set('confirm')} />
-        {mismatch && <p className={ui.help} style={{ color: 'var(--danger)' }}>새 비밀번호가 서로 달라요</p>}
-      </label>
+        <PasswordInput label="새 비밀번호 확인" autoComplete="new-password" value={form.confirm} onChange={set('confirm')} />
+        {mismatch && <p className={ui.help} style={{ color: 'var(--danger-text)' }}>비밀번호가 일치하지 않습니다.</p>}
+      </div>
       {change.error && <p className={ui.error}>{change.error.message}</p>}
       <div className={s.actions}>
         <button type="submit" className={cn(ui.button, ui.primary)} disabled={!valid || change.isPending}>

@@ -1,10 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, MaxLength, Min } from 'class-validator';
 import { NotBlank } from '../common/validators';
 import { ROLES, type ChannelRole } from './roles';
 
 /** 채널 소개(마크다운) 최대 길이 */
 export const MAX_DESCRIPTION = 2000;
+
+/** 기본 프로필 색 개수 (@loop/shared 의 CHANNEL_COLORS) */
+export const CHANNEL_COLOR_COUNT = 8;
 
 export class ChannelInput {
   @NotBlank('채널 고리를 입력해 주세요')
@@ -19,6 +22,13 @@ export class ChannelInput {
   @IsString()
   @MaxLength(MAX_DESCRIPTION, { message: '소개는 2000자 이내로 입력해 주세요' })
   description?: string;
+
+  /** 이미지가 없을 때의 프로필 색. 안 주면 무작위 */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(CHANNEL_COLOR_COUNT - 1)
+  color?: number;
 }
 
 export class ChannelUpdateInput {
@@ -30,6 +40,12 @@ export class ChannelUpdateInput {
   @IsString()
   @MaxLength(MAX_DESCRIPTION, { message: '소개는 2000자 이내로 입력해 주세요' })
   description?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(CHANNEL_COLOR_COUNT - 1)
+  color?: number;
 }
 
 export class CategoryInput {

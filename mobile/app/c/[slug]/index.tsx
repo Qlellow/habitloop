@@ -48,7 +48,7 @@ export default function ChannelScreen() {
             {channel ? (
               <>
                 <View className="flex-row items-center gap-3.5">
-                  <ChannelIcon slug={channel.slug} name={channel.name} size={56} />
+                  <ChannelIcon slug={channel.slug} name={channel.name} color={channel.color} size={56} />
                   <View className="flex-1">
                     <Text className="text-[22px] font-bold text-fg-strong">{channel.name}</Text>
                     <Text className="text-sm text-fg-weak">c/{channel.slug}</Text>

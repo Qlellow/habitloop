@@ -24,7 +24,7 @@ function ChannelRow({ channel, action }: { channel: ChannelSummary; action: Reac
           <span className={s.channelBody}>
             <span className={s.channelName}>{channel.name}</span>
             <span className={s.channelMeta}>
-              c/{channel.slug} · 팔로워 {compact(channel.memberCount)} · 글 {compact(channel.postCount)}
+              팔로워 {compact(channel.memberCount)} · 글 {compact(channel.postCount)}
               {channel.description && ` · ${plainText(channel.description)}`}
             </span>
           </span>

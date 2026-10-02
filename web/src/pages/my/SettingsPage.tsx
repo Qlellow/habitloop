@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { CODE_LENGTH, timeAgo, useAuth, useLoginSessions, useRevokeSession, useTwoFactor } from '@loop/shared';
 import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
 import { toast } from '../../components/Toast';
+import { usePhone } from '../../lib/media';
 import { updateSettings, useSettings, type Settings } from '../../lib/settings';
 import { ui } from '../../components/ui';
 import s from './my.styles';
@@ -221,6 +222,7 @@ function LoginSessions() {
 
 export default function SettingsPage() {
   const settings = useSettings();
+  const phone = usePhone();
   return (
     <>
       <div className={s.head}>
@@ -269,16 +271,26 @@ export default function SettingsPage() {
         <div className={s.option}>
           <div>
             <div className={s.optionLabel}>편집기 기본 보기</div>
-            <div className={s.optionDesc}>글쓰기 화면을 열 때 처음 보이는 방식이에요. (좁은 화면에서는 나란히 대신 작성)</div>
+            <div className={s.optionDesc}>
+              글쓰기 화면을 열 때 처음 보이는 방식이에요.{!phone && ' (좁은 화면에서는 나란히 대신 작성)'}
+            </div>
           </div>
+          {/* 폰에서는 나란히 보기를 쓸 수 없으므로 선택지에서 뺀다 (나란히로 저장돼 있으면 작성으로 열린다) */}
           <Segment
             name="editorMode"
-            value={settings.editorMode}
-            options={[
-              ['write', '작성'],
-              ['split', '나란히'],
-              ['preview', '미리보기'],
-            ]}
+            value={phone && settings.editorMode === 'split' ? 'write' : settings.editorMode}
+            options={
+              phone
+                ? [
+                    ['write', '작성'],
+                    ['preview', '미리보기'],
+                  ]
+                : [
+                    ['write', '작성'],
+                    ['split', '나란히'],
+                    ['preview', '미리보기'],
+                  ]
+            }
           />
         </div>
       </section>
