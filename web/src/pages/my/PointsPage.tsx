@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAuth, useMyInvite, usePointLogs } from '@loop/shared';
+import { useAuth, useMyInvite, usePointLogs, type PointLogFilter } from '@loop/shared';
+import { CloseIcon } from '../../components/Icons';
 import { toast } from '../../components/Toast';
 import { ui } from '../../components/ui';
 import s from './my.styles';
@@ -20,9 +21,21 @@ const dateTime = (iso: string) => {
   return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-/** 포인트 내역 팝업 (최근 30건, 표) */
+const ORDERS = [
+  ['latest', '최신순'],
+  ['oldest', '오래된순'],
+] as const;
+const TYPES = [
+  [undefined, '전체'],
+  ['earn', '적립'],
+  ['spend', '사용'],
+] as const;
+
+/** 포인트 내역 팝업: 내용 · 포인트 · 날짜 표, 정렬(최신순/오래된순) · 종류(전체/적립/사용) 필터 */
 function PointLogDialog({ onClose }: { onClose: () => void }) {
-  const logs = usePointLogs();
+  const [filter, setFilter] = useState<PointLogFilter>({ order: 'latest' });
+  const logs = usePointLogs(filter);
+  const items = logs.data?.pages.flatMap((p) => p.items) ?? [];
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
@@ -31,44 +44,86 @@ function PointLogDialog({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 animate-pop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="point-log-title" className="w-full max-w-[520px] max-h-[80dvh] flex flex-col rounded-xl border border-border bg-surface shadow-pop">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="point-log-title"
+        className="w-full max-w-[560px] h-[min(640px,85dvh)] flex flex-col rounded-xl border border-border bg-surface shadow-pop"
+      >
         <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-3">
           <h2 id="point-log-title" className="m-0 text-lg font-bold text-fg-strong">
             포인트 내역
           </h2>
-          <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={onClose}>
-            닫기
+          <button type="button" className={cn(ui.button, ui.text, ui.small, 'w-8 px-0')} aria-label="닫기" onClick={onClose}>
+            <CloseIcon width={18} height={18} />
           </button>
         </div>
-        <div className="overflow-y-auto px-6 pb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-6 pb-3">
+          <div className={ui.chips} role="group" aria-label="종류">
+            {TYPES.map(([type, label]) => (
+              <button
+                key={label}
+                type="button"
+                className={ui.chip}
+                aria-pressed={filter.type === type}
+                onClick={() => setFilter((f) => ({ ...f, type }))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className={ui.chips} role="group" aria-label="정렬">
+            {ORDERS.map(([order, label]) => (
+              <button
+                key={order}
+                type="button"
+                className={ui.chip}
+                aria-pressed={filter.order === order}
+                onClick={() => setFilter((f) => ({ ...f, order }))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
           {logs.isPending ? (
             <div className={ui.spinner} />
-          ) : !logs.data?.length ? (
-            <p className={cn(ui.empty, 'py-8')}>아직 포인트 내역이 없어요</p>
+          ) : items.length === 0 ? (
+            <p className={cn(ui.empty, 'py-8')}>{filter.type === 'earn' ? '적립한 포인트가 없어요' : filter.type === 'spend' ? '사용한 포인트가 없어요' : '아직 포인트 내역이 없어요'}</p>
           ) : (
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 bg-surface">
                 <tr className="text-left text-[13px] text-fg-weak [&>th]:font-semibold [&>th]:py-2 border-b border-border">
-                  <th>날짜</th>
-                  <th>내용</th>
-                  <th className="text-right">포인트</th>
+                  <th className="w-full">내용</th>
+                  <th className="text-right pr-5">포인트</th>
+                  <th className="text-right">날짜</th>
                 </tr>
               </thead>
               <tbody>
-                {logs.data.map((l) => (
+                {items.map((l) => (
                   <tr key={l.id} className="border-b border-line last:border-b-0 [&>td]:py-2.5">
-                    <td className="text-fg-weak tabular-nums whitespace-nowrap pr-4">{dateTime(l.createdAt)}</td>
-                    <td className="text-fg">{l.reason}</td>
-                    <td className={cn('text-right font-bold tabular-nums whitespace-nowrap', l.delta < 0 ? 'text-danger-text' : 'text-primary')}>
+                    <td className="text-fg pr-4">{l.reason}</td>
+                    <td className={cn('text-right pr-5 font-bold tabular-nums whitespace-nowrap', l.delta < 0 ? 'text-danger-text' : 'text-primary')}>
                       {l.delta > 0 ? '+' : ''}
                       {l.delta.toLocaleString()}P
                     </td>
+                    <td className="text-right text-fg-weak tabular-nums whitespace-nowrap">{dateTime(l.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-          {logs.data && logs.data.length >= 30 && <p className={ui.help}>최근 30건까지 보여요.</p>}
+          {logs.hasNextPage && (
+            <button
+              type="button"
+              className={cn(ui.button, ui.ghost, ui.full, 'mt-3')}
+              disabled={logs.isFetchingNextPage}
+              onClick={() => logs.fetchNextPage()}
+            >
+              {logs.isFetchingNextPage ? '불러오는 중…' : '더 보기'}
+            </button>
+          )}
         </div>
       </div>
     </div>,

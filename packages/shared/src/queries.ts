@@ -344,9 +344,22 @@ export const useSetBanner = () => useMeMutation((banner: string | null) => api<U
 /** 커스텀 배너 열기 (포인트 사용) */
 export const useUnlockBanner = () => useMeMutation(() => api<User>('/api/me/banner/unlock', { method: 'POST' }));
 
-/** 포인트 내역 */
-export function usePointLogs(enabled = true) {
-  return useQuery({ queryKey: ['points'], queryFn: ({ signal }) => api<PointLog[]>('/api/me/points', { signal }), enabled });
+/** 포인트 내역 필터: 최신순/오래된순, 전체/적립/사용 */
+export interface PointLogFilter {
+  order: 'latest' | 'oldest';
+  type?: 'earn' | 'spend';
+}
+
+/** 포인트 내역 (더 보기로 이어 받는다) */
+export function usePointLogs(filter: PointLogFilter, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ['points', filter],
+    queryFn: ({ pageParam, signal }) =>
+      api<CursorPage<PointLog>>('/api/me/points', { query: { ...filter, cursor: pageParam, size: 30 }, signal }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.nextCursor,
+    enabled,
+  });
 }
 
 /** 오늘 출석 체크 (하루 한 번 포인트). 포인트가 쌓였으면 내 정보도 새로 받는다 */

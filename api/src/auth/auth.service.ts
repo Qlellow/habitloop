@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { ApiError } from '../common/api-error';
+import { clamp, cursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
 import { Mailer } from '../mail/mailer';
 import { VerificationService } from '../mail/verification.service';
@@ -293,12 +294,25 @@ export class AuthService {
     return userResponse(await this.find(userId));
   }
 
-  /** 포인트 내역 (최근 30개) */
-  pointLogs(userId: number) {
-    return this.db.query(
-      'SELECT id, delta, reason, created_at AS "createdAt" FROM point_logs WHERE user_id = $1 ORDER BY id DESC LIMIT 30',
-      [userId],
+  /**
+   * 포인트 내역 (키셋 페이지네이션). order: latest 최신순 · oldest 오래된순, type: earn 적립만 · spend 사용만
+   */
+  async pointLogs(userId: number, query: { order?: string; type?: string; cursor?: number; size?: number }) {
+    const oldest = query.order === 'oldest';
+    const size = clamp(query.size ?? 30, 1, 100);
+    const params: unknown[] = [userId, size + 1];
+    let where = 'user_id = $1';
+    if (query.type === 'earn') where += ' AND delta > 0';
+    if (query.type === 'spend') where += ' AND delta < 0';
+    if (query.cursor != null) {
+      params.push(query.cursor);
+      where += oldest ? ' AND id > $3' : ' AND id < $3';
+    }
+    const rows = await this.db.query<{ id: number }>(
+      `SELECT id, delta, reason, created_at AS "createdAt" FROM point_logs WHERE ${where} ORDER BY id ${oldest ? 'ASC' : 'DESC'} LIMIT $2`,
+      params,
     );
+    return cursorPage(rows, size);
   }
 
   /** 2단계 인증 켜기 1단계: 내 이메일로 번호 보내기 */

@@ -648,7 +648,7 @@ describe('커뮤니티', () => {
     expect((await http().post('/api/me/banner/unlock').set(bearer(me)).expect(200)).body.points).toBe(150); // 두 번 빠지지 않는다
     await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${theirs}` }).expect(400);
     expect((await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${mine}` }).expect(200)).body.banner).toBe(`i:${mine}`);
-    expect((await http().get('/api/me/points').set(bearer(me))).body[0]).toMatchObject({ delta: -300, reason: '커스텀 배너 열기' });
+    expect((await http().get('/api/me/points').set(bearer(me))).body.items[0]).toMatchObject({ delta: -300, reason: '커스텀 배너 열기' });
   });
 
   it('포인트 적립 · 배지 · 친구 초대', async () => {
@@ -709,7 +709,16 @@ describe('커뮤니티', () => {
     await http().delete(`/api/posts/${postId}/like`).set(bearer(host)).expect(200);
     await http().post(`/api/posts/${postId}/like`).set(bearer(host)).expect(200);
     expect(await points(guest)).toBe(liked + 2);
-    expect((await http().get('/api/me/points').set(bearer(guest))).body[0]).toMatchObject({ delta: 2, reason: '공감 받음' });
+    expect((await http().get('/api/me/points').set(bearer(guest))).body.items[0]).toMatchObject({ delta: 2, reason: '공감 받음' });
+    // 내역 필터: 오래된순 · 적립만 · 사용만, 커서로 이어 받기
+    const logs = async (query: Record<string, string | number>) => (await http().get('/api/me/points').query(query).set(bearer(guest)).expect(200)).body;
+    expect((await logs({ order: 'oldest' })).items[0]).toMatchObject({ delta: 30, reason: '초대받아 가입' });
+    expect((await logs({ type: 'spend' })).items).toHaveLength(0);
+    expect((await logs({ type: 'earn' })).items.every((l: { delta: number }) => l.delta > 0)).toBe(true);
+    const first = await logs({ order: 'oldest', size: 2 });
+    expect(first.items).toHaveLength(2);
+    const next = await logs({ order: 'oldest', size: 2, cursor: first.nextCursor });
+    expect(next.items[0].id).toBeGreaterThan(first.items[1].id);
 
     // 배지는 다른 사람도 프로필에서 본다
     const profile = (await http().get(`/api/users/${joined.user.id}`)).body;
