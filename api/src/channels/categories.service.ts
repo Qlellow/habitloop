@@ -35,6 +35,8 @@ export class CategoriesService {
        SELECT $1, $2, $3, $4, coalesce(max(position), -1) + 1 FROM channel_categories WHERE channel_id = $1`,
       [channel.id, name, !!input.ownerOnly, !!input.adult],
     );
+    // 운영진 전용은 운영진 전용 카테고리 중 맨 아래(= 일반 카테고리 바로 위)로, 일반은 맨 아래로
+    await this.normalize(channel.id);
     return this.channels.categories(channel.id);
   }
 
@@ -51,15 +53,56 @@ export class CategoriesService {
       !!input.adult,
       category.id,
     ]);
+    await this.normalize(channel.id);
     return this.channels.categories(channel.id);
   }
 
-  /** 카테고리만 지우고 글은 남긴다 (posts.category_id 는 FK ON DELETE SET NULL) */
-  async remove(userId: number, slug: string, categoryId: number): Promise<CategoryResponse[]> {
+  /**
+   * 카테고리를 지운다. 글은 지우지 않고 moveTo 카테고리로 옮긴다.
+   * 카테고리가 있는 채널의 글은 카테고리가 꼭 있어야 하므로, 글이 있고 다른 카테고리가 남는다면 옮길 곳을 골라야 한다.
+   * 마지막 카테고리면 채널에 카테고리가 없어지므로 글은 카테고리 없이 남는다 (posts.category_id 는 FK ON DELETE SET NULL).
+   */
+  async remove(userId: number, slug: string, categoryId: number, moveTo?: number): Promise<CategoryResponse[]> {
     const channel = await this.channels.requireManager(slug, userId);
     const category = await this.find(channel, categoryId);
-    await this.db.execute('DELETE FROM channel_categories WHERE id = $1', [category.id]);
+    await this.db.transaction(async () => {
+      const posts = await this.db.one<{ n: number }>('SELECT count(*)::int AS n FROM posts WHERE category_id = $1', [category.id]);
+      const others = await this.db.one<{ n: number }>('SELECT count(*)::int AS n FROM channel_categories WHERE channel_id = $1 AND id <> $2', [
+        channel.id,
+        category.id,
+      ]);
+      if (posts!.n > 0 && others!.n > 0) {
+        if (moveTo == null) throw ApiError.badRequest('이 카테고리의 글을 옮길 카테고리를 골라 주세요');
+        if (moveTo === category.id) throw ApiError.badRequest('지우는 카테고리로는 옮길 수 없어요');
+        const target = await this.find(channel, moveTo);
+        await this.db.execute('UPDATE posts SET category_id = $1 WHERE category_id = $2', [target.id, category.id]);
+      }
+      await this.db.execute('DELETE FROM channel_categories WHERE id = $1', [category.id]);
+    });
     return this.channels.categories(channel.id);
+  }
+
+  /** 카테고리별 글 수 (삭제 창에서 옮길 글이 몇 개인지 보여 준다) */
+  async postCounts(userId: number, slug: string): Promise<Record<number, number>> {
+    const channel = await this.channels.requireManager(slug, userId);
+    const rows = await this.db.query<{ id: number; n: number }>(
+      'SELECT category_id AS id, count(*)::int AS n FROM posts WHERE channel_id = $1 AND category_id IS NOT NULL GROUP BY category_id',
+      [channel.id],
+    );
+    return Object.fromEntries(rows.map((r) => [r.id, r.n]));
+  }
+
+  /**
+   * 운영진 전용 카테고리는 항상 일반 카테고리보다 위에 둔다. 각 무리 안에서는 지금 순서를 그대로 지킨다.
+   * (새로 만든 운영진 전용 카테고리는 position 이 가장 크므로 운영진 전용 무리의 맨 아래로 간다)
+   */
+  private async normalize(channelId: number) {
+    await this.db.execute(
+      `UPDATE channel_categories c SET position = o.rn - 1
+       FROM (SELECT id, row_number() OVER (ORDER BY owner_only DESC, position, id) AS rn FROM channel_categories WHERE channel_id = $1) o
+       WHERE c.id = o.id`,
+      [channelId],
+    );
   }
 
   /** ids 순서대로 position 을 다시 매긴다. 채널의 카테고리를 빠짐없이 한 번씩 보내야 한다. */
@@ -77,6 +120,8 @@ export class CategoriesService {
        WHERE c.id = o.id AND c.channel_id = $2`,
       [ids, channel.id],
     );
+    // 운영진 전용을 일반 카테고리 아래로 옮겼더라도 다시 위로
+    await this.normalize(channel.id);
     return this.channels.categories(channel.id);
   }
 

@@ -109,7 +109,9 @@ function LockedGate({ channel }: { channel: ChannelDetail }) {
   if (channel.locked === 'adult') {
     return (
       <section className={cn(ui.card, 'flex flex-col items-center px-6 py-14 text-center')}>
-        <span className="grid place-items-center w-14 h-14 rounded-full bg-danger text-white text-xl font-extrabold">19</span>
+        <span className="text-[52px] leading-none" role="img" aria-label="만 19세 이상">
+          🔞
+        </span>
         <h2 className="mt-4 mb-1.5 text-xl font-bold text-fg-strong">만 19세 이상만 볼 수 있는 채널이에요</h2>
         <p className="mt-0 mb-6 text-fg-sub">
           {user?.ageChecked ? '나이 확인 결과 만 19세 미만이라 볼 수 없어요.' : '설정에서 생년월일로 나이를 확인하면 볼 수 있어요.'}
@@ -245,12 +247,8 @@ export default function ChannelPage() {
                       </span>
                     )}
                     {channel.adult && (
-                      <span
-                        className="ml-1.5 align-[3px] inline-grid place-items-center w-6 h-6 rounded-full bg-danger text-white text-[11px] font-extrabold"
-                        title="만 19세 이상"
-                        aria-label="만 19세 이상"
-                      >
-                        19
+                      <span className="ml-1.5 text-[20px] align-[1px]" title="만 19세 이상" role="img" aria-label="만 19세 이상">
+                        🔞
                       </span>
                     )}
                   </h1>

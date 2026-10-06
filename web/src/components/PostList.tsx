@@ -25,6 +25,28 @@ export const PostItem = memo(function PostItem({
 }) {
   const label = badge === 'channel' ? post.channelName : post.categoryName;
   const navigate = useNavigate();
+  const time = (
+    <time className={s.time} dateTime={post.createdAt}>
+      {timeAgo(post.createdAt)}
+    </time>
+  );
+  // 작성자를 누르면 프로필로 (글 링크 안이라 <a> 를 겹치지 않고 직접 이동한다)
+  const author = (className?: string) => (
+    <span
+      className={cn(s.author, className)}
+      role="link"
+      title={`${post.authorNickname} 프로필 보기`}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        navigate(`/u/${post.authorId}`);
+      }}
+    >
+      <UserAvatar nickname={post.authorNickname} avatarUrl={post.authorAvatar} size={20} />
+      <span className="truncate hover:underline underline-offset-2">{post.authorNickname}</span>
+      <RoleBadge role={post.authorRole} size={16} />
+    </span>
+  );
   return (
     <li className={s.item}>
       <Link
@@ -34,28 +56,22 @@ export const PostItem = memo(function PostItem({
         onPointerEnter={preload.post}
         onFocus={preload.post}
       >
-        {/* 위: 채널(또는 카테고리) ··· 시간 / 가운데: 작성자 / 아래: 제목·내용 ··· 공감·댓글·조회 */}
-        <div className={s.meta}>
-          {label && <span className={s.badge}>{label}</span>}
-          <time className={s.time} dateTime={post.createdAt}>
-            {timeAgo(post.createdAt)}
-          </time>
-        </div>
-        {/* 작성자를 누르면 프로필로 (글 링크 안이라 <a> 를 겹치지 않고 직접 이동한다) */}
-        <span
-          className={s.author}
-          role="link"
-          title={`${post.authorNickname} 프로필 보기`}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            navigate(`/u/${post.authorId}`);
-          }}
-        >
-          <UserAvatar nickname={post.authorNickname} avatarUrl={post.authorAvatar} size={20} />
-          <span className="truncate hover:underline underline-offset-2">{post.authorNickname}</span>
-          <RoleBadge role={post.authorRole} size={16} />
-        </span>
+        {/* 위: 채널(또는 카테고리) ··· 시간 / 가운데: 작성자 / 아래: 제목·내용 ··· 공감·댓글·조회.
+            채널 안이라 채널 이름이 없으면 그 줄을 작성자가 채워 빈칸 없이 당긴다 */}
+        {label ? (
+          <>
+            <div className={s.meta}>
+              <span className={s.badge}>{label}</span>
+              {time}
+            </div>
+            {author('mt-1.5')}
+          </>
+        ) : (
+          <div className={s.meta}>
+            {author()}
+            {time}
+          </div>
+        )}
         <div className={s.bottom}>
           <div className="flex-1 min-w-0">
             <h3 className={s.title}>{post.title}</h3>

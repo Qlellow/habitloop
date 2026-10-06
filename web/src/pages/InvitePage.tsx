@@ -45,7 +45,11 @@ export default function InvitePage() {
             <p className="mt-4 mb-1 text-sm text-fg-weak">채널에 초대받았어요</p>
             <h1 className="m-0 text-2xl font-bold text-fg-strong">
               {c.name}
-              {c.adult && <span className="ml-2 align-[4px] inline-grid place-items-center w-6 h-6 rounded-full bg-danger text-white text-[11px] font-extrabold">19</span>}
+              {c.adult && (
+                <span className="ml-2 text-[22px] align-[1px]" role="img" aria-label="만 19세 이상" title="만 19세 이상">
+                  🔞
+                </span>
+              )}
             </h1>
             <p className="mt-1 mb-6 text-sm text-fg-sub">팔로워 {compact(c.memberCount)}명</p>
             {c.joined ? (

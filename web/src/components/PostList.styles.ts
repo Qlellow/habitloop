@@ -10,7 +10,7 @@ const s = {
   link: 'group block px-5 py-4 transition-colors hover:bg-pressed',
   meta: 'flex items-center gap-1.5 min-h-5 text-[13px] text-fg-weak',
   time: 'ml-auto flex-none',
-  author: 'mt-1.5 max-w-full inline-flex items-center gap-1.5 text-[13px] text-fg-sub font-medium',
+  author: 'min-w-0 max-w-full inline-flex items-center gap-1.5 text-[13px] text-fg-sub font-medium',
   // 제목·내용(왼쪽)과 공감·댓글·조회(오른쪽 아래)
   bottom: 'flex items-end gap-4 mt-1 max-[520px]:flex-col max-[520px]:items-stretch max-[520px]:gap-1.5',
   badge: 'font-semibold text-primary',
