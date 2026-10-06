@@ -147,6 +147,8 @@ Vercel 프로젝트에서 할 일:
 | `JWT_SECRET` | 32바이트 이상 무작위 문자열 (**필수**, 없으면 API 가 시작하지 않아요) |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | 인증번호 메일을 보낼 Gmail 주소 / 앱 비밀번호 |
 | `CORS_ORIGINS` | (선택) 다른 도메인에서 API 를 부를 때만. 같은 도메인이면 필요 없어요 |
+| `SITE_URL` | 사이트 바깥 주소 (예: `https://habitloop-eight.vercel.app`). 소셜 로그인 Redirect URI · 로그인 뒤 돌아갈 주소 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` · `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` · `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | 소셜 로그인 키 (비우면 그 버튼은 "준비 중") |
 
 **2) CI/CD (`.github/workflows/ci.yml`)**
 

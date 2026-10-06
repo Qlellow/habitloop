@@ -7,20 +7,19 @@ import { OAuthService, isProvider, type OAuthProvider } from './oauth.service';
 const COOKIE = 'loop_oauth';
 const COOKIE_PATH = '/api/auth/oauth';
 
-/** 이 요청이 들어온 바깥 주소 (https://도메인). PUBLIC_API_ORIGIN 을 주면 그 값을 쓴다 */
-function origin(req: Request) {
-  if (process.env.PUBLIC_API_ORIGIN) return process.env.PUBLIC_API_ORIGIN.replace(/\/$/, '');
+/**
+ * 사이트 바깥 주소 (예: https://habitloop-eight.vercel.app). 소셜 로그인의 Redirect URI 와
+ * 로그인을 마치고 돌아갈 웹 주소를 모두 이 값으로 만든다 → 각 개발자 콘솔에 등록한 주소와 항상 같다.
+ * SITE_URL 이 없으면(로컬 개발 등) 이 요청이 들어온 주소를 쓴다.
+ */
+function siteUrl(req: Request) {
+  if (process.env.SITE_URL) return process.env.SITE_URL.trim().replace(/\/$/, '');
   const proto = String(req.headers['x-forwarded-proto'] ?? req.protocol).split(',')[0];
   const host = String(req.headers['x-forwarded-host'] ?? req.headers.host);
   return `${proto}://${host}`;
 }
 
-/** 로그인 뒤 돌아갈 웹 주소. API 와 웹이 다른 곳에 있으면 PUBLIC_ORIGIN (CORS 와 같은 값) */
-function webOrigin(req: Request) {
-  return (process.env.PUBLIC_ORIGIN?.split(',')[0] ?? origin(req)).replace(/\/$/, '');
-}
-
-const redirectUri = (req: Request, provider: OAuthProvider) => `${origin(req)}/api/auth/oauth/${provider}/callback`;
+const redirectUri = (req: Request, provider: OAuthProvider) => `${siteUrl(req)}/api/auth/oauth/${provider}/callback`;
 
 function readCookie(req: Request, name: string) {
   for (const part of (req.headers.cookie ?? '').split(';')) {
@@ -53,7 +52,7 @@ export class OAuthController {
     const { url, nonce } = this.oauth.start(provider, redirectUri(req, provider), { next, ref });
     res.cookie(COOKIE, nonce, {
       httpOnly: true,
-      secure: origin(req).startsWith('https://'),
+      secure: siteUrl(req).startsWith('https://'),
       // 제공자에서 돌아오는 건 다른 사이트에서 오는 GET 이동이라 Lax 면 쿠키가 따라온다
       sameSite: 'lax',
       path: COOKIE_PATH,
@@ -72,7 +71,7 @@ export class OAuthController {
   ) {
     if (!isProvider(provider)) throw ApiError.notFound('없는 로그인 방법이에요');
     res.clearCookie(COOKIE, { path: COOKIE_PATH });
-    const back = `${webOrigin(req)}/oauth/callback`;
+    const back = `${siteUrl(req)}/oauth/callback`;
     try {
       const { result, next } = await this.oauth.callback(provider, query, readCookie(req, COOKIE), redirectUri(req, provider), String(req.headers['user-agent'] ?? ''));
       const hash = new URLSearchParams({ next });

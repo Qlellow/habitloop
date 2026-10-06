@@ -819,6 +819,18 @@ describe('커뮤니티', () => {
       // 닉네임을 주지 않아도 가입된다
       profile = { id: 777, kakao_account: { email: 'nonick@test.dev', is_email_valid: true, is_email_verified: true } };
       expect((await meOf('kakao')).nickname).toMatch(/^루퍼/);
+      // SITE_URL 을 주면 Redirect URI 와 돌아갈 웹 주소를 모두 그 주소로 만든다 (요청 주소와 상관없이)
+      process.env.SITE_URL = 'https://loop.example/';
+      const start = await http().get('/api/auth/oauth/google/start').expect(302);
+      const state = new URL(start.headers.location).searchParams;
+      expect(state.get('redirect_uri')).toBe('https://loop.example/api/auth/oauth/google/callback');
+      const back = await http()
+        .get('/api/auth/oauth/google/callback')
+        .query({ code: 'abc', state: state.get('state') })
+        .set('Cookie', (start.headers['set-cookie'] as unknown as string[])[0].split(';')[0])
+        .expect(302);
+      expect(back.headers.location).toMatch(/^https:\/\/loop\.example\/oauth\/callback#/);
+      delete process.env.SITE_URL;
       // 네이버 생일(출생연도 + MM-DD)은 선택으로 받아 나이 확인에 쓴다
       profile = { response: { id: 'n-1', email: 'naver@test.dev', nickname: '네이버친구', birthyear: '1995', birthday: '03-14' } };
       expect(await meOf('naver')).toMatchObject({ nickname: '네이버친구', birthDate: '1995-03-14', adult: true });
@@ -827,6 +839,7 @@ describe('커뮤니티', () => {
       delete process.env.GOOGLE_CLIENT_ID;
       delete process.env.GOOGLE_CLIENT_SECRET;
       delete process.env.KAKAO_CLIENT_ID;
+      delete process.env.SITE_URL;
       delete process.env.NAVER_CLIENT_ID;
       delete process.env.NAVER_CLIENT_SECRET;
     }
