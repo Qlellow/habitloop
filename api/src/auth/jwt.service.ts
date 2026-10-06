@@ -13,6 +13,7 @@ export interface AuthUser {
 const RESET_TTL = '10m';
 const RESET_PURPOSE = 'password-reset';
 const OAUTH_PURPOSE = 'oauth-state';
+const OAUTH_LINK_PURPOSE = 'oauth-link';
 
 /** 비밀번호가 바뀌면 달라지는 값. 재설정 토큰에 넣어서 한 번 쓰면 다시 못 쓰게 한다 */
 const passwordVersion = (passwordHash: string) => createHash('sha256').update(passwordHash).digest('hex').slice(0, 16);
@@ -78,15 +79,39 @@ export class JwtService {
   }
 
   /** 소셜 로그인 state: 어느 제공자로, 어떤 브라우저(nonce)에서 시작했는지 · 돌아갈 곳 · 초대 코드. 10분 */
-  issueOAuthState(state: { provider: string; nonce: string; next: string; ref?: string }): string {
+  issueOAuthState(state: { provider: string; nonce: string; next: string; ref?: string; link?: number }): string {
     return jwt.sign({ purpose: OAUTH_PURPOSE, ...state }, this.secret, { expiresIn: '10m', algorithm: 'HS256' });
   }
 
-  parseOAuthState(token: string): { provider: string; nonce: string; next: string; ref?: string } | undefined {
+  parseOAuthState(token: string): { provider: string; nonce: string; next: string; ref?: string; link?: number } | undefined {
     try {
       const c = jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
       if (c.purpose !== OAUTH_PURPOSE || typeof c.provider !== 'string' || typeof c.nonce !== 'string') return undefined;
-      return { provider: c.provider, nonce: c.nonce, next: typeof c.next === 'string' ? c.next : '/', ref: typeof c.ref === 'string' ? c.ref : undefined };
+      return {
+        provider: c.provider,
+        nonce: c.nonce,
+        next: typeof c.next === 'string' ? c.next : '/',
+        ref: typeof c.ref === 'string' ? c.ref : undefined,
+        link: Number.isInteger(c.link) ? (c.link as number) : undefined,
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * 소셜 계정 연결 토큰: 로그인한 사용자가 설정에서 '연결'을 누를 때 받는다 (5분).
+   * 브라우저가 제공자 화면으로 이동할 때는 Authorization 헤더를 보낼 수 없어서, 이 토큰으로 누구의 연결인지 넘긴다
+   */
+  issueOAuthLink(userId: number, provider: string): string {
+    return jwt.sign({ purpose: OAUTH_LINK_PURPOSE, provider }, this.secret, { subject: String(userId), expiresIn: '5m', algorithm: 'HS256' });
+  }
+
+  parseOAuthLink(token: string, provider: string): number | undefined {
+    try {
+      const c = jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+      const id = Number(c.sub);
+      return c.purpose === OAUTH_LINK_PURPOSE && c.provider === provider && Number.isInteger(id) ? id : undefined;
     } catch {
       return undefined;
     }

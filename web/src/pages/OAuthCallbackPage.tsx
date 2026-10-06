@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { completeOAuthLogin, safeNext } from '@loop/shared';
+import { completeOAuthLogin, queryClient, safeNext } from '@loop/shared';
 import { toast } from '../components/Toast';
 import { ui } from '../components/ui';
 
@@ -22,9 +22,16 @@ export default function OAuthCallbackPage() {
     const next = safeNext(hash.get('next'), '/');
     const token = hash.get('token');
     const challenge = hash.get('challenge');
+    const linked = hash.get('linked');
     history.replaceState(null, '', window.location.pathname);
 
-    if (token) {
+    if (linked) {
+      // 설정에서 소셜 계정을 연결하고 돌아왔다
+      const name = { google: 'Google', kakao: '카카오', naver: '네이버' }[linked] ?? linked;
+      void queryClient.invalidateQueries({ queryKey: ['identities'] });
+      toast(`${name} 계정을 연결했어요`);
+      navigate(next, { replace: true });
+    } else if (token) {
       completeOAuthLogin(token).then(
         () => navigate(next, { replace: true }),
         (e: Error) => {

@@ -30,7 +30,8 @@ const NaverLogo = () => (
   </svg>
 );
 
-const PROVIDERS: { id: OAuthProvider; label: string; logo: () => ReactElement; className: string }[] = [
+/** 소셜 로그인 회사별 이름 · 로고 · 바탕 (설정의 연동 목록에서도 쓴다) */
+export const PROVIDERS: { id: OAuthProvider; label: string; logo: () => ReactElement; className: string }[] = [
   // Google: 흰 바탕 + 연한 테두리 (어두운 화면에서도 흰 바탕을 유지)
   { id: 'google', label: 'Google', logo: GoogleLogo, className: 'bg-white border border-[#dadce0]' },
   // Kakao: 카카오 노랑 + 검은 말풍선

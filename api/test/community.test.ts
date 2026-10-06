@@ -738,7 +738,9 @@ describe('커뮤니티', () => {
 
   it('소셜 로그인: state · 쿠키 확인, 새 가입 · 다시 로그인 · 같은 이메일 계정에 잇기', async () => {
     expect((await http().get('/api/auth/oauth/providers')).body).toEqual([]);
-    await http().get('/api/auth/oauth/google/start').expect(404); // 키가 없으면 꺼져 있다
+    // 키가 없으면 꺼져 있다 (브라우저가 이동해 온 요청이라 웹으로 돌려보내 이유를 보여 준다)
+    const off = await http().get('/api/auth/oauth/google/start').expect(302);
+    expect(new URLSearchParams(new URL(off.headers.location).hash.slice(1)).get('error')).toContain('준비 중');
     process.env.GOOGLE_CLIENT_ID = 'test-google';
     process.env.GOOGLE_CLIENT_SECRET = 'test-secret';
     process.env.KAKAO_CLIENT_ID = 'test-kakao';
@@ -758,8 +760,10 @@ describe('커뮤니티', () => {
     try {
       expect((await http().get('/api/auth/oauth/providers')).body).toEqual(['google', 'kakao', 'naver']);
       // 시작: 제공자 로그인 화면으로 보내고, 이 브라우저에 nonce 쿠키를 심는다
-      const login = async (provider: string, opts: { cookie?: boolean; next?: string } = {}) => {
-        const start = await http().get(`/api/auth/oauth/${provider}/start`).query({ next: opts.next ?? '/c/free' }).expect(302);
+      const login = async (provider: string, opts: { cookie?: boolean; next?: string; link?: string } = {}) => {
+        const query: Record<string, string> = { next: opts.next ?? '/c/free' };
+        if (opts.link) query.link = opts.link;
+        const start = await http().get(`/api/auth/oauth/${provider}/start`).query(query).expect(302);
         const to = new URL(start.headers.location);
         const cookie = (start.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
         const callback = http().get(`/api/auth/oauth/${provider}/callback`).query({ code: 'abc', state: to.searchParams.get('state') });
@@ -818,7 +822,35 @@ describe('커뮤니티', () => {
       expect(kakao.avatarUrl).toBeUndefined(); // 카카오 기본 이미지는 가져오지 않는다
       // 닉네임을 주지 않아도 가입된다
       profile = { id: 777, kakao_account: { email: 'nonick@test.dev', is_email_valid: true, is_email_verified: true } };
-      expect((await meOf('kakao')).nickname).toMatch(/^루퍼/);
+      // 닉네임을 받지 못하면 '루퍼' + 숫자 4자리로 겹치지 않게
+      expect((await meOf('kakao')).nickname).toMatch(/^루퍼\d{4}$/);
+
+      // 설정 → 소셜 로그인 연동: 소셜로만 가입한 계정(비밀번호 없음)은 마지막 연결을 끊을 수 없다
+      profile = { sub: 'g-link', email: 'linker@test.dev', email_verified: true, name: '연동왕' };
+      const linkerToken = (await login('google')).hash.get('token')!;
+      const ids = (await http().get('/api/me/identities').set(bearer(linkerToken)).expect(200)).body;
+      expect(ids).toMatchObject({ hasPassword: false, enabled: ['google', 'kakao', 'naver'] });
+      expect(ids.linked.map((l: { provider: string }) => l.provider)).toEqual(['google']);
+      await http().delete('/api/me/identities/google').set(bearer(linkerToken)).expect(400);
+      // 카카오 연결: 연결 토큰이 든 시작 주소 → 제공자 → 지금 계정에 이어 붙고 #linked 로 돌아온다
+      const linkUrl = (await http().post('/api/me/identities/kakao/link').set(bearer(linkerToken)).expect(201)).body.url as string;
+      const linkToken = new URL(linkUrl, 'http://x').searchParams.get('link')!;
+      profile = { id: 'k-link', kakao_account: { email: 'other@test.dev', is_email_valid: true, is_email_verified: true } };
+      const linked = await login('kakao', { link: linkToken, next: '/me/settings' });
+      expect(linked.hash.get('linked')).toBe('kakao');
+      expect(linked.hash.get('token')).toBeNull();
+      // 이제 카카오로 로그인해도 같은 계정, 구글 연결은 끊을 수 있다
+      const linkerId = (await http().get('/api/me').set(bearer(linkerToken))).body.id;
+      expect((await meOf('kakao')).id).toBe(linkerId);
+      const after = (await http().delete('/api/me/identities/google').set(bearer(linkerToken)).expect(200)).body;
+      expect(after.linked.map((l: { provider: string }) => l.provider)).toEqual(['kakao']);
+      // 다른 계정에 이미 연결된 소셜 계정은 연결할 수 없다
+      const otherLink = (await http().post('/api/me/identities/kakao/link').set(bearer(token)).expect(201)).body.url as string;
+      const conflict = await login('kakao', { link: new URL(otherLink, 'http://x').searchParams.get('link')! });
+      expect(conflict.hash.get('error')).toContain('이미 다른 루프 계정');
+      // 연결 토큰이 위조되면 시작하지 않는다
+      const forged = await http().get('/api/auth/oauth/kakao/start').query({ link: 'bad' }).expect(302);
+      expect(new URLSearchParams(new URL(forged.headers.location).hash.slice(1)).get('error')).toContain('다시 눌러');
       // SITE_URL 을 주면 Redirect URI 와 돌아갈 웹 주소를 모두 그 주소로 만든다 (요청 주소와 상관없이)
       process.env.SITE_URL = 'https://loop.example/';
       const start = await http().get('/api/auth/oauth/google/start').expect(302);

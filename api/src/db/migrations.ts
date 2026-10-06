@@ -301,4 +301,9 @@ CREATE TABLE user_identities (
 CREATE INDEX idx_user_identities_user ON user_identities (user_id);
 `,
   },
+  {
+    // 소셜 로그인으로만 가입한 계정은 비밀번호를 모른다 (설정에서 마지막 로그인 수단을 끊지 못하게)
+    name: '014_has_password',
+    sql: `ALTER TABLE users ADD COLUMN has_password BOOLEAN NOT NULL DEFAULT TRUE;`,
+  },
 ];
