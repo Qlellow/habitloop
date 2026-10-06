@@ -48,7 +48,9 @@ const s = {
   commentLike:
     'inline-flex items-center gap-1 h-7 pl-2 pr-2.5 rounded-sm text-[13px] font-semibold text-fg-sub transition-colors ' +
     'hover:bg-field aria-pressed:text-danger [&>svg]:w-[15px] [&>svg]:h-[15px]',
-  commentDelete: 'px-2 py-1 rounded-sm text-[13px] text-fg-weak hover:bg-field hover:text-danger',
+  commentAction: 'px-2 py-1 rounded-sm text-[13px] text-fg-weak hover:bg-field hover:text-fg-sub',
+  // 삭제는 로그아웃처럼 항상 빨강 (다크 테마는 밝은 빨강)
+  commentDelete: 'px-2 py-1 rounded-sm text-[13px] text-danger-text hover:bg-danger-weak',
   bestList:
     'list-none mx-5 mt-0 mb-4 py-0.5 rounded-md bg-primary-weak ' +
     '[&>li:not(:first-child)]:before:bg-[color-mix(in_srgb,var(--primary)_14%,transparent)]',

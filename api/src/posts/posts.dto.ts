@@ -37,4 +37,15 @@ export class CommentInput {
   @NotBlank('댓글을 입력해 주세요')
   @MaxLength(1000, { message: '댓글은 1000자 이내로 입력해 주세요' })
   content!: string;
+
+  /** 답글이면 어느 댓글에 다는지 */
+  @IsOptional()
+  @IsInt()
+  parentId?: number;
+}
+
+export class CommentUpdateInput {
+  @NotBlank('댓글을 입력해 주세요')
+  @MaxLength(1000, { message: '댓글은 1000자 이내로 입력해 주세요' })
+  content!: string;
 }

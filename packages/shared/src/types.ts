@@ -238,6 +238,12 @@ export interface Comment {
   mine: boolean;
   /** 내 댓글이거나, 내가 작성자보다 높은 채널 운영진이라 지울 수 있는지 */
   deletable: boolean;
+  /** 고친 시각 (고친 적이 없으면 없음) */
+  updatedAt?: string;
+  /** 답글이면 어느 댓글의 답글인지 */
+  parentId?: number;
+  /** 답글 (오래된 순, 목록에서만) */
+  replies?: Comment[];
 }
 
 export interface LikeResponse {

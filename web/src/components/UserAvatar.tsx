@@ -23,7 +23,12 @@ export function UserAvatar({ nickname, avatarUrl, size = 32, className }: { nick
     );
   }
   return (
-    <span aria-hidden className={cn('flex-none grid place-items-center rounded-full bg-primary-weak text-primary font-bold', className)} style={style}>
+    // 연한 파랑은 반투명이라 배너 위에서 비치지 않게 바탕(surface)을 먼저 깐다
+    <span
+      aria-hidden
+      className={cn('flex-none grid place-items-center rounded-full text-primary font-bold', className)}
+      style={{ ...style, background: 'linear-gradient(var(--primary-weak), var(--primary-weak)), var(--surface)' }}
+    >
       {nickname.slice(0, 1)}
     </span>
   );

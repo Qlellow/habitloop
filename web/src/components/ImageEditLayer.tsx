@@ -71,6 +71,8 @@ export function ImageEditLayer({
   const [cropping, setCropping] = useState(false);
   const [captionDraft, setCaptionDraft] = useState('');
   const [sizeDraft, setSizeDraft] = useState('');
+  /** 끌어서 크기를 바꾸는 동안의 크기(%) — 메뉴의 숫자가 실시간으로 바뀐다 */
+  const [liveW, setLiveW] = useState<number>();
   const layerRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
@@ -298,11 +300,13 @@ export function ImageEditLayer({
     }
     const next: ImageParams = { ...d.params, w: (w / d.contentW) * 100, ar: h / w, nr: d.nr };
     applyImageStyles(el, next);
+    setLiveW(next.w);
     measure();
   };
   const endResize = () => {
     const d = drag.current;
     drag.current = undefined;
+    setLiveW(undefined);
     const el = element();
     if (!d || !el) return;
     const frame = el.querySelector<HTMLElement>('.loop-img-frame')!.getBoundingClientRect();
@@ -391,7 +395,7 @@ export function ImageEditLayer({
           }}
           title="크기 (25·50·75·100% 또는 직접 입력)"
         >
-          {Math.round(params.w)}% ▾
+          <span className="tabular-nums">{Math.round(liveW ?? params.w)}%</span> ▾
         </button>
         <button
           type="button"

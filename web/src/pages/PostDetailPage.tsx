@@ -12,6 +12,7 @@ import {
   useChannel,
   useComments,
   useDeleteComment,
+  useEditComment,
   useDeletePost,
   usePost,
   useToggleCommentLike,
@@ -79,7 +80,7 @@ function CommentBody({ content }: { content: string }) {
     <>
       {text && <p className={s.commentBody}>{text}</p>}
       {images.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-2">
+        <div className="flex flex-wrap gap-2 mt-2 mb-3">
           {images.map((src, i) => (
             <a key={i} href={apiUrl(src)} target="_blank" rel="noopener noreferrer" className="block">
               <img src={apiUrl(src)} alt="" loading="lazy" className="block max-h-56 max-w-[min(100%,320px)] rounded-md border border-border object-cover" />
@@ -91,53 +92,147 @@ function CommentBody({ content }: { content: string }) {
   );
 }
 
-function CommentItem({ comment: c, postId, best }: { comment: Comment; postId: number; best?: boolean }) {
+/** 답글 쓰기 · 댓글 고치기 칸 (작게) */
+function InlineComposer({
+  initial = '',
+  placeholder,
+  submitLabel,
+  pending,
+  onSubmit,
+  onCancel,
+}: {
+  initial?: string;
+  placeholder: string;
+  submitLabel: string;
+  pending: boolean;
+  onSubmit: (text: string) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState(initial);
+  const submit = () => text.trim() && onSubmit(text.trim());
+  return (
+    <div className="mt-2 mb-1">
+      <textarea
+        className={cn(ui.textarea, 'min-h-[72px] text-[15px]')}
+        maxLength={1000}
+        placeholder={placeholder}
+        value={text}
+        autoFocus
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submit();
+          if (e.key === 'Escape') onCancel();
+        }}
+        aria-label={placeholder}
+      />
+      <div className="flex justify-end gap-1.5 mt-1.5">
+        <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={onCancel}>
+          취소
+        </button>
+        <button type="button" className={cn(ui.button, ui.primary, ui.small)} disabled={!text.trim() || pending} onClick={submit}>
+          {submitLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CommentItem({ comment: c, postId, best, reply }: { comment: Comment; postId: number; best?: boolean; reply?: boolean }) {
   const { isLoggedIn } = useAuth();
   const toLogin = useLoginRedirect(postId);
   const like = useToggleCommentLike(postId);
   const remove = useDeleteComment(postId);
+  const edit = useEditComment(postId);
+  const add = useAddComment(postId);
+  const [mode, setMode] = useState<'edit' | 'reply'>();
   const onLike = () => {
     if (!isLoggedIn) return toLogin();
     like.mutate({ commentId: c.id, like: !c.liked }, { onError: (e) => toast(e.message) });
   };
   return (
-    <li className={s.comment}>
+    <li className={reply ? 'pt-3' : s.comment}>
       <div className={s.commentHead}>
         {best && <span className={s.bestBadge}>BEST</span>}
         <Link to={`/u/${c.authorId}`} className={cn(s.commentAuthor, 'hover:underline underline-offset-2')} onPointerEnter={preload.user}>
-          <UserAvatar nickname={c.authorNickname} avatarUrl={c.authorAvatar} size={22} />
+          <UserAvatar nickname={c.authorNickname} avatarUrl={c.authorAvatar} size={reply ? 20 : 24} />
           {c.authorNickname}
           <RoleBadge role={c.authorRole} size={16} />
         </Link>
         <time className={s.commentTime} dateTime={c.createdAt} title={new Date(c.createdAt).toLocaleString()}>
           {timeAgo(c.createdAt)}
+          {c.updatedAt && ' · 수정됨'}
         </time>
       </div>
-      <CommentBody content={c.content} />
-      <div className={s.commentActions}>
-        <button
-          type="button"
-          className={s.commentLike}
-          aria-pressed={c.liked}
-          aria-label={`좋아요 ${c.likeCount}`}
-          onClick={onLike}
-        >
-          <HeartIcon filled={c.liked} />
-          {c.likeCount > 0 ? compact(c.likeCount) : '좋아요'}
-        </button>
-        {c.deletable && !best && (
-          <button
-            type="button"
-            className={s.commentDelete}
-            onClick={() =>
-              confirm(c.mine ? '댓글을 삭제할까요?' : `${c.authorNickname}님의 댓글을 운영진 권한으로 삭제할까요?`) &&
-              remove.mutate(c.id, { onError: (e) => toast(e.message) })
-            }
-          >
-            삭제
+      {mode === 'edit' ? (
+        <InlineComposer
+          initial={c.content}
+          placeholder="댓글 고치기"
+          submitLabel="저장"
+          pending={edit.isPending}
+          onCancel={() => setMode(undefined)}
+          onSubmit={(content) => edit.mutate({ id: c.id, content }, { onSuccess: () => setMode(undefined), onError: (e) => toast(e.message) })}
+        />
+      ) : (
+        <CommentBody content={c.content} />
+      )}
+      {mode !== 'edit' && (
+        <div className={s.commentActions}>
+          <button type="button" className={s.commentLike} aria-pressed={c.liked} aria-label={`좋아요 ${c.likeCount}`} onClick={onLike}>
+            <HeartIcon filled={c.liked} />
+            {c.likeCount > 0 ? compact(c.likeCount) : '좋아요'}
           </button>
-        )}
-      </div>
+          {!best && (
+            <button
+              type="button"
+              className={s.commentAction}
+              onClick={() => (isLoggedIn ? setMode(mode === 'reply' ? undefined : 'reply') : toLogin())}
+            >
+              답글
+            </button>
+          )}
+          {c.mine && !best && (
+            <button type="button" className={s.commentAction} onClick={() => setMode('edit')}>
+              수정
+            </button>
+          )}
+          {c.deletable && !best && (
+            <button
+              type="button"
+              className={s.commentDelete}
+              onClick={() =>
+                confirm(
+                  c.mine
+                    ? reply || !c.replies?.length
+                      ? '댓글을 삭제할까요?'
+                      : `댓글을 삭제할까요?\n답글 ${c.replies.length}개도 함께 지워져요.`
+                    : `${c.authorNickname}님의 댓글을 운영진 권한으로 삭제할까요?`,
+                ) && remove.mutate(c.id, { onError: (e) => toast(e.message) })
+              }
+            >
+              삭제
+            </button>
+          )}
+        </div>
+      )}
+      {mode === 'reply' && (
+        <InlineComposer
+          placeholder={`${c.authorNickname}님에게 답글`}
+          submitLabel="답글 등록"
+          pending={add.isPending}
+          onCancel={() => setMode(undefined)}
+          onSubmit={(content) =>
+            add.mutate({ content, parentId: c.id }, { onSuccess: () => setMode(undefined), onError: (e) => toast(e.message) })
+          }
+        />
+      )}
+      {/* 답글: 댓글 아래에 한 단계 들여서 */}
+      {!reply && c.replies && c.replies.length > 0 && (
+        <ul className="list-none m-0 mt-2 ml-3 pl-4 border-l-2 border-line" aria-label="답글">
+          {c.replies.map((r) => (
+            <CommentItem key={r.id} comment={r} postId={postId} reply />
+          ))}
+        </ul>
+      )}
     </li>
   );
 }

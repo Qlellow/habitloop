@@ -278,6 +278,10 @@ export class PostsService {
     // 글쓰기는 채널 가입자만 (보기·공감·댓글은 가입 없이 가능)
     await this.membership.requireMember(channel, userId);
     const categoryId = await this.categories.resolveForPost(channel, input.categoryId, userId);
+    // 카테고리가 있는 채널은 카테고리를 골라야 한다
+    if (categoryId == null && (await this.db.one('SELECT 1 FROM channel_categories WHERE channel_id = $1 LIMIT 1', [channel.id]))) {
+      throw ApiError.badRequest('카테고리를 골라 주세요');
+    }
     await this.requireAdultCategory(categoryId, userId);
     const id = await this.db.transaction(async () => {
       const row = await this.db.one<{ id: number }>(

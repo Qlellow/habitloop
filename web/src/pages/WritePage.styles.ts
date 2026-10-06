@@ -6,6 +6,7 @@ const s = {
   channelSlug: 'text-[13px] text-fg-weak',
   // 카테고리 드롭다운 + 제목을 한 줄에 (좁은 화면에서는 위아래로)
   titleRow: 'flex gap-2 mb-4 max-[600px]:flex-col',
+  category: 'flex-none w-[170px] max-[600px]:w-full',
   categoryRow: 'flex flex-wrap items-center gap-1.5 mb-4',
   categoryLabel: 'mr-1.5 text-sm font-semibold text-fg-sub',
   categoryChip:

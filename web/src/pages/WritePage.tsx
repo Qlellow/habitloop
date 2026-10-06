@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, useChannel, usePost, useSavePost, type ChannelDetail, type PostDetail } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
-import type { DropdownOption } from '../components/Dropdown';
+import { Dropdown, type DropdownOption } from '../components/Dropdown';
 import { JoinButton } from '../components/JoinButton';
 import { Page } from '../components/Layout';
 import { MarkdownEditor } from '../components/MarkdownEditor';
@@ -25,27 +25,30 @@ function PostForm({
   const navigate = useNavigate();
   const save = useSavePost(initial?.id);
 
-  // 운영진 전용 카테고리는 채널 운영진에게만 보인다. (글에 이미 들어 있던 카테고리는 그대로 둘 수 있다)
-  const selectable = channel.categories.filter(
-    (c) => !c.ownerOnly || channel.staff || c.id === initial?.category?.id,
-  );
+  // 운영진 전용 카테고리는 항상 맨 위에. 운영진이 아니면 보이지만 고를 수 없다 (고르면 알림)
+  const ordered = [...channel.categories.filter((c) => c.ownerOnly), ...channel.categories.filter((c) => !c.ownerOnly)];
+  const canUse = (c: (typeof ordered)[number]) => !c.ownerOnly || channel.staff || c.id === initial?.category?.id;
+  const needsCategory = ordered.length > 0;
   const initialCategory = initial
     ? (initial.category?.id ?? null)
-    : (selectable.find((c) => c.id === defaultCategory)?.id ?? null);
+    : (ordered.find((c) => c.id === defaultCategory && canUse(c))?.id ?? null);
   const [categoryId, setCategoryId] = useState<number | null>(initialCategory);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
 
-  const valid = title.trim().length > 0 && content.trim().length > 0;
+  // 카테고리가 있는 채널은 카테고리를 골라야 글을 올릴 수 있다
+  const valid = title.trim().length > 0 && content.trim().length > 0 && (!needsCategory || categoryId != null);
 
-  const options: DropdownOption<number | null>[] = [
-    { value: null, label: '카테고리 없음' },
-    ...selectable.map((c) => ({
-      value: c.id,
-      label: c.name,
-      hint: c.ownerOnly ? <span className={ui.badge}>운영진 전용</span> : undefined,
-    })),
-  ];
+  const options: DropdownOption<number | null>[] = ordered.map((c) => ({
+    value: c.id,
+    label: c.name,
+    hint: c.ownerOnly ? <span className={ui.badge}>운영진 전용</span> : undefined,
+  }));
+  const pickCategory = (id: number | null) => {
+    const c = ordered.find((x) => x.id === id);
+    if (c && !canUse(c)) return toast(`'${c.name}'은 운영진만 글을 쓸 수 있는 카테고리예요`);
+    setCategoryId(id);
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -69,32 +72,23 @@ function PostForm({
           <ChannelIcon channel={channel} size={40} />
           <span>
             <span className={w.channelName}>{channel.name}</span>
-            <span className={w.channelSlug}>c/{channel.slug}</span>
           </span>
         </Link>
         <h1 className={s.pageTitle}>{initial ? '글 수정' : '글쓰기'}</h1>
       </div>
       <form className={cn(ui.card, s.formCard)} onSubmit={submit}>
-        {/* 어느 카테고리에 쓰는지 한눈에: 칩으로 고른다 */}
-        {selectable.length > 0 && (
-          <div className={w.categoryRow} role="radiogroup" aria-label="카테고리">
-            <span className={w.categoryLabel}>카테고리</span>
-            {options.map((o) => (
-              <button
-                key={String(o.value)}
-                type="button"
-                role="radio"
-                aria-checked={categoryId === o.value}
-                className={w.categoryChip}
-                onClick={() => setCategoryId(o.value)}
-              >
-                {o.value === null ? '없음' : o.label}
-                {o.hint}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* 카테고리(왼쪽) + 제목 */}
         <div className={w.titleRow}>
+          {needsCategory && (
+            <Dropdown
+              label="카테고리"
+              placeholder="카테고리 선택"
+              value={categoryId}
+              options={options}
+              onChange={pickCategory}
+              className={w.category}
+            />
+          )}
           <input
             className={cn(ui.input, w.title)}
             placeholder="제목을 입력해 주세요"
@@ -107,6 +101,7 @@ function PostForm({
         </div>
         <MarkdownEditor value={content} onChange={setContent} />
         <div className={s.formFoot}>
+          {needsCategory && categoryId == null && <span className="mr-auto text-sm text-fg-weak">카테고리를 골라 주세요</span>}
           <button type="button" className={cn(ui.button, ui.ghost)} onClick={() => navigate(-1)}>
             취소
           </button>

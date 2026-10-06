@@ -6,7 +6,7 @@ import type { AuthUser } from '../auth/jwt.service';
 import { ApiError } from '../common/api-error';
 import { intParam } from '../common/cursor-page';
 import { CommentsService } from './comments.service';
-import { CommentInput, CreatePostInput, UpdatePostInput } from './posts.dto';
+import { CommentInput, CommentUpdateInput, CreatePostInput, UpdatePostInput } from './posts.dto';
 import { PostsService, SORTS, type PostSort } from './posts.service';
 
 const id = (value: string) => {
@@ -146,7 +146,13 @@ export class PostsController {
   @Post('posts/:id/comments')
   async addComment(@LoginUser() user: AuthUser, @Param('id') postId: string, @Body() input: CommentInput) {
     await this.posts.requirePostAccess(id(postId), user.id);
-    return this.comments.create(user.id, id(postId), input.content);
+    return this.comments.create(user.id, id(postId), input.content, input.parentId);
+  }
+
+  @Put('posts/:id/comments/:commentId')
+  async updateComment(@LoginUser() user: AuthUser, @Param('id') postId: string, @Param('commentId') commentId: string, @Body() input: CommentUpdateInput) {
+    await this.posts.requirePostAccess(id(postId), user.id);
+    return this.comments.update(user.id, id(postId), id(commentId), input.content);
   }
 
   @Delete('posts/:id/comments/:commentId')

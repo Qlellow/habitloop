@@ -18,11 +18,14 @@ interface CommentRow {
   content: string;
   likeCount: number;
   createdAt: Date;
+  updatedAt: Date | null;
+  parentId: number | null;
 }
 
 const SELECT_COMMENT = `SELECT c.id, c.author_id AS "authorId", u.nickname AS "authorNickname",
   CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "authorAvatar", c.content,
-  c.like_count AS "likeCount", c.created_at AS "createdAt" FROM comments c JOIN users u ON u.id = c.author_id`;
+  c.like_count AS "likeCount", c.created_at AS "createdAt", c.updated_at AS "updatedAt", c.parent_id AS "parentId"
+  FROM comments c JOIN users u ON u.id = c.author_id`;
 
 @Injectable()
 export class CommentsService {
@@ -31,15 +34,23 @@ export class CommentsService {
     private readonly channels: ChannelsService,
   ) {}
 
-  /** (post_id, id) 인덱스를 타는 키셋 페이지네이션 (오래된 순) */
+  /**
+   * 댓글 목록: 최근 댓글이 위에 (키셋 페이지네이션). 답글은 각 댓글 아래에 오래된 순으로 함께 온다.
+   */
   async list(postId: number, cursor: number | undefined, size: number, viewerId?: number): Promise<CursorPage<object & { id: number }>> {
     const pageSize = clamp(size, 1, MAX_PAGE_SIZE);
-    const rows = await this.db.query<CommentRow>(`${SELECT_COMMENT} WHERE c.post_id = $1 AND c.id > $2 ORDER BY c.id ASC LIMIT $3`, [
-      postId,
-      cursor ?? 0,
-      pageSize + 1,
-    ]);
-    return cursorPage(await this.toResponses(postId, rows, viewerId), pageSize);
+    const rows = await this.db.query<CommentRow>(
+      `${SELECT_COMMENT} WHERE c.post_id = $1 AND c.parent_id IS NULL AND ($2::int IS NULL OR c.id < $2) ORDER BY c.id DESC LIMIT $3`,
+      [postId, cursor ?? null, pageSize + 1],
+    );
+    const page = cursorPage(rows, pageSize);
+    const replies = page.items.length
+      ? await this.db.query<CommentRow>(`${SELECT_COMMENT} WHERE c.parent_id = ANY($1::int[]) ORDER BY c.id ASC`, [page.items.map((r) => r.id)])
+      : [];
+    const responses = await this.toResponses(postId, [...page.items, ...replies], viewerId);
+    const byId = new Map(responses.map((r) => [r.id, { ...r, replies: [] as object[] }]));
+    for (const r of replies) byId.get(r.parentId!)?.replies.push(byId.get(r.id)!);
+    return { items: page.items.map((r) => byId.get(r.id)!), nextCursor: page.nextCursor };
   }
 
   /** 베스트 댓글: (post_id, like_count) 인덱스로 좋아요가 일정 수 이상인 댓글만 본다 */
@@ -51,14 +62,23 @@ export class CommentsService {
     return this.toResponses(postId, rows, viewerId);
   }
 
-  async create(userId: number, postId: number, content: string) {
+  /** parentId 가 있으면 그 댓글의 답글 (답글에 다는 답글은 같은 댓글 아래에 모인다: 한 단계) */
+  async create(userId: number, postId: number, content: string, parentId?: number) {
     const channelId = await this.channelOf(postId);
+    let parent: number | null = null;
+    if (parentId != null) {
+      const p = await this.db.one<{ id: number; parentId: number | null }>(
+        'SELECT id, parent_id AS "parentId" FROM comments WHERE id = $1 AND post_id = $2',
+        [parentId, postId],
+      );
+      if (!p) throw ApiError.notFound('답글을 달 댓글이 없어요');
+      parent = p.parentId ?? p.id;
+    }
     const id = await this.db.transaction(async () => {
-      const row = await this.db.one<{ id: number }>('INSERT INTO comments (post_id, author_id, content) VALUES ($1, $2, $3) RETURNING id', [
-        postId,
-        userId,
-        content,
-      ]);
+      const row = await this.db.one<{ id: number }>(
+        'INSERT INTO comments (post_id, author_id, content, parent_id) VALUES ($1, $2, $3, $4) RETURNING id',
+        [postId, userId, content, parent],
+      );
       await this.db.execute('UPDATE posts SET comment_count = comment_count + 1 WHERE id = $1', [postId]);
       return row!.id;
     });
@@ -79,9 +99,21 @@ export class CommentsService {
       if (!canModerate(role, authorRole)) throw ApiError.forbidden();
     }
     await this.db.transaction(async () => {
+      // 답글도 함께 지워지므로(FK ON DELETE CASCADE) 그만큼 댓글 수를 줄인다
+      const removed = await this.db.one<{ n: number }>('SELECT count(*)::int AS n FROM comments WHERE id = $1 OR parent_id = $1', [commentId]);
       await this.db.execute('DELETE FROM comments WHERE id = $1', [commentId]); // 댓글 좋아요는 FK ON DELETE CASCADE
-      await this.db.execute('UPDATE posts SET comment_count = comment_count - 1 WHERE id = $1', [postId]);
+      await this.db.execute('UPDATE posts SET comment_count = comment_count - $2 WHERE id = $1', [postId, removed!.n]);
     });
+  }
+
+  /** 댓글 수정: 쓴 사람만 */
+  async update(userId: number, postId: number, commentId: number, content: string) {
+    const comment = await this.find(postId, commentId);
+    if (comment.authorId !== userId) throw ApiError.forbidden('내가 쓴 댓글만 고칠 수 있어요');
+    await this.db.execute('UPDATE comments SET content = $1, updated_at = now() WHERE id = $2', [content, commentId]);
+    const row = await this.db.one<CommentRow>(`${SELECT_COMMENT} WHERE c.id = $1`, [commentId]);
+    const [res] = await this.toResponses(postId, [row!], userId);
+    return res;
   }
 
   async like(userId: number, postId: number, commentId: number) {
@@ -175,6 +207,8 @@ export class CommentsService {
       likeCount: c.likeCount,
       liked,
       createdAt: c.createdAt,
+      updatedAt: c.updatedAt ?? undefined,
+      parentId: c.parentId ?? undefined,
       mine,
       deletable: mine || canModerate(viewerRole, authorRole),
     };

@@ -230,4 +230,13 @@ CREATE TABLE point_logs (
 CREATE INDEX idx_point_logs_user ON point_logs (user_id, id);
 `,
   },
+  {
+    // 댓글의 답글(한 단계) · 수정 시각
+    name: '008_comment_replies',
+    sql: `
+ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments (id) ON DELETE CASCADE;
+ALTER TABLE comments ADD COLUMN updated_at TIMESTAMPTZ;
+CREATE INDEX idx_comments_parent ON comments (parent_id, id);
+`,
+  },
 ];

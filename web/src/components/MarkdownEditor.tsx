@@ -4,6 +4,7 @@ import { flushSync } from 'react-dom';
 import { getSettings } from '../lib/settings';
 import { findImageToken, imageIndexAt, prepareUpload } from '../lib/postImage';
 import { ImageEditLayer } from './ImageEditLayer';
+import { ImageIcon } from './Icons';
 import { toast } from './Toast';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
@@ -155,7 +156,7 @@ export function MarkdownEditor({
             aria-label="사진 넣기"
             onClick={() => fileRef.current?.click()}
           >
-            {uploading > 0 ? '⏳' : '🖼'}
+            {uploading > 0 ? '⏳' : <ImageIcon className="w-[18px] h-[18px] mx-auto" />}
           </button>
           <input
             ref={fileRef}
