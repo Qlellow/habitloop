@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useAuth, useMyInvite, usePointLogs, type PointLogFilter } from '@loop/shared';
 import { CloseIcon } from '../../components/Icons';
 import { toast } from '../../components/Toast';
 import { ui } from '../../components/ui';
 import s from './my.styles';
+import { Modal } from '../../components/Modal';
 import { cn } from '../../lib/cn';
 
 /** 포인트 모으는 법 (API 의 RewardsService 와 같은 값) */
@@ -42,8 +42,8 @@ function PointLogDialog({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 animate-pop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+  return (
+    <Modal onClose={onClose}>
       <div
         role="dialog"
         aria-modal="true"
@@ -126,8 +126,7 @@ function PointLogDialog({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSignOut } from '@loop/shared';
-import { createPortal } from 'react-dom';
+import { Modal } from './Modal';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 
@@ -31,8 +31,8 @@ export function ConfirmDialog({
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
   if (!open) return null;
-  return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 animate-pop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+  return (
+    <Modal onClose={onClose}>
       <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" className="w-full max-w-[360px] p-6 rounded-xl border border-border bg-surface shadow-pop">
         <h2 id="confirm-title" className="m-0 text-lg font-bold text-fg-strong">
           {title}
@@ -55,8 +55,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }
 

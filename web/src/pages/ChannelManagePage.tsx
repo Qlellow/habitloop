@@ -1,5 +1,4 @@
 import { useDeferredValue, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
-import { createPortal } from 'react-dom';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   plainText,
@@ -24,6 +23,7 @@ import { preload } from '../lib/preload';
 import { moveItem, useSortable } from '../lib/sortable';
 import { ui } from '../components/ui';
 import s from './pages.styles';
+import { Modal } from '../components/Modal';
 import { cn } from '../lib/cn';
 
 const MAX = 20;
@@ -171,8 +171,8 @@ function DeleteCategoryDialog({
       },
     );
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 animate-pop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+  return (
+    <Modal onClose={onClose}>
       <div role="alertdialog" aria-modal="true" aria-labelledby="delete-cat-title" className="w-full max-w-[400px] p-6 rounded-xl border border-border bg-surface shadow-pop">
         <h2 id="delete-cat-title" className="m-0 text-lg font-bold text-fg-strong">
           '{category.name}' 카테고리를 삭제할까요?
@@ -213,8 +213,7 @@ function DeleteCategoryDialog({
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }
 
