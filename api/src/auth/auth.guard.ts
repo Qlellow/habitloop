@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { ApiError } from '../common/api-error';
 import { Database } from '../db/database';
-import { AuthUser, JwtService } from './jwt.service';
+import { JwtService, type AuthUser } from './jwt.service';
 
 const PUBLIC = 'public';
 

@@ -1,6 +1,6 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { LoginUser, Public } from '../auth/auth.guard';
-import { AuthUser } from '../auth/jwt.service';
+import type { AuthUser } from '../auth/jwt.service';
 import { ApiError } from '../common/api-error';
 import { Database } from '../db/database';
 import { RewardsService } from './rewards.service';
