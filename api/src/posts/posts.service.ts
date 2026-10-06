@@ -7,6 +7,7 @@ import { ApiError } from '../common/api-error';
 import { clamp, cursorPage, escapeLike, type CursorPage } from '../common/cursor-page';
 import { TtlCache } from '../common/ttl-cache';
 import { Database } from '../db/database';
+import { RewardsService } from '../users/rewards.service';
 import { makeExcerpt } from './excerpt';
 import type { CreatePostInput, UpdatePostInput } from './posts.dto';
 
@@ -114,6 +115,7 @@ export class PostsService {
     private readonly channels: ChannelsService,
     private readonly categories: CategoriesService,
     private readonly membership: MembershipService,
+    private readonly rewards: RewardsService,
   ) {}
 
   /**
@@ -296,6 +298,7 @@ export class PostsService {
       return row!.id;
     });
     this.channels.popularCache.clear();
+    await this.rewards.postWritten(userId);
     return this.toDetail(await this.find(id), userId, false);
   }
 
@@ -356,6 +359,7 @@ export class PostsService {
       );
       return this.addLikeCount(postId, added);
     });
+    await this.rewards.postLiked(postId, userId);
     return { liked: true, likeCount };
   }
 

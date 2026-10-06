@@ -4,6 +4,7 @@ import { ApiError } from '../common/api-error';
 import { escapeLike } from '../common/cursor-page';
 import { TtlCache } from '../common/ttl-cache';
 import { Database } from '../db/database';
+import { RewardsService } from '../users/rewards.service';
 import { CHANNEL_COLOR_COUNT, type ChannelInput, type ChannelUpdateInput } from './channels.dto';
 import { badge, canManage, isStaff, type ChannelRole } from './roles';
 
@@ -63,7 +64,10 @@ export class ChannelsService {
   /** 홈과 채널 목록에 매번 노출되므로 짧게 캐시한다 (가입·글쓰기로 숫자가 바뀌면 비운다) */
   readonly popularCache = new TtlCache<ChannelSummary[]>(60_000);
 
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly rewards: RewardsService,
+  ) {}
 
   /**
    * 인기 채널. 비공개 채널은 목록·검색에 나오지 않고(초대로만), 19세 이상 채널은 나이를 확인한 사람에게만 보인다.
@@ -185,6 +189,7 @@ export class ChannelsService {
       await this.db.execute("INSERT INTO channel_members (channel_id, user_id, role) VALUES ($1, $2, 'OWNER')", [channel!.id, userId]);
     });
     this.popularCache.clear();
+    await this.rewards.checkBadges(userId);
     return this.detail(slug, userId);
   }
 

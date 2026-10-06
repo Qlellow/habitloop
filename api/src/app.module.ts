@@ -21,6 +21,7 @@ import { VerificationService } from './mail/verification.service';
 import { CommentsService } from './posts/comments.service';
 import { PostsController } from './posts/posts.controller';
 import { PostsService } from './posts/posts.service';
+import { RewardsService } from './users/rewards.service';
 import { UsersController } from './users/users.controller';
 
 @Controller()
@@ -51,6 +52,7 @@ class HealthController {
     PostsService,
     CommentsService,
     PreviewsService,
+    RewardsService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],

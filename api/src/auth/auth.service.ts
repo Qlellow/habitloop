@@ -5,6 +5,7 @@ import { ApiError } from '../common/api-error';
 import { Database } from '../db/database';
 import { Mailer } from '../mail/mailer';
 import { VerificationService } from '../mail/verification.service';
+import { RewardsService } from '../users/rewards.service';
 import type { LoginInput, PasswordInput, PasswordResetInput, SignupInput } from './auth.dto';
 import { describeDevice } from './device';
 import { JwtService, type AuthUser } from './jwt.service';
@@ -70,6 +71,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly verification: VerificationService,
     private readonly mailer: Mailer,
+    private readonly rewards: RewardsService,
   ) {}
 
   /** 회원가입 1단계: 이메일로 인증번호 보내기 */
@@ -100,7 +102,9 @@ export class AuthService {
        RETURNING ${USER_COLUMNS}`,
       [email, await bcrypt.hash(input.password, 10), nickname],
     );
-    return this.toAuth(user!, userAgent);
+    // 초대 코드로 가입했으면 초대한 사람과 나 모두 포인트
+    await this.rewards.signedUp(user!.id, input.ref);
+    return this.toAuth(await this.find(user!.id), userAgent);
   }
 
   /** 비밀번호가 맞으면 토큰을 준다. 2단계 인증이 켜져 있으면 대신 이메일로 번호를 보내고 challenge 를 준다 */

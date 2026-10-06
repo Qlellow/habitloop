@@ -4,6 +4,7 @@ import { badge, canModerate, type ChannelRole } from '../channels/roles';
 import { ApiError } from '../common/api-error';
 import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
+import { RewardsService } from '../users/rewards.service';
 
 const MAX_PAGE_SIZE = 100;
 /** 베스트 댓글이 되려면 받아야 하는 최소 좋아요 수 */
@@ -33,6 +34,7 @@ export class CommentsService {
   constructor(
     private readonly db: Database,
     private readonly channels: ChannelsService,
+    private readonly rewards: RewardsService,
   ) {}
 
   /**
@@ -83,6 +85,7 @@ export class CommentsService {
       await this.db.execute('UPDATE posts SET comment_count = comment_count + 1 WHERE id = $1', [postId]);
       return row!.id;
     });
+    await this.rewards.checkBadges(userId);
     const row = await this.db.one<CommentRow>(`${SELECT_COMMENT} WHERE c.id = $1`, [id]);
     const role = await this.channels.roleOf(channelId, userId);
     return this.toResponse(row!, userId, false, role, role);

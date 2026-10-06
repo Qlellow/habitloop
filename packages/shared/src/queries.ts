@@ -12,6 +12,8 @@ import type {
   LoginResponse,
   LoginSession,
   InviteInfo,
+  AttendanceResult,
+  MyInvite,
   PointLog,
   PostPage,
   UserProfile,
@@ -345,6 +347,18 @@ export const useUnlockBanner = () => useMeMutation(() => api<User>('/api/me/bann
 /** 포인트 내역 */
 export function usePointLogs(enabled = true) {
   return useQuery({ queryKey: ['points'], queryFn: ({ signal }) => api<PointLog[]>('/api/me/points', { signal }), enabled });
+}
+
+/** 오늘 출석 체크 (하루 한 번 포인트). 포인트가 쌓였으면 내 정보도 새로 받는다 */
+export async function checkAttendance() {
+  const result = await api<AttendanceResult>('/api/me/attendance', { method: 'POST' });
+  if (result.awarded) await verifySession();
+  return result;
+}
+
+/** 내 초대 코드와 초대한 사람 수 */
+export function useMyInvite(enabled = true) {
+  return useQuery({ queryKey: ['my-invite'], queryFn: ({ signal }) => api<MyInvite>('/api/me/invite', { signal }), enabled });
 }
 
 /** 닉네임을 쓸 수 있는지 한 번 확인 (내 정보 수정의 저장 버튼) */
@@ -822,7 +836,8 @@ export function useSignupCode() {
 export function useSignup() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { email: string; password: string; nickname: string; code: string }) =>
+    /** ref: 초대한 사람의 초대 코드 */
+    mutationFn: (body: { email: string; password: string; nickname: string; code: string; ref?: string }) =>
       api<AuthResponse>('/api/auth/signup', { method: 'POST', body }),
     onSuccess: (res) => {
       authStore.signIn(res);

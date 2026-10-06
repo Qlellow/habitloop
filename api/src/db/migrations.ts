@@ -247,4 +247,30 @@ ALTER TABLE users ADD COLUMN uid UUID NOT NULL DEFAULT gen_random_uuid();
 CREATE UNIQUE INDEX uk_users_uid ON users (uid);
 `,
   },
+  {
+    // 포인트 적립(출석 · 공감 받기) · 배지(도전과제) · 친구 초대
+    name: '010_rewards',
+    sql: `
+ALTER TABLE users ADD COLUMN invite_code VARCHAR(8) NOT NULL DEFAULT upper(substr(md5(random()::text), 1, 8));
+CREATE UNIQUE INDEX uk_users_invite_code ON users (invite_code);
+ALTER TABLE users ADD COLUMN invited_by INTEGER REFERENCES users (id) ON DELETE SET NULL;
+CREATE TABLE attendance (
+    user_id  INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    day      DATE    NOT NULL,
+    PRIMARY KEY (user_id, day)
+);
+-- 같은 사람이 같은 글에 공감을 눌렀다 취소했다 해도 포인트는 한 번만 (글이 지워져도 남겨 둔다)
+CREATE TABLE like_rewards (
+    post_id   INTEGER NOT NULL,
+    liker_id  INTEGER NOT NULL,
+    PRIMARY KEY (post_id, liker_id)
+);
+CREATE TABLE user_badges (
+    user_id     INTEGER     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    code        VARCHAR(30) NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, code)
+);
+`,
+  },
 ];
