@@ -197,7 +197,18 @@ export class ChannelsController {
   }
 
   @Delete('channels/:slug/categories/:categoryId')
-  removeCategory(@LoginUser() user: AuthUser, @Param('slug') slug: string, @Param('categoryId') categoryId: string) {
-    return this.categories.remove(user.id, slug, id(categoryId));
+  removeCategory(
+    @LoginUser() user: AuthUser,
+    @Param('slug') slug: string,
+    @Param('categoryId') categoryId: string,
+    @Query('moveTo') moveTo?: string,
+  ) {
+    return this.categories.remove(user.id, slug, id(categoryId), moveTo ? id(moveTo) : undefined);
+  }
+
+  /** 카테고리별 글 수 (관리 화면에서 카테고리를 지울 때) */
+  @Get('channels/:slug/categories/post-counts')
+  categoryPostCounts(@LoginUser() user: AuthUser, @Param('slug') slug: string) {
+    return this.categories.postCounts(user.id, slug);
   }
 }

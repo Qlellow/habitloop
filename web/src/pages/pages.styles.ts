@@ -84,9 +84,6 @@ const s = {
   settingsDesc: 'mt-0 mb-4 text-sm text-fg-sub',
   catTable: 'list-none mt-0 mb-4 p-0 border border-border rounded-md overflow-hidden',
   catRow: 'flex items-center gap-2.5 min-h-14 px-3 py-2 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-line',
-  catOrder:
-    'flex gap-0.5 [&>button]:w-[30px] [&>button]:h-[30px] [&>button]:rounded-sm [&>button]:text-[11px] [&>button]:text-fg-sub ' +
-    '[&>button:not(:disabled):hover]:bg-field [&>button:disabled]:opacity-25 [&>button:disabled]:cursor-default',
   catName: 'flex-1 min-w-0 flex items-center gap-2 font-semibold text-fg-strong',
   catEdit: 'flex-1 flex flex-wrap items-center gap-2.5',
   input: 'flex-1 min-w-[160px]',

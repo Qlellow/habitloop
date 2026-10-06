@@ -243,7 +243,7 @@ function ChannelForm({ initial }: { initial?: ChannelDetail }) {
         <p className={ui.help}>
           {user?.adult || initial?.adult
             ? '켜면 설정에서 나이를 확인한 만 19세 이상만 채널을 찾고 볼 수 있어요.'
-            : '19세 이상 채널은 설정에서 나이를 확인한 만 19세 이상만 만들 수 있어요.'}
+            : '만 19세 이상 채널은 설정에서 나이를 확인한 만 19세 이상만 만들 수 있어요.'}
         </p>
       </div>
       <div className={ui.field}>

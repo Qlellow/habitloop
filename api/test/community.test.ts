@@ -263,11 +263,39 @@ describe('커뮤니티', () => {
     );
     await http().put(`/api/posts/${postId}`).set(bearer(member)).send({ categoryId: notice, title: 't', content: 'c' }).expect(403);
 
-    // 이름 변경 / 삭제 → 글은 남고 카테고리만 빈다
-    expect((await http().put(`${base}/${art}`).set(bearer(owner)).send({ name: '그림', ownerOnly: false })).body[1].name).toBe('그림');
+    // 운영진 전용 카테고리는 항상 일반 카테고리보다 위: 새로 만들면 운영진 전용 중 맨 아래, 순서를 바꿔도 아래로 못 간다
+    const names = (list: { name: string }[]) => list.map((c) => c.name);
+    const withRules = (await http().post(base).set(bearer(owner)).send({ name: '규칙', ownerOnly: true }).expect(200)).body;
+    expect(names(withRules)).toEqual(['공지사항', '규칙', '일러스트', '소설']);
+    const rules = withRules[1].id;
+    expect(names((await http().put(`${base}/order`).set(bearer(owner)).send({ ids: [notice, art, novel, rules] }).expect(200)).body)).toEqual([
+      '공지사항',
+      '규칙',
+      '일러스트',
+      '소설',
+    ]);
+    // 일반 카테고리를 운영진 전용으로 바꾸면 운영진 전용 무리의 맨 아래로
+    expect(names((await http().put(`${base}/${novel}`).set(bearer(owner)).send({ name: '소설', ownerOnly: true }).expect(200)).body)).toEqual([
+      '공지사항',
+      '규칙',
+      '소설',
+      '일러스트',
+    ]);
+    await http().put(`${base}/${novel}`).set(bearer(owner)).send({ name: '소설', ownerOnly: false }).expect(200);
+    await http().delete(`${base}/${rules}`).set(bearer(owner)).expect(200);
+
+    // 이름 변경 / 삭제 → 글은 지우지 않고 고른 카테고리로 옮긴다
+    expect((await http().put(`${base}/${art}`).set(bearer(owner)).send({ name: '그림', ownerOnly: false })).body[2].name).toBe('그림');
     expect((await http().get(`/api/posts/${postId}`)).body.category.name).toBe('그림');
     await http().delete(`${base}/${art}`).set(bearer(member)).expect(403);
-    expect((await http().delete(`${base}/${art}`).set(bearer(owner))).body).toHaveLength(2);
+    expect((await http().get(`${base}/post-counts`).set(bearer(owner)).expect(200)).body).toEqual({ [notice]: 1, [art]: 2 });
+    await http().delete(`${base}/${art}`).set(bearer(owner)).expect(400); // 옮길 곳을 골라야 한다
+    await http().delete(`${base}/${art}`).query({ moveTo: art }).set(bearer(owner)).expect(400);
+    expect((await http().delete(`${base}/${art}`).query({ moveTo: novel }).set(bearer(owner)).expect(200)).body).toHaveLength(2);
+    expect((await http().get(`/api/posts/${postId}`)).body.category.name).toBe('소설');
+    // 글이 없는 카테고리는 그냥 지운다. 마지막 카테고리면 글은 카테고리 없이 남는다
+    await http().delete(`${base}/${notice}`).query({ moveTo: novel }).set(bearer(owner)).expect(200);
+    expect((await http().delete(`${base}/${novel}`).set(bearer(owner)).expect(200)).body).toHaveLength(0);
     const orphan = await http().get(`/api/posts/${postId}`).expect(200);
     expect(orphan.body.category).toBeUndefined();
     expect((await http().get('/api/channels/art')).body.postCount).toBe(3);

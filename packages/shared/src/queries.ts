@@ -415,6 +415,15 @@ export function useBookmark(slug: string) {
 }
 
 /** 카테고리 관리. 서버가 바뀐 뒤의 전체 목록을 돌려주므로 채널 캐시에 그대로 덮어쓴다. */
+/** 카테고리별 글 수 (채널 관리에서 카테고리를 지울 때) */
+export function useCategoryPostCounts(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: ['category-post-counts', slug],
+    queryFn: ({ signal }) => api<Record<number, number>>(`/api/channels/${encodeURIComponent(slug)}/categories/post-counts`, { signal }),
+    enabled,
+  });
+}
+
 export function useCategoryMutation(slug: string) {
   const qc = useQueryClient();
   const base = `/api/channels/${encodeURIComponent(slug)}/categories`;
@@ -426,7 +435,8 @@ export function useCategoryMutation(slug: string) {
       action:
         | { type: 'create'; name: string; ownerOnly: boolean; adult?: boolean }
         | { type: 'update'; id: number; name: string; ownerOnly: boolean; adult?: boolean }
-        | { type: 'delete'; id: number }
+        /** moveTo: 이 카테고리의 글을 옮길 카테고리 */
+        | { type: 'delete'; id: number; moveTo?: number }
         | { type: 'reorder'; ids: number[] },
     ) => {
       switch (action.type) {
@@ -435,7 +445,7 @@ export function useCategoryMutation(slug: string) {
         case 'update':
           return api<ChannelCategory[]>(`${base}/${action.id}`, { method: 'PUT', body: action });
         case 'delete':
-          return api<ChannelCategory[]>(`${base}/${action.id}`, { method: 'DELETE' });
+          return api<ChannelCategory[]>(`${base}/${action.id}`, { method: 'DELETE', query: action.moveTo ? { moveTo: String(action.moveTo) } : undefined });
         case 'reorder':
           return api<ChannelCategory[]>(`${base}/order`, { method: 'PUT', body: { ids: action.ids } });
       }
@@ -459,6 +469,7 @@ export function useCategoryMutation(slug: string) {
         qc.invalidateQueries({ queryKey: keys.posts });
         qc.removeQueries({ queryKey: ['post'] });
       }
+      if (action.type === 'delete') qc.invalidateQueries({ queryKey: ['category-post-counts', slug] });
     },
   });
 }

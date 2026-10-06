@@ -1,8 +1,10 @@
 import { useDeferredValue, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   plainText,
   useCategoryMutation,
+  useCategoryPostCounts,
   useRegenerateInvite,
   type ChannelDetail,
   useChangeRole,
@@ -14,6 +16,7 @@ import {
 } from '@loop/shared';
 import { RoleBadge, ROLE_LABEL } from '../components/RoleBadge';
 import { ChannelIcon } from '../components/ChannelIcon';
+import { Dropdown } from '../components/Dropdown';
 import { Page } from '../components/Layout';
 import { toast } from '../components/Toast';
 import { preload } from '../lib/preload';
@@ -27,16 +30,16 @@ const MAX = 20;
 function CategoryRow({
   category,
   index,
-  count,
   onMove,
+  onDelete,
   slug,
   handle,
   style,
 }: {
   category: ChannelCategory;
   index: number;
-  count: number;
   onMove: (from: number, to: number) => void;
+  onDelete: (category: ChannelCategory) => void;
   slug: string;
   /** 끌어서 순서 바꾸기 손잡이 */
   handle: ReturnType<ReturnType<typeof useSortable>['handleProps']>;
@@ -57,35 +60,8 @@ function CategoryRow({
     );
   };
 
-  const remove = () => {
-    if (!confirm(`'${category.name}' 카테고리를 삭제할까요?\n이 카테고리의 글은 지워지지 않고 '카테고리 없음'이 돼요.`)) return;
-    mutation.mutate({ type: 'delete', id: category.id }, { onError: (err) => toast(err.message) });
-  };
-
   return (
     <li className={s.catRow} style={style}>
-      {/* 손잡이를 잡고 끌어서 순서를 바꾼다 (▲▼ 는 키보드·터치용) */}
-      <span
-        {...handle}
-        role="presentation"
-        title="끌어서 순서 바꾸기"
-        className="flex-none grid place-items-center w-6 h-9 rounded-sm text-fg-weak select-none hover:bg-field hover:text-fg-sub"
-      >
-        ⠿
-      </span>
-      <div className={s.catOrder}>
-        <button type="button" aria-label={`${category.name} 위로`} disabled={index === 0 || editing} onClick={() => onMove(index, index - 1)}>
-          ▲
-        </button>
-        <button
-          type="button"
-          aria-label={`${category.name} 아래로`}
-          disabled={index === count - 1 || editing}
-          onClick={() => onMove(index, index + 1)}
-        >
-          ▼
-        </button>
-      </div>
       {editing ? (
         <form className={s.catEdit} onSubmit={save}>
           <input
@@ -102,7 +78,7 @@ function CategoryRow({
           </label>
           <label className={s.toggle} title="설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요">
             <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
-            19세 이상
+            만 19세 이상
           </label>
           <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => setEditing(false)}>
             취소
@@ -116,17 +92,125 @@ function CategoryRow({
           <div className={s.catName}>
             {category.name}
             {category.ownerOnly && <span className={ui.badge}>운영진 전용 · 공지</span>}
-            {category.adult && <span className="inline-grid place-items-center w-5 h-5 rounded-full bg-danger text-white text-[10px] font-extrabold" aria-label="19세 이상">19</span>}
+            {category.adult && (
+              <span className="text-[17px] leading-none" role="img" aria-label="만 19세 이상" title="만 19세 이상">
+                🔞
+              </span>
+            )}
           </div>
           <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={() => setEditing(true)}>
             수정
           </button>
-          <button type="button" className={cn(ui.button, ui.text, ui.small, ui.danger)} onClick={remove}>
+          <button type="button" className={cn(ui.button, ui.text, ui.small, ui.danger)} onClick={() => onDelete(category)}>
             삭제
           </button>
         </>
       )}
+      {/* 오른쪽 손잡이를 잡고 끌어서 순서를 바꾼다. 키보드로는 손잡이에서 ↑/↓ */}
+      <span
+        {...handle}
+        role="button"
+        tabIndex={0}
+        aria-label={`${category.name} 순서 바꾸기 (위·아래 화살표)`}
+        title="끌어서 순서 바꾸기"
+        onKeyDown={(e) => {
+          if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+          e.preventDefault();
+          onMove(index, e.key === 'ArrowUp' ? index - 1 : index + 1);
+        }}
+        className="flex-none grid place-items-center w-7 h-9 rounded-sm text-fg-weak select-none hover:bg-field hover:text-fg-sub focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        ⠿
+      </span>
     </li>
+  );
+}
+
+/**
+ * 카테고리 삭제 창. 카테고리가 있는 채널의 글은 카테고리가 꼭 있어야 하므로, 글이 있으면 옮길 카테고리를 고른다.
+ * (마지막 카테고리를 지우면 채널에 카테고리가 없어지므로 글은 그대로 남는다)
+ */
+function DeleteCategoryDialog({
+  slug,
+  category,
+  categories,
+  onClose,
+}: {
+  slug: string;
+  category: ChannelCategory;
+  categories: ChannelCategory[];
+  onClose: () => void;
+}) {
+  const mutation = useCategoryMutation(slug);
+  const counts = useCategoryPostCounts(slug);
+  const others = categories.filter((c) => c.id !== category.id);
+  // 기본으로는 같은 무리(운영진 전용/일반)의 첫 카테고리, 없으면 아무 첫 카테고리
+  const [moveTo, setMoveTo] = useState<number | undefined>(() => (others.find((c) => c.ownerOnly === category.ownerOnly) ?? others[0])?.id);
+  const postCount = counts.data?.[category.id] ?? 0;
+  const needsMove = postCount > 0 && others.length > 0;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const remove = () =>
+    mutation.mutate(
+      { type: 'delete', id: category.id, moveTo: needsMove ? moveTo : undefined },
+      {
+        onSuccess: () => {
+          const target = others.find((c) => c.id === moveTo);
+          toast(needsMove && target ? `'${category.name}' 을 지우고 글 ${postCount}개를 '${target.name}' 로 옮겼어요` : `'${category.name}' 카테고리를 지웠어요`);
+          onClose();
+        },
+        onError: (err) => toast(err.message),
+      },
+    );
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 animate-pop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="alertdialog" aria-modal="true" aria-labelledby="delete-cat-title" className="w-full max-w-[400px] p-6 rounded-xl border border-border bg-surface shadow-pop">
+        <h2 id="delete-cat-title" className="m-0 text-lg font-bold text-fg-strong">
+          '{category.name}' 카테고리를 삭제할까요?
+        </h2>
+        {counts.isPending ? (
+          <div className={cn(ui.spinner, 'my-4')} />
+        ) : needsMove ? (
+          <>
+            <p className="mt-2 mb-4 text-[15px] text-fg-sub">
+              이 카테고리의 글 <b className="text-fg-strong">{postCount.toLocaleString()}개</b>는 지워지지 않고, 아래에서 고른 카테고리로 옮겨져요.
+            </p>
+            <Dropdown
+              label="글을 옮길 카테고리"
+              value={moveTo}
+              onChange={setMoveTo}
+              options={others.map((c) => ({ value: c.id, label: c.name, hint: c.ownerOnly ? '운영진 전용' : undefined }))}
+              className="w-full"
+            />
+          </>
+        ) : (
+          <p className="mt-2 mb-0 text-[15px] text-fg-sub">
+            {postCount > 0
+              ? `마지막 카테고리라, 글 ${postCount.toLocaleString()}개는 지워지지 않고 카테고리 없이 남아요.`
+              : '이 카테고리에는 글이 없어요.'}
+          </p>
+        )}
+        <div className="flex gap-2 mt-6">
+          <button type="button" className={cn(ui.button, ui.ghost, 'flex-1')} onClick={onClose}>
+            취소
+          </button>
+          <button
+            type="button"
+            className={cn(ui.button, 'bg-danger text-white hover:brightness-95', 'flex-1')}
+            disabled={counts.isPending || mutation.isPending || (needsMove && moveTo == null)}
+            onClick={remove}
+          >
+            {needsMove ? '옮기고 삭제' : '삭제'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -169,7 +253,7 @@ function AddCategory({ slug, disabled }: { slug: string; disabled: boolean }) {
       </label>
       <label className={s.toggle} title="설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요">
         <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} disabled={disabled} />
-        19세 이상
+        만 19세 이상
       </label>
       <button type="submit" className={cn(ui.button, ui.primary)} disabled={disabled || !name.trim() || mutation.isPending}>
         추가
@@ -267,10 +351,10 @@ type Assignable = StaffMember['role'];
 const ASSIGN: [Exclude<Assignable, 'OWNER'>, string][] = [
   ['ADMIN', '관리자'],
   ['MANAGER', '매니저'],
-  ['MEMBER', '해제'],
+  ['MEMBER', '제외'],
 ];
 
-/** 역할 고르기: 관리자 · 매니저 · 해제(일반 멤버) */
+/** 역할 고르기: 관리자 · 매니저 · 제외(일반 멤버로) */
 function RolePicker({ slug, member }: { slug: string; member: StaffMember }) {
   const change = useChangeRole(slug);
   return (
@@ -288,7 +372,7 @@ function RolePicker({ slug, member }: { slug: string; member: StaffMember }) {
               { userId: member.userId, role },
               {
                 onSuccess: () =>
-                  toast(role === 'MEMBER' ? `${member.nickname}님을 운영진에서 해제했어요` : `${member.nickname}님을 ${label}로 지정했어요`),
+                  toast(role === 'MEMBER' ? `${member.nickname}님을 운영진에서 제외했어요` : `${member.nickname}님을 ${label}로 지정했어요`),
                 onError: (e) => toast(e.message),
               },
             );
@@ -303,7 +387,7 @@ function RolePicker({ slug, member }: { slug: string; member: StaffMember }) {
 
 /**
  * 운영진: 관리자는 채널 관리(정보·프로필·카테고리)와 글·댓글 정리를, 매니저는 글·댓글 정리를 할 수 있다.
- * 지정과 해제는 소유자만 할 수 있고, 관리자에게는 목록만 보인다.
+ * 지정과 제외는 소유자만 할 수 있고, 관리자에게는 목록만 보인다.
  */
 function StaffSection({ slug, isOwner }: { slug: string; isOwner: boolean }) {
   const staff = useStaff(slug);
@@ -354,7 +438,8 @@ function StaffSection({ slug, isOwner }: { slug: string; isOwner: boolean }) {
                       {m.nickname}
                       <RoleBadge role={m.role} />
                     </span>
-                    {m.role === 'OWNER' ? <span className={s.staffRole}>소유자</span> : <RolePicker slug={slug} member={m} />}
+                    {/* 이미 운영진이면 위 운영진 목록에서 바꾼다 */}
+                    {m.role === 'MEMBER' ? <RolePicker slug={slug} member={m} /> : <span className={s.staffRole}>이미 {ROLE_LABEL[m.role]}</span>}
                   </li>
                 ))
               )}
@@ -371,6 +456,7 @@ export default function ChannelManagePage() {
   const { data: channel, isPending, isPlaceholderData, isError } = useChannel(slug);
   const reorder = useCategoryMutation(slug);
   const [pendingOrder, setPendingOrder] = useState<number[]>();
+  const [deleting, setDeleting] = useState<ChannelCategory>();
   const sortable = useSortable((from, to) => move(from, to));
 
   if (isPending || isPlaceholderData) {
@@ -386,7 +472,13 @@ export default function ChannelManagePage() {
   const categories = pendingOrder
     ? pendingOrder.map((id) => channel.categories.find((c) => c.id === id)).filter((c): c is ChannelCategory => !!c)
     : channel.categories;
-  const move = (from: number, to: number) => {
+  // 운영진 전용 카테고리는 항상 일반 카테고리보다 위: 각자 자기 무리 안에서만 움직인다
+  const staffCount = categories.filter((c) => c.ownerOnly).length;
+  const move = (from: number, rawTo: number) => {
+    const [min, max] = categories[from]?.ownerOnly ? [0, staffCount - 1] : [staffCount, categories.length - 1];
+    const to = Math.max(min, Math.min(max, rawTo));
+    if (to !== rawTo && rawTo >= 0 && rawTo < categories.length) toast('운영진 전용 카테고리는 항상 일반 카테고리보다 위에 있어요');
+    if (to === from) return;
     const ids = moveItem(
       categories.map((c) => c.id),
       from,
@@ -427,7 +519,7 @@ export default function ChannelManagePage() {
           카테고리 <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-weak)' }}>{categories.length}/{MAX}</span>
         </h2>
         <p className={s.settingsDesc}>
-          채널 글을 공지사항·소설·일러스트처럼 나눠 보세요. 왼쪽 ⠿ 를 끌어서 순서를 바꾸면 그 순서대로 채널 탭에 보여요. '운영진만 글쓰기' 카테고리의 글은 공지로 전체 탭 위에 고정돼요. 카테고리를 지워도 글은 남아요.
+          채널 글을 공지사항·소설·일러스트처럼 나눠 보세요. 오른쪽 ⠿ 를 끌어서 순서를 바꾸면 그 순서대로 채널 탭에 보여요. '운영진만 글쓰기' 카테고리는 항상 일반 카테고리보다 위에 있고, 그 글은 공지로 전체 탭 위에 고정돼요. 카테고리를 지울 때 글은 다른 카테고리로 옮겨져요.
         </p>
         {categories.length > 0 ? (
           <ul className={s.catTable} ref={sortable.listRef}>
@@ -436,8 +528,8 @@ export default function ChannelManagePage() {
                 key={c.id}
                 category={c}
                 index={i}
-                count={categories.length}
                 onMove={move}
+                onDelete={setDeleting}
                 slug={slug}
                 handle={sortable.handleProps(i)}
                 style={sortable.itemStyle(i)}
@@ -450,6 +542,7 @@ export default function ChannelManagePage() {
           </div>
         )}
         <AddCategory slug={slug} disabled={categories.length >= MAX} />
+        {deleting && <DeleteCategoryDialog slug={slug} category={deleting} categories={categories} onClose={() => setDeleting(undefined)} />}
       </section>
       <StaffSection slug={slug} isOwner={channel.mine} />
     </Page>

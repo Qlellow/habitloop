@@ -273,4 +273,13 @@ CREATE TABLE user_badges (
 );
 `,
   },
+  {
+    // 이미 있는 채널도 운영진 전용 카테고리를 일반 카테고리보다 위로 (각 무리 안의 순서는 그대로)
+    name: '011_staff_categories_first',
+    sql: `
+UPDATE channel_categories c SET position = o.rn - 1
+FROM (SELECT id, row_number() OVER (PARTITION BY channel_id ORDER BY owner_only DESC, position, id) AS rn FROM channel_categories) o
+WHERE c.id = o.id;
+`,
+  },
 ];
