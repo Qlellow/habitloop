@@ -7,6 +7,7 @@ import { LogoMark } from './Layout';
 import { useAuthState } from '../lib/authNav';
 import { loaders } from '../lib/preload';
 import { cn } from '../lib/cn';
+import { SocialLogin } from './SocialLogin';
 import s from './Auth.styles';
 
 /**
@@ -28,6 +29,7 @@ export function AuthShell({
   onSubmit,
   children,
   after,
+  social,
 }: {
   variant?: 'login' | 'signup';
   /** 회원가입 단계 표시 (예: "1 / 2 · 정보 입력") */
@@ -44,6 +46,8 @@ export function AuthShell({
   children: ReactNode;
   /** 맨 아래 덧붙일 내용 (예: 개발용 체험 계정 안내) */
   after?: ReactNode;
+  /** 소셜 로그인 버튼 (Google · Kakao · Naver) */
+  social?: boolean;
 }) {
   const authState = useAuthState();
   // 반대쪽 화면(로그인 ↔ 회원가입) 코드를 미리 받아 두어 바로 넘어가게 한다
@@ -83,6 +87,7 @@ export function AuthShell({
                 </Link>
               </p>
             )}
+            {social && <SocialLogin />}
             {after}
           </div>
         </form>

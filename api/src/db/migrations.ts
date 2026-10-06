@@ -287,4 +287,18 @@ WHERE c.id = o.id;
     name: '012_custom_banner_wording',
     sql: `UPDATE point_logs SET reason = '커스텀 배너 열기' WHERE reason = '내 사진 배너 열기';`,
   },
+  {
+    // 소셜 로그인(Google · Kakao · Naver): 소셜 계정 하나는 사용자 하나에 이어진다
+    name: '013_user_identities',
+    sql: `
+CREATE TABLE user_identities (
+    provider          VARCHAR(10)  NOT NULL,
+    provider_user_id  VARCHAR(100) NOT NULL,
+    user_id           INTEGER      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    PRIMARY KEY (provider, provider_user_id)
+);
+CREATE INDEX idx_user_identities_user ON user_identities (user_id);
+`,
+  },
 ];

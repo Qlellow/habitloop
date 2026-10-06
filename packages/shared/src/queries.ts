@@ -6,7 +6,7 @@ import {
   useQueryClient,
   type InfiniteData,
 } from '@tanstack/react-query';
-import { api, ApiError } from './client';
+import { api, ApiError, apiUrl } from './client';
 import type {
   AuthResponse,
   LoginResponse,
@@ -854,6 +854,34 @@ export function useSignupCode() {
   return useMutation({
     mutationFn: (email: string) => api<void>('/api/auth/signup/code', { method: 'POST', body: { email } }),
   });
+}
+
+/* ───────── 소셜 로그인 (Google · Kakao · Naver) ───────── */
+
+export type OAuthProvider = 'google' | 'kakao' | 'naver';
+
+/** 키가 설정되어 켜진 소셜 로그인 */
+export function useOAuthProviders() {
+  return useQuery({
+    queryKey: ['oauth-providers'],
+    queryFn: ({ signal }) => api<OAuthProvider[]>('/api/auth/oauth/providers', { signal }),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** 소셜 로그인 시작 주소 (브라우저를 이 주소로 보낸다). next: 로그인 뒤 돌아갈 곳, ref: 초대 코드 */
+export function oauthStartUrl(provider: OAuthProvider, next: string, ref?: string) {
+  const query = new URLSearchParams({ next });
+  if (ref) query.set('ref', ref);
+  return apiUrl(`/api/auth/oauth/${provider}/start?${query}`);
+}
+
+/** 소셜 로그인에서 돌아와 받은 토큰으로 로그인을 마친다 */
+export async function completeOAuthLogin(token: string) {
+  const res = await fetch(apiUrl('/api/me'), { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new ApiError(res.status, '로그인을 마치지 못했어요. 다시 시도해 주세요');
+  authStore.signIn({ token, user: (await res.json()) as User });
+  clearUserScopedCache(queryClient);
 }
 
 /** 회원가입 2단계: 이메일로 받은 번호와 함께 가입 */

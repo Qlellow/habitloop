@@ -736,6 +736,102 @@ describe('커뮤니티', () => {
     expect(hostBadges).toEqual(['invite_1', 'channel_open', 'followers_10']);
   });
 
+  it('소셜 로그인: state · 쿠키 확인, 새 가입 · 다시 로그인 · 같은 이메일 계정에 잇기', async () => {
+    expect((await http().get('/api/auth/oauth/providers')).body).toEqual([]);
+    await http().get('/api/auth/oauth/google/start').expect(404); // 키가 없으면 꺼져 있다
+    process.env.GOOGLE_CLIENT_ID = 'test-google';
+    process.env.GOOGLE_CLIENT_SECRET = 'test-secret';
+    process.env.KAKAO_CLIENT_ID = 'test-kakao';
+    process.env.NAVER_CLIENT_ID = 'test-naver';
+    process.env.NAVER_CLIENT_SECRET = 'test-naver-secret';
+    let profile: Record<string, unknown> = {};
+    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      // 프로필 사진은 1x1 PNG 로
+      if (url.startsWith('https://img.test/')) {
+        const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+        return new Response(png, { status: 200, headers: { 'Content-Type': 'image/png' } });
+      }
+      const body = url.includes('token') ? { access_token: 'provider-token' } : profile;
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    });
+    try {
+      expect((await http().get('/api/auth/oauth/providers')).body).toEqual(['google', 'kakao', 'naver']);
+      // 시작: 제공자 로그인 화면으로 보내고, 이 브라우저에 nonce 쿠키를 심는다
+      const login = async (provider: string, opts: { cookie?: boolean; next?: string } = {}) => {
+        const start = await http().get(`/api/auth/oauth/${provider}/start`).query({ next: opts.next ?? '/c/free' }).expect(302);
+        const to = new URL(start.headers.location);
+        const cookie = (start.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+        const callback = http().get(`/api/auth/oauth/${provider}/callback`).query({ code: 'abc', state: to.searchParams.get('state') });
+        const res = await (opts.cookie === false ? callback : callback.set('Cookie', cookie)).expect(302);
+        return { to, hash: new URLSearchParams(new URL(res.headers.location).hash.slice(1)) };
+      };
+      // (요청 객체를 먼저 만들면 supertest 가 서버를 공유하다 닫으므로, 토큰을 먼저 받고 나서 /api/me 를 부른다)
+      const meOf = async (provider: string) => {
+        const token = (await login(provider)).hash.get('token')!;
+        return (await http().get('/api/me').set(bearer(token)).expect(200)).body;
+      };
+
+      profile = { sub: 'g-1', email: 'Social@Test.dev', email_verified: true, name: '구글사람', picture: 'https://img.test/g1.png' };
+      const first = await login('google');
+      expect(first.to.origin).toBe('https://accounts.google.com');
+      expect(first.to.searchParams.get('client_id')).toBe('test-google');
+      expect(first.hash.get('next')).toBe('/c/free');
+      const token = first.hash.get('token')!;
+      const me = (await http().get('/api/me').set(bearer(token)).expect(200)).body;
+      expect(me).toMatchObject({ nickname: '구글사람', email: 'social@test.dev' });
+      expect(me.avatarUrl).toMatch(/^\/api\/images\//); // 프로필 사진도 받아 온다 (선택)
+      // 같은 소셜 계정으로 다시 로그인하면 같은 사용자
+      const again = await meOf('google');
+      expect(again.id).toBe(me.id);
+
+      // 다른 브라우저에서 시작한 요청(쿠키 없음)은 거절, 바깥 주소로는 돌려보내지 않는다
+      expect((await login('google', { cookie: false })).hash.get('error')).toContain('다시 시도');
+      expect((await login('google', { next: '//evil.com' })).hash.get('next')).toBe('/');
+
+      // 제공자가 확인한 이메일과 같은 기존 계정에는 이어 붙인다
+      const existing = await signup('linked@test.dev', '원래계정');
+      const existingId = (await http().get('/api/me').set(bearer(existing))).body.id;
+      profile = { sub: 'g-2', email: 'linked@test.dev', email_verified: true, name: '다른이름' };
+      expect((await meOf('google')).id).toBe(existingId);
+      // 이메일은 필수: 확인되지 않았거나 없으면 가입하지 않는다
+      profile = { sub: 'g-3', email: 'linked@test.dev', email_verified: false, name: '구글사람' };
+      expect((await login('google')).hash.get('error')).toContain('이메일 제공에 동의');
+      profile = { id: 1, kakao_account: { profile: { nickname: '이메일없음' } } };
+      expect((await login('kakao')).hash.get('error')).toContain('이메일 제공에 동의');
+
+      // 닉네임 · 사진은 선택: 닉네임이 겹치면 숫자를 붙인다. 카카오 생일은 받지 않는다
+      profile = {
+        id: 12345,
+        kakao_account: {
+          email: 'kakao@test.dev',
+          is_email_valid: true,
+          is_email_verified: true,
+          birthyear: '1995',
+          birthday: '0314',
+          profile: { nickname: '구글사람', is_default_image: true, profile_image_url: 'https://img.test/default.png' },
+        },
+      };
+      const kakao = await meOf('kakao');
+      expect(kakao.nickname).toMatch(/^구글사람\d{4}$/);
+      expect(kakao.birthDate).toBeUndefined();
+      expect(kakao.avatarUrl).toBeUndefined(); // 카카오 기본 이미지는 가져오지 않는다
+      // 닉네임을 주지 않아도 가입된다
+      profile = { id: 777, kakao_account: { email: 'nonick@test.dev', is_email_valid: true, is_email_verified: true } };
+      expect((await meOf('kakao')).nickname).toMatch(/^루퍼/);
+      // 네이버 생일(출생연도 + MM-DD)은 선택으로 받아 나이 확인에 쓴다
+      profile = { response: { id: 'n-1', email: 'naver@test.dev', nickname: '네이버친구', birthyear: '1995', birthday: '03-14' } };
+      expect(await meOf('naver')).toMatchObject({ nickname: '네이버친구', birthDate: '1995-03-14', adult: true });
+    } finally {
+      fetchMock.mockRestore();
+      delete process.env.GOOGLE_CLIENT_ID;
+      delete process.env.GOOGLE_CLIENT_SECRET;
+      delete process.env.KAKAO_CLIENT_ID;
+      delete process.env.NAVER_CLIENT_ID;
+      delete process.env.NAVER_CLIENT_SECRET;
+    }
+  });
+
   it('댓글: 최신순 · 답글 · 수정', async () => {
     const a = await signup('reply-a@test.dev', '답글가');
     const b = await signup('reply-b@test.dev', '답글나');

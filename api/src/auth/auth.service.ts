@@ -121,6 +121,19 @@ export class AuthService {
     return { ...(await this.toAuth(user, userAgent)), twoFactorRequired: false };
   }
 
+  /**
+   * 소셜 로그인으로 확인된 사용자. 2단계 인증을 켰으면 비밀번호 로그인과 똑같이 이메일 번호를 한 번 더 받는다
+   * (내부용 주소로 가입한 소셜 계정은 2단계 인증을 켤 수 없으니 해당 없음)
+   */
+  async socialLogin(userId: number, userAgent = '') {
+    const user = await this.find(userId);
+    if (user.twoFactorEnabled) {
+      const challenge = await this.verification.send(user.email, 'LOGIN', user.id);
+      return { twoFactorRequired: true as const, challenge, maskedEmail: mask(user.email) };
+    }
+    return { ...(await this.toAuth(user, userAgent)), twoFactorRequired: false as const };
+  }
+
   /** 2단계 인증 로그인: 이메일로 받은 번호 확인 */
   async verifyLogin(challenge: string, code: string, userAgent = '') {
     return this.toAuth(await this.find(await this.verification.verifyChallenge('LOGIN', challenge, code)), userAgent);

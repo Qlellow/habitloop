@@ -12,6 +12,7 @@ export interface AuthUser {
 /** 비밀번호 재설정 토큰: 이메일 인증을 마친 뒤 새 비밀번호를 정할 때까지만 쓴다 */
 const RESET_TTL = '10m';
 const RESET_PURPOSE = 'password-reset';
+const OAUTH_PURPOSE = 'oauth-state';
 
 /** 비밀번호가 바뀌면 달라지는 값. 재설정 토큰에 넣어서 한 번 쓰면 다시 못 쓰게 한다 */
 const passwordVersion = (passwordHash: string) => createHash('sha256').update(passwordHash).digest('hex').slice(0, 16);
@@ -71,6 +72,21 @@ export class JwtService {
       const id = Number(claims.sub);
       if (claims.purpose !== RESET_PURPOSE || !Number.isInteger(id)) return undefined;
       return { id, pv: String(claims.pv) };
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** 소셜 로그인 state: 어느 제공자로, 어떤 브라우저(nonce)에서 시작했는지 · 돌아갈 곳 · 초대 코드. 10분 */
+  issueOAuthState(state: { provider: string; nonce: string; next: string; ref?: string }): string {
+    return jwt.sign({ purpose: OAUTH_PURPOSE, ...state }, this.secret, { expiresIn: '10m', algorithm: 'HS256' });
+  }
+
+  parseOAuthState(token: string): { provider: string; nonce: string; next: string; ref?: string } | undefined {
+    try {
+      const c = jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+      if (c.purpose !== OAUTH_PURPOSE || typeof c.provider !== 'string' || typeof c.nonce !== 'string') return undefined;
+      return { provider: c.provider, nonce: c.nonce, next: typeof c.next === 'string' ? c.next : '/', ref: typeof c.ref === 'string' ? c.ref : undefined };
     } catch {
       return undefined;
     }
