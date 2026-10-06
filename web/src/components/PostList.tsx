@@ -1,4 +1,5 @@
 import { RoleBadge } from './RoleBadge';
+import { UserAvatar } from './UserAvatar';
 import { memo, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
@@ -61,6 +62,7 @@ export const PostItem = memo(function PostItem({
               navigate(`/u/${post.authorId}`);
             }}
           >
+            <UserAvatar nickname={post.authorNickname} avatarUrl={post.authorAvatar} size={18} />
             <span className="truncate hover:underline underline-offset-2">{post.authorNickname}</span>
             <RoleBadge role={post.authorRole} size={16} />
           </span>

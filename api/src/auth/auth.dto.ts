@@ -1,4 +1,4 @@
-import { IsEmail, Length, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
 import { NotBlank, StrongPassword } from '../common/validators';
 
 const CODE_FORMAT = /^\s*[A-Za-z1-9]{6}\s*$/;
@@ -91,4 +91,20 @@ export class AgeInput {
   @NotBlank('생년월일을 입력해 주세요')
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: '생년월일을 YYYY-MM-DD 로 입력해 주세요' })
   birthDate!: string;
+}
+
+export class AvatarInput {
+  /** 올린 이미지 id. 비우면 기본 프로필(닉네임 첫 글자) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  imageId?: string | null;
+}
+
+export class BannerInput {
+  /** 'p:기본배너' · 'i:이미지id'. 비우면 배너 없음 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  banner?: string | null;
 }

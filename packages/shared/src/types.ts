@@ -10,6 +10,14 @@ export interface User {
   adult?: boolean;
   /** 확인한 생년월일 (YYYY-MM-DD) */
   birthDate?: string;
+  /** 프로필 사진 주소 (없으면 닉네임 첫 글자) */
+  avatarUrl?: string;
+  /** 배너: 'p:기본배너' · 'i:이미지id' */
+  banner?: string;
+  /** 가진 포인트 */
+  points?: number;
+  /** 내 사진 배너를 열었는지 */
+  customBanner?: boolean;
 }
 
 /** 로그인한 기기 (마이페이지 > 설정 > 로그인한 기기) */
@@ -156,6 +164,7 @@ export interface PostSummary {
   excerpt: string;
   authorId: number;
   authorNickname: string;
+  authorAvatar?: string | null;
   authorRole?: ChannelRole;
   likeCount: number;
   commentCount: number;
@@ -179,6 +188,15 @@ export interface UserProfile {
   createdAt: string;
   postCount: number;
   commentCount: number;
+  avatarUrl?: string | null;
+  banner?: string | null;
+}
+
+export interface PointLog {
+  id: number;
+  delta: number;
+  reason: string;
+  createdAt: string;
 }
 
 export interface PostDetail {
@@ -187,7 +205,7 @@ export interface PostDetail {
   category?: { id: number; name: string };
   title: string;
   content: string;
-  author: { id: number; nickname: string; role?: ChannelRole };
+  author: { id: number; nickname: string; avatarUrl?: string; role?: ChannelRole };
   likeCount: number;
   commentCount: number;
   viewCount: number;
@@ -211,6 +229,7 @@ export interface Comment {
   id: number;
   authorId: number;
   authorNickname: string;
+  authorAvatar?: string;
   authorRole?: ChannelRole;
   content: string;
   likeCount: number;

@@ -19,10 +19,21 @@ interface UserRow {
   ageChecked?: boolean;
   adult?: boolean;
   birthDate?: string | null;
+  avatarUrl?: string | null;
+  banner?: string | null;
+  points?: number;
+  customBanner?: boolean;
 }
 
+/** 기본 배너 (누구나 무료). 화면에서 쓰는 색은 @loop/shared 의 BANNER_PRESETS */
+export const BANNER_PRESETS = ['sky', 'sunset', 'mint', 'grape', 'peach', 'night', 'forest', 'mono'];
+/** 내 사진 배너를 여는 데 드는 포인트 (한 번 열면 계속 바꿀 수 있다) */
+export const CUSTOM_BANNER_COST = 300;
+
 const USER_COLUMNS = `id, email, password, nickname, two_factor_enabled AS "twoFactorEnabled",
-  birth_date IS NOT NULL AS "ageChecked", to_char(birth_date, 'YYYY-MM-DD') AS "birthDate", coalesce(birth_date <= (current_date - interval '19 years'), false) AS adult`;
+  birth_date IS NOT NULL AS "ageChecked", to_char(birth_date, 'YYYY-MM-DD') AS "birthDate",
+  CASE WHEN avatar_id IS NULL THEN NULL ELSE '/api/images/' || avatar_id END AS "avatarUrl", banner, points,
+  custom_banner AS "customBanner", coalesce(birth_date <= (current_date - interval '19 years'), false) AS adult`;
 const SELECT_USER = `SELECT ${USER_COLUMNS} FROM users`;
 
 export const userResponse = (u: UserRow) => ({
@@ -33,6 +44,10 @@ export const userResponse = (u: UserRow) => ({
   ageChecked: !!u.ageChecked,
   adult: !!u.adult,
   birthDate: u.birthDate ?? undefined,
+  avatarUrl: u.avatarUrl ?? undefined,
+  banner: u.banner ?? undefined,
+  points: u.points ?? 0,
+  customBanner: !!u.customBanner,
 });
 
 const normalize = (email: string) => email.trim().toLowerCase();
@@ -221,6 +236,63 @@ export class AuthService {
     if (d.getUTCFullYear() < 1900 || d.getTime() > Date.now()) throw ApiError.badRequest('생년월일을 다시 확인해 주세요');
     await this.db.execute('UPDATE users SET birth_date = $1 WHERE id = $2', [birthDate, userId]);
     return userResponse(await this.find(userId));
+  }
+
+  /** 내가 올린 이미지인지 (다른 사람 이미지를 내 프로필로 쓸 수 없게) */
+  private async requireOwnImage(userId: number, imageId: string) {
+    if (!/^[A-Za-z0-9_-]{16,32}$/.test(imageId) || !(await this.db.one('SELECT 1 FROM images WHERE id = $1 AND owner_id = $2', [imageId, userId]))) {
+      throw ApiError.badRequest('이미지를 다시 올려 주세요');
+    }
+  }
+
+  /** 프로필 사진 바꾸기 (null 이면 기본: 닉네임 첫 글자) */
+  async setAvatar(userId: number, imageId: string | null) {
+    if (imageId) await this.requireOwnImage(userId, imageId);
+    await this.db.execute('UPDATE users SET avatar_id = $1 WHERE id = $2', [imageId, userId]);
+    return userResponse(await this.find(userId));
+  }
+
+  /**
+   * 배너: 'p:기본배너' (무료) · 'i:이미지id' (내 사진 배너, 포인트로 연 사람만) · null (배너 없음)
+   */
+  async setBanner(userId: number, banner: string | null) {
+    const user = await this.find(userId);
+    if (banner) {
+      const [kind, value] = [banner.slice(0, 2), banner.slice(2)];
+      if (kind === 'p:') {
+        if (!BANNER_PRESETS.includes(value)) throw ApiError.badRequest('없는 배너예요');
+      } else if (kind === 'i:') {
+        if (!user.customBanner) throw ApiError.forbidden(`내 사진 배너는 ${CUSTOM_BANNER_COST}P 로 연 뒤에 쓸 수 있어요`);
+        await this.requireOwnImage(userId, value);
+      } else {
+        throw ApiError.badRequest('없는 배너예요');
+      }
+    }
+    await this.db.execute('UPDATE users SET banner = $1 WHERE id = $2', [banner, userId]);
+    return userResponse(await this.find(userId));
+  }
+
+  /** 내 사진 배너 열기: 포인트를 한 번 쓰면 그 뒤로는 자유롭게 바꿀 수 있다 */
+  async unlockCustomBanner(userId: number) {
+    const user = await this.find(userId);
+    if (user.customBanner) return userResponse(user);
+    await this.db.transaction(async () => {
+      const spent = await this.db.execute(
+        'UPDATE users SET points = points - $1, custom_banner = TRUE WHERE id = $2 AND points >= $1 AND NOT custom_banner',
+        [CUSTOM_BANNER_COST, userId],
+      );
+      if (!spent) throw ApiError.badRequest(`포인트가 부족해요 (필요 ${CUSTOM_BANNER_COST}P, 지금 ${user.points ?? 0}P)`);
+      await this.db.execute("INSERT INTO point_logs (user_id, delta, reason) VALUES ($1, $2, '내 사진 배너 열기')", [userId, -CUSTOM_BANNER_COST]);
+    });
+    return userResponse(await this.find(userId));
+  }
+
+  /** 포인트 내역 (최근 30개) */
+  pointLogs(userId: number) {
+    return this.db.query(
+      'SELECT id, delta, reason, created_at AS "createdAt" FROM point_logs WHERE user_id = $1 ORDER BY id DESC LIMIT 30',
+      [userId],
+    );
   }
 
   /** 2단계 인증 켜기 1단계: 내 이메일로 번호 보내기 */

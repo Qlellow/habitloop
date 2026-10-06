@@ -14,12 +14,14 @@ interface CommentRow {
   id: number;
   authorId: number;
   authorNickname: string;
+  authorAvatar: string | null;
   content: string;
   likeCount: number;
   createdAt: Date;
 }
 
-const SELECT_COMMENT = `SELECT c.id, c.author_id AS "authorId", u.nickname AS "authorNickname", c.content,
+const SELECT_COMMENT = `SELECT c.id, c.author_id AS "authorId", u.nickname AS "authorNickname",
+  CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "authorAvatar", c.content,
   c.like_count AS "likeCount", c.created_at AS "createdAt" FROM comments c JOIN users u ON u.id = c.author_id`;
 
 @Injectable()
@@ -167,6 +169,7 @@ export class CommentsService {
       id: c.id,
       authorId: c.authorId,
       authorNickname: c.authorNickname,
+      authorAvatar: c.authorAvatar ?? undefined,
       authorRole: badge(authorRole),
       content: c.content,
       likeCount: c.likeCount,

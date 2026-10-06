@@ -41,7 +41,7 @@ const s = {
   // 구분선은 좌우를 본문 여백만큼 들인다 (padding 안쪽에 그려짐)
   comment: `px-5 py-3.5 ${divider} [&:not(:first-child)]:before:-mt-3.5 [&:not(:first-child)]:before:mb-3.5`,
   commentHead: 'flex items-center gap-2 text-sm',
-  commentAuthor: 'inline-flex items-center gap-1 font-semibold text-fg-strong',
+  commentAuthor: 'inline-flex items-center gap-1.5 font-semibold text-fg-strong',
   commentTime: 'text-[13px] text-fg-weak',
   commentBody: 'mt-1 mb-2 whitespace-pre-wrap',
   commentActions: 'flex items-center gap-1',

@@ -40,3 +40,27 @@ export async function toSquareIcon(file: File, crop?: { x: number; y: number; w:
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('사진을 바꾸지 못했어요'))), 'image/png'),
   );
 }
+
+/**
+ * 고른 사진에서 자르기 창으로 고른 영역(비율 그대로)을 width×height 로 줄인다 (배너 1500×500 등).
+ * EXIF 같은 메타데이터는 떨어지고, WebP 를 못 만들면 JPEG 로 만든다.
+ */
+export async function cropToBlob(file: File, crop: { x: number; y: number; w: number; h: number }, width: number, height: number): Promise<Blob> {
+  if (!file.type.startsWith('image/')) throw new Error('이미지 파일을 골라 주세요');
+  if (file.size > 20 * 1024 * 1024) throw new Error('20MB 이하의 사진을 골라 주세요');
+  const bitmap = await createImageBitmap(file).catch(() => {
+    throw new Error('사진을 읽지 못했어요. 다른 사진을 골라 주세요');
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, crop.x * bitmap.width, crop.y * bitmap.height, crop.w * bitmap.width, crop.h * bitmap.height, 0, 0, width, height);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.86));
+  if (blob && blob.type === 'image/webp') return blob;
+  return new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('사진을 바꾸지 못했어요'))), 'image/jpeg', 0.88),
+  );
+}
