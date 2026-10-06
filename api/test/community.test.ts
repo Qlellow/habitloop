@@ -738,6 +738,11 @@ describe('커뮤니티', () => {
 
   it('소셜 로그인: state · 쿠키 확인, 새 가입 · 다시 로그인 · 같은 이메일 계정에 잇기', async () => {
     expect((await http().get('/api/auth/oauth/providers')).body).toEqual([]);
+    // 카카오톡 공유용 JavaScript 키는 서버 환경 변수에서 웹으로 넘겨준다 (없으면 null)
+    expect((await http().get('/api/share/kakao-key').expect(200)).body.key ?? null).toBeNull();
+    process.env.KAKAO_JS_KEY = 'js-key';
+    expect((await http().get('/api/share/kakao-key')).body).toEqual({ key: 'js-key' });
+    delete process.env.KAKAO_JS_KEY;
     // 키가 없으면 꺼져 있다 (브라우저가 이동해 온 요청이라 웹으로 돌려보내 이유를 보여 준다)
     const off = await http().get('/api/auth/oauth/google/start').expect(302);
     expect(new URLSearchParams(new URL(off.headers.location).hash.slice(1)).get('error')).toContain('준비 중');

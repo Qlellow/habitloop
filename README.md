@@ -149,7 +149,7 @@ Vercel 프로젝트에서 할 일:
 | `CORS_ORIGINS` | (선택) 다른 도메인에서 API 를 부를 때만. 같은 도메인이면 필요 없어요 |
 | `SITE_URL` | 사이트 바깥 주소 (예: `https://habitloop-eight.vercel.app`). 소셜 로그인 Redirect URI · 로그인 뒤 돌아갈 주소 |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` · `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` · `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | 소셜 로그인 키 (비우면 그 버튼은 "준비 중") |
-| `VITE_KAKAO_JS_KEY` | (웹) 카카오톡 공유용 JavaScript 키. 카카오 콘솔 → 플랫폼 → Web 에 도메인 등록 필요. 비우면 공유 창에서 카카오톡만 빠짐 |
+| `KAKAO_JS_KEY` | 카카오톡 공유용 JavaScript 키 (서버가 웹에 넘겨줌, Secret 으로 저장해도 됨). 카카오 콘솔에 사이트 도메인 등록 필요. 비우면 공유 창에서 카카오톡만 빠짐 |
 
 **2) CI/CD (`.github/workflows/ci.yml`)**
 
