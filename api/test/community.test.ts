@@ -244,7 +244,9 @@ describe('커뮤니티', () => {
     const novelPost = (await http().post('/api/posts').set(bearer(member)).send({ channel: 'art', categoryId: novel, title: '소설 1화', content: 'c' }))
       .body;
     expect(novelPost.category.name).toBe('소설');
-    await http().post('/api/posts').set(bearer(member)).send({ channel: 'art', title: '잡담', content: 'c' }).expect(201);
+    // 카테고리가 있는 채널은 카테고리를 골라야 한다
+    await http().post('/api/posts').set(bearer(member)).send({ channel: 'art', title: '잡담', content: 'c' }).expect(400);
+    await http().post('/api/posts').set(bearer(member)).send({ channel: 'art', categoryId: art, title: '잡담', content: 'c' }).expect(201);
     // 다른 채널의 카테고리는 쓸 수 없다
     await http().post('/api/posts').set(bearer(member)).send({ channel: 'free', categoryId: novel, title: 't', content: 'c' }).expect(400);
 
@@ -376,6 +378,7 @@ describe('커뮤니티', () => {
 
     // 운영진 전용 카테고리: 매니저는 쓸 수 있고 일반 멤버는 못 쓴다
     const notice = (await http().post('/api/channels/staffs/categories').set(bearer(admin)).send({ name: '공지', ownerOnly: true })).body[0].id;
+    const free = (await http().post('/api/channels/staffs/categories').set(bearer(admin)).send({ name: '자유', ownerOnly: false })).body[1].id;
     const staffPost = await http()
       .post('/api/posts')
       .set(bearer(manager))
@@ -385,25 +388,26 @@ describe('커뮤니티', () => {
     await http().post('/api/posts').set(bearer(member)).send({ channel: 'staffs', categoryId: notice, title: 't', content: 'c' }).expect(403);
 
     // 목록·댓글의 닉네임 옆 배지: 일반 멤버는 역할이 없다
-    const memberPost = (await http().post('/api/posts').set(bearer(member)).send({ channel: 'staffs', title: '멤버 글', content: 'c' })).body.id;
+    const memberPost = (await http().post('/api/posts').set(bearer(member)).send({ channel: 'staffs', categoryId: free, title: '멤버 글', content: 'c' })).body.id;
     const list = (await http().get('/api/posts').query({ channel: 'staffs' })).body.items;
     expect(list[0].authorRole).toBeUndefined();
     expect(list[1].authorRole).toBe('MANAGER');
     expect((await http().post(`/api/posts/${memberPost}/comments`).set(bearer(owner)).send({ content: '환영' })).body.authorRole).toBe('OWNER');
     const memberComment = (await http().post(`/api/posts/${memberPost}/comments`).set(bearer(member)).send({ content: 'hi' })).body.id;
+    // 최근 댓글이 위에
     const comments = (await http().get(`/api/posts/${memberPost}/comments`)).body.items;
-    expect(comments[0].authorRole).toBe('OWNER');
-    expect(comments[1].authorRole).toBeUndefined();
+    expect(comments[1].authorRole).toBe('OWNER');
+    expect(comments[0].authorRole).toBeUndefined();
 
     // 운영진은 아래 역할의 글·댓글을 지울 수 있다. 일반 멤버는 못 한다
     expect((await http().get(`/api/posts/${memberPost}`).set(bearer(manager))).body.canModerate).toBe(true);
     expect((await http().get(`/api/posts/${staffPost.body.id}`).set(bearer(member))).body.canModerate).toBe(false);
     await http().delete(`/api/posts/${staffPost.body.id}`).set(bearer(member)).expect(403);
     // 매니저는 더 높은 운영진(소유자)의 댓글은 지울 수 없다
-    const ownerComment = comments[0].id;
+    const ownerComment = comments[1].id;
     const asManager = (await http().get(`/api/posts/${memberPost}/comments`).set(bearer(manager))).body.items;
-    expect(asManager[0].deletable).toBe(false);
-    expect(asManager[1].deletable).toBe(true);
+    expect(asManager[1].deletable).toBe(false);
+    expect(asManager[0].deletable).toBe(true);
     await http().delete(`/api/posts/${memberPost}/comments/${ownerComment}`).set(bearer(manager)).expect(403);
     expect((await http().get(`/api/posts/${staffPost.body.id}`).set(bearer(admin))).body.canModerate).toBe(true);
     await http().delete(`/api/posts/${memberPost}/comments/${memberComment}`).set(bearer(manager)).expect(204);
@@ -565,8 +569,9 @@ describe('커뮤니티', () => {
     await http().post('/api/channels/mixed/members').set(bearer(minor)).expect(200);
     await http().post('/api/posts').set(bearer(minor)).send({ channel: 'mixed', categoryId: adultCat, title: 't', content: 'c' }).expect(403);
     const hidden = (await http().post('/api/posts').set(bearer(adult)).send({ channel: 'mixed', categoryId: adultCat, title: '성인 카테고리 글', content: 'c' }).expect(201)).body.id;
-    await http().post('/api/posts').set(bearer(adult)).send({ channel: 'mixed', title: '보통 글', content: 'c' }).expect(201);
-    expect((await http().get('/api/channels/mixed').set(bearer(minor))).body.categories).toHaveLength(0);
+    const normalCat = (await http().post('/api/channels/mixed/categories').set(bearer(adult)).send({ name: '보통' }).expect(200)).body[1].id;
+    await http().post('/api/posts').set(bearer(adult)).send({ channel: 'mixed', categoryId: normalCat, title: '보통 글', content: 'c' }).expect(201);
+    expect((await http().get('/api/channels/mixed').set(bearer(minor))).body.categories.map((c: { name: string }) => c.name)).toEqual(['보통']);
     expect((await http().get('/api/posts/page').query({ channel: 'mixed' }).set(bearer(minor))).body.items.map((p: { title: string }) => p.title)).toEqual(['보통 글']);
     expect((await http().get('/api/posts/page').query({ channel: 'mixed' }).set(bearer(adult))).body.total).toBe(2);
     await http().get(`/api/posts/${hidden}`).set(bearer(minor)).expect(403);
@@ -609,6 +614,34 @@ describe('커뮤니티', () => {
     await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${theirs}` }).expect(400);
     expect((await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${mine}` }).expect(200)).body.banner).toBe(`i:${mine}`);
     expect((await http().get('/api/me/points').set(bearer(me))).body[0]).toMatchObject({ delta: -300, reason: '내 사진 배너 열기' });
+  });
+
+  it('댓글: 최신순 · 답글 · 수정', async () => {
+    const a = await signup('reply-a@test.dev', '답글가');
+    const b = await signup('reply-b@test.dev', '답글나');
+    await http().post('/api/channels/free/members').set(bearer(a)).expect(200);
+    const postId = (await http().post('/api/posts').set(bearer(a)).send({ channel: 'free', title: '답글 테스트', content: 'c' }).expect(201)).body.id;
+    const add = (token: string, content: string, parentId?: number) =>
+      http().post(`/api/posts/${postId}/comments`).set(bearer(token)).send({ content, parentId }).expect(201).then((r) => r.body);
+    const first = await add(a, '첫 댓글');
+    await add(b, '둘째 댓글');
+    const reply = await add(b, '첫 댓글에 답글', first.id);
+    expect(reply.parentId).toBe(first.id);
+    // 답글의 답글도 같은 댓글 아래로
+    expect((await add(a, '답글에 답글', reply.id)).parentId).toBe(first.id);
+    const list = (await http().get(`/api/posts/${postId}/comments`)).body.items;
+    expect(list.map((c: { content: string }) => c.content)).toEqual(['둘째 댓글', '첫 댓글']);
+    expect(list[1].replies.map((c: { content: string }) => c.content)).toEqual(['첫 댓글에 답글', '답글에 답글']);
+    expect((await http().get(`/api/posts/${postId}`)).body.commentCount).toBe(4);
+    // 수정은 쓴 사람만
+    await http().put(`/api/posts/${postId}/comments/${first.id}`).set(bearer(b)).send({ content: '남의 것' }).expect(403);
+    const edited = (await http().put(`/api/posts/${postId}/comments/${first.id}`).set(bearer(a)).send({ content: '고친 댓글' }).expect(200)).body;
+    expect(edited).toMatchObject({ content: '고친 댓글' });
+    expect(edited.updatedAt).toBeDefined();
+    // 댓글을 지우면 답글도 함께, 댓글 수도 그만큼
+    await http().delete(`/api/posts/${postId}/comments/${first.id}`).set(bearer(a)).expect(204);
+    expect((await http().get(`/api/posts/${postId}`)).body.commentCount).toBe(1);
+    await http().post(`/api/posts/${postId}/comments`).set(bearer(a)).send({ content: 'x', parentId: 999999 }).expect(404);
   });
 
   it('채널 프로필 이미지', async () => {

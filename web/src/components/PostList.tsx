@@ -34,38 +34,42 @@ export const PostItem = memo(function PostItem({
         onPointerEnter={preload.post}
         onFocus={preload.post}
       >
-        {/* 위: 채널(또는 카테고리) ··· 시간 / 아래: 공감·댓글·조회 ··· 작성자 */}
+        {/* 위: 채널(또는 카테고리) ··· 시간 / 가운데: 작성자 / 아래: 제목·내용 ··· 공감·댓글·조회 */}
         <div className={s.meta}>
           {label && <span className={s.badge}>{label}</span>}
           <time className={s.time} dateTime={post.createdAt}>
             {timeAgo(post.createdAt)}
           </time>
         </div>
-        <h3 className={s.title}>{post.title}</h3>
-        {showExcerpt && <p className={s.excerpt}>{post.excerpt}</p>}
-        <div className={s.stats}>
-          <span className={s.stat}>
-            <HeartIcon /> {compact(post.likeCount)}
-          </span>
-          <span className={s.stat}>
-            <CommentIcon /> {compact(post.commentCount)}
-          </span>
-          <span>조회 {compact(post.viewCount)}</span>
-          {/* 작성자를 누르면 프로필로 (글 링크 안이라 <a> 를 겹치지 않고 직접 이동한다) */}
-          <span
-            className={s.author}
-            role="link"
-            title={`${post.authorNickname} 프로필 보기`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              navigate(`/u/${post.authorId}`);
-            }}
-          >
-            <UserAvatar nickname={post.authorNickname} avatarUrl={post.authorAvatar} size={18} />
-            <span className="truncate hover:underline underline-offset-2">{post.authorNickname}</span>
-            <RoleBadge role={post.authorRole} size={16} />
-          </span>
+        {/* 작성자를 누르면 프로필로 (글 링크 안이라 <a> 를 겹치지 않고 직접 이동한다) */}
+        <span
+          className={s.author}
+          role="link"
+          title={`${post.authorNickname} 프로필 보기`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate(`/u/${post.authorId}`);
+          }}
+        >
+          <UserAvatar nickname={post.authorNickname} avatarUrl={post.authorAvatar} size={20} />
+          <span className="truncate hover:underline underline-offset-2">{post.authorNickname}</span>
+          <RoleBadge role={post.authorRole} size={16} />
+        </span>
+        <div className={s.bottom}>
+          <div className="flex-1 min-w-0">
+            <h3 className={s.title}>{post.title}</h3>
+            {showExcerpt && <p className={s.excerpt}>{post.excerpt}</p>}
+          </div>
+          <div className={s.stats}>
+            <span className={s.stat}>
+              <HeartIcon /> {compact(post.likeCount)}
+            </span>
+            <span className={s.stat}>
+              <CommentIcon /> {compact(post.commentCount)}
+            </span>
+            <span>조회 {compact(post.viewCount)}</span>
+          </div>
         </div>
       </Link>
     </li>

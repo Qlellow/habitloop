@@ -639,10 +639,13 @@ type CommentPages = InfiniteData<CursorPage<Comment>>;
 
 /** 댓글 목록과 베스트 댓글 캐시에 들어 있는 같은 댓글을 한 번에 고친다 */
 function patchComment(qc: QueryClient, postId: number, commentId: number, patch: (c: Comment) => Comment) {
+  // 답글은 댓글의 replies 안에 있다
+  const apply = (c: Comment): Comment =>
+    c.id === commentId ? patch(c) : c.replies?.length ? { ...c, replies: c.replies.map(apply) } : c;
   qc.setQueryData<CommentPages>(keys.comments(postId), (data) =>
     data && {
       ...data,
-      pages: data.pages.map((p) => ({ ...p, items: p.items.map((c) => (c.id === commentId ? patch(c) : c)) })),
+      pages: data.pages.map((p) => ({ ...p, items: p.items.map(apply) })),
     },
   );
   qc.setQueryData<Comment[]>(keys.bestComments(postId), (list) =>
@@ -680,40 +683,38 @@ function bumpCommentCount(qc: QueryClient, postId: number, delta: number) {
   qc.invalidateQueries({ queryKey: keys.posts, refetchType: 'none' });
 }
 
+/** 댓글 달기 (parentId 가 있으면 답글). 답글이 각 댓글 아래에 붙으므로 목록을 다시 받는다 */
 export function useAddComment(postId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (content: string) =>
-      api<Comment>(`/api/posts/${postId}/comments`, { method: 'POST', body: { content } }),
-    onSuccess: (comment) => {
-      const cache = qc.getQueryData<CommentPages>(keys.comments(postId));
-      const last = cache?.pages.at(-1);
-      // 모든 댓글을 다 불러온 상태면 마지막 페이지에 붙이고, 아니면 다음 페이지 로드 때 자연스럽게 보이게 둔다
-      if (cache && last && last.nextCursor == null) {
-        qc.setQueryData<CommentPages>(keys.comments(postId), {
-          ...cache,
-          pages: [...cache.pages.slice(0, -1), { ...last, items: [...last.items, comment] }],
-        });
-      }
+    mutationFn: (input: string | { content: string; parentId?: number }) =>
+      api<Comment>(`/api/posts/${postId}/comments`, { method: 'POST', body: typeof input === 'string' ? { content: input } : input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.comments(postId) });
       bumpCommentCount(qc, postId, 1);
     },
+  });
+}
+
+/** 댓글 고치기 (쓴 사람만) */
+export function useEditComment(postId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, content }: { id: number; content: string }) =>
+      api<Comment>(`/api/posts/${postId}/comments/${id}`, { method: 'PUT', body: { content } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.comments(postId) }),
   });
 }
 
 export function useDeleteComment(postId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (commentId: number) =>
-      api<void>(`/api/posts/${postId}/comments/${commentId}`, { method: 'DELETE' }),
-    onSuccess: (_, commentId) => {
-      qc.setQueryData<CommentPages>(keys.comments(postId), (data) =>
-        data && {
-          ...data,
-          pages: data.pages.map((p) => ({ ...p, items: p.items.filter((c) => c.id !== commentId) })),
-        },
-      );
-      qc.setQueryData<Comment[]>(keys.bestComments(postId), (list) => list?.filter((c) => c.id !== commentId));
-      bumpCommentCount(qc, postId, -1);
+    mutationFn: (commentId: number) => api<void>(`/api/posts/${postId}/comments/${commentId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      // 답글까지 함께 지워지므로 글의 댓글 수는 다시 받는다
+      qc.invalidateQueries({ queryKey: keys.comments(postId) });
+      qc.invalidateQueries({ queryKey: keys.post(postId) });
+      markListsStale(qc);
     },
   });
 }

@@ -33,9 +33,10 @@ export default function UserPage() {
             <UserAvatar nickname={user.nickname} avatarUrl={user.avatarUrl} size={88} className="-mt-11 ring-4 ring-[var(--surface)]" />
             <div className="min-w-0 pt-3">
               <h1 className="m-0 text-[22px] font-bold text-fg-strong truncate">{user.nickname}</h1>
-              <p className="mt-1 mb-0 text-sm text-fg-weak">
-                {joinedAt(user.createdAt)} · 글 {compact(user.postCount)} · 댓글 {compact(user.commentCount)}
+              <p className="mt-1 mb-0 text-sm text-fg-sub">
+                글 {compact(user.postCount)} · 댓글 {compact(user.commentCount)}
               </p>
+              <p className="mt-0.5 mb-0 text-[13px] text-fg-weak">{joinedAt(user.createdAt)}</p>
             </div>
           </div>
         ) : (

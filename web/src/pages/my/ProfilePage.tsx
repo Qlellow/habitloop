@@ -397,14 +397,10 @@ export default function ProfilePage() {
       <div className={s.head}>
         <h1 className={s.title}>내 정보 수정</h1>
       </div>
-      <section className={cn(ui.card, s.section)}>
-        <h2 className={s.sectionTitle}>이메일</h2>
-        <p className={s.sectionDesc}>로그인할 때 쓰는 이메일이에요. 바꿀 수 없어요.</p>
-        <div className={s.readonly}>{user.email}</div>
-      </section>
+      {/* 닉네임 → 프로필 사진 → 배너 → 비밀번호 (이메일은 바꿀 수 없으니 왼쪽 메뉴에서만 보인다) */}
+      <NicknameForm key={user.nickname} current={user.nickname} />
       <AvatarSection user={user} />
       <BannerSection user={user} />
-      <NicknameForm key={user.nickname} current={user.nickname} />
       <PasswordForm />
     </>
   );

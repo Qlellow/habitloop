@@ -50,9 +50,13 @@ function UserMenu() {
       </button>
       {open && (
         <div className={s.menu} role="menu">
-          <div className={s.menuHead}>
-            <div className={s.menuName}>{user.nickname}</div>
-            <div className={s.menuEmail}>{user.email}</div>
+          {/* 프로필 사진 · 닉네임 · 가진 포인트 (이메일은 보이지 않는다) */}
+          <div className={cn(s.menuHead, 'flex items-center gap-2.5')}>
+            <UserAvatar nickname={user.nickname} avatarUrl={user.avatarUrl} size={36} />
+            <div className="min-w-0 flex-1">
+              <div className={cn(s.menuName, 'truncate')}>{user.nickname}</div>
+              <div className="text-[13px] font-semibold text-primary">{(user.points ?? 0).toLocaleString()}P</div>
+            </div>
           </div>
           <Link to="/me" className={s.menuItem} role="menuitem" onPointerEnter={preload.me}>
             마이페이지
@@ -158,8 +162,8 @@ export function MobileTabBar() {
 type Variant = 'three' | 'twoRight' | 'nav' | 'single' | 'wide' | 'narrow';
 
 /**
- * 화면에 붙어 있는(sticky) 사이드바가 스크롤을 '따라오는' 느낌: 스크롤하면 본문 쪽으로 살짝 끌려갔다가
- * 스프링처럼 부드럽게 제자리로 돌아온다. 넓은 화면(사이드바가 붙는 폭)에서만, 움직임 줄이기 설정이면 끈다.
+ * 화면에 붙어 있는(sticky) 사이드바가 스크롤을 '천천히 따라오는' 느낌: 스크롤하면 본문과 함께 밀려났다가
+ * (화면 밖으로 나가도 된다) 1~2초에 걸쳐 부드럽게 제자리로 돌아온다. 넓은 화면(사이드바가 붙는 폭)에서만, 움직임 줄이기 설정이면 끈다.
  */
 function useFollowScroll(refs: React.RefObject<HTMLElement | null>[]) {
   useEffect(() => {
@@ -171,7 +175,7 @@ function useFollowScroll(refs: React.RefObject<HTMLElement | null>[]) {
       for (const r of refs) if (r.current) r.current.style.transform = v ? `translate3d(0, ${v.toFixed(2)}px, 0)` : '';
     };
     const tick = () => {
-      offset *= 0.86; // 매 프레임 조금씩 제자리로
+      offset *= 0.955; // 천천히 제자리로 (화면 밖으로 나갔다가 1~2초에 걸쳐 따라온다)
       if (Math.abs(offset) < 0.15) {
         offset = 0;
         frame = 0;
@@ -186,8 +190,9 @@ function useFollowScroll(refs: React.RefObject<HTMLElement | null>[]) {
       const dy = y - last;
       last = y;
       if (window.innerWidth <= 860) return;
-      // 스크롤한 만큼 반대로(본문과 같은 방향으로) 끌려간다. 너무 멀리 가지 않게 ±28px
-      offset = Math.max(-28, Math.min(28, offset - dy * 0.22));
+      // 스크롤한 만큼 본문과 함께 밀려났다가(화면 밖으로 나가도 된다) 천천히 따라온다
+      const limit = window.innerHeight;
+      offset = Math.max(-limit, Math.min(limit, offset - dy));
       if (!frame) frame = requestAnimationFrame(tick);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
