@@ -742,6 +742,8 @@ describe('커뮤니티', () => {
     process.env.GOOGLE_CLIENT_ID = 'test-google';
     process.env.GOOGLE_CLIENT_SECRET = 'test-secret';
     process.env.KAKAO_CLIENT_ID = 'test-kakao';
+    process.env.NAVER_CLIENT_ID = 'test-naver';
+    process.env.NAVER_CLIENT_SECRET = 'test-naver-secret';
     let profile: Record<string, unknown> = {};
     const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
       const url = String(input);
@@ -754,7 +756,7 @@ describe('커뮤니티', () => {
       return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
     });
     try {
-      expect((await http().get('/api/auth/oauth/providers')).body).toEqual(['google', 'kakao']);
+      expect((await http().get('/api/auth/oauth/providers')).body).toEqual(['google', 'kakao', 'naver']);
       // 시작: 제공자 로그인 화면으로 보내고, 이 브라우저에 nonce 쿠키를 심는다
       const login = async (provider: string, opts: { cookie?: boolean; next?: string } = {}) => {
         const start = await http().get(`/api/auth/oauth/${provider}/start`).query({ next: opts.next ?? '/c/free' }).expect(302);
@@ -798,7 +800,7 @@ describe('커뮤니티', () => {
       profile = { id: 1, kakao_account: { profile: { nickname: '이메일없음' } } };
       expect((await login('kakao')).hash.get('error')).toContain('이메일 제공에 동의');
 
-      // 닉네임 · 사진 · 생일은 선택: 카카오 생일(연도 + MMDD)은 나이 확인으로 쓰이고, 닉네임이 겹치면 숫자를 붙인다
+      // 닉네임 · 사진은 선택: 닉네임이 겹치면 숫자를 붙인다. 카카오 생일은 받지 않는다
       profile = {
         id: 12345,
         kakao_account: {
@@ -812,16 +814,21 @@ describe('커뮤니티', () => {
       };
       const kakao = await meOf('kakao');
       expect(kakao.nickname).toMatch(/^구글사람\d{4}$/);
-      expect(kakao).toMatchObject({ birthDate: '1995-03-14', adult: true });
+      expect(kakao.birthDate).toBeUndefined();
       expect(kakao.avatarUrl).toBeUndefined(); // 카카오 기본 이미지는 가져오지 않는다
       // 닉네임을 주지 않아도 가입된다
       profile = { id: 777, kakao_account: { email: 'nonick@test.dev', is_email_valid: true, is_email_verified: true } };
       expect((await meOf('kakao')).nickname).toMatch(/^루퍼/);
+      // 네이버 생일(출생연도 + MM-DD)은 선택으로 받아 나이 확인에 쓴다
+      profile = { response: { id: 'n-1', email: 'naver@test.dev', nickname: '네이버친구', birthyear: '1995', birthday: '03-14' } };
+      expect(await meOf('naver')).toMatchObject({ nickname: '네이버친구', birthDate: '1995-03-14', adult: true });
     } finally {
       fetchMock.mockRestore();
       delete process.env.GOOGLE_CLIENT_ID;
       delete process.env.GOOGLE_CLIENT_SECRET;
       delete process.env.KAKAO_CLIENT_ID;
+      delete process.env.NAVER_CLIENT_ID;
+      delete process.env.NAVER_CLIENT_SECRET;
     }
   });
 

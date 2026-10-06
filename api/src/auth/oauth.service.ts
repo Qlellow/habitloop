@@ -53,7 +53,7 @@ const bearer = (token: string) => ({ headers: { Authorization: `Bearer ${token}`
 /**
  * 제공자별 주소와 사용자 정보 읽기. 키(CLIENT_ID · SECRET)는 환경 변수로 받고, 없으면 그 제공자는 꺼진다.
  * - Google: OpenID Connect (sub, email, email_verified, name)
- * - Kakao: /v2/user/me (id, kakao_account.email, is_email_verified, profile.nickname). Client Secret 은 켠 경우에만
+ * - Kakao: /v2/user/me (id, kakao_account.email, is_email_verified, profile.nickname · 사진). Client Secret 은 켠 경우에만
  * - Naver: /v1/nid/me (response.id, email, nickname). 네이버 이메일은 네이버가 확인한 연락처 이메일
  */
 const PROVIDERS: Record<OAuthProvider, () => ProviderConfig> = {
@@ -83,7 +83,7 @@ const PROVIDERS: Record<OAuthProvider, () => ProviderConfig> = {
         emailVerified: account.is_email_valid === true && account.is_email_verified === true,
         nickname: account.profile?.nickname ?? p.properties?.nickname,
         avatarUrl: account.profile?.is_default_image ? undefined : account.profile?.profile_image_url,
-        birthDate: toBirthDate(account.birthyear, account.birthday),
+        // 카카오 생일 · 출생 연도는 사업자 등록 번호가 있는 앱만 받을 수 있어서 받지 않는다
       };
     },
   }),
