@@ -239,4 +239,12 @@ ALTER TABLE comments ADD COLUMN updated_at TIMESTAMPTZ;
 CREATE INDEX idx_comments_parent ON comments (parent_id, id);
 `,
   },
+  {
+    // 바깥(API · 주소)에 보이는 사용자 id. 순서대로 늘어나는 내부 id 대신 UUID 를 쓴다 (몇 번째 가입자인지 드러나지 않게)
+    name: '009_user_uid',
+    sql: `
+ALTER TABLE users ADD COLUMN uid UUID NOT NULL DEFAULT gen_random_uuid();
+CREATE UNIQUE INDEX uk_users_uid ON users (uid);
+`,
+  },
 ];

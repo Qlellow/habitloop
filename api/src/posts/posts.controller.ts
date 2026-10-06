@@ -9,6 +9,9 @@ import { CommentsService } from './comments.service';
 import { CommentInput, CommentUpdateInput, CreatePostInput, UpdatePostInput } from './posts.dto';
 import { PostsService, SORTS, type PostSort } from './posts.service';
 
+/** UUID 모양인지 (사용자 id) */
+export const isUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
 const id = (value: string) => {
   const n = intParam(value);
   if (n === undefined) throw ApiError.badRequest('잘못된 요청이에요');
@@ -41,7 +44,7 @@ export class PostsController {
       {
         channel: query.channel?.trim() || undefined,
         category: intParam(query.category),
-        authorId: intParam(query.authorId),
+        authorId: isUuid(query.authorId) ? query.authorId : query.authorId ? '00000000-0000-0000-0000-000000000000' : undefined,
         q: query.q,
       },
       intParam(query.cursor),

@@ -18,6 +18,8 @@ const s = {
     'min-h-[460px] border-0 rounded-none bg-surface px-5 py-[18px] text-[15px] resize-y hover:border-transparent ' +
     'focus:border-0 focus:shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--primary)_40%,transparent)]',
   // 스크롤바가 생겨도 폭이 그대로이게 (폭이 바뀌면 이미지 크기·메뉴 위치가 다시 바뀌며 스크롤바가 생겼다 사라졌다 반복한다)
+  // CodeMirror 글쓰기 칸 (나란히 보기에서 미리보기와 나란히)
+  codeEditor: 'min-w-0 bg-surface',
   preview: 'min-h-[460px] max-h-[720px] overflow-y-auto [scrollbar-gutter:stable] px-5 py-[18px] bg-surface',
   previewInSplit: 'border-l border-border max-[860px]:border-l-0 max-[860px]:border-t',
   empty: 'm-0 text-fg-weak',

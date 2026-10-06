@@ -455,3 +455,157 @@
     scrollbar-color: var(--scroll-thumb) transparent;
   }
 }
+
+/*
+ * 글 본문 코드 블록 (Markdown.tsx): 머리줄(언어 · 복사) + 줄 번호 + 문법 강조.
+ * 색은 루프 토큰에 맞춘 라이트/다크 두 벌 (편집기 CodeMirror 도 같은 색을 쓴다: CodeEditor.tsx)
+ */
+:root {
+  --code-bg: #f6f8fa;
+  --code-head: #eef1f4;
+  --code-fg: #24292f;
+  --code-dim: #8b95a1;
+  --code-keyword: #cf222e;
+  --code-string: #0a7d3e;
+  --code-number: #0550ae;
+  --code-func: #8250df;
+  --code-type: #953800;
+  --code-attr: #0550ae;
+  --code-comment: #8b95a1;
+}
+:root[data-theme='dark'] {
+  --code-bg: #15151a;
+  --code-head: #202027;
+  --code-fg: #e6e6ea;
+  --code-dim: #6b6b75;
+  --code-keyword: #ff7b8c;
+  --code-string: #8fd694;
+  --code-number: #79c0ff;
+  --code-func: #d2a8ff;
+  --code-type: #ffa657;
+  --code-attr: #79c0ff;
+  --code-comment: #7e7e87;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --code-bg: #15151a;
+    --code-head: #202027;
+    --code-fg: #e6e6ea;
+    --code-dim: #6b6b75;
+    --code-keyword: #ff7b8c;
+    --code-string: #8fd694;
+    --code-number: #79c0ff;
+    --code-func: #d2a8ff;
+    --code-type: #ffa657;
+    --code-attr: #79c0ff;
+    --code-comment: #7e7e87;
+  }
+}
+.loop-code {
+  margin: 1.2em 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--code-bg);
+  overflow: hidden;
+}
+.loop-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px 6px 14px;
+  background: var(--code-head);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.loop-code-lang {
+  font-weight: 700;
+  color: var(--text-sub);
+}
+.loop-code-copy {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s, color 0.15s;
+}
+.loop-code-copy:hover {
+  background: var(--field-hover);
+  color: var(--text-strong);
+}
+.loop-code-copy[data-copied] {
+  color: var(--primary);
+}
+.loop-code-body {
+  display: flex;
+  overflow-x: auto;
+}
+.prose .loop-code pre {
+  margin: 0;
+  padding: 12px 16px 14px 12px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--code-fg);
+  font-size: 13.5px;
+  line-height: 1.65;
+  overflow: visible;
+}
+.prose .loop-code pre.loop-code-nums {
+  flex: none;
+  padding-right: 4px;
+  padding-left: 14px;
+  text-align: right;
+  color: var(--code-dim);
+  user-select: none;
+}
+.prose .loop-code pre code {
+  color: inherit;
+  font-family: 'JetBrains Mono', 'D2Coding', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.loop-code-nums {
+  font-family: 'JetBrains Mono', 'D2Coding', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag {
+  color: var(--code-keyword);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-symbol {
+  color: var(--code-string);
+}
+.hljs-number,
+.hljs-variable.language_,
+.hljs-attr,
+.hljs-attribute,
+.hljs-property {
+  color: var(--code-number);
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-section {
+  color: var(--code-func);
+}
+.hljs-type,
+.hljs-built_in,
+.hljs-title.class_,
+.hljs-params,
+.hljs-tag .hljs-name,
+.hljs-name {
+  color: var(--code-type);
+}
+.hljs-comment,
+.hljs-quote,
+.hljs-meta {
+  color: var(--code-comment);
+  font-style: italic;
+}
+.hljs-deletion {
+  color: var(--code-keyword);
+}

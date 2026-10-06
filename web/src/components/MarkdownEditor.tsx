@@ -1,9 +1,9 @@
-import { lazy, Suspense, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
+import { lazy, Suspense, useRef, useState, type DragEvent } from 'react';
 import { uploadPostImage } from '@loop/shared';
-import { flushSync } from 'react-dom';
 import { getSettings } from '../lib/settings';
 import { findImageToken, imageIndexAt, prepareUpload } from '../lib/postImage';
 import { ImageEditLayer } from './ImageEditLayer';
+import { CodeEditor, type CodeEditorHandle } from './CodeEditor';
 import { ImageIcon } from './Icons';
 import { toast } from './Toast';
 import { ui } from './ui';
@@ -59,7 +59,7 @@ export function MarkdownEditor({
     const preferred = getSettings().editorMode;
     return preferred === 'split' && window.innerWidth < 1000 ? 'write' : preferred;
   });
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const ref = useRef<CodeEditorHandle>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewHostRef = useRef<HTMLDivElement>(null);
   const panelHostRef = useRef<HTMLDivElement>(null);
@@ -85,7 +85,7 @@ export function MarkdownEditor({
     const images = files.filter((f) => f.type.startsWith('image/'));
     if (!images.length) return;
     const el = ref.current;
-    const at = el && mode !== 'preview' ? el.selectionEnd : valueRef.current.length;
+    const at = el && mode !== 'preview' ? el.selection().to : valueRef.current.length;
     const markers = images.map(() => `[⏳ 이미지 올리는 중… #${++uploadSeq}]`);
     const before = valueRef.current.slice(0, at);
     const pad = before && !before.endsWith('\n') ? '\n' : '';
@@ -102,12 +102,11 @@ export function MarkdownEditor({
     });
   };
 
-  const onPaste = (e: ClipboardEvent) => {
-    const files = Array.from(e.clipboardData.files);
-    if (files.some((f) => f.type.startsWith('image/'))) {
-      e.preventDefault();
-      insertImages(files);
-    }
+  /** 편집기에 붙여넣거나 끌어다 놓은 파일: 사진이면 올린다 */
+  const onFiles = (files: File[]) => {
+    if (!files.some((f) => f.type.startsWith('image/'))) return false;
+    insertImages(files);
+    return true;
   };
   const onDrop = (e: DragEvent) => {
     const files = Array.from(e.dataTransfer.files);
@@ -120,13 +119,24 @@ export function MarkdownEditor({
   const apply = (action: Action) => {
     const el = ref.current;
     if (!el) return;
-    const { selectionStart: start, selectionEnd: end } = el;
-    const [before, text, after] = action.apply(value.slice(start, end));
-    // 값을 즉시 DOM 에 반영한 뒤 삽입한 텍스트를 선택해 두면, 바로 타이핑해서 덮어쓸 수 있다
-    flushSync(() => onChange(value.slice(0, start) + before + text + after + value.slice(end)));
-    el.focus();
-    el.setSelectionRange(start + before.length, start + before.length + text.length);
+    const { from: start, to: end } = el.selection();
+    const [before, text, after] = action.apply(valueRef.current.slice(start, end));
+    // 넣은 글자를 선택해 두면 바로 타이핑해서 덮어쓸 수 있다
+    el.replace(start, end, before + text + after, { from: start + before.length, to: start + before.length + text.length });
   };
+  // 단축키(Ctrl+B · I · K)는 편집기를 만들 때 한 번 등록하므로 최신 apply 를 부른다
+  const applyRef = useRef(apply);
+  applyRef.current = apply;
+  const [shortcuts] = useState(() =>
+    Object.entries(SHORTCUTS).map(([key, idx]) => ({
+      key: `Mod-${key}`,
+      preventDefault: true,
+      run: () => {
+        applyRef.current(ACTIONS[idx]);
+        return true;
+      },
+    })),
+  );
 
   const showEditor = mode !== 'preview';
   const showPreview = mode !== 'write';
@@ -196,28 +206,22 @@ export function MarkdownEditor({
       </div>
       <div className={cn(s.panes, mode === 'split' && s.split)}>
         {showEditor && (
-          <textarea
+          <CodeEditor
             ref={ref}
-            className={cn(ui.textarea, s.textarea, compact && s.compact)}
+            className={cn(s.codeEditor)}
+            minHeight={compact ? 220 : 460}
             placeholder={placeholder}
             maxLength={maxLength}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onPaste={onPaste}
-            onDrop={onDrop}
-            onSelect={(e) => {
-              const i = imageIndexAt(e.currentTarget.value, e.currentTarget.selectionStart);
+            onChange={onChange}
+            onFiles={onFiles}
+            keys={shortcuts}
+            onCaret={(pos) => {
+              const i = imageIndexAt(valueRef.current, pos);
               if (i !== undefined) preloadPreview();
-              setCaret((c) => (i === undefined ? undefined : { index: i, seq: (c?.seq ?? 0) + 1 }));
+              setCaret((c) => (i === undefined ? undefined : c?.index === i ? c : { index: i, seq: (c?.seq ?? 0) + 1 }));
             }}
-            onKeyDown={(e) => {
-              const idx = SHORTCUTS[e.key.toLowerCase()];
-              if ((e.ctrlKey || e.metaKey) && idx !== undefined) {
-                e.preventDefault();
-                apply(ACTIONS[idx]);
-              }
-            }}
-            aria-label={label}
+            label={label}
           />
         )}
         {mode === 'write' && caretToken && caretImage !== undefined && (

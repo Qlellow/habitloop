@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { ApiError, compact, useFeed, useUserProfile } from '@loop/shared';
+import { ApiError, compact, isUserId, useFeed, useUserProfile } from '@loop/shared';
 import { Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { ui } from '../components/ui';
@@ -15,11 +15,11 @@ const joinedAt = (iso: string) => {
 
 /** 작성자 프로필: 닉네임 · 가입일 · 글/댓글 수 + 쓴 글 목록 */
 export default function UserPage() {
-  const id = Number(useParams().id);
+  const id = useParams().id ?? '';
   const profile = useUserProfile(id);
-  const feed = useFeed({ authorId: id }, Number.isInteger(id));
+  const feed = useFeed({ authorId: id }, isUserId(id));
 
-  if (!Number.isInteger(id) || (profile.error instanceof ApiError && profile.error.status === 404)) {
+  if (!isUserId(id) || (profile.error instanceof ApiError && profile.error.status === 404)) {
     return <NotFoundPage message="없는 사용자예요" />;
   }
   const user = profile.data;

@@ -1,9 +1,34 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, type MouseEvent } from 'react';
 import { marked, type Tokens } from 'marked';
+import { markedHighlight } from 'marked-highlight';
+import hljs from 'highlight.js/lib/common';
 import DOMPurify from 'dompurify';
 import { applyImageStyles, parseImageSrc } from '../lib/postImage';
 
 marked.setOptions({ gfm: true, breaks: true });
+
+/** 코드 블록 언어 이름 (``` 옆에 쓴 이름 → 머리줄에 보일 이름) */
+const LANG_LABEL: Record<string, string> = {
+  js: 'JavaScript', javascript: 'JavaScript', jsx: 'JSX', ts: 'TypeScript', typescript: 'TypeScript', tsx: 'TSX',
+  py: 'Python', python: 'Python', java: 'Java', kt: 'Kotlin', kotlin: 'Kotlin', c: 'C', cpp: 'C++', 'c++': 'C++',
+  cs: 'C#', csharp: 'C#', go: 'Go', rs: 'Rust', rust: 'Rust', rb: 'Ruby', ruby: 'Ruby', php: 'PHP', swift: 'Swift',
+  sql: 'SQL', html: 'HTML', xml: 'XML', css: 'CSS', scss: 'SCSS', json: 'JSON', yaml: 'YAML', yml: 'YAML',
+  md: 'Markdown', markdown: 'Markdown', sh: 'Shell', bash: 'Bash', shell: 'Shell', zsh: 'Shell', diff: 'Diff',
+  dockerfile: 'Dockerfile', lua: 'Lua', r: 'R', dart: 'Dart', ini: 'INI', toml: 'TOML', txt: 'Text', text: 'Text',
+};
+const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// 코드 블록 문법 강조: ``` 옆의 언어로 칠하고, 없거나 모르는 언어면 그대로 둔다
+marked.use(
+  markedHighlight({
+    emptyLangClass: 'hljs',
+    langPrefix: 'hljs language-',
+    highlight(code, lang) {
+      const language = lang.trim().split(/\s/)[0].toLowerCase();
+      return language && hljs.getLanguage(language) ? hljs.highlight(code, { language }).value : escapeHtml(code);
+    },
+  }),
+);
 
 const escapeAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -16,6 +41,21 @@ let imageIndex = 0;
  */
 marked.use({
   renderer: {
+    /** 코드 블록: 머리줄(언어 · 복사) + 줄 번호 + 문법 강조된 코드 (디스코드처럼) */
+    code({ text, lang }: Tokens.Code) {
+      const language = (lang ?? '').trim().split(/\s/)[0].toLowerCase();
+      const label = LANG_LABEL[language] ?? (language ? language : '코드');
+      // markedHighlight 가 이미 칠해서(이스케이프된 HTML) 넘겨준다
+      const lines = text.replace(/\n$/, '').split('\n').length;
+      const nums = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+      return (
+        '<div class="loop-code">' +
+        `<div class="loop-code-head"><span class="loop-code-lang">${escapeHtml(label)}</span>` +
+        '<span class="loop-code-copy" role="button" tabindex="0" data-copy="1">복사</span></div>' +
+        `<div class="loop-code-body"><pre class="loop-code-nums" aria-hidden="true">${nums}</pre>` +
+        `<pre><code class="hljs${language ? ` language-${escapeHtml(language)}` : ''}">${text.replace(/\n$/, '')}</code></pre></div></div>`
+      );
+    },
     image({ href, text }: Tokens.Image) {
       const { url } = parseImageSrc(href);
       const caption = text.trim();
@@ -58,9 +98,37 @@ export function renderMarkdown(source: string): string {
 }
 
 /** 같은 본문이면 다시 파싱하지 않도록 memo + useMemo */
+/** 코드 블록의 '복사' (본문은 HTML 로 그리므로 눌린 곳을 찾아서 처리한다) */
+function onCopyClick(e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) {
+  if ('key' in e && e.key !== 'Enter' && e.key !== ' ') return;
+  const button = (e.target as HTMLElement).closest<HTMLElement>('[data-copy]');
+  const code = button?.closest('.loop-code')?.querySelector('pre:not(.loop-code-nums) code');
+  if (!button || !code) return;
+  e.preventDefault();
+  void navigator.clipboard.writeText(code.textContent ?? '').then(
+    () => {
+      button.textContent = '복사됨';
+      button.dataset.copied = '1';
+      window.setTimeout(() => {
+        button.textContent = '복사';
+        delete button.dataset.copied;
+      }, 1500);
+    },
+    () => (button.textContent = '복사 못 함'),
+  );
+}
+
+/** 같은 본문이면 다시 파싱하지 않도록 memo + useMemo */
 export const Markdown = memo(function Markdown({ source, className }: { source: string; className?: string }) {
   const html = useMemo(() => renderMarkdown(source), [source]);
-  return <div className={className ? `prose ${className}` : 'prose'} dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <div
+      className={className ? `prose ${className}` : 'prose'}
+      onClick={onCopyClick}
+      onKeyDown={onCopyClick}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 });
 
 /**
