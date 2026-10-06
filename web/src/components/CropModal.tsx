@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { createPortal } from 'react-dom';
 import type { CropRect, ImageShape } from '../lib/postImage';
 import { CloseIcon } from './Icons';
 import { ui } from './ui';
+import { Modal } from './Modal';
 import { cn } from '../lib/cn';
 
 type Handle = 'move' | 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
@@ -146,8 +146,8 @@ export function CropModal({
   };
 
   // 편집 도구 같은 다른 레이어 안에서 열어도 영향받지 않게 body 바로 아래에 그린다
-  return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/60 animate-pop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+  return (
+    <Modal onClose={onClose} className="bg-black/60">
       <div role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-[640px] rounded-xl border border-border bg-surface shadow-pop overflow-hidden">
         <div className="flex items-center justify-between px-5 h-14 border-b border-border">
           <h2 className="m-0 text-base font-bold text-fg-strong">{title}</h2>
@@ -273,7 +273,6 @@ export function CropModal({
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }
