@@ -31,6 +31,14 @@ services:
       # 인증번호 메일 (Gmail). MAIL_PASSWORD 는 Google '앱 비밀번호' — 저장소에 올리지 말고 .env 에만 둔다
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # 소셜 로그인: 사이트 바깥 주소(Redirect URI · 돌아갈 주소)와 각 회사 키. 키를 비우면 그 버튼은 '준비 중'
+      SITE_URL: ${SITE_URL:-${PUBLIC_ORIGIN:-http://localhost:3001}}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-}
 
   web:
     build:
