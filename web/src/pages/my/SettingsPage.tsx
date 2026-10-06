@@ -10,7 +10,10 @@ import {
   useTwoFactor,
   useUnlinkIdentity,
   useVerifyAge,
+  useWithdraw,
 } from '@loop/shared';
+import { useLeaveThenSignOut } from '../../lib/authNav';
+import { Modal } from '../../components/Modal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PROVIDERS } from '../../components/SocialLogin';
 import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
@@ -321,6 +324,123 @@ function SocialAccounts() {
   );
 }
 
+/** 탈퇴하면 어떻게 되는지 (팝업에서 보여 준다) */
+const WITHDRAW_NOTES = [
+  '작성한 글과 댓글은 지워지지 않고, 작성자는 \'탈퇴한 사용자\'로 보여요. 지우고 싶은 글은 탈퇴 전에 직접 지워 주세요.',
+  '이메일 · 프로필 사진 · 배너 · 생년월일 · 소셜 로그인 연동 · 포인트 · 배지 · 팔로우한 채널은 모두 지워지고 되돌릴 수 없어요.',
+  '내가 만든 채널은 관리자 → 매니저 → 팔로워 순으로 다음 사람에게 넘어가요.',
+  '같은 이메일로 다시 가입할 수 있지만, 지금 계정은 되살릴 수 없어요.',
+];
+
+/** 회원 탈퇴: 안내 확인 → 가입한 이메일로 받은 인증번호 → 탈퇴 */
+function WithdrawDialog({ onClose }: { onClose: () => void }) {
+  const leaveThenSignOut = useLeaveThenSignOut();
+  const { sendCode, withdraw, finish } = useWithdraw();
+  const timer = useCodeTimer();
+  const [agreed, setAgreed] = useState(false);
+  const [sentTo, setSentTo] = useState<string>();
+  const [code, setCode] = useState('');
+
+  const requestCode = () =>
+    sendCode.mutate(undefined, {
+      onSuccess: (r) => {
+        setSentTo(r.maskedEmail ?? '가입한 이메일');
+        setCode('');
+        withdraw.reset();
+        timer.restart();
+      },
+      onError: (e) => toast(e.message),
+    });
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (code.length !== CODE_LENGTH) return;
+    withdraw.mutate(code, {
+      onSuccess: () => {
+        onClose();
+        // 마이페이지를 떠나 홈으로 옮겨 간 뒤에 로그아웃 (lib/authNav)
+        leaveThenSignOut('/', finish);
+        toast('탈퇴했어요. 그동안 루프와 함께해 주셔서 고마워요');
+      },
+      onError: () => setCode(''),
+    });
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="withdraw-title"
+        className="w-full max-w-[440px] p-6 rounded-xl border border-border bg-surface shadow-pop"
+        onSubmit={submit}
+        noValidate
+      >
+        <h2 id="withdraw-title" className="m-0 text-lg font-bold text-fg-strong">
+          정말 탈퇴할까요?
+        </h2>
+        <ul className="mt-3 mb-0 pl-5 list-disc text-sm text-fg-sub space-y-1.5">
+          {WITHDRAW_NOTES.map((n) => (
+            <li key={n}>{n}</li>
+          ))}
+        </ul>
+        <label className="flex items-center gap-2 mt-4 text-sm font-semibold text-fg-strong cursor-pointer">
+          <input type="checkbox" className="w-4 h-4 accent-[var(--danger)]" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+          위 내용을 확인했고, 탈퇴할게요
+        </label>
+        {sentTo && (
+          <div className="mt-4">
+            <p className={cn(s.optionDesc, 'mb-2')}>
+              {sentTo}(으)로 보낸 인증번호 {CODE_LENGTH}자리를 입력해 주세요.
+            </p>
+            <CodeField value={code} onChange={setCode} autoFocus invalid={!!withdraw.error && !code} />
+            <CodeTimer timer={timer} pending={sendCode.isPending} onResend={requestCode} />
+            {withdraw.error && <p className={cn(ui.error, 'mb-0')}>{withdraw.error.message}</p>}
+          </div>
+        )}
+        <div className="flex gap-2 mt-6">
+          <button type="button" className={cn(ui.button, ui.ghost, 'flex-1')} onClick={onClose}>
+            취소
+          </button>
+          {sentTo ? (
+            <button
+              type="submit"
+              className={cn(ui.button, 'bg-danger text-white hover:brightness-95 flex-1')}
+              disabled={!agreed || code.length !== CODE_LENGTH || timer.expired || withdraw.isPending}
+            >
+              {withdraw.isPending ? '탈퇴하는 중…' : '탈퇴하기'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={cn(ui.button, 'bg-danger text-white hover:brightness-95 flex-1')}
+              disabled={!agreed || sendCode.isPending}
+              onClick={requestCode}
+            >
+              {sendCode.isPending ? '보내는 중…' : '인증번호 받기'}
+            </button>
+          )}
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function WithdrawOption() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={s.option}>
+      <div>
+        <div className={s.optionLabel}>회원 탈퇴</div>
+        <div className={s.optionDesc}>계정을 닫아요. 작성한 글과 댓글은 남고, 개인정보는 지워져요.</div>
+      </div>
+      <button type="button" className={cn(ui.button, ui.text, ui.danger, ui.small)} onClick={() => setOpen(true)}>
+        회원 탈퇴
+      </button>
+      {open && <WithdrawDialog onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
 function LoginSessions() {
   const sessions = useLoginSessions();
   const revoke = useRevokeSession();
@@ -456,6 +576,10 @@ export default function SettingsPage() {
             }
           />
         </div>
+      </section>
+      <section className={cn(ui.card, s.section)}>
+        <h2 className={s.sectionTitle}>계정</h2>
+        <WithdrawOption />
       </section>
     </>
   );

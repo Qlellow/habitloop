@@ -988,6 +988,23 @@ export function usePasswordReset() {
   return { sendCode, resend, verify, reset };
 }
 
+/** 회원 탈퇴: 가입한 이메일로 번호 받기 → 번호 확인해서 탈퇴 (끝나면 이 기기도 로그아웃) */
+export function useWithdraw() {
+  const qc = useQueryClient();
+  const sendCode = useMutation({
+    mutationFn: () => api<{ maskedEmail?: string }>('/api/me/withdraw/code', { method: 'POST' }),
+  });
+  const withdraw = useMutation({
+    mutationFn: (code: string) => api<void>('/api/me/withdraw', { method: 'POST', body: { code } }),
+  });
+  /** 탈퇴가 끝난 뒤 이 기기 로그아웃. 로그인이 필요한 화면을 먼저 떠난 다음에 부른다 */
+  const finish = () => {
+    authStore.signOut();
+    clearUserScopedCache(qc);
+  };
+  return { sendCode, withdraw, finish };
+}
+
 /** 설정의 2단계 인증: 번호 받기 → 번호 확인해서 켜기, 비밀번호 확인해서 끄기 */
 export function useTwoFactor() {
   const sendCode = useMutation({ mutationFn: () => api<void>('/api/me/2fa/code', { method: 'POST' }) });

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { checkAttendance, useAuth, verifySession } from '@loop/shared';
 import { useConfirmSignOut } from './ConfirmDialog';
 import { UserAvatar } from './UserAvatar';
@@ -41,8 +41,7 @@ function useDailyAttendance(userId: string | undefined) {
 
 function UserMenu() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const logout = useConfirmSignOut(() => navigate('/'));
+  const logout = useConfirmSignOut();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();

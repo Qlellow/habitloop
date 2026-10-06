@@ -306,4 +306,9 @@ CREATE INDEX idx_user_identities_user ON user_identities (user_id);
     name: '014_has_password',
     sql: `ALTER TABLE users ADD COLUMN has_password BOOLEAN NOT NULL DEFAULT TRUE;`,
   },
+  {
+    // 회원 탈퇴: 글 · 댓글은 남기고(작성자는 '탈퇴한 사용자') 개인정보는 지운다
+    name: '015_withdrawn',
+    sql: `ALTER TABLE users ADD COLUMN withdrawn_at TIMESTAMPTZ;`,
+  },
 ];
