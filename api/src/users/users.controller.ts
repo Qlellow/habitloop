@@ -24,7 +24,7 @@ export class UsersController {
                     CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "avatarUrl",
                     (SELECT count(*) FROM posts WHERE author_id = u.id) AS "postCount",
                     (SELECT count(*) FROM comments WHERE author_id = u.id) AS "commentCount"
-             FROM users u WHERE u.uid::text = $1`,
+             FROM users u WHERE u.uid::text = $1 AND u.withdrawn_at IS NULL`,
             [raw.toLowerCase()],
           );
     if (!user) throw ApiError.notFound('없는 사용자예요');

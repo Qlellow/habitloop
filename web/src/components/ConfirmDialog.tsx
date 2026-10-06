@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSignOut } from '@loop/shared';
 import { Modal } from './Modal';
+import { useLeaveThenSignOut } from '../lib/authNav';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 
@@ -59,9 +60,10 @@ export function ConfirmDialog({
   );
 }
 
-/** 로그아웃 버튼: 누르면 확인 창을 띄우고, 확인하면 로그아웃한 뒤 after 를 부른다 */
-export function useConfirmSignOut(after?: () => void) {
+/** 로그아웃 버튼: 누르면 확인 창을 띄우고, 확인하면 홈으로 옮겨 간 뒤 로그아웃한다 */
+export function useConfirmSignOut() {
   const signOut = useSignOut();
+  const leaveThenSignOut = useLeaveThenSignOut();
   const [open, setOpen] = useState(false);
   return {
     ask: () => setOpen(true),
@@ -72,10 +74,7 @@ export function useConfirmSignOut(after?: () => void) {
         message="이 기기에서 로그아웃해요. 다시 글을 쓰거나 댓글을 남기려면 로그인해야 해요."
         confirmLabel="로그아웃"
         danger
-        onConfirm={() => {
-          signOut();
-          after?.();
-        }}
+        onConfirm={() => leaveThenSignOut('/', signOut)}
         onClose={() => setOpen(false)}
       />
     ),

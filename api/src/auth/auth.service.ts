@@ -6,6 +6,7 @@ import { clamp, cursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
 import { Mailer } from '../mail/mailer';
 import { VerificationService } from '../mail/verification.service';
+import { ChannelsService } from '../channels/channels.service';
 import { RewardsService } from '../users/rewards.service';
 import type { LoginInput, PasswordInput, PasswordResetInput, SignupInput } from './auth.dto';
 import { describeDevice } from './device';
@@ -73,6 +74,7 @@ export class AuthService {
     private readonly verification: VerificationService,
     private readonly mailer: Mailer,
     private readonly rewards: RewardsService,
+    private readonly channels: ChannelsService,
   ) {}
 
   /** 회원가입 1단계: 이메일로 인증번호 보내기 */
@@ -326,6 +328,57 @@ export class AuthService {
       params,
     );
     return cursorPage(rows, size);
+  }
+
+  /** 회원 탈퇴 1단계: 가입한 이메일로 인증번호 보내기 (비밀번호가 없는 소셜 계정도 같은 방법으로 확인) */
+  async sendWithdrawCode(userId: number) {
+    const user = await this.find(userId);
+    await this.verification.send(user.email, 'WITHDRAW', userId);
+    return { maskedEmail: mask(user.email) };
+  }
+
+  /**
+   * 회원 탈퇴 2단계: 번호가 맞으면 개인정보를 지우고 계정을 닫는다.
+   * - 글 · 댓글 · 공감은 남기고, 작성자는 '탈퇴한 사용자 ○○○○' 로 보인다 (다른 사람의 대화가 끊기지 않게)
+   * - 이메일 · 비밀번호 · 사진 · 배너 · 생일 · 소셜 연결 · 로그인 기기 · 포인트 · 배지 · 출석 · 팔로우 · 북마크는 지운다
+   * - 내가 만든 채널은 관리자 → 매니저 → 팔로워 순(먼저 들어온 사람)으로 넘긴다. 아무도 없으면 주인 없는 채널로 남는다
+   * 이메일을 비우므로 같은 이메일로 다시 가입할 수 있다
+   */
+  async withdraw(userId: number, code: string) {
+    const user = await this.find(userId);
+    await this.verification.verify(user.email, 'WITHDRAW', code);
+    await this.db.transaction(async () => {
+      const owned = await this.db.query<{ id: number }>('SELECT id FROM channels WHERE owner_id = $1', [userId]);
+      for (const { id } of owned) {
+        const heir = await this.db.one<{ userId: number }>(
+          `SELECT user_id AS "userId" FROM channel_members WHERE channel_id = $1 AND user_id <> $2
+           ORDER BY CASE role WHEN 'ADMIN' THEN 0 WHEN 'MANAGER' THEN 1 ELSE 2 END, joined_at, id LIMIT 1`,
+          [id, userId],
+        );
+        await this.db.execute('UPDATE channels SET owner_id = $1 WHERE id = $2', [heir?.userId ?? null, id]);
+        if (heir) await this.db.execute("UPDATE channel_members SET role = 'OWNER' WHERE channel_id = $1 AND user_id = $2", [id, heir.userId]);
+      }
+      // 팔로우를 끊으면 채널 팔로워 수도 줄인다
+      await this.db.execute(
+        'UPDATE channels c SET member_count = greatest(c.member_count - 1, 0) FROM channel_members m WHERE m.channel_id = c.id AND m.user_id = $1',
+        [userId],
+      );
+      for (const table of ['channel_members', 'channel_bookmarks', 'user_identities', 'sessions', 'user_badges', 'attendance', 'point_logs']) {
+        await this.db.execute(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
+      }
+      const tag = randomBytes(2).toString('hex');
+      await this.db.execute(
+        `UPDATE users SET email = $2, password = $3, has_password = FALSE, nickname = $4, two_factor_enabled = FALSE,
+                avatar_id = NULL, banner = NULL, custom_banner = FALSE, birth_date = NULL, points = 0,
+                invite_code = upper(substr(md5(random()::text), 1, 8)), withdrawn_at = now()
+         WHERE id = $1`,
+        [userId, `withdrawn+${userId}@deleted.loop`, await bcrypt.hash(randomBytes(24).toString('base64url'), 10), `탈퇴한 사용자 ${tag}`],
+      );
+    });
+    this.channels.popularCache.clear();
+    await this.mailer
+      .sendNotice(user.email, '회원 탈퇴가 끝났어요', '그동안 루프와 함께해 주셔서 고마워요.\n작성한 글과 댓글은 남아 있고, 작성자는 \'탈퇴한 사용자\'로 보여요.')
+      .catch(() => undefined);
   }
 
   /** 2단계 인증 켜기 1단계: 내 이메일로 번호 보내기 */

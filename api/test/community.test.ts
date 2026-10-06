@@ -877,6 +877,38 @@ describe('커뮤니티', () => {
     }
   });
 
+  it('회원 탈퇴: 이메일 인증 → 개인정보 정리, 글은 남고 채널은 다음 사람에게', async () => {
+    const leaver = await signup('leaver@test.dev', '떠날사람');
+    const heir = await signup('heir@test.dev', '물려받을사람');
+    const me = (await http().get('/api/me').set(bearer(leaver))).body;
+    await http().post('/api/channels').set(bearer(leaver)).send({ slug: 'leave-ch', name: '떠나는채널' }).expect(201);
+    await http().post('/api/channels/leave-ch/members').set(bearer(heir)).expect(200);
+    await http().post('/api/channels/free/members').set(bearer(leaver)).expect(200);
+    const post = (await http().post('/api/posts').set(bearer(leaver)).send({ channel: 'free', title: '남는 글', content: 'c' }).expect(201)).body;
+    const freeMembers = (await http().get('/api/channels/free')).body.memberCount;
+
+    // 인증번호 없이 · 틀린 번호로는 안 된다
+    await http().post('/api/me/withdraw').set(bearer(leaver)).send({ code: 'AAAAAA' }).expect(400);
+    expect((await http().post('/api/me/withdraw/code').set(bearer(leaver)).expect(200)).body.maskedEmail).toBeDefined();
+    const code = lastCode('leaver@test.dev');
+    await http().post('/api/me/withdraw').set(bearer(leaver)).send({ code: other(code) }).expect(400);
+    await http().post('/api/me/withdraw').set(bearer(leaver)).send({ code }).expect(204);
+
+    // 토큰 · 비밀번호 · 프로필은 더는 쓸 수 없다
+    await http().get('/api/me').set(bearer(leaver)).expect(401);
+    await http().post('/api/auth/login').send({ email: 'leaver@test.dev', password: 'password1234!' }).expect(401);
+    await http().get(`/api/users/${me.id}`).expect(404);
+    // 글은 남고 작성자는 '탈퇴한 사용자'
+    expect((await http().get(`/api/posts/${post.id}`).expect(200)).body.author.nickname).toMatch(/^탈퇴한 사용자 [0-9a-f]{4}$/);
+    // 만든 채널은 다음 사람에게, 팔로워 수도 줄어든다
+    const ch = (await http().get('/api/channels/leave-ch')).body;
+    expect(ch.ownerNickname).toBe('물려받을사람');
+    expect((await http().get('/api/channels/leave-ch').set(bearer(heir))).body.mine).toBe(true);
+    expect((await http().get('/api/channels/free')).body.memberCount).toBe(freeMembers - 1);
+    // 같은 이메일 · 닉네임으로 다시 가입할 수 있다
+    await signup('leaver@test.dev', '떠날사람');
+  });
+
   it('댓글: 최신순 · 답글 · 수정', async () => {
     const a = await signup('reply-a@test.dev', '답글가');
     const b = await signup('reply-b@test.dev', '답글나');

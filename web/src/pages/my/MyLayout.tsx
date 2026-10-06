@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@loop/shared';
 import { useConfirmSignOut } from '../../components/ConfirmDialog';
 import { SlideHover } from '../../components/SlideHover';
@@ -20,8 +20,7 @@ const MENU = [
 /** 마이페이지: 왼쪽 메뉴 + 오른쪽 내용(중첩 라우트) */
 export default function MyLayout() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const logout = useConfirmSignOut(() => navigate('/', { replace: true }));
+  const logout = useConfirmSignOut();
   if (!user) return null;
 
   return (

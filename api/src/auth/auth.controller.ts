@@ -169,6 +169,20 @@ export class AuthController {
     return this.auth.pointLogs(user.id, { order, type, cursor: intParam(cursor), size: intParam(size) });
   }
 
+  /** 회원 탈퇴 1단계: 가입한 이메일로 인증번호 */
+  @Post('me/withdraw/code')
+  @HttpCode(HttpStatus.OK)
+  withdrawCode(@LoginUser() user: AuthUser) {
+    return this.auth.sendWithdrawCode(user.id);
+  }
+
+  /** 회원 탈퇴 2단계: 번호가 맞으면 계정을 닫는다 */
+  @Post('me/withdraw')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  withdraw(@LoginUser() user: AuthUser, @Body() input: CodeInput) {
+    return this.auth.withdraw(user.id, input.code);
+  }
+
   /** 나이 확인 (생년월일 저장) */
   @Put('me/age')
   verifyAge(@LoginUser() user: AuthUser, @Body() input: AgeInput) {

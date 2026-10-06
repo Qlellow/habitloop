@@ -1,4 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react';
+import { useRunPendingSignOut } from './lib/authNav';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, ScrollRestoration, useLocation } from 'react-router-dom';
 import { useAuth } from '@loop/shared';
 import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
@@ -47,6 +48,7 @@ function GuestOnly({ children }: { children: ReactNode }) {
 }
 
 function Root() {
+  useRunPendingSignOut();
   return (
     <>
       {/* 폰에서는 하단 탭바 높이만큼 아래를 비워 둔다 (--tabbar-h, global.css) */}

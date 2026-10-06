@@ -1,4 +1,5 @@
-import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { safeNext } from '@loop/shared';
 
 /**
@@ -30,4 +31,36 @@ export function useAuthState(): AuthState {
 export function useReturnTo(): string {
   const { search, state } = useLocation();
   return clean((state as AuthState | null)?.from) ?? clean(new URLSearchParams(search).get('next')) ?? '/';
+}
+
+/**
+ * 로그아웃 · 탈퇴처럼 로그인 상태가 풀리는 일은, 로그인이 필요한 화면(마이페이지 등)을 먼저 떠난 뒤에 한다.
+ * 로그인 상태는 바로 바뀌지만 화면 이동은 조금 늦게 반영돼서, 그 사이에 떠나려던 화면이
+ * '로그인이 필요해요' 하고 로그인 화면으로 보내 버리기 때문이다.
+ */
+let pendingSignOut: { to: string; run: () => void } | undefined;
+
+export function useLeaveThenSignOut() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  return (to: string, run: () => void) => {
+    if (pathname === to) {
+      run();
+      return;
+    }
+    pendingSignOut = { to, run };
+    navigate(to, { replace: true });
+  };
+}
+
+/** 가장 바깥 레이아웃에서 한 번: 이동이 끝나면 미뤄 둔 로그아웃을 한다 */
+export function useRunPendingSignOut() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (pendingSignOut && pathname === pendingSignOut.to) {
+      const { run } = pendingSignOut;
+      pendingSignOut = undefined;
+      run();
+    }
+  }, [pathname]);
 }
