@@ -91,14 +91,6 @@ const ICONS = {
     </>,
   ),
   telegram: g(<path fill="#fff" d="M20.7 4.3 2.9 11.2c-1.2.5-1.2 1.2-.2 1.5l4.6 1.4 1.7 5.4c.2.6.4.8.8.8s.6-.2.9-.5l2.2-2.1 4.6 3.4c.8.5 1.4.2 1.6-.8l3-14.2c.3-1.2-.5-1.8-1.4-1.4zM9.6 14.3l8.6-5.4c.4-.3.8-.1.5.2l-7 6.3-.3 3.1-1.8-4.2z" />),
-  discord: g(<path fill="#fff" d="M19.3 5.4A17 17 0 0 0 15.1 4l-.5 1a15.7 15.7 0 0 0-5.2 0l-.5-1a17 17 0 0 0-4.2 1.4C2 9.4 1.3 13.3 1.6 17.1a17 17 0 0 0 5.2 2.6l1.1-1.8c-.6-.2-1.2-.5-1.7-.9l.4-.3a12.2 12.2 0 0 0 10.8 0l.4.3c-.5.4-1.1.7-1.7.9l1.1 1.8a17 17 0 0 0 5.2-2.6c.4-4.4-.7-8.3-3.1-11.7zM8.5 14.8c-1 0-1.9-1-1.9-2.2s.8-2.2 1.9-2.2 1.9 1 1.9 2.2-.8 2.2-1.9 2.2zm7 0c-1 0-1.9-1-1.9-2.2s.8-2.2 1.9-2.2 1.9 1 1.9 2.2-.8 2.2-1.9 2.2z" />),
-  instagram: g(
-    <>
-      <rect x="3.5" y="3.5" width="17" height="17" rx="5" fill="none" stroke="#fff" strokeWidth="1.9" />
-      <circle cx="12" cy="12" r="4" fill="none" stroke="#fff" strokeWidth="1.9" />
-      <circle cx="17.3" cy="6.7" r="1.2" fill="#fff" />
-    </>,
-  ),
   more: g(
     <>
       <circle cx="6" cy="12" r="1.8" fill="currentColor" />
@@ -119,15 +111,6 @@ interface Target {
 const open = (url: string) => window.open(url, '_blank', 'noopener,noreferrer,width=600,height=640');
 const enc = encodeURIComponent;
 const message = (c: ShareContent) => `${c.text}\n${c.url}`;
-
-/** 웹 공유 주소가 없는 앱(디스코드 · 인스타그램)은 휴대폰이면 공유 시트, 아니면 링크 복사 */
-const viaSheetOrCopy = (app: string) => async (c: ShareContent) => {
-  if (isMobile() && navigator.share) {
-    await navigator.share({ title: c.title, text: c.text, url: c.url }).catch(() => undefined);
-  } else {
-    await copyText(message(c), `링크를 복사했어요. ${app}에 붙여 넣어 주세요`);
-  }
-};
 
 function targets(kakaoKey: string | null | undefined): Target[] {
   const list: Target[] = [];
@@ -162,14 +145,6 @@ function targets(kakaoKey: string | null | undefined): Target[] {
     });
   }
   list.push(
-    { id: 'discord', label: '디스코드', icon: ICONS.discord, bg: 'bg-[#5865F2]', run: viaSheetOrCopy('디스코드') },
-    {
-      id: 'instagram',
-      label: '인스타그램',
-      icon: ICONS.instagram,
-      bg: 'bg-[linear-gradient(45deg,#F58529,#DD2A7B_50%,#8134AF_80%,#515BD4)]',
-      run: viaSheetOrCopy('인스타그램 메시지'),
-    },
     { id: 'x', label: 'X', icon: ICONS.x, bg: 'bg-black', run: (c) => void open(`https://x.com/intent/post?text=${enc(c.text)}&url=${enc(c.url)}`) },
     {
       id: 'facebook',
@@ -200,7 +175,8 @@ function targets(kakaoKey: string | null | undefined): Target[] {
       run: (c) => void (location.href = `mailto:?subject=${enc(c.title)}&body=${enc(message(c))}`),
     },
   );
-  // 휴대폰 · 일부 PC 브라우저: 기기의 공유 시트 (설치된 모든 앱)
+  // 휴대폰 · 일부 PC 브라우저: 기기의 공유 시트 (설치된 모든 앱).
+  // 인스타그램 · 디스코드는 웹에서 바로 여는 공유 주소가 없어서, 여기서 고르면 각 앱의 '보낼 대상' 화면이 뜬다
   if (typeof navigator !== 'undefined' && 'share' in navigator) {
     list.push({
       id: 'more',
@@ -215,7 +191,8 @@ function targets(kakaoKey: string | null | undefined): Target[] {
 
 /**
  * 공유 창 (유튜브 공유처럼): 앱 아이콘 한 줄 + 아래에 링크 복사.
- * 카카오톡만 카카오 SDK(서버 환경 변수 KAKAO_JS_KEY)가 필요하고, 나머지는 각 서비스의 공유 주소 · 기기 공유 시트를 쓴다.
+ * 카카오톡만 카카오 SDK(서버 환경 변수 KAKAO_JS_KEY)가 필요하고, 나머지는 각 서비스의 공유 주소 · 기기 공유 시트(더보기)를 쓴다.
+ * 인스타그램 · 디스코드처럼 웹 공유 주소가 없는 앱은 더보기(기기 공유 시트)에서 고른다.
  */
 export function ShareDialog({ content, heading = '공유하기', onClose }: { content: ShareContent; heading?: string; onClose: () => void }) {
   // 카카오 키는 서버 환경 변수(KAKAO_JS_KEY)에서 받는다. 받기 전에는 카카오톡 없이 나머지만 보여 준다
