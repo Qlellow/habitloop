@@ -213,7 +213,7 @@ ALTER TABLE users ADD COLUMN birth_date DATE;
 `,
   },
   {
-    // 프로필 사진 · 배너(기본 배너는 무료, 내 사진 배너는 포인트로 연다) · 포인트와 그 기록
+    // 프로필 사진 · 배너(기본 배너는 무료, 커스텀 배너는 포인트로 연다) · 포인트와 그 기록
     name: '007_profile',
     sql: `
 ALTER TABLE users ADD COLUMN avatar_id VARCHAR(32) REFERENCES images (id) ON DELETE SET NULL;
@@ -281,5 +281,10 @@ UPDATE channel_categories c SET position = o.rn - 1
 FROM (SELECT id, row_number() OVER (PARTITION BY channel_id ORDER BY owner_only DESC, position, id) AS rn FROM channel_categories) o
 WHERE c.id = o.id;
 `,
+  },
+  {
+    // '내 사진 배너' 를 '커스텀 배너' 로 부르기로 해서 지난 포인트 내역도 같은 이름으로
+    name: '012_custom_banner_wording',
+    sql: `UPDATE point_logs SET reason = '커스텀 배너 열기' WHERE reason = '내 사진 배너 열기';`,
   },
 ];

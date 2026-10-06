@@ -72,7 +72,7 @@ function IconPicker({
       <span className={ui.label}>채널 프로필</span>
       <div className={s.iconPicker}>
         {/* 색은 고리가 아니라 고른 번호로 정한다 (고리를 입력해도 색이 바뀌지 않게) */}
-        <ChannelIcon channel={{ slug: slug || 'loop', name: name.trim() || '루', color }} src={preview} size={72} />
+        <ChannelIcon channel={{ slug: slug || 'loop', name: name.trim() || '루', color }} src={preview} size={120} />
         <div className={s.iconPickerBody}>
           <div className={s.iconPickerActions}>
             <button type="button" className={cn(ui.button, ui.secondary, ui.small)} disabled={busy} onClick={() => input.current?.click()}>
@@ -230,7 +230,8 @@ function ChannelForm({ initial }: { initial?: ChannelDetail }) {
         )}
       </div>
       <div className={ui.field}>
-        <label className="flex items-center gap-2.5 cursor-pointer">
+        {/* 만 19세 미만(또는 나이 미확인)이면 고를 수 없다는 게 보이게 흐리게 */}
+        <label className="flex items-center gap-2.5 cursor-pointer has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-45">
           <input
             type="checkbox"
             checked={adult}

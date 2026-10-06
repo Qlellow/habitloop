@@ -605,6 +605,11 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/posts/page').query({ channel: 'mixed' }).set(bearer(minor))).body.items.map((p: { title: string }) => p.title)).toEqual(['보통 글']);
     expect((await http().get('/api/posts/page').query({ channel: 'mixed' }).set(bearer(adult))).body.total).toBe(2);
     await http().get(`/api/posts/${hidden}`).set(bearer(minor)).expect(403);
+    // 만 19세 이상 카테고리는 만 19세 이상만 만들거나 그렇게 바꿀 수 있다
+    await http().post('/api/channels').set(bearer(minor)).send({ slug: 'teen', name: '청소년방' }).expect(201);
+    await http().post('/api/channels/teen/categories').set(bearer(minor)).send({ name: '성인', adult: true }).expect(403);
+    const teenCat = (await http().post('/api/channels/teen/categories').set(bearer(minor)).send({ name: '일반' }).expect(200)).body[0].id;
+    await http().put(`/api/channels/teen/categories/${teenCat}`).set(bearer(minor)).send({ name: '일반', adult: true }).expect(403);
   });
 
   it('프로필 사진 · 배너 · 포인트', async () => {
@@ -634,7 +639,7 @@ describe('커뮤니티', () => {
     await http().put('/api/me/banner').set(bearer(me)).send({ banner: 'p:없는배너' }).expect(400);
     expect((await http().put('/api/me/banner').set(bearer(me)).send({ banner: 'p:sunset' }).expect(200)).body.banner).toBe('p:sunset');
     expect((await http().get(`/api/users/${userId}`)).body.banner).toBe('p:sunset');
-    // 내 사진 배너는 포인트로 연 뒤에
+    // 커스텀 배너는 포인트로 연 뒤에
     await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${mine}` }).expect(403);
     await http().post('/api/me/banner/unlock').set(bearer(me)).expect(400); // 0P
     await app.get(Database).execute('UPDATE users SET points = 450 WHERE uid::text = $1', [userId]);
@@ -643,7 +648,7 @@ describe('커뮤니티', () => {
     expect((await http().post('/api/me/banner/unlock').set(bearer(me)).expect(200)).body.points).toBe(150); // 두 번 빠지지 않는다
     await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${theirs}` }).expect(400);
     expect((await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${mine}` }).expect(200)).body.banner).toBe(`i:${mine}`);
-    expect((await http().get('/api/me/points').set(bearer(me))).body[0]).toMatchObject({ delta: -300, reason: '내 사진 배너 열기' });
+    expect((await http().get('/api/me/points').set(bearer(me))).body[0]).toMatchObject({ delta: -300, reason: '커스텀 배너 열기' });
   });
 
   it('포인트 적립 · 배지 · 친구 초대', async () => {

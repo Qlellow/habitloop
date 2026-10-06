@@ -149,7 +149,7 @@ export class AuthController {
     return this.auth.setBanner(user.id, input.banner ?? null);
   }
 
-  /** 내 사진 배너 열기 (포인트 사용) */
+  /** 커스텀 배너 열기 (포인트 사용) */
   @Post('me/banner/unlock')
   @HttpCode(HttpStatus.OK)
   unlockBanner(@LoginUser() user: AuthUser) {

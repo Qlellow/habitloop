@@ -20,6 +20,7 @@ const MyPostsPage = lazy(loaders.myPosts);
 const MyChannelsPage = lazy(loaders.myChannels);
 const ProfilePage = lazy(loaders.profile);
 const SettingsPage = lazy(loaders.settings);
+const PointsPage = lazy(loaders.points);
 const ChannelPage = lazy(loaders.channel);
 const ChannelsPage = lazy(loaders.channels);
 const ChannelFormPage = lazy(loaders.channelForm);
@@ -95,6 +96,7 @@ const router = createBrowserRouter([
           { path: 'posts', element: <MyPostsPage /> },
           { path: 'channels', element: <MyChannelsPage /> },
           { path: 'profile', element: <ProfilePage /> },
+          { path: 'points', element: <PointsPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },

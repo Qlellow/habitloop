@@ -29,7 +29,7 @@ interface UserRow {
 
 /** 기본 배너 (누구나 무료). 화면에서 쓰는 색은 @loop/shared 의 BANNER_PRESETS */
 export const BANNER_PRESETS = ['sky', 'sunset', 'mint', 'grape', 'peach', 'night', 'forest', 'mono'];
-/** 내 사진 배너를 여는 데 드는 포인트 (한 번 열면 계속 바꿀 수 있다) */
+/** 커스텀 배너를 여는 데 드는 포인트 (한 번 열면 계속 바꿀 수 있다) */
 export const CUSTOM_BANNER_COST = 300;
 
 const USER_COLUMNS = `id, uid::text AS uid, email, password, nickname, two_factor_enabled AS "twoFactorEnabled",
@@ -259,7 +259,7 @@ export class AuthService {
   }
 
   /**
-   * 배너: 'p:기본배너' (무료) · 'i:이미지id' (내 사진 배너, 포인트로 연 사람만) · null (배너 없음)
+   * 배너: 'p:기본배너' (무료) · 'i:이미지id' (커스텀 배너, 포인트로 연 사람만) · null (배너 없음)
    */
   async setBanner(userId: number, banner: string | null) {
     const user = await this.find(userId);
@@ -268,7 +268,7 @@ export class AuthService {
       if (kind === 'p:') {
         if (!BANNER_PRESETS.includes(value)) throw ApiError.badRequest('없는 배너예요');
       } else if (kind === 'i:') {
-        if (!user.customBanner) throw ApiError.forbidden(`내 사진 배너는 ${CUSTOM_BANNER_COST}P 로 연 뒤에 쓸 수 있어요`);
+        if (!user.customBanner) throw ApiError.forbidden(`커스텀 배너는 ${CUSTOM_BANNER_COST}P 로 연 뒤에 쓸 수 있어요`);
         await this.requireOwnImage(userId, value);
       } else {
         throw ApiError.badRequest('없는 배너예요');
@@ -278,7 +278,7 @@ export class AuthService {
     return userResponse(await this.find(userId));
   }
 
-  /** 내 사진 배너 열기: 포인트를 한 번 쓰면 그 뒤로는 자유롭게 바꿀 수 있다 */
+  /** 커스텀 배너 열기: 포인트를 한 번 쓰면 그 뒤로는 자유롭게 바꿀 수 있다 */
   async unlockCustomBanner(userId: number) {
     const user = await this.find(userId);
     if (user.customBanner) return userResponse(user);
@@ -288,7 +288,7 @@ export class AuthService {
         [CUSTOM_BANNER_COST, userId],
       );
       if (!spent) throw ApiError.badRequest(`포인트가 부족해요 (필요 ${CUSTOM_BANNER_COST}P, 지금 ${user.points ?? 0}P)`);
-      await this.db.execute("INSERT INTO point_logs (user_id, delta, reason) VALUES ($1, $2, '내 사진 배너 열기')", [userId, -CUSTOM_BANNER_COST]);
+      await this.db.execute("INSERT INTO point_logs (user_id, delta, reason) VALUES ($1, $2, '커스텀 배너 열기')", [userId, -CUSTOM_BANNER_COST]);
     });
     return userResponse(await this.find(userId));
   }

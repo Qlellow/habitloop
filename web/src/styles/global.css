@@ -117,6 +117,20 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* 버튼처럼 누르는 것의 글자는 끌어서 선택되지 않게 */
+  button,
+  [role='button'],
+  [role='tab'],
+  [role='radio'],
+  [role='menuitem'],
+  [role='option'],
+  summary,
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   body {
     min-height: 100dvh;
     min-width: 320px;

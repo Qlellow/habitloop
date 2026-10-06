@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   plainText,
+  useAuth,
   useCategoryMutation,
   useCategoryPostCounts,
   useRegenerateInvite,
@@ -26,6 +27,8 @@ import s from './pages.styles';
 import { cn } from '../lib/cn';
 
 const MAX = 20;
+const ADULT_HINT = '설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요';
+const ADULT_LOCKED = '만 19세 이상 카테고리는 설정에서 나이를 확인한 만 19세 이상만 만들 수 있어요';
 
 function CategoryRow({
   category,
@@ -46,6 +49,7 @@ function CategoryRow({
   style?: CSSProperties;
 }) {
   const mutation = useCategoryMutation(slug);
+  const canAdult = !!useAuth().user?.adult;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(category.name);
   const [ownerOnly, setOwnerOnly] = useState(category.ownerOnly);
@@ -76,8 +80,8 @@ function CategoryRow({
             <input type="checkbox" checked={ownerOnly} onChange={(e) => setOwnerOnly(e.target.checked)} />
             운영진만 글쓰기
           </label>
-          <label className={s.toggle} title="설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요">
-            <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
+          <label className={s.toggle} title={canAdult || category.adult ? ADULT_HINT : ADULT_LOCKED}>
+            <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} disabled={!canAdult && !category.adult} />
             만 19세 이상
           </label>
           <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => setEditing(false)}>
@@ -216,6 +220,7 @@ function DeleteCategoryDialog({
 
 function AddCategory({ slug, disabled }: { slug: string; disabled: boolean }) {
   const mutation = useCategoryMutation(slug);
+  const canAdult = !!useAuth().user?.adult;
   const [name, setName] = useState('');
   const [ownerOnly, setOwnerOnly] = useState(false);
   const [adult, setAdult] = useState(false);
@@ -251,8 +256,8 @@ function AddCategory({ slug, disabled }: { slug: string; disabled: boolean }) {
         <input type="checkbox" checked={ownerOnly} onChange={(e) => setOwnerOnly(e.target.checked)} disabled={disabled} />
         운영진만 글쓰기
       </label>
-      <label className={s.toggle} title="설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요">
-        <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} disabled={disabled} />
+      <label className={s.toggle} title={canAdult ? ADULT_HINT : ADULT_LOCKED}>
+        <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} disabled={disabled || !canAdult} />
         만 19세 이상
       </label>
       <button type="submit" className={cn(ui.button, ui.primary)} disabled={disabled || !name.trim() || mutation.isPending}>

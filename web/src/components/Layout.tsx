@@ -94,6 +94,9 @@ function UserMenu() {
           <Link to="/me" className={s.menuItem} role="menuitem" onPointerEnter={preload.me}>
             마이페이지
           </Link>
+          <Link to="/me/points" className={s.menuItem} role="menuitem" onPointerEnter={preload.points}>
+            포인트
+          </Link>
           <Link to="/me/channels" className={s.menuItem} role="menuitem">
             내 채널
           </Link>

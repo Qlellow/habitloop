@@ -130,7 +130,7 @@ export const BANNER_PRESETS: { id: string; label: string; background: string }[]
   { id: 'mono', label: '모노', background: 'linear-gradient(120deg, #d1d6db 0%, #4e5968 100%)' },
 ];
 
-/** 내 사진 배너를 여는 데 드는 포인트 (서버의 CUSTOM_BANNER_COST) */
+/** 커스텀 배너를 여는 데 드는 포인트 (서버의 CUSTOM_BANNER_COST) */
 export const CUSTOM_BANNER_COST = 300;
 
 /** 배너 값('p:…' · 'i:…')을 CSS background 로. 없으면 undefined */

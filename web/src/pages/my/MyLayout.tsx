@@ -11,6 +11,7 @@ import { cn } from '../../lib/cn';
 
 const MENU = [
   { to: '/me/profile', label: '내 정보 수정', preload: preload.profile },
+  { to: '/me/points', label: '포인트', preload: preload.points },
   { to: '/me/channels', label: '내 채널', preload: preload.myChannels },
   { to: '/me/posts', label: '내가 쓴 글', preload: preload.myPosts },
   { to: '/me/settings', label: '설정', preload: preload.settings },

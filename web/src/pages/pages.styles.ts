@@ -89,6 +89,7 @@ const s = {
   input: 'flex-1 min-w-[160px]',
   toggle:
     'inline-flex items-center gap-1.5 text-sm font-medium text-fg cursor-pointer whitespace-nowrap ' +
+    'has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-45 ' +
     '[&_input]:w-4 [&_input]:h-4 [&_input]:accent-primary',
   addRow: 'flex flex-wrap items-center gap-2.5 [&>input]:flex-1 [&>input]:min-w-[200px]',
 };
