@@ -4,6 +4,8 @@ import { AuthController } from './auth/auth.controller';
 import { AuthGuard, Public } from './auth/auth.guard';
 import { AuthService } from './auth/auth.service';
 import { JwtService } from './auth/jwt.service';
+import { OAuthController } from './auth/oauth.controller';
+import { OAuthService } from './auth/oauth.service';
 import { CategoriesService } from './channels/categories.service';
 import { ChannelsController } from './channels/channels.controller';
 import { ChannelsService } from './channels/channels.service';
@@ -35,7 +37,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, ChannelsController, PostsController, ImagesController, UsersController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController],
   providers: [
     Database,
     ImagesService,
@@ -53,6 +55,7 @@ class HealthController {
     CommentsService,
     PreviewsService,
     RewardsService,
+    OAuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],

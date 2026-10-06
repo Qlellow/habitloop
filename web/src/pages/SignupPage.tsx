@@ -174,6 +174,7 @@ export default function SignupPage() {
       switchLink="로그인"
       switchTo="/login"
       onSubmit={startVerify}
+      social
     >
       <AuthField
         icon={<UserLineIcon />}

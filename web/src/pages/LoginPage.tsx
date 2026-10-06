@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CODE_LENGTH, useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
 import { AuthField, AuthShell, AuthSubmit, authStyles as a, useFieldCheck } from '../components/Auth';
 import { CodeField, CodeTimer, useCodeTimer } from '../components/CodeField';
@@ -86,7 +86,9 @@ export default function LoginPage() {
   const login = useLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [twoFactor, setTwoFactor] = useState<{ challenge: string; maskedEmail?: string }>();
+  // 소셜 로그인에서 2단계 인증이 필요하면 /oauth/callback 이 state 로 challenge 를 넘겨준다
+  const handed = (useLocation().state as { twoFactor?: { challenge: string; maskedEmail?: string } } | null)?.twoFactor;
+  const [twoFactor, setTwoFactor] = useState<{ challenge: string; maskedEmail?: string } | undefined>(handed);
   const done = () => navigate(next, { replace: true });
 
   const check = useFieldCheck({
@@ -135,6 +137,7 @@ export default function LoginPage() {
       switchLink="회원가입"
       switchTo="/signup"
       onSubmit={submit}
+      social
       after={import.meta.env.DEV && <p className={a.demo}>체험 계정: demo@loop.dev / password1234</p>}
     >
       <AuthField

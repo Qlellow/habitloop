@@ -26,6 +26,7 @@ const ChannelsPage = lazy(loaders.channels);
 const ChannelFormPage = lazy(loaders.channelForm);
 const ChannelManagePage = lazy(loaders.channelManage);
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage'));
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth();
@@ -88,6 +89,8 @@ const router = createBrowserRouter([
       { path: '/login', element: guest(<LoginPage />) },
       { path: '/signup', element: guest(<SignupPage />) },
       { path: '/password/reset', element: guest(<ResetPasswordPage />) },
+      // 소셜 로그인에서 돌아오는 곳
+      { path: '/oauth/callback', element: <OAuthCallbackPage /> },
       {
         path: '/me',
         element: auth(<MyLayout />),
