@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { ApiError, compact, isUserId, useFeed, useUserProfile } from '@loop/shared';
+import { ApiError, compact, isUserId, useFeed, useUserProfile, type Badge } from '@loop/shared';
 import { Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { ui } from '../components/ui';
@@ -12,6 +12,54 @@ const joinedAt = (iso: string) => {
   const d = new Date(iso);
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 가입`;
 };
+
+/** 배지 종류마다 아이콘 (code 앞부분으로 고른다) */
+const BADGE_ICON: [string, string][] = [
+  ['post', '✍️'],
+  ['first_post', '✍️'],
+  ['comment', '💬'],
+  ['first_comment', '💬'],
+  ['likes', '❤️'],
+  ['streak', '📅'],
+  ['invite', '🤝'],
+  ['channel', '📢'],
+  ['followers', '👥'],
+];
+const badgeIcon = (code: string) => BADGE_ICON.find(([p]) => code.startsWith(p))?.[1] ?? '🏅';
+const earnedOn = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} 달성`;
+};
+
+/** 받은 배지(도전과제): 누구나 볼 수 있다 */
+function Badges({ badges }: { badges: Badge[] }) {
+  return (
+    <section className={ui.card}>
+      <div className={ui.cardHead}>
+        <h2 className={ui.sectionTitle}>
+          배지 <span className="text-fg-weak font-semibold">{badges.length}</span>
+        </h2>
+      </div>
+      {badges.length === 0 ? (
+        <p className="m-0 px-5 pb-5 text-sm text-fg-weak">아직 받은 배지가 없어요</p>
+      ) : (
+        <ul className="list-none m-0 px-5 pb-5 grid grid-cols-3 gap-2.5 max-[720px]:grid-cols-2 max-[420px]:grid-cols-1">
+          {badges.map((b) => (
+            <li key={b.code} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5" title={`${b.description} · ${earnedOn(b.earnedAt)}`}>
+              <span className="flex-none grid place-items-center w-10 h-10 rounded-full bg-primary-weak text-[20px]" aria-hidden>
+                {badgeIcon(b.code)}
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-fg-strong truncate">{b.name}</div>
+                <div className="text-[12px] text-fg-weak truncate">{b.description}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 /** 작성자 프로필: 닉네임 · 가입일 · 글/댓글 수 + 쓴 글 목록 */
 export default function UserPage() {
@@ -46,6 +94,7 @@ export default function UserPage() {
           </div>
         )}
       </section>
+      {user?.badges && <Badges badges={user.badges} />}
       <section className={ui.card}>
         <div className={ui.cardHead}>
           <h2 className={ui.sectionTitle}>쓴 글</h2>

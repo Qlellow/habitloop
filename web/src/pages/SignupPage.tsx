@@ -14,6 +14,16 @@ type Field = 'nickname' | 'email' | 'password' | 'confirm';
  * 회원가입: 정보 입력 → '인증하기'를 누르면 이메일 인증 화면으로 넘어간다.
  * 인증 화면은 ?step=verify 로 따로 두어서 브라우저 뒤로 가기로 입력 화면에 돌아갈 수 있다 (입력한 값은 그대로).
  */
+/** 초대 링크(?ref=코드)로 들어왔으면 이 탭에 기억해 둔다 (인증 화면으로 넘어가거나 로그인 화면을 들렀다 와도 남게) */
+function inviteRef(fromUrl: string | null) {
+  try {
+    if (fromUrl) sessionStorage.setItem('loop:ref', fromUrl);
+    return fromUrl ?? sessionStorage.getItem('loop:ref') ?? undefined;
+  } catch {
+    return fromUrl ?? undefined;
+  }
+}
+
 export default function SignupPage() {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
@@ -21,6 +31,7 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const signup = useSignup();
   const sendCode = useSignupCode();
+  const [ref] = useState(() => inviteRef(params.get('ref')));
   const timer = useCodeTimer();
   const [form, setForm] = useState({ nickname: '', email: '', password: '', confirm: '' });
   const [code, setCode] = useState('');
@@ -92,9 +103,19 @@ export default function SignupPage() {
     e.preventDefault();
     if (code.length !== CODE_LENGTH) return;
     signup.mutate(
-      { nickname: form.nickname, email, password: form.password, code },
+      { nickname: form.nickname, email, password: form.password, code, ref },
       {
-        onSuccess: () => navigate(next, { replace: true }),
+        onSuccess: (res) => {
+          if (ref) {
+            try {
+              sessionStorage.removeItem('loop:ref');
+            } catch {
+              /* 무시 */
+            }
+            if (res.user.points) toast(`초대 받아 가입했어요 +${res.user.points}P`);
+          }
+          navigate(next, { replace: true });
+        },
         onError: (err) => {
           setCode('');
           // 닉네임·이메일 문제는 번호와 상관없으니 입력 화면으로 돌아가 그 칸에 보여 준다

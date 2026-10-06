@@ -618,6 +618,82 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/me/points').set(bearer(me))).body[0]).toMatchObject({ delta: -300, reason: '내 사진 배너 열기' });
   });
 
+  it('포인트 적립 · 배지 · 친구 초대', async () => {
+    const db = app.get(Database);
+    const host = await signup('reward-host@test.dev', '초대왕');
+    const me = (await http().get('/api/me').set(bearer(host))).body;
+    const points = async (token: string) => (await http().get('/api/me').set(bearer(token))).body.points as number;
+
+    // 초대 코드로 가입하면 초대한 사람 +100P, 가입한 사람 +30P
+    const invite = (await http().get('/api/me/invite').set(bearer(host)).expect(200)).body;
+    expect(invite).toMatchObject({ invitedCount: 0 });
+    expect(invite.code).toMatch(/^[0-9A-F]{8}$/);
+    await http().post('/api/auth/signup/code').send({ email: 'reward-guest@test.dev' }).expect(204);
+    const joined = (
+      await http()
+        .post('/api/auth/signup')
+        .send({ email: 'reward-guest@test.dev', password: 'password1234!', nickname: '초대받음', code: lastCode('reward-guest@test.dev'), ref: invite.code.toLowerCase() })
+        .expect(201)
+    ).body;
+    const guest = joined.token as string;
+    expect(joined.user.points).toBe(30);
+    expect(await points(host)).toBe(100);
+    expect((await http().get('/api/me/invite').set(bearer(host))).body.invitedCount).toBe(1);
+    // 없는 코드는 그냥 가입만
+    await http().post('/api/auth/signup/code').send({ email: 'reward-none@test.dev' }).expect(204);
+    const plain = await http()
+      .post('/api/auth/signup')
+      .send({ email: 'reward-none@test.dev', password: 'password1234!', nickname: '그냥가입', code: lastCode('reward-none@test.dev'), ref: 'NOPE' })
+      .expect(201);
+    expect(plain.body.user.points).toBe(0);
+
+    // 출석: 하루 한 번 +10P
+    expect((await http().post('/api/me/attendance').set(bearer(guest)).expect(200)).body).toMatchObject({ awarded: true, earned: 10, streak: 1 });
+    expect((await http().post('/api/me/attendance').set(bearer(guest)).expect(200)).body).toMatchObject({ awarded: false, earned: 0, streak: 1 });
+    expect(await points(guest)).toBe(40);
+    // 지난 6일 출석해 두면 오늘이 7일 연속 → +10P +50P
+    const plainId = (await db.one<{ id: number }>("SELECT id FROM users WHERE nickname = '그냥가입'"))!.id;
+    await db.execute(
+      "INSERT INTO attendance (user_id, day) SELECT $1, (now() AT TIME ZONE 'Asia/Seoul')::date - g FROM generate_series(1, 6) g",
+      [plainId],
+    );
+    const plainToken = plain.body.token as string;
+    expect((await http().post('/api/me/attendance').set(bearer(plainToken)).expect(200)).body).toMatchObject({ awarded: true, earned: 60, streak: 7 });
+
+    // 글쓰기 +5P, 하루 5번까지
+    await http().post('/api/channels/free/members').set(bearer(guest)).expect(200);
+    const before = await points(guest);
+    let postId = 0;
+    for (let i = 0; i < 6; i++) {
+      postId = (await http().post('/api/posts').set(bearer(guest)).send({ channel: 'free', title: `보상 ${i}`, content: 'c' }).expect(201)).body.id;
+    }
+    expect(await points(guest)).toBe(before + 25);
+
+    // 공감 받기 +2P: 같은 사람은 한 번만, 내 글에 내가 누른 건 없음
+    const liked = await points(guest);
+    await http().post(`/api/posts/${postId}/like`).set(bearer(guest)).expect(200);
+    await http().post(`/api/posts/${postId}/like`).set(bearer(host)).expect(200);
+    await http().delete(`/api/posts/${postId}/like`).set(bearer(host)).expect(200);
+    await http().post(`/api/posts/${postId}/like`).set(bearer(host)).expect(200);
+    expect(await points(guest)).toBe(liked + 2);
+    expect((await http().get('/api/me/points').set(bearer(guest))).body[0]).toMatchObject({ delta: 2, reason: '공감 받음' });
+
+    // 배지는 다른 사람도 프로필에서 본다
+    const profile = (await http().get(`/api/users/${joined.user.id}`)).body;
+    expect(profile.badges.map((b: { code: string }) => b.code)).toEqual(['first_post']);
+    expect((await http().get(`/api/users/${me.id}`)).body.badges.map((b: { code: string }) => b.code)).toEqual(['invite_1']);
+    expect((await http().get(`/api/users/${plain.body.user.id}`)).body.badges.map((b: { code: string }) => b.code)).toEqual(['streak_7']);
+
+    // 채널 팔로워 배지: 내 채널 팔로워가 10명을 넘으면
+    await http().post('/api/channels').set(bearer(host)).send({ slug: 'reward-ch', name: '보상채널', description: '' }).expect(201);
+    for (let i = 0; i < 9; i++) {
+      const t = await signup(`reward-f${i}@test.dev`, `팔로워${i}`);
+      await http().post('/api/channels/reward-ch/members').set(bearer(t)).expect(200);
+    }
+    const hostBadges = (await http().get(`/api/users/${me.id}`)).body.badges.map((b: { code: string }) => b.code);
+    expect(hostBadges).toEqual(['invite_1', 'channel_open', 'followers_10']);
+  });
+
   it('댓글: 최신순 · 답글 · 수정', async () => {
     const a = await signup('reply-a@test.dev', '답글가');
     const b = await signup('reply-b@test.dev', '답글나');

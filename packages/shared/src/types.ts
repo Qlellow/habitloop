@@ -194,6 +194,28 @@ export interface UserProfile {
   commentCount: number;
   avatarUrl?: string | null;
   banner?: string | null;
+  /** 받은 배지 (도전과제) */
+  badges?: Badge[];
+}
+
+export interface Badge {
+  code: string;
+  name: string;
+  description: string;
+  earnedAt: string;
+}
+
+/** 출석 체크 결과: awarded 가 false 면 오늘 이미 출석했다 */
+export interface AttendanceResult {
+  awarded: boolean;
+  earned: number;
+  streak: number;
+}
+
+/** 내 초대 코드 (가입 주소의 ?ref=) 와 초대한 사람 수 */
+export interface MyInvite {
+  code: string;
+  invitedCount: number;
 }
 
 export interface PointLog {

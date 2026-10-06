@@ -28,6 +28,12 @@ export class SignupInput {
   @NotBlank('이메일로 받은 인증번호를 입력해 주세요')
   @Matches(CODE_FORMAT, { message: CODE_MESSAGE })
   code!: string;
+
+  /** 초대한 사람의 초대 코드 (가입 주소의 ?ref=) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  ref?: string;
 }
 
 export class LoginInput {

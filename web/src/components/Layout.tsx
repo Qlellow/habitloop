@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@loop/shared';
+import { checkAttendance, useAuth, verifySession } from '@loop/shared';
 import { useConfirmSignOut } from './ConfirmDialog';
 import { UserAvatar } from './UserAvatar';
+import { toast } from './Toast';
 import { ChannelSearch } from './ChannelSearch';
 import { preload } from '../lib/preload';
 import { GridIcon, HomeIcon, PencilIcon, UserIcon } from './Icons';
@@ -11,6 +12,33 @@ import { ui } from './ui';
 import { cn } from '../lib/cn';
 import s from './Layout.styles';
 
+/** 한국 시간 기준 오늘 (YYYY-MM-DD) */
+const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+
+/** 로그인한 채로 사이트를 열면 하루 한 번 출석 체크 (+10P, 7일 연속마다 +50P) */
+function useDailyAttendance(userId: string | undefined) {
+  useEffect(() => {
+    if (!userId) return;
+    const key = `loop:attended:${userId}`;
+    const today = kstToday();
+    try {
+      if (localStorage.getItem(key) === today) return;
+    } catch {
+      /* 저장소를 못 쓰면 서버가 하루 한 번만 주므로 그냥 부른다 */
+    }
+    checkAttendance()
+      .then((r) => {
+        try {
+          localStorage.setItem(key, today);
+        } catch {
+          /* 무시 */
+        }
+        if (r.awarded) toast(r.earned > 10 ? `${r.streak}일 연속 출석! +${r.earned}P` : `출석 체크 +${r.earned}P · ${r.streak}일 연속`);
+      })
+      .catch(() => undefined);
+  }, [userId]);
+}
+
 function UserMenu() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -18,8 +46,13 @@ function UserMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
+  useDailyAttendance(user?.id);
 
   useEffect(() => setOpen(false), [pathname]);
+  // 메뉴를 열 때 포인트를 최신으로
+  useEffect(() => {
+    if (open) void verifySession();
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {

@@ -10,6 +10,7 @@ import {
   uploadPostImage,
   useAuth,
   useChangePassword,
+  useMyInvite,
   usePointLogs,
   useSetAvatar,
   useSetBanner,
@@ -389,6 +390,49 @@ function BannerSection({ user }: { user: User }) {
   );
 }
 
+/** 포인트 모으는 법 (API 의 RewardsService 와 같은 값) */
+const POINT_RULES = [
+  ['매일 출석', '+10P · 7일 연속마다 +50P'],
+  ['글 쓰기', '+5P · 하루 5번까지'],
+  ['내 글이 공감 받기', '공감 하나에 +2P'],
+  ['친구 초대', '친구가 가입하면 +100P (친구도 +30P)'],
+] as const;
+
+/** 친구 초대: 내 초대 링크로 가입하면 둘 다 포인트 */
+function InviteSection() {
+  const invite = useMyInvite();
+  const link = invite.data ? `${location.origin}/signup?ref=${invite.data.code}` : '';
+  const copy = () =>
+    navigator.clipboard.writeText(link).then(
+      () => toast('초대 링크를 복사했어요'),
+      () => toast('복사하지 못했어요. 직접 선택해서 복사해 주세요'),
+    );
+  return (
+    <section className={cn(ui.card, s.section)}>
+      <h2 className={s.sectionTitle}>포인트 모으기 · 친구 초대</h2>
+      <p className={s.sectionDesc}>모은 포인트로 내 사진 배너 같은 꾸미기를 열 수 있어요.</p>
+      <ul className="list-none m-0 mb-4 p-0 grid grid-cols-2 gap-2 max-[520px]:grid-cols-1">
+        {POINT_RULES.map(([what, how]) => (
+          <li key={what} className="rounded-md bg-field px-3 py-2.5">
+            <div className="text-[13px] font-semibold text-fg-strong">{what}</div>
+            <div className="text-[13px] text-primary font-semibold mt-0.5">{how}</div>
+          </li>
+        ))}
+      </ul>
+      <label className="block text-[13px] font-semibold text-fg-sub mb-1.5" htmlFor="invite-link">
+        내 초대 링크
+      </label>
+      <div className="flex items-center gap-2">
+        <input id="invite-link" className={cn(ui.input, 'flex-1 min-w-0')} readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
+        <button type="button" className={cn(ui.button, ui.secondary, ui.small)} onClick={copy} disabled={!link}>
+          복사
+        </button>
+      </div>
+      {invite.data && <p className={cn(ui.help, 'mt-1.5')}>지금까지 {invite.data.invitedCount.toLocaleString()}명을 초대했어요.</p>}
+    </section>
+  );
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   if (!user) return null;
@@ -397,10 +441,11 @@ export default function ProfilePage() {
       <div className={s.head}>
         <h1 className={s.title}>내 정보 수정</h1>
       </div>
-      {/* 닉네임 → 프로필 사진 → 배너 → 비밀번호 (이메일은 바꿀 수 없으니 왼쪽 메뉴에서만 보인다) */}
+      {/* 닉네임 → 프로필 사진 → 배너 → 포인트·초대 → 비밀번호 (이메일은 바꿀 수 없으니 왼쪽 메뉴에서만 보인다) */}
       <NicknameForm key={user.nickname} current={user.nickname} />
       <AvatarSection user={user} />
       <BannerSection user={user} />
+      <InviteSection />
       <PasswordForm />
     </>
   );

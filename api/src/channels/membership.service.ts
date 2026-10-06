@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error';
 import { Database } from '../db/database';
+import { RewardsService } from '../users/rewards.service';
 import { ChannelsService, SUMMARY_COLUMNS, type ChannelRow, type ChannelSummary } from './channels.service';
 import { badge, type ChannelRole } from './roles';
 
@@ -10,6 +11,7 @@ export class MembershipService {
   constructor(
     private readonly db: Database,
     private readonly channels: ChannelsService,
+    private readonly rewards: RewardsService,
   ) {}
 
   /** 여러 번 눌러도 결과가 같다 (이미 가입했으면 그대로) */
@@ -33,10 +35,12 @@ export class MembershipService {
         'INSERT INTO channel_members (channel_id, user_id) VALUES ($1, $2) ON CONFLICT (channel_id, user_id) DO NOTHING',
         [channel.id, userId],
       );
-      return this.addMemberCount(channel.id, added);
+      return { added, count: await this.addMemberCount(channel.id, added) };
     });
     this.channels.popularCache.clear();
-    return { joined: true, memberCount };
+    // 팔로워가 늘면 채널 주인의 팔로워 배지 확인
+    if (memberCount.added) await this.rewards.channelFollowed(channel.id);
+    return { joined: true, memberCount: memberCount.count };
   }
 
   async leave(userId: number, slug: string) {
