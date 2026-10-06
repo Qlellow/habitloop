@@ -1,5 +1,6 @@
 export interface User {
-  id: number;
+  /** 사용자 UUID */
+  id: string;
   email: string;
   nickname: string;
   /** 2단계 인증: 켜면 로그인할 때 이메일로 받은 인증번호를 한 번 더 입력한다 */
@@ -93,7 +94,8 @@ export interface MyChannel extends ChannelSummary {
 
 /** 운영진 목록 · 멤버 검색 결과 (role 이 'MEMBER' 면 일반 멤버) */
 export interface StaffMember {
-  userId: number;
+  /** 사용자 UUID */
+  userId: string;
   nickname: string;
   role: ChannelRole | 'MEMBER';
 }
@@ -162,7 +164,8 @@ export interface PostSummary {
   categoryName?: string;
   title: string;
   excerpt: string;
-  authorId: number;
+  /** 작성자 UUID */
+  authorId: string;
   authorNickname: string;
   authorAvatar?: string | null;
   authorRole?: ChannelRole;
@@ -183,7 +186,8 @@ export interface PostPage {
 
 /** 작성자 프로필 (공개 정보만) */
 export interface UserProfile {
-  id: number;
+  /** 사용자 UUID */
+  id: string;
   nickname: string;
   createdAt: string;
   postCount: number;
@@ -205,7 +209,7 @@ export interface PostDetail {
   category?: { id: number; name: string };
   title: string;
   content: string;
-  author: { id: number; nickname: string; avatarUrl?: string; role?: ChannelRole };
+  author: { id: string; nickname: string; avatarUrl?: string; role?: ChannelRole };
   likeCount: number;
   commentCount: number;
   viewCount: number;
@@ -227,7 +231,8 @@ export interface PostInput {
 
 export interface Comment {
   id: number;
-  authorId: number;
+  /** 작성자 UUID */
+  authorId: string;
   authorNickname: string;
   authorAvatar?: string;
   authorRole?: ChannelRole;

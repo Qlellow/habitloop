@@ -11,6 +11,7 @@ import { JwtService, type AuthUser } from './jwt.service';
 
 interface UserRow {
   id: number;
+  uid: string;
   email: string;
   password: string;
   nickname: string;
@@ -30,14 +31,15 @@ export const BANNER_PRESETS = ['sky', 'sunset', 'mint', 'grape', 'peach', 'night
 /** 내 사진 배너를 여는 데 드는 포인트 (한 번 열면 계속 바꿀 수 있다) */
 export const CUSTOM_BANNER_COST = 300;
 
-const USER_COLUMNS = `id, email, password, nickname, two_factor_enabled AS "twoFactorEnabled",
+const USER_COLUMNS = `id, uid::text AS uid, email, password, nickname, two_factor_enabled AS "twoFactorEnabled",
   birth_date IS NOT NULL AS "ageChecked", to_char(birth_date, 'YYYY-MM-DD') AS "birthDate",
   CASE WHEN avatar_id IS NULL THEN NULL ELSE '/api/images/' || avatar_id END AS "avatarUrl", banner, points,
   custom_banner AS "customBanner", coalesce(birth_date <= (current_date - interval '19 years'), false) AS adult`;
 const SELECT_USER = `SELECT ${USER_COLUMNS} FROM users`;
 
 export const userResponse = (u: UserRow) => ({
-  id: u.id,
+  // 바깥에는 UUID 만 보인다 (내부 정수 id 는 숨김)
+  id: u.uid,
   email: u.email,
   nickname: u.nickname,
   twoFactorEnabled: u.twoFactorEnabled,

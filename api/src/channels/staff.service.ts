@@ -6,7 +6,8 @@ import { ChannelsService, type ChannelRow } from './channels.service';
 import { isStaff, type ChannelRole } from './roles';
 
 export interface StaffMember {
-  userId: number;
+  /** 사용자 UUID */
+  userId: string;
   nickname: string;
   role: ChannelRole;
 }
@@ -32,7 +33,7 @@ export class StaffService {
 
   private findStaff(channelId: number): Promise<StaffMember[]> {
     return this.db.query(
-      `SELECT u.id AS "userId", u.nickname, m.role FROM channel_members m JOIN users u ON u.id = m.user_id
+      `SELECT u.uid::text AS "userId", u.nickname, m.role FROM channel_members m JOIN users u ON u.id = m.user_id
        WHERE m.channel_id = $1 AND m.role <> 'MEMBER' ORDER BY ${STAFF_ORDER}`,
       [channelId],
     );
@@ -44,15 +45,18 @@ export class StaffService {
     const escaped = escapeLike((keyword ?? '').trim().toLowerCase());
     if (!escaped) return [];
     return this.db.query(
-      `SELECT u.id AS "userId", u.nickname, m.role FROM channel_members m JOIN users u ON u.id = m.user_id
+      `SELECT u.uid::text AS "userId", u.nickname, m.role FROM channel_members m JOIN users u ON u.id = m.user_id
        WHERE m.channel_id = $1 AND lower(u.nickname) LIKE $2 ESCAPE '\\' ORDER BY m.id ASC LIMIT $3`,
       [channel.id, `%${escaped}%`, SEARCH_SIZE],
     );
   }
 
   /** 멤버의 역할을 관리자·매니저·일반 멤버로 바꾼다. 여러 번 보내도 결과가 같다 */
-  async changeRole(userId: number, slug: string, targetUserId: number, role: ChannelRole): Promise<StaffMember[]> {
+  async changeRole(userId: number, slug: string, targetUid: string, role: ChannelRole): Promise<StaffMember[]> {
     const channel = await this.requireOwner(userId, slug);
+    const target = await this.db.one<{ id: number }>('SELECT id FROM users WHERE uid::text = $1', [targetUid.toLowerCase()]);
+    if (!target) throw ApiError.badRequest('채널을 팔로우한 사람만 운영진으로 지정할 수 있어요');
+    const targetUserId = target.id;
     if (role === 'OWNER') throw ApiError.badRequest('소유자는 넘길 수 없어요');
     const current = await this.channels.roleOf(channel.id, targetUserId);
     if (!current) throw ApiError.badRequest('채널을 팔로우한 사람만 운영진으로 지정할 수 있어요');

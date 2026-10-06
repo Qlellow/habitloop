@@ -13,6 +13,7 @@ const BEST_SIZE = 3;
 interface CommentRow {
   id: number;
   authorId: number;
+  authorUid: string;
   authorNickname: string;
   authorAvatar: string | null;
   content: string;
@@ -22,7 +23,7 @@ interface CommentRow {
   parentId: number | null;
 }
 
-const SELECT_COMMENT = `SELECT c.id, c.author_id AS "authorId", u.nickname AS "authorNickname",
+const SELECT_COMMENT = `SELECT c.id, c.author_id AS "authorId", u.uid::text AS "authorUid", u.nickname AS "authorNickname",
   CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "authorAvatar", c.content,
   c.like_count AS "likeCount", c.created_at AS "createdAt", c.updated_at AS "updatedAt", c.parent_id AS "parentId"
   FROM comments c JOIN users u ON u.id = c.author_id`;
@@ -199,7 +200,7 @@ export class CommentsService {
     const mine = viewerId != null && c.authorId === viewerId;
     return {
       id: c.id,
-      authorId: c.authorId,
+      authorId: c.authorUid,
       authorNickname: c.authorNickname,
       authorAvatar: c.authorAvatar ?? undefined,
       authorRole: badge(authorRole),

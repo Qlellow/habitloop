@@ -50,7 +50,8 @@ export interface FeedFilter {
   channel?: string;
   category?: number;
   q?: string;
-  authorId?: number;
+  /** 작성자 UUID */
+  authorId?: string;
 }
 
 export const keys = {
@@ -121,11 +122,15 @@ export function useNotices(channel: string, enabled = true) {
 }
 
 /** 작성자 프로필 */
-export function useUserProfile(id: number) {
+/** 사용자 UUID 모양인지 */
+export const isUserId = (v: unknown): v is string =>
+  typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+export function useUserProfile(id: string) {
   return useQuery({
     queryKey: ['user', id] as const,
-    queryFn: ({ signal }) => api<UserProfile>(`/api/users/${id}`, { signal }),
-    enabled: Number.isInteger(id),
+    queryFn: ({ signal }) => api<UserProfile>(`/api/users/${encodeURIComponent(id)}`, { signal }),
+    enabled: isUserId(id),
   });
 }
 
@@ -241,7 +246,7 @@ export function useMemberSearch(slug: string, q: string) {
 export function useChangeRole(slug: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, role }: { userId: number; role: StaffMember['role'] }) =>
+    mutationFn: ({ userId, role }: { userId: string; role: StaffMember['role'] }) =>
       api<StaffMember[]>(`/api/channels/${encodeURIComponent(slug)}/members/${userId}/role`, { method: 'PUT', body: { role } }),
     onSuccess: (staff) => {
       qc.setQueryData(keys.staff(slug), staff);
@@ -523,7 +528,7 @@ export function usePost(id: number, placeholder?: PostSummary) {
         category: undefined,
         title: summary.title,
         content: '',
-        author: { id: 0, nickname: summary.authorNickname, role: summary.authorRole },
+        author: { id: summary.authorId, nickname: summary.authorNickname, avatarUrl: summary.authorAvatar ?? undefined, role: summary.authorRole },
         likeCount: summary.likeCount,
         commentCount: summary.commentCount,
         viewCount: summary.viewCount,

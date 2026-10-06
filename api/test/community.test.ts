@@ -463,7 +463,8 @@ describe('커뮤니티', () => {
     const p1 = await page({ excludeNotices: 'true' });
     expect(p1).toMatchObject({ total: 23, page: 1, size: 20, pages: 2 });
     expect(p1.items[0].title).toBe('글 23');
-    expect(p1.items[0].authorId).toBeGreaterThan(0);
+    // 사용자 id 는 UUID (가입 순서가 드러나지 않게)
+    expect(p1.items[0].authorId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     const p2 = await page({ excludeNotices: 'true', page: 2 });
     expect(p2.items.map((p: { title: string }) => p.title)).toEqual(['글 3', '글 2', '글 1']);
     // 범위를 넘는 페이지는 마지막 페이지로
@@ -486,6 +487,7 @@ describe('커뮤니티', () => {
     expect(profile).toMatchObject({ nickname: '페이지주인', postCount: 25, commentCount: 0 });
     expect(profile.email).toBeUndefined();
     await http().get('/api/users/999999').expect(404);
+    await http().get('/api/users/00000000-0000-0000-0000-000000000000').expect(404);
     await http().get('/api/users/abc').expect(404);
   });
 
@@ -607,7 +609,7 @@ describe('커뮤니티', () => {
     // 내 사진 배너는 포인트로 연 뒤에
     await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${mine}` }).expect(403);
     await http().post('/api/me/banner/unlock').set(bearer(me)).expect(400); // 0P
-    await app.get(Database).execute('UPDATE users SET points = 450 WHERE id = $1', [userId]);
+    await app.get(Database).execute('UPDATE users SET points = 450 WHERE uid::text = $1', [userId]);
     const unlocked = (await http().post('/api/me/banner/unlock').set(bearer(me)).expect(200)).body;
     expect(unlocked).toMatchObject({ points: 150, customBanner: true });
     expect((await http().post('/api/me/banner/unlock').set(bearer(me)).expect(200)).body.points).toBe(150); // 두 번 빠지지 않는다

@@ -143,7 +143,7 @@ export class ChannelsController {
   /** 멤버를 관리자·매니저로 지정하거나 일반 멤버로 되돌린다 (소유자만) */
   @Put('channels/:slug/members/:userId/role')
   changeRole(@LoginUser() user: AuthUser, @Param('slug') slug: string, @Param('userId') userId: string, @Body() input: RoleInput) {
-    return this.staff.changeRole(user.id, slug, id(userId), input.role);
+    return this.staff.changeRole(user.id, slug, userId, input.role);
   }
 
   /* ───── 프로필 이미지 ───── */

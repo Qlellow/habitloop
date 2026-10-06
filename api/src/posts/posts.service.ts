@@ -17,7 +17,8 @@ export interface PostSummary {
   categoryName?: string;
   title: string;
   excerpt: string;
-  authorId: number;
+  /** 작성자 (UUID) */
+  authorId: string;
   authorNickname: string;
   /** 작성자 프로필 사진 주소 (없으면 null) */
   authorAvatar: string | null;
@@ -32,7 +33,8 @@ export interface PostSummary {
 export interface PostSearch {
   channel?: string;
   category?: number;
-  authorId?: number;
+  /** 작성자 UUID */
+  authorId?: string;
   q?: string;
 }
 
@@ -67,7 +69,7 @@ const POPULAR_SIZE = 5;
  */
 const SELECT_SUMMARY = `
   SELECT p.id, c.slug AS "channelSlug", c.name AS "channelName", cat.name AS "categoryName", p.title, p.excerpt,
-         p.author_id AS "authorId", a.nickname AS "authorNickname",
+         a.uid::text AS "authorId", a.nickname AS "authorNickname",
          CASE WHEN a.avatar_id IS NULL THEN NULL ELSE '/api/images/' || a.avatar_id END AS "authorAvatar", m.role AS "authorRole", p.like_count AS "likeCount",
          p.comment_count AS "commentCount", p.view_count AS "viewCount", p.created_at AS "createdAt"
   FROM posts p
@@ -83,6 +85,7 @@ function toSummary(row: PostSummary & { authorRole: ChannelRole | null; category
 interface PostRow {
   id: number;
   authorId: number;
+  authorUid: string;
   authorNickname: string;
   authorAvatar: string | null;
   channelId: number;
@@ -137,7 +140,7 @@ export class PostsService {
     }
     if (!adult) where.push('cat.adult IS NOT TRUE');
     if (search.category != null) add('p.category_id = ?', search.category);
-    if (search.authorId != null) add('p.author_id = ?', search.authorId);
+    if (search.authorId != null) add('p.author_id = (SELECT id FROM users WHERE uid::text = ?)', search.authorId);
     if (search.q?.trim()) add("lower(p.title) LIKE ? ESCAPE '\\'", `%${escapeLike(search.q.trim().toLowerCase())}%`);
     params.push(pageSize + 1);
     const rows = await this.db.query(
@@ -379,7 +382,7 @@ export class PostsService {
 
   private async find(postId: number): Promise<PostRow> {
     const row = await this.db.one<PostRow>(
-      `SELECT p.id, p.author_id AS "authorId", a.nickname AS "authorNickname",
+      `SELECT p.id, p.author_id AS "authorId", a.uid::text AS "authorUid", a.nickname AS "authorNickname",
               CASE WHEN a.avatar_id IS NULL THEN NULL ELSE '/api/images/' || a.avatar_id END AS "authorAvatar", p.channel_id AS "channelId",
               c.slug AS "channelSlug", c.name AS "channelName", c.icon_version AS "iconVersion", c.color AS "channelColor",
               p.category_id AS "categoryId", cat.name AS "categoryName", p.title, p.content,
@@ -407,7 +410,7 @@ export class PostsService {
       category: post.categoryId == null ? undefined : { id: post.categoryId, name: post.categoryName },
       title: post.title,
       content: post.content,
-      author: { id: post.authorId, nickname: post.authorNickname, avatarUrl: post.authorAvatar ?? undefined, role: badge(authorRole) },
+      author: { id: post.authorUid, nickname: post.authorNickname, avatarUrl: post.authorAvatar ?? undefined, role: badge(authorRole) },
       likeCount: post.likeCount,
       commentCount: post.commentCount,
       viewCount: post.viewCount,
