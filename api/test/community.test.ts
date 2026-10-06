@@ -745,6 +745,11 @@ describe('커뮤니티', () => {
     let profile: Record<string, unknown> = {};
     const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
       const url = String(input);
+      // 프로필 사진은 1x1 PNG 로
+      if (url.startsWith('https://img.test/')) {
+        const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+        return new Response(png, { status: 200, headers: { 'Content-Type': 'image/png' } });
+      }
       const body = url.includes('token') ? { access_token: 'provider-token' } : profile;
       return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
     });
@@ -765,7 +770,7 @@ describe('커뮤니티', () => {
         return (await http().get('/api/me').set(bearer(token)).expect(200)).body;
       };
 
-      profile = { sub: 'g-1', email: 'Social@Test.dev', email_verified: true, name: '구글사람' };
+      profile = { sub: 'g-1', email: 'Social@Test.dev', email_verified: true, name: '구글사람', picture: 'https://img.test/g1.png' };
       const first = await login('google');
       expect(first.to.origin).toBe('https://accounts.google.com');
       expect(first.to.searchParams.get('client_id')).toBe('test-google');
@@ -773,6 +778,7 @@ describe('커뮤니티', () => {
       const token = first.hash.get('token')!;
       const me = (await http().get('/api/me').set(bearer(token)).expect(200)).body;
       expect(me).toMatchObject({ nickname: '구글사람', email: 'social@test.dev' });
+      expect(me.avatarUrl).toMatch(/^\/api\/images\//); // 프로필 사진도 받아 온다 (선택)
       // 같은 소셜 계정으로 다시 로그인하면 같은 사용자
       const again = await meOf('google');
       expect(again.id).toBe(me.id);
@@ -786,16 +792,31 @@ describe('커뮤니티', () => {
       const existingId = (await http().get('/api/me').set(bearer(existing))).body.id;
       profile = { sub: 'g-2', email: 'linked@test.dev', email_verified: true, name: '다른이름' };
       expect((await meOf('google')).id).toBe(existingId);
-      // 확인되지 않은 이메일이면 이어 붙이지 않고 새 계정 (닉네임이 겹치면 숫자를 붙인다)
+      // 이메일은 필수: 확인되지 않았거나 없으면 가입하지 않는다
       profile = { sub: 'g-3', email: 'linked@test.dev', email_verified: false, name: '구글사람' };
-      const unverified = await meOf('google');
-      expect(unverified.id).not.toBe(existingId);
-      expect(unverified.nickname).toMatch(/^구글사람\d{4}$/);
+      expect((await login('google')).hash.get('error')).toContain('이메일 제공에 동의');
+      profile = { id: 1, kakao_account: { profile: { nickname: '이메일없음' } } };
+      expect((await login('kakao')).hash.get('error')).toContain('이메일 제공에 동의');
 
-      // 이메일을 주지 않는 카카오 계정도 가입된다
-      profile = { id: 12345, kakao_account: { profile: { nickname: '카카오친구' } } };
+      // 닉네임 · 사진 · 생일은 선택: 카카오 생일(연도 + MMDD)은 나이 확인으로 쓰이고, 닉네임이 겹치면 숫자를 붙인다
+      profile = {
+        id: 12345,
+        kakao_account: {
+          email: 'kakao@test.dev',
+          is_email_valid: true,
+          is_email_verified: true,
+          birthyear: '1995',
+          birthday: '0314',
+          profile: { nickname: '구글사람', is_default_image: true, profile_image_url: 'https://img.test/default.png' },
+        },
+      };
       const kakao = await meOf('kakao');
-      expect(kakao.nickname).toBe('카카오친구');
+      expect(kakao.nickname).toMatch(/^구글사람\d{4}$/);
+      expect(kakao).toMatchObject({ birthDate: '1995-03-14', adult: true });
+      expect(kakao.avatarUrl).toBeUndefined(); // 카카오 기본 이미지는 가져오지 않는다
+      // 닉네임을 주지 않아도 가입된다
+      profile = { id: 777, kakao_account: { email: 'nonick@test.dev', is_email_valid: true, is_email_verified: true } };
+      expect((await meOf('kakao')).nickname).toMatch(/^루퍼/);
     } finally {
       fetchMock.mockRestore();
       delete process.env.GOOGLE_CLIENT_ID;
