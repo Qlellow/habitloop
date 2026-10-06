@@ -5,6 +5,7 @@ import { toast } from '../../components/Toast';
 import { ui } from '../../components/ui';
 import s from './my.styles';
 import { Modal } from '../../components/Modal';
+import { ShareDialog } from '../../components/ShareDialog';
 import { cn } from '../../lib/cn';
 
 /** 포인트 모으는 법 (API 의 RewardsService 와 같은 값) */
@@ -135,6 +136,7 @@ export default function PointsPage() {
   const { user } = useAuth();
   const invite = useMyInvite();
   const [showLogs, setShowLogs] = useState(false);
+  const [sharing, setSharing] = useState(false);
   if (!user) return null;
   const link = invite.data ? `${location.origin}/signup?ref=${invite.data.code}` : '';
   const copy = () =>
@@ -181,12 +183,26 @@ export default function PointsPage() {
             aria-label="내 초대 링크"
             onFocus={(e) => e.currentTarget.select()}
           />
-          <button type="button" className={cn(ui.button, ui.secondary, ui.small)} onClick={copy} disabled={!link}>
+          <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={copy} disabled={!link}>
             복사
+          </button>
+          <button type="button" className={cn(ui.button, ui.primary, ui.small)} onClick={() => setSharing(true)} disabled={!link}>
+            공유하기
           </button>
         </div>
         {invite.data && <p className={ui.help}>지금까지 {invite.data.invitedCount.toLocaleString()}명을 초대했어요.</p>}
       </section>
+      {sharing && (
+        <ShareDialog
+          heading="친구 초대하기"
+          content={{
+            url: link,
+            title: '루프에서 같이 이야기 나눠요',
+            text: `${user.nickname}님이 루프에 초대했어요. 이 링크로 가입하면 30P 를 받아요!`,
+          }}
+          onClose={() => setSharing(false)}
+        />
+      )}
       {showLogs && <PointLogDialog onClose={() => setShowLogs(false)} />}
     </>
   );
