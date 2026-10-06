@@ -39,6 +39,16 @@ function readCookie(req: Request, name: string) {
 export class OAuthController {
   constructor(private readonly oauth: OAuthService) {}
 
+  /**
+   * 카카오톡 공유용 JavaScript 키. 원래 브라우저에 공개되는 키(등록한 도메인에서만 동작)라 그대로 내려준다.
+   * 웹 빌드 변수(VITE_)가 아니라 서버 환경 변수로 받으므로 Vercel 에서 Secret 으로 저장해도 된다
+   */
+  @Public()
+  @Get('share/kakao-key')
+  kakaoKey() {
+    return { key: process.env.KAKAO_JS_KEY?.trim() || null };
+  }
+
   /** 켜진(키가 설정된) 소셜 로그인 */
   @Public()
   @Get('auth/oauth/providers')

@@ -1,4 +1,6 @@
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, type ReactElement } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@loop/shared';
 import { CloseIcon } from './Icons';
 import { Modal } from './Modal';
 import { toast } from './Toast';
@@ -12,7 +14,6 @@ export interface ShareContent {
   text: string;
 }
 
-const KAKAO_KEY = import.meta.env.VITE_KAKAO_JS_KEY as string | undefined;
 const KAKAO_SDK = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js';
 
 interface KakaoSdk {
@@ -28,12 +29,12 @@ declare global {
 
 /** 카카오톡 공유는 카카오 JavaScript SDK 가 필요하다 (VITE_KAKAO_JS_KEY 가 있을 때만, 처음 누를 때 받아 온다) */
 let kakaoLoading: Promise<KakaoSdk> | undefined;
-function loadKakao(): Promise<KakaoSdk> {
+function loadKakao(key: string): Promise<KakaoSdk> {
   kakaoLoading ??= new Promise<KakaoSdk>((resolve, reject) => {
     const done = () => {
       const k = window.Kakao;
       if (!k) return reject(new Error('카카오 SDK 를 불러오지 못했어요'));
-      if (!k.isInitialized()) k.init(KAKAO_KEY!);
+      if (!k.isInitialized()) k.init(key);
       resolve(k);
     };
     if (window.Kakao) return done();
@@ -128,9 +129,9 @@ const viaSheetOrCopy = (app: string) => async (c: ShareContent) => {
   }
 };
 
-function targets(): Target[] {
+function targets(kakaoKey: string | null | undefined): Target[] {
   const list: Target[] = [];
-  if (KAKAO_KEY) {
+  if (kakaoKey) {
     list.push({
       id: 'kakao',
       label: '카카오톡',
@@ -138,7 +139,7 @@ function targets(): Target[] {
       bg: 'bg-[#FEE500]',
       run: async (c) => {
         try {
-          const kakao = await loadKakao();
+          const kakao = await loadKakao(kakaoKey);
           kakao.Share.sendDefault({
             objectType: 'text',
             text: `${c.title}\n${c.text}`,
@@ -214,10 +215,16 @@ function targets(): Target[] {
 
 /**
  * 공유 창 (유튜브 공유처럼): 앱 아이콘 한 줄 + 아래에 링크 복사.
- * 카카오톡만 카카오 SDK(VITE_KAKAO_JS_KEY)가 필요하고, 나머지는 각 서비스의 공유 주소 · 기기 공유 시트를 쓴다.
+ * 카카오톡만 카카오 SDK(서버 환경 변수 KAKAO_JS_KEY)가 필요하고, 나머지는 각 서비스의 공유 주소 · 기기 공유 시트를 쓴다.
  */
 export function ShareDialog({ content, heading = '공유하기', onClose }: { content: ShareContent; heading?: string; onClose: () => void }) {
-  const [list] = useState(targets);
+  // 카카오 키는 서버 환경 변수(KAKAO_JS_KEY)에서 받는다. 받기 전에는 카카오톡 없이 나머지만 보여 준다
+  const kakaoKey = useQuery({
+    queryKey: ['kakao-js-key'],
+    queryFn: ({ signal }) => api<{ key: string | null }>('/api/share/kakao-key', { signal }),
+    staleTime: Infinity,
+  }).data?.key;
+  const list = useMemo(() => targets(kakaoKey), [kakaoKey]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
