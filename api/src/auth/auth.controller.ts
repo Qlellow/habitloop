@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
 import {
   AgeInput,
+  AvatarInput,
+  BannerInput,
   ChallengeInput,
   CodeInput,
   EmailCodeInput,
@@ -135,7 +137,32 @@ export class AuthController {
     return this.auth.revokeSession(user, id);
   }
 
-  /** 나이 확인 (생년월일 한 번 저장) */
+  /** 프로필 사진 (올린 이미지 id, null 이면 기본) */
+  @Put('me/avatar')
+  setAvatar(@LoginUser() user: AuthUser, @Body() input: AvatarInput) {
+    return this.auth.setAvatar(user.id, input.imageId ?? null);
+  }
+
+  /** 배너: 'p:기본배너' · 'i:이미지id' · null */
+  @Put('me/banner')
+  setBanner(@LoginUser() user: AuthUser, @Body() input: BannerInput) {
+    return this.auth.setBanner(user.id, input.banner ?? null);
+  }
+
+  /** 내 사진 배너 열기 (포인트 사용) */
+  @Post('me/banner/unlock')
+  @HttpCode(HttpStatus.OK)
+  unlockBanner(@LoginUser() user: AuthUser) {
+    return this.auth.unlockCustomBanner(user.id);
+  }
+
+  /** 포인트 내역 */
+  @Get('me/points')
+  points(@LoginUser() user: AuthUser) {
+    return this.auth.pointLogs(user.id);
+  }
+
+  /** 나이 확인 (생년월일 저장) */
   @Put('me/age')
   verifyAge(@LoginUser() user: AuthUser, @Body() input: AgeInput) {
     return this.auth.verifyAge(user.id, input.birthDate);

@@ -17,7 +17,8 @@ export class UsersController {
       id === undefined
         ? undefined
         : await this.db.one<{ id: number; nickname: string; createdAt: Date; postCount: string; commentCount: string }>(
-            `SELECT u.id, u.nickname, u.created_at AS "createdAt",
+            `SELECT u.id, u.nickname, u.created_at AS "createdAt", u.banner,
+                    CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "avatarUrl",
                     (SELECT count(*) FROM posts WHERE author_id = u.id) AS "postCount",
                     (SELECT count(*) FROM comments WHERE author_id = u.id) AS "commentCount"
              FROM users u WHERE u.id = $1`,

@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createApp } from '../src/create-app';
 import { JwtService } from '../src/auth/jwt.service';
 import { Mailer } from '../src/mail/mailer';
+import { Database } from '../src/db/database';
 import { makeExcerpt, EXCERPT_LENGTH } from '../src/posts/excerpt';
 
 /**
@@ -569,6 +570,45 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/posts/page').query({ channel: 'mixed' }).set(bearer(minor))).body.items.map((p: { title: string }) => p.title)).toEqual(['보통 글']);
     expect((await http().get('/api/posts/page').query({ channel: 'mixed' }).set(bearer(adult))).body.total).toBe(2);
     await http().get(`/api/posts/${hidden}`).set(bearer(minor)).expect(403);
+  });
+
+  it('프로필 사진 · 배너 · 포인트', async () => {
+    const me = await signup('avatar@test.dev', '사진주인');
+    const other = await signup('avatar-other@test.dev', '남의사진');
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    const upload = async (token: string) =>
+      (await http().post('/api/images').set(bearer(token)).set('Content-Type', 'image/png').send(png).expect(201)).body.id as string;
+    const mine = await upload(me);
+    const theirs = await upload(other);
+
+    // 프로필 사진: 내가 올린 이미지만
+    await http().put('/api/me/avatar').set(bearer(me)).send({ imageId: theirs }).expect(400);
+    const withAvatar = (await http().put('/api/me/avatar').set(bearer(me)).send({ imageId: mine }).expect(200)).body;
+    expect(withAvatar.avatarUrl).toBe(`/api/images/${mine}`);
+    const userId = withAvatar.id;
+    // 글 · 댓글 · 프로필에 사진이 함께 온다
+    await http().post('/api/channels/free/members').set(bearer(me)).expect(200);
+    const postId = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'free', title: '사진 있는 사람', content: 'c' }).expect(201)).body.id;
+    expect((await http().get(`/api/posts/${postId}`)).body.author.avatarUrl).toBe(`/api/images/${mine}`);
+    await http().post(`/api/posts/${postId}/comments`).set(bearer(me)).send({ content: '댓글' }).expect(201);
+    expect((await http().get(`/api/posts/${postId}/comments`)).body.items[0].authorAvatar).toBe(`/api/images/${mine}`);
+    expect((await http().get('/api/posts').query({ authorId: userId })).body.items[0].authorAvatar).toBe(`/api/images/${mine}`);
+    expect((await http().put('/api/me/avatar').set(bearer(me)).send({ imageId: null }).expect(200)).body.avatarUrl).toBeUndefined();
+
+    // 기본 배너는 무료
+    await http().put('/api/me/banner').set(bearer(me)).send({ banner: 'p:없는배너' }).expect(400);
+    expect((await http().put('/api/me/banner').set(bearer(me)).send({ banner: 'p:sunset' }).expect(200)).body.banner).toBe('p:sunset');
+    expect((await http().get(`/api/users/${userId}`)).body.banner).toBe('p:sunset');
+    // 내 사진 배너는 포인트로 연 뒤에
+    await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${mine}` }).expect(403);
+    await http().post('/api/me/banner/unlock').set(bearer(me)).expect(400); // 0P
+    await app.get(Database).execute('UPDATE users SET points = 450 WHERE id = $1', [userId]);
+    const unlocked = (await http().post('/api/me/banner/unlock').set(bearer(me)).expect(200)).body;
+    expect(unlocked).toMatchObject({ points: 150, customBanner: true });
+    expect((await http().post('/api/me/banner/unlock').set(bearer(me)).expect(200)).body.points).toBe(150); // 두 번 빠지지 않는다
+    await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${theirs}` }).expect(400);
+    expect((await http().put('/api/me/banner').set(bearer(me)).send({ banner: `i:${mine}` }).expect(200)).body.banner).toBe(`i:${mine}`);
+    expect((await http().get('/api/me/points').set(bearer(me))).body[0]).toMatchObject({ delta: -300, reason: '내 사진 배너 열기' });
   });
 
   it('채널 프로필 이미지', async () => {

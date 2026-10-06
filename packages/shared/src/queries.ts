@@ -12,6 +12,7 @@ import type {
   LoginResponse,
   LoginSession,
   InviteInfo,
+  PointLog,
   PostPage,
   UserProfile,
   ChannelCategory,
@@ -309,6 +310,41 @@ export function useRegenerateInvite(slug: string) {
     mutationFn: () => api<{ inviteCode: string }>(`/api/channels/${encodeURIComponent(slug)}/invite`, { method: 'POST' }),
     onSuccess: ({ inviteCode }) => qc.setQueryData<ChannelDetail>(keys.channel(slug), (c) => c && { ...c, inviteCode }),
   });
+}
+
+/** 프로필 사진 · 배너 · 포인트: 바뀐 내 정보로 로그인 상태를 고치고, 사진이 보이는 글·댓글을 새로 받는다 */
+function useMeMutation<T>(fn: (input: T) => Promise<User>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (user) => {
+      authStore.updateUser(user);
+      qc.invalidateQueries({ queryKey: keys.posts });
+      qc.invalidateQueries({ queryKey: ['post'] });
+      qc.invalidateQueries({ queryKey: ['comments'] });
+      qc.invalidateQueries({ queryKey: ['user', user.id] });
+      qc.invalidateQueries({ queryKey: ['points'] });
+    },
+  });
+}
+
+/** 프로필 사진: 올린 이미지 id (null 이면 기본) */
+export const useSetAvatar = () => useMeMutation((imageId: string | null) => api<User>('/api/me/avatar', { method: 'PUT', body: { imageId } }));
+
+/** 배너: 'p:기본배너' · 'i:이미지id' · null */
+export const useSetBanner = () => useMeMutation((banner: string | null) => api<User>('/api/me/banner', { method: 'PUT', body: { banner } }));
+
+/** 내 사진 배너 열기 (포인트 사용) */
+export const useUnlockBanner = () => useMeMutation(() => api<User>('/api/me/banner/unlock', { method: 'POST' }));
+
+/** 포인트 내역 */
+export function usePointLogs(enabled = true) {
+  return useQuery({ queryKey: ['points'], queryFn: ({ signal }) => api<PointLog[]>('/api/me/points', { signal }), enabled });
+}
+
+/** 닉네임을 쓸 수 있는지 한 번 확인 (내 정보 수정의 저장 버튼) */
+export function checkNickname(nickname: string) {
+  return api<{ available: boolean; reason?: string }>('/api/auth/nickname', { query: { nickname } });
 }
 
 /** 나이 확인: 생년월일 저장 (테스트 중이라 다시 바꿀 수 있다) */

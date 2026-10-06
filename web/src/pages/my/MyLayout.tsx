@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@loop/shared';
 import { useConfirmSignOut } from '../../components/ConfirmDialog';
 import { SlideHover } from '../../components/SlideHover';
+import { UserAvatar } from '../../components/UserAvatar';
 import { Page } from '../../components/Layout';
 import { preload } from '../../lib/preload';
 import { ui } from '../../components/ui';
@@ -28,9 +29,7 @@ export default function MyLayout() {
       left={
         <nav className={cn(ui.card, s.side)} aria-label="마이페이지 메뉴">
           <div className={s.me}>
-            <span className={s.avatar} aria-hidden>
-              {user.nickname.slice(0, 1)}
-            </span>
+            <UserAvatar nickname={user.nickname} avatarUrl={user.avatarUrl} size={40} />
             <div className={s.meText}>
               <div className={s.nickname}>{user.nickname}</div>
               <div className={s.email}>{user.email}</div>

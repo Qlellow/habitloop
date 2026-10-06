@@ -1,5 +1,26 @@
-import { useState, type FormEvent } from 'react';
-import { passwordProblem, passwordStrength, useAuth, useChangePassword, useUpdateProfile } from '@loop/shared';
+import { useRef, useState, type FormEvent } from 'react';
+import {
+  BANNER_PRESETS,
+  CUSTOM_BANNER_COST,
+  checkNickname,
+  compact,
+  passwordProblem,
+  passwordStrength,
+  timeAgo,
+  uploadPostImage,
+  useAuth,
+  useChangePassword,
+  usePointLogs,
+  useSetAvatar,
+  useSetBanner,
+  useUnlockBanner,
+  useUpdateProfile,
+  type User,
+} from '@loop/shared';
+import { CropModal } from '../../components/CropModal';
+import { ProfileBanner } from '../../components/ProfileBanner';
+import { UserAvatar } from '../../components/UserAvatar';
+import { cropToBlob, toSquareIcon } from '../../lib/image';
 import { PasswordStrength } from '../../components/Auth';
 import { EyeIcon, EyeOffIcon } from '../../components/Icons';
 import { toast } from '../../components/Toast';
@@ -10,13 +31,26 @@ import { cn } from '../../lib/cn';
 function NicknameForm({ current }: { current: string }) {
   const update = useUpdateProfile();
   const [nickname, setNickname] = useState(current);
+  const [checking, setChecking] = useState(false);
+  const [problem, setProblem] = useState<string>();
   const trimmed = nickname.trim();
   const valid = trimmed.length >= 2 && trimmed !== current;
 
-  const submit = (e: FormEvent) => {
+  // 저장을 누르면 먼저 중복을 확인하고, 쓸 수 있을 때만 바꾼다
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!valid) return;
-    update.mutate({ nickname: trimmed }, { onSuccess: () => toast('닉네임을 바꿨어요') });
+    if (!valid || checking) return;
+    setChecking(true);
+    setProblem(undefined);
+    try {
+      const res = await checkNickname(trimmed);
+      if (!res.available) return setProblem(res.reason ?? '이미 사용 중인 닉네임이에요');
+      update.mutate({ nickname: trimmed }, { onSuccess: () => toast('닉네임을 바꿨어요') });
+    } catch (err) {
+      setProblem((err as Error).message);
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -27,15 +61,23 @@ function NicknameForm({ current }: { current: string }) {
         <input
           className={ui.input}
           value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
+          onChange={(e) => {
+            setNickname(e.target.value);
+            setProblem(undefined);
+          }}
           maxLength={20}
           aria-label="닉네임"
+          aria-invalid={!!problem}
         />
-        <button type="submit" className={cn(ui.button, ui.primary)} disabled={!valid || update.isPending}>
-          저장
+        <button type="submit" className={cn(ui.button, ui.primary)} disabled={!valid || checking || update.isPending}>
+          {checking ? '확인 중…' : '저장'}
         </button>
       </div>
-      {update.error && <p className={ui.error} style={{ margin: '10px 0 0' }}>{update.error.message}</p>}
+      {(problem ?? update.error?.message) && (
+        <p className={ui.error} style={{ margin: '10px 0 0' }}>
+          {problem ?? update.error?.message}
+        </p>
+      )}
     </form>
   );
 }
@@ -137,6 +179,216 @@ function PasswordForm() {
   );
 }
 
+/** 고른 사진을 자르기 창에서 다듬은 뒤 올린다 (프로필은 1:1 원형, 배너는 3:1) */
+function useImagePick(onPicked: (file: File) => void) {
+  const input = useRef<HTMLInputElement>(null);
+  const element = (
+    <input
+      ref={input}
+      type="file"
+      accept="image/png,image/jpeg,image/webp,image/gif"
+      className="sr-only"
+      tabIndex={-1}
+      aria-hidden
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (file) onPicked(file);
+      }}
+    />
+  );
+  return { open: () => input.current?.click(), element };
+}
+
+function AvatarSection({ user }: { user: User }) {
+  const setAvatar = useSetAvatar();
+  const [cropping, setCropping] = useState<{ file: File; url: string }>();
+  const [busy, setBusy] = useState(false);
+  const pick = useImagePick((file) => setCropping({ file, url: URL.createObjectURL(file) }));
+  const close = () => {
+    if (cropping) URL.revokeObjectURL(cropping.url);
+    setCropping(undefined);
+  };
+  const apply = async (crop: { x: number; y: number; w: number; h: number }) => {
+    if (!cropping) return;
+    setBusy(true);
+    try {
+      const { id } = await uploadPostImage(await toSquareIcon(cropping.file, crop));
+      await setAvatar.mutateAsync(id);
+      toast('프로필 사진을 바꿨어요');
+      close();
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className={cn(ui.card, s.section)}>
+      <h2 className={s.sectionTitle}>프로필 사진</h2>
+      <p className={s.sectionDesc}>글 · 댓글 · 프로필에 보여요. 사진을 고르면 원형으로 보일 영역을 정할 수 있어요.</p>
+      <div className="flex items-center gap-4">
+        <UserAvatar nickname={user.nickname} avatarUrl={user.avatarUrl} size={72} />
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={cn(ui.button, ui.secondary, ui.small)} onClick={pick.open} disabled={busy}>
+            {user.avatarUrl ? '사진 바꾸기' : '사진 올리기'}
+          </button>
+          {user.avatarUrl && (
+            <button
+              type="button"
+              className={cn(ui.button, ui.text, ui.small)}
+              disabled={setAvatar.isPending}
+              onClick={() => setAvatar.mutate(null, { onSuccess: () => toast('기본 프로필로 바꿨어요'), onError: (e) => toast(e.message) })}
+            >
+              기본으로
+            </button>
+          )}
+        </div>
+      </div>
+      {pick.element}
+      {cropping && (
+        <CropModal
+          src={cropping.url}
+          title="프로필 사진 자르기"
+          shapes={false}
+          initialShape="circle"
+          aspect={1}
+          applyLabel={busy ? '올리는 중…' : '이 영역으로 설정'}
+          onApply={({ crop }) => void apply(crop)}
+          onClose={close}
+        />
+      )}
+    </section>
+  );
+}
+
+/**
+ * 배너: 기본 배너는 누구나 무료로 고를 수 있고, 내 사진 배너는 포인트로 한 번 열면 계속 바꿀 수 있다.
+ */
+function BannerSection({ user }: { user: User }) {
+  const setBanner = useSetBanner();
+  const unlock = useUnlockBanner();
+  const logs = usePointLogs();
+  const [cropping, setCropping] = useState<{ file: File; url: string }>();
+  const [busy, setBusy] = useState(false);
+  const pick = useImagePick((file) => setCropping({ file, url: URL.createObjectURL(file) }));
+  const points = user.points ?? 0;
+  const close = () => {
+    if (cropping) URL.revokeObjectURL(cropping.url);
+    setCropping(undefined);
+  };
+  const choose = (banner: string | null) => setBanner.mutate(banner, { onError: (e) => toast(e.message) });
+  const apply = async (crop: { x: number; y: number; w: number; h: number }) => {
+    if (!cropping) return;
+    setBusy(true);
+    try {
+      const { id } = await uploadPostImage(await cropToBlob(cropping.file, crop, 1500, 500));
+      await setBanner.mutateAsync(`i:${id}`);
+      toast('배너를 바꿨어요');
+      close();
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const custom = user.banner?.startsWith('i:');
+  return (
+    <section className={cn(ui.card, s.section)}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className={s.sectionTitle}>배너</h2>
+          <p className={s.sectionDesc}>프로필 위쪽에 보여요. 기본 배너는 무료, 내 사진 배너는 포인트로 열 수 있어요.</p>
+        </div>
+        <span className="flex-none px-3 py-1.5 rounded-full bg-field text-sm font-bold text-fg-strong" title="가진 포인트">
+          {compact(points)}P
+        </span>
+      </div>
+      <ProfileBanner banner={user.banner} className="rounded-md border border-border mb-4" />
+      <div className="text-[13px] font-semibold text-fg-sub mb-2">기본 배너 · 무료</div>
+      <div className="grid grid-cols-4 gap-2 max-[520px]:grid-cols-3" role="radiogroup" aria-label="기본 배너">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!user.banner}
+          onClick={() => choose(null)}
+          className="h-12 rounded-md border border-dashed border-border text-[13px] text-fg-sub aria-checked:ring-2 aria-checked:ring-primary"
+        >
+          없음
+        </button>
+        {BANNER_PRESETS.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            role="radio"
+            aria-checked={user.banner === `p:${b.id}`}
+            aria-label={b.label}
+            title={b.label}
+            onClick={() => choose(`p:${b.id}`)}
+            className="h-12 rounded-md transition-transform hover:scale-[1.03] aria-checked:ring-2 aria-checked:ring-primary aria-checked:ring-offset-2 aria-checked:ring-offset-surface"
+            style={{ background: b.background }}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mt-5">
+        <span className="text-[13px] font-semibold text-fg-sub mr-auto">
+          내 사진 배너 {user.customBanner ? <span className={cn(ui.badge, 'ml-1')}>열림</span> : `· ${CUSTOM_BANNER_COST}P`}
+        </span>
+        {user.customBanner ? (
+          <button type="button" className={cn(ui.button, custom ? ui.ghost : ui.secondary, ui.small)} onClick={pick.open} disabled={busy}>
+            {custom ? '사진 바꾸기' : '사진 올리기'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={cn(ui.button, ui.secondary, ui.small)}
+            disabled={points < CUSTOM_BANNER_COST || unlock.isPending}
+            title={points < CUSTOM_BANNER_COST ? `포인트가 ${CUSTOM_BANNER_COST - points}P 모자라요` : undefined}
+            onClick={() =>
+              confirm(`${CUSTOM_BANNER_COST}P 를 써서 내 사진 배너를 열까요?\n한 번 열면 계속 바꿀 수 있어요.`) &&
+              unlock.mutate(undefined, { onSuccess: () => toast('내 사진 배너를 열었어요'), onError: (e) => toast(e.message) })
+            }
+          >
+            {CUSTOM_BANNER_COST}P 로 열기
+          </button>
+        )}
+      </div>
+      {!user.customBanner && points < CUSTOM_BANNER_COST && (
+        <p className={cn(ui.help, 'mt-1.5')}>포인트가 {CUSTOM_BANNER_COST - points}P 모자라요.</p>
+      )}
+      {logs.data && logs.data.length > 0 && (
+        <details className="mt-4 text-sm">
+          <summary className="cursor-pointer text-fg-sub">포인트 내역</summary>
+          <ul className="list-none m-0 mt-2 p-0">
+            {logs.data.map((l) => (
+              <li key={l.id} className="flex items-center gap-2 py-1.5 text-[13px]">
+                <span className="text-fg">{l.reason}</span>
+                <span className="text-fg-weak">{timeAgo(l.createdAt)}</span>
+                <b className={cn('ml-auto tabular-nums', l.delta < 0 ? 'text-danger-text' : 'text-primary')}>
+                  {l.delta > 0 ? '+' : ''}
+                  {l.delta}P
+                </b>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {pick.element}
+      {cropping && (
+        <CropModal
+          src={cropping.url}
+          title="배너 자르기"
+          shapes={false}
+          aspect={3}
+          applyLabel={busy ? '올리는 중…' : '이 영역으로 설정'}
+          onApply={({ crop }) => void apply(crop)}
+          onClose={close}
+        />
+      )}
+    </section>
+  );
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   if (!user) return null;
@@ -150,6 +402,8 @@ export default function ProfilePage() {
         <p className={s.sectionDesc}>로그인할 때 쓰는 이메일이에요. 바꿀 수 없어요.</p>
         <div className={s.readonly}>{user.email}</div>
       </section>
+      <AvatarSection user={user} />
+      <BannerSection user={user} />
       <NicknameForm key={user.nickname} current={user.nickname} />
       <PasswordForm />
     </>

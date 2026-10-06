@@ -3,6 +3,9 @@ import { ApiError, compact, useFeed, useUserProfile } from '@loop/shared';
 import { Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { ui } from '../components/ui';
+import { ProfileBanner } from '../components/ProfileBanner';
+import { UserAvatar } from '../components/UserAvatar';
+import { cn } from '../lib/cn';
 import NotFoundPage from './NotFoundPage';
 
 const joinedAt = (iso: string) => {
@@ -22,13 +25,13 @@ export default function UserPage() {
   const user = profile.data;
   return (
     <Page variant="single">
-      <section className={ui.card} style={{ padding: 24 }}>
+      <section className={cn(ui.card, 'overflow-hidden')}>
+        {/* 배너 위에 프로필 사진이 살짝 겹친다 */}
+        <ProfileBanner banner={user?.banner} />
         {user ? (
-          <div className="flex items-center gap-4">
-            <span className="flex-none grid place-items-center w-16 h-16 rounded-full bg-primary-weak text-primary text-2xl font-bold" aria-hidden>
-              {user.nickname.slice(0, 1)}
-            </span>
-            <div className="min-w-0">
+          <div className="flex items-end gap-4 px-6 pb-6">
+            <UserAvatar nickname={user.nickname} avatarUrl={user.avatarUrl} size={88} className="-mt-11 ring-4 ring-[var(--surface)]" />
+            <div className="min-w-0 pt-3">
               <h1 className="m-0 text-[22px] font-bold text-fg-strong truncate">{user.nickname}</h1>
               <p className="mt-1 mb-0 text-sm text-fg-weak">
                 {joinedAt(user.createdAt)} · 글 {compact(user.postCount)} · 댓글 {compact(user.commentCount)}
@@ -36,7 +39,7 @@ export default function UserPage() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-4" aria-hidden>
+          <div className="flex items-center gap-4 p-6" aria-hidden>
             <span className={ui.skeleton} style={{ width: 64, height: 64, borderRadius: 999 }} />
             <span className={ui.skeleton} style={{ width: 160, height: 24 }} />
           </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@loop/shared';
 import { useConfirmSignOut } from './ConfirmDialog';
+import { UserAvatar } from './UserAvatar';
 import { ChannelSearch } from './ChannelSearch';
 import { preload } from '../lib/preload';
 import { GridIcon, HomeIcon, PencilIcon, UserIcon } from './Icons';
@@ -44,9 +45,7 @@ function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         onPointerEnter={preload.me}
       >
-        <span className={s.avatar} aria-hidden>
-          {user.nickname.slice(0, 1)}
-        </span>
+        <UserAvatar nickname={user.nickname} avatarUrl={user.avatarUrl} size={32} />
         <span className={s.userName}>{user.nickname}</span>
       </button>
       {open && (
@@ -60,6 +59,9 @@ function UserMenu() {
           </Link>
           <Link to="/me/channels" className={s.menuItem} role="menuitem">
             내 채널
+          </Link>
+          <Link to="/me/settings" className={s.menuItem} role="menuitem" onPointerEnter={preload.settings}>
+            설정
           </Link>
           <button
             type="button"

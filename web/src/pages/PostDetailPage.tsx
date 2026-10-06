@@ -26,6 +26,7 @@ import { HeartIcon, ImageIcon } from '../components/Icons';
 import { prepareUpload } from '../lib/postImage';
 import { Page } from '../components/Layout';
 import { RoleBadge } from '../components/RoleBadge';
+import { UserAvatar } from '../components/UserAvatar';
 import { Markdown } from '../components/Markdown';
 import { CollapsibleBody } from '../components/CollapsibleBody';
 import { PopularCard } from '../components/Sidebar';
@@ -104,6 +105,7 @@ function CommentItem({ comment: c, postId, best }: { comment: Comment; postId: n
       <div className={s.commentHead}>
         {best && <span className={s.bestBadge}>BEST</span>}
         <Link to={`/u/${c.authorId}`} className={cn(s.commentAuthor, 'hover:underline underline-offset-2')} onPointerEnter={preload.user}>
+          <UserAvatar nickname={c.authorNickname} avatarUrl={c.authorAvatar} size={22} />
           {c.authorNickname}
           <RoleBadge role={c.authorRole} size={16} />
         </Link>
@@ -389,9 +391,9 @@ export default function PostDetailPage() {
             </nav>
             <h1 className={s.title}>{post.title}</h1>
             <div className={s.byline}>
-              <span className={s.avatar} aria-hidden>
-                {post.author.nickname.slice(0, 1)}
-              </span>
+              <Link to={`/u/${post.author.id}`} aria-label={`${post.author.nickname} 프로필`} onPointerEnter={preload.user}>
+                <UserAvatar nickname={post.author.nickname} avatarUrl={post.author.avatarUrl} size={40} />
+              </Link>
               <div>
                 <Link to={`/u/${post.author.id}`} className={cn(s.bylineName, 'hover:underline underline-offset-2')} onPointerEnter={preload.user}>
                   {post.author.nickname}

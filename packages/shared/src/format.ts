@@ -117,3 +117,26 @@ export function passwordProblem(v: string): string | undefined {
   if (!PW_SPECIAL.test(v)) return '특수문자를 하나 이상 넣어 주세요 (예: ! @ # $)';
   return undefined;
 }
+
+/** 기본 배너 (누구나 무료). id 는 서버의 BANNER_PRESETS 와 같아야 한다 */
+export const BANNER_PRESETS: { id: string; label: string; background: string }[] = [
+  { id: 'sky', label: '하늘', background: 'linear-gradient(120deg, #6ec6ff 0%, #3182f6 100%)' },
+  { id: 'sunset', label: '노을', background: 'linear-gradient(120deg, #ffb86c 0%, #f04452 100%)' },
+  { id: 'mint', label: '민트', background: 'linear-gradient(120deg, #a8f0d4 0%, #00c471 100%)' },
+  { id: 'grape', label: '포도', background: 'linear-gradient(120deg, #c7a6ff 0%, #8b5cf6 100%)' },
+  { id: 'peach', label: '복숭아', background: 'linear-gradient(120deg, #ffe0d1 0%, #ff9eb5 100%)' },
+  { id: 'night', label: '밤하늘', background: 'linear-gradient(120deg, #1e2a52 0%, #4b3f8f 60%, #8b5cf6 100%)' },
+  { id: 'forest', label: '숲', background: 'linear-gradient(120deg, #c9e79a 0%, #2f8f5b 100%)' },
+  { id: 'mono', label: '모노', background: 'linear-gradient(120deg, #d1d6db 0%, #4e5968 100%)' },
+];
+
+/** 내 사진 배너를 여는 데 드는 포인트 (서버의 CUSTOM_BANNER_COST) */
+export const CUSTOM_BANNER_COST = 300;
+
+/** 배너 값('p:…' · 'i:…')을 CSS background 로. 없으면 undefined */
+export function bannerBackground(banner: string | null | undefined, apiBase = ''): string | undefined {
+  if (!banner) return undefined;
+  if (banner.startsWith('p:')) return BANNER_PRESETS.find((b) => b.id === banner.slice(2))?.background;
+  if (banner.startsWith('i:')) return `center / cover no-repeat url("${apiBase}/api/images/${banner.slice(2)}")`;
+  return undefined;
+}
