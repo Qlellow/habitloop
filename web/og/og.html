@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<!-- 링크 미리보기 카드(og:image) 원본. `node web/og/render.mjs` 로 web/public/og-v2.png 를 다시 만든다.
+     1200x630, 카카오톡(2:1 자동 자르기) · X 를 생각해 중요한 내용은 위아래 30px 안쪽에만 둔다 -->
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
+:root{
+  --grey-50:#f9fafb;--grey-100:#f2f4f6;--grey-200:#e5e8eb;--grey-500:#8b95a1;--grey-600:#6b7684;--grey-700:#4e5968;--grey-800:#333d4b;--grey-900:#191f28;
+  --blue-50:#e8f3ff;--blue-500:#3182f6;--red-500:#f04452;--red-50:#ffeeee;
+  --admin:#03b26c;--admin-bg:#e3f8ee;--owner:#f5a700;--owner-bg:#fff6d6;
+  --shadow-pop:0 12px 32px rgba(0,29,58,.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:1200px;height:630px;overflow:hidden}
+body{position:relative;font-family:'Pretendard Variable',Pretendard,sans-serif;color:var(--grey-900);letter-spacing:-0.02em;
+  background:
+    radial-gradient(620px 420px at 82% 46%, #dbeafe 0%, rgba(219,234,254,0) 70%),
+    radial-gradient(420px 320px at 100% 100%, #e8f3ff 0%, rgba(232,243,255,0) 70%),
+    var(--grey-50);}
+/* 아주 옅은 점 격자: 오른쪽에서만 보이고 왼쪽 글자 쪽은 사라진다 */
+body::before{content:'';position:absolute;inset:0;
+  background-image:radial-gradient(var(--grey-200) 1.4px, transparent 1.6px);background-size:26px 26px;
+  -webkit-mask-image:linear-gradient(90deg, transparent 38%, #000 70%);mask-image:linear-gradient(90deg, transparent 38%, #000 70%);}
+
+.left{position:absolute;left:80px;top:0;bottom:0;width:520px;display:flex;flex-direction:column;justify-content:center}
+.brand{display:flex;align-items:center;gap:14px;font-size:30px;font-weight:800;letter-spacing:-0.03em}
+.brand svg{width:52px;height:52px;filter:drop-shadow(0 6px 14px rgba(49,130,246,.28))}
+h1{margin:38px 0 0;font-size:60px;line-height:1.22;font-weight:800;letter-spacing:-0.045em}
+h1 em{font-style:normal;color:var(--blue-500)}
+.sub{margin:22px 0 0;font-size:24px;line-height:1.5;color:var(--grey-600);font-weight:500}
+.chips{display:flex;gap:10px;margin-top:34px}
+.chip{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px 0 8px;border-radius:999px;background:#fff;border:1px solid var(--grey-200);font-size:19px;font-weight:700;color:var(--grey-800)}
+.chip i{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;color:#fff;font-style:normal;font-size:15px;font-weight:800}
+
+/* 오른쪽: 루프 화면 조각들이 겹쳐 떠 있는 모습 (실제 글 카드 · 채널 · 알림과 같은 모양) */
+.stage{position:absolute;left:640px;top:0;width:520px;height:630px}
+.card{position:absolute;background:#fff;border:1px solid var(--grey-200);border-radius:20px;box-shadow:var(--shadow-pop)}
+.channel{left:110px;top:72px;width:390px;padding:20px 22px;display:flex;align-items:center;gap:16px;transform:rotate(3deg)}
+.ch-icon{flex:none;display:grid;place-items:center;width:56px;height:56px;border-radius:16px;background:#8b5cf6;color:#fff;font-size:26px;font-weight:800}
+.ch-name{font-size:22px;font-weight:800}
+.ch-meta{white-space:nowrap;margin-top:4px;font-size:16px;color:var(--grey-600);font-weight:500}
+.follow{white-space:nowrap;margin-left:auto;padding:9px 14px;border-radius:10px;background:var(--blue-50);color:var(--blue-500);font-size:15px;font-weight:700}
+
+.post{left:20px;top:198px;width:470px;padding:26px 28px 24px;transform:rotate(-1.5deg)}
+.meta{display:flex;align-items:center;font-size:16px;color:var(--grey-500)}
+.cat{color:var(--blue-500);font-weight:700}
+.time{margin-left:auto}
+.author{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:17px;font-weight:600;color:var(--grey-700)}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:999px;background:var(--blue-50);color:var(--blue-500);font-size:14px;font-weight:800}
+.role{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--admin-bg);color:var(--admin)}
+.title{margin:14px 0 6px;font-size:25px;font-weight:800;letter-spacing:-0.03em}
+.excerpt{margin:0;font-size:17px;line-height:1.55;color:var(--grey-600)}
+.stats{display:flex;align-items:center;gap:18px;margin-top:18px;font-size:16px;color:var(--grey-500);font-weight:600}
+.stats span{display:inline-flex;align-items:center;gap:5px}
+.stats .liked{color:var(--red-500)}
+
+.toast{white-space:nowrap;position:absolute;left:-10px;top:468px;display:flex;align-items:center;gap:10px;padding:15px 22px;border-radius:14px;background:rgba(25,31,40,.94);color:#fff;font-size:18px;font-weight:600;box-shadow:var(--shadow-pop);transform:rotate(-2deg)}
+.toast b{color:#64a8ff}
+.badge{white-space:nowrap;position:absolute;left:310px;top:446px;display:flex;align-items:center;gap:8px;padding:12px 18px;border-radius:999px;background:#fff;border:1px solid var(--grey-200);box-shadow:var(--shadow-pop);font-size:17px;font-weight:700;transform:rotate(4deg)}
+</style>
+</head>
+<body>
+  <div class="left">
+    <div class="brand">
+      <svg viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#3182f6"/><g fill="none" stroke-linecap="round"><path d="M12 12C13 10 14 8.5 15.5 8.5a3.5 3.5 0 0 1 0 7C14 15.5 13 14 12 12S10 8.5 8.5 8.5a3.5 3.5 0 0 0 0 7C10 15.5 11 14 12 12Z" stroke="#fff" stroke-width="2"/><path d="M10.6 14.2C11.1 13.6 11.5 12.9 12 12S12.9 10.4 13.4 9.8" stroke="#3182f6" stroke-width="5" stroke-linecap="butt"/><path d="M8.5 15.5C10 15.5 11 14 12 12S14 8.5 15.5 8.5" stroke="#fff" stroke-width="2"/></g></svg>
+      루프
+    </div>
+    <h1>좋아하는 이야기로<br /><em>이어지는</em> 곳</h1>
+    <p class="sub">관심사 채널을 팔로우하고, 글을 쓰고,<br />공감을 나눠 보세요.</p>
+    <div class="chips">
+      <span class="chip"><i style="background:#8b5cf6">창</i>창작</span>
+      <span class="chip"><i style="background:#00c471">재</i>재테크</span>
+      <span class="chip"><i style="background:#ff8a3d">일</i>일상</span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="card channel">
+      <div class="ch-icon">창</div>
+      <div>
+        <div class="ch-name">창작</div>
+        <div class="ch-meta">팔로워 1.2천 · 글 3,421</div>
+      </div>
+      <span class="follow">팔로우</span>
+    </div>
+
+    <div class="card post">
+      <div class="meta"><span class="cat">소설</span><span class="time">방금 전</span></div>
+      <div class="author">
+        <span class="avatar">민</span>민트초코
+        <span class="role"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span>
+      </div>
+      <div class="title">[단편] 새벽 세 시의 편의점</div>
+      <p class="excerpt">형광등 아래에서 우리는 모두 조금씩 외로웠다.<br />새벽 세 시, 편의점 문이 열렸다…</p>
+      <div class="stats">
+        <span class="liked"><svg width="19" height="19" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10.2C4.5 7.1 6.5 5 9 5c1.4 0 2.4.7 3 1.6C12.6 5.7 13.6 5 15 5c2.5 0 4.5 2.1 4.5 4.8C19.5 15.4 12 20 12 20z" fill="currentColor"/></svg>128</span>
+        <span><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 5h14a1 1 0 011 1v10a1 1 0 01-1 1h-7l-4 3v-3H5a1 1 0 01-1-1V6a1 1 0 011-1z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>24</span>
+        <span>조회 1.4천</span>
+      </div>
+    </div>
+
+    <div class="toast">출석 체크 <b>+10P</b> · 7일 연속</div>
+    <div class="badge">🏆 지금 인기 있는 글</div>
+  </div>
+</body>
+</html>
