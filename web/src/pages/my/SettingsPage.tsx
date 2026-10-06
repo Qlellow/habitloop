@@ -1,5 +1,18 @@
 import { useState, type FormEvent } from 'react';
-import { CODE_LENGTH, timeAgo, useAuth, useLoginSessions, useRevokeSession, useTwoFactor, useVerifyAge } from '@loop/shared';
+import {
+  CODE_LENGTH,
+  timeAgo,
+  useAuth,
+  useIdentities,
+  useLinkIdentity,
+  useLoginSessions,
+  useRevokeSession,
+  useTwoFactor,
+  useUnlinkIdentity,
+  useVerifyAge,
+} from '@loop/shared';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { PROVIDERS } from '../../components/SocialLogin';
 import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
 import { toast } from '../../components/Toast';
 import { usePhone } from '../../lib/media';
@@ -230,6 +243,84 @@ const isPhone = (device: string) => /iOS|Android|앱/.test(device);
 /**
  * 로그인한 기기: 기기마다 따로 로그인(세션)돼 있다. 다른 기기를 골라 로그아웃하면 그 기기의 토큰은 서버에서 바로 폐기된다.
  */
+/**
+ * 소셜 로그인 연동: 연결하면 그 소셜 계정으로도 이 계정에 로그인할 수 있다.
+ * 비밀번호가 없는(소셜로만 가입한) 계정은 마지막 연결을 끊을 수 없다 (서버도 막는다)
+ */
+function SocialAccounts() {
+  const ids = useIdentities();
+  const link = useLinkIdentity();
+  const unlink = useUnlinkIdentity();
+  const [asking, setAsking] = useState<(typeof PROVIDERS)[number]>();
+  const linked = new Map(ids.data?.linked.map((l) => [l.provider, l]));
+  const lastOne = !ids.data?.hasPassword && linked.size <= 1;
+
+  return (
+    <>
+      <div className={s.option}>
+        <div>
+          <div className={s.optionLabel}>소셜 로그인 연동</div>
+          <div className={s.optionDesc}>연결해 두면 그 계정으로도 바로 로그인할 수 있어요.</div>
+        </div>
+      </div>
+      {ids.error && <p className={cn(ui.error, 'mb-0')}>{ids.error.message}</p>}
+      <ul className={s.sessionList}>
+        {PROVIDERS.map((p) => {
+          const item = linked.get(p.id);
+          const enabled = ids.data?.enabled.includes(p.id) ?? true;
+          return (
+            <li key={p.id} className={s.session}>
+              <span className={cn('flex-none grid place-items-center w-9 h-9 rounded-full', p.className)} aria-hidden>
+                <span className="scale-[0.8]">
+                  <p.logo />
+                </span>
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className={s.optionLabel}>
+                  {p.label} {item && <span className={cn(ui.badge, 'ml-1 align-[1px]')}>연결됨</span>}
+                </div>
+                <div className={s.optionDesc}>{item ? `${timeAgo(item.createdAt)} 연결` : enabled ? '연결되지 않았어요' : '아직 준비 중이에요'}</div>
+              </div>
+              {item ? (
+                <button
+                  type="button"
+                  className={cn(ui.button, ui.text, ui.danger, ui.small)}
+                  disabled={unlink.isPending}
+                  title={lastOne ? '비밀번호를 정하거나 다른 소셜 계정을 연결한 뒤에 해제할 수 있어요' : undefined}
+                  onClick={() => (lastOne ? toast('로그인할 방법이 없어져요. 먼저 비밀번호를 정하거나 다른 소셜 계정을 연결해 주세요') : setAsking(p))}
+                >
+                  해제
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={cn(ui.button, ui.secondary, ui.small)}
+                  disabled={!enabled || link.isPending || ids.isPending}
+                  onClick={() => link.mutate(p.id, { onError: (e) => toast(e.message) })}
+                >
+                  연결
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <ConfirmDialog
+        open={!!asking}
+        title={`${asking?.label ?? ''} 연결을 해제할까요?`}
+        message="해제하면 그 소셜 계정으로는 이 계정에 로그인할 수 없어요. 언제든 다시 연결할 수 있어요."
+        confirmLabel="해제"
+        danger
+        onConfirm={() => {
+          const p = asking!;
+          unlink.mutate(p.id, { onSuccess: () => toast(`${p.label} 연결을 해제했어요`), onError: (e) => toast(e.message) });
+        }}
+        onClose={() => setAsking(undefined)}
+      />
+    </>
+  );
+}
+
 function LoginSessions() {
   const sessions = useLoginSessions();
   const revoke = useRevokeSession();
@@ -303,6 +394,7 @@ export default function SettingsPage() {
         <h2 className={s.sectionTitle}>보안</h2>
         <TwoFactorOption />
         <AgeOption />
+        <SocialAccounts />
         <LoginSessions />
       </section>
       <section className={cn(ui.card, s.section)}>

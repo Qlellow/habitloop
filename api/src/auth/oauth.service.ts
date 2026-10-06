@@ -137,10 +137,13 @@ export class OAuthService {
   }
 
   /** 제공자 로그인 화면 주소와, 브라우저 쿠키에 심을 nonce */
-  start(provider: OAuthProvider, redirectUri: string, extra: { next?: string; ref?: string }) {
+  /** link: 설정에서 '연결'을 눌렀을 때 받은 연결 토큰 (있으면 로그인 대신 지금 계정에 이어 붙인다) */
+  start(provider: OAuthProvider, redirectUri: string, extra: { next?: string; ref?: string; link?: string }) {
     const config = this.config(provider);
+    const link = extra.link ? this.jwt.parseOAuthLink(extra.link, provider) : undefined;
+    if (extra.link && link == null) throw ApiError.badRequest('연결 요청 시간이 지났어요. 설정에서 다시 눌러 주세요');
     const nonce = randomBytes(16).toString('base64url');
-    const state = this.jwt.issueOAuthState({ provider, nonce, next: safeNext(extra.next), ref: extra.ref?.slice(0, 20) });
+    const state = this.jwt.issueOAuthState({ provider, nonce, next: safeNext(extra.next), ref: extra.ref?.slice(0, 20), link });
     const url = new URL(config.authorizeUrl);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('client_id', config.clientId!);
@@ -187,8 +190,54 @@ export class OAuthService {
       throw ApiError.badRequest('소셜 계정 정보를 받아 오지 못했어요. 잠시 뒤 다시 시도해 주세요');
     }
 
+    if (state.link != null) {
+      await this.linkTo(state.link, provider, profile);
+      return { linked: provider, next: state.next };
+    }
     const userId = await this.findOrCreate(provider, profile, state.ref);
     return { result: await this.auth.socialLogin(userId, userAgent), next: state.next };
+  }
+
+  /** 설정에서 연결: 로그인한 계정에 이 소셜 계정을 이어 붙인다 */
+  private async linkTo(userId: number, provider: OAuthProvider, profile: OAuthProfile) {
+    const owner = await this.db.one<{ userId: number }>(
+      'SELECT user_id AS "userId" FROM user_identities WHERE provider = $1 AND provider_user_id = $2',
+      [provider, profile.id],
+    );
+    if (owner && owner.userId !== userId) throw ApiError.conflict('이미 다른 루프 계정에 연결된 소셜 계정이에요');
+    if (owner) return;
+    if (await this.db.one('SELECT 1 FROM user_identities WHERE user_id = $1 AND provider = $2', [userId, provider])) {
+      throw ApiError.conflict('이미 이 서비스의 다른 계정이 연결되어 있어요. 연결을 해제한 뒤 다시 시도해 주세요');
+    }
+    await this.link(provider, profile.id, userId);
+  }
+
+  /** 설정 화면: 켜진 소셜 로그인, 내가 연결한 것, 비밀번호가 있는지 */
+  async identities(userId: number) {
+    const linked = await this.db.query<{ provider: OAuthProvider; createdAt: Date }>(
+      'SELECT provider, created_at AS "createdAt" FROM user_identities WHERE user_id = $1 ORDER BY created_at',
+      [userId],
+    );
+    const user = await this.db.one<{ hasPassword: boolean }>('SELECT has_password AS "hasPassword" FROM users WHERE id = $1', [userId]);
+    return { enabled: this.enabled(), linked, hasPassword: !!user?.hasPassword };
+  }
+
+  /** 연결 시작 주소 (설정에서 '연결' → 이 주소로 이동) */
+  linkStart(userId: number, provider: OAuthProvider) {
+    this.config(provider);
+    const query = new URLSearchParams({ link: this.jwt.issueOAuthLink(userId, provider), next: '/me/settings' });
+    return { url: `/api/auth/oauth/${provider}/start?${query}` };
+  }
+
+  /** 연결 해제. 비밀번호도 다른 소셜 연결도 없으면 로그인할 방법이 없어지므로 막는다 */
+  async unlink(userId: number, provider: OAuthProvider) {
+    const info = await this.identities(userId);
+    if (!info.linked.some((l) => l.provider === provider)) throw ApiError.notFound('연결되어 있지 않아요');
+    if (!info.hasPassword && info.linked.length <= 1) {
+      throw ApiError.badRequest('로그인할 방법이 없어져요. 먼저 비밀번호를 정하거나(로그인 화면 → 비밀번호 찾기) 다른 소셜 계정을 연결해 주세요');
+    }
+    await this.db.execute('DELETE FROM user_identities WHERE user_id = $1 AND provider = $2', [userId, provider]);
+    return this.identities(userId);
   }
 
   private async findOrCreate(provider: OAuthProvider, profile: OAuthProfile, ref?: string): Promise<number> {
@@ -215,7 +264,7 @@ export class OAuthService {
     const password = await bcrypt.hash(randomBytes(24).toString('base64url'), 10);
     const userId = await this.db.transaction(async () => {
       const nickname = await this.uniqueNickname(profile.nickname);
-      const row = await this.db.one<{ id: number }>('INSERT INTO users (email, password, nickname) VALUES ($1, $2, $3) RETURNING id', [
+      const row = await this.db.one<{ id: number }>('INSERT INTO users (email, password, nickname, has_password) VALUES ($1, $2, $3, FALSE) RETURNING id', [
         email,
         password,
         nickname,
@@ -262,12 +311,15 @@ export class OAuthService {
     );
   }
 
-  /** 소셜 닉네임을 그대로 쓰되, 겹치면 숫자를 붙인다 (2~20자) */
+  /**
+   * 소셜 닉네임을 그대로 쓰되, 겹치면 숫자 4자리를 붙인다 (2~20자).
+   * 닉네임을 받지 못하면 처음부터 '루퍼1234' 처럼 숫자를 붙여 겹치지 않게 만든다
+   */
   private async uniqueNickname(raw?: string) {
-    let base = (raw ?? '').trim().replace(/\s+/g, ' ').slice(0, 16);
-    if (base.length < 2) base = '루퍼';
+    const given = (raw ?? '').trim().replace(/\s+/g, ' ').slice(0, 16);
+    const base = given.length >= 2 ? given : '루퍼';
     for (let i = 0; i < 20; i++) {
-      const candidate = i === 0 ? base : `${base}${Math.floor(1000 + Math.random() * 9000)}`;
+      const candidate = i === 0 && base === given ? base : `${base}${Math.floor(1000 + Math.random() * 9000)}`;
       if (!(await this.db.one('SELECT 1 FROM users WHERE nickname = $1', [candidate]))) return candidate;
     }
     return `루퍼${randomBytes(4).toString('hex')}`.slice(0, 20);

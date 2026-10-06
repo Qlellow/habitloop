@@ -173,7 +173,7 @@ export class AuthService {
     // 이미 이 토큰으로 바꿨거나 그사이 비밀번호가 바뀌었으면 다시 쓸 수 없다
     if (!user || !this.jwt.matchesPassword(claims.pv, user.password)) throw expired();
     if (await bcrypt.compare(input.newPassword, user.password)) throw ApiError.badRequest('지금 비밀번호와 다른 비밀번호를 입력해 주세요');
-    await this.db.execute('UPDATE users SET password = $1 WHERE id = $2', [await bcrypt.hash(input.newPassword, 10), user.id]);
+    await this.db.execute('UPDATE users SET password = $1, has_password = TRUE WHERE id = $2', [await bcrypt.hash(input.newPassword, 10), user.id]);
     // 비밀번호를 잊어서 바꾼 것이므로 로그인돼 있던 모든 기기를 로그아웃한다 (훔친 토큰도 함께 막힌다)
     await this.db.execute('DELETE FROM sessions WHERE user_id = $1', [user.id]);
     await this.mailer.sendNotice(
@@ -206,7 +206,7 @@ export class AuthService {
     const user = await this.find(userId);
     if (!(await bcrypt.compare(input.currentPassword, user.password))) throw ApiError.badRequest('지금 비밀번호가 맞지 않아요');
     if (input.currentPassword === input.newPassword) throw ApiError.badRequest('지금 비밀번호와 다른 비밀번호를 입력해 주세요');
-    await this.db.execute('UPDATE users SET password = $1 WHERE id = $2', [await bcrypt.hash(input.newPassword, 10), userId]);
+    await this.db.execute('UPDATE users SET password = $1, has_password = TRUE WHERE id = $2', [await bcrypt.hash(input.newPassword, 10), userId]);
     await this.db.execute('DELETE FROM sessions WHERE user_id = $1 AND id <> $2', [userId, me.sid]);
   }
 

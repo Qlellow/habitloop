@@ -876,6 +876,33 @@ export function oauthStartUrl(provider: OAuthProvider, next: string, ref?: strin
   return apiUrl(`/api/auth/oauth/${provider}/start?${query}`);
 }
 
+/** 설정 → 소셜 로그인 연동: 켜진 소셜 로그인 · 내가 연결한 것 · 비밀번호가 있는지 */
+export interface Identities {
+  enabled: OAuthProvider[];
+  linked: { provider: OAuthProvider; createdAt: string }[];
+  hasPassword: boolean;
+}
+
+export function useIdentities() {
+  return useQuery({ queryKey: ['identities'], queryFn: ({ signal }) => api<Identities>('/api/me/identities', { signal }) });
+}
+
+/** 연결: 연결 토큰이 든 시작 주소를 받아 그 주소로 이동한다 (제공자 화면을 거쳐 설정으로 돌아온다) */
+export function useLinkIdentity() {
+  return useMutation({
+    mutationFn: (provider: OAuthProvider) => api<{ url: string }>(`/api/me/identities/${provider}/link`, { method: 'POST' }),
+    onSuccess: ({ url }) => window.location.assign(apiUrl(url)),
+  });
+}
+
+export function useUnlinkIdentity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (provider: OAuthProvider) => api<Identities>(`/api/me/identities/${provider}`, { method: 'DELETE' }),
+    onSuccess: (data) => qc.setQueryData(['identities'], data),
+  });
+}
+
 /** 소셜 로그인에서 돌아와 받은 토큰으로 로그인을 마친다 */
 export async function completeOAuthLogin(token: string) {
   const res = await fetch(apiUrl('/api/me'), { headers: { Authorization: `Bearer ${token}` } });

@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Query, Req, Res } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Post, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ApiError } from '../common/api-error';
-import { Public } from './auth.guard';
+import { LoginUser, Public } from './auth.guard';
+import type { AuthUser } from './jwt.service';
 import { OAuthService, isProvider, type OAuthProvider } from './oauth.service';
 
 const COOKIE = 'loop_oauth';
@@ -45,11 +46,46 @@ export class OAuthController {
     return this.oauth.enabled();
   }
 
+  /** 설정 화면: 켜진 소셜 로그인 · 내가 연결한 것 · 비밀번호가 있는지 */
+  @Get('me/identities')
+  identities(@LoginUser() user: AuthUser) {
+    return this.oauth.identities(user.id);
+  }
+
+  /** 연결 시작 주소 (짧게 쓰는 연결 토큰이 들어 있다). 웹은 이 주소로 이동만 하면 된다 */
+  @Post('me/identities/:provider/link')
+  link(@LoginUser() user: AuthUser, @Param('provider') provider: string) {
+    if (!isProvider(provider)) throw ApiError.notFound('없는 로그인 방법이에요');
+    return this.oauth.linkStart(user.id, provider);
+  }
+
+  @Delete('me/identities/:provider')
+  unlink(@LoginUser() user: AuthUser, @Param('provider') provider: string) {
+    if (!isProvider(provider)) throw ApiError.notFound('없는 로그인 방법이에요');
+    return this.oauth.unlink(user.id, provider);
+  }
+
   @Public()
   @Get('auth/oauth/:provider/start')
-  start(@Param('provider') provider: string, @Query('next') next: string | undefined, @Query('ref') ref: string | undefined, @Req() req: Request, @Res() res: Response) {
+  start(
+    @Param('provider') provider: string,
+    @Query('next') next: string | undefined,
+    @Query('ref') ref: string | undefined,
+    @Query('link') link: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
     if (!isProvider(provider)) throw ApiError.notFound('없는 로그인 방법이에요');
-    const { url, nonce } = this.oauth.start(provider, redirectUri(req, provider), { next, ref });
+    let started: { url: string; nonce: string };
+    try {
+      started = this.oauth.start(provider, redirectUri(req, provider), { next, ref, link });
+    } catch (e) {
+      // 브라우저가 이동해 온 요청이라 JSON 대신 웹으로 돌려보내 이유를 보여 준다
+      const message = e instanceof ApiError ? e.message : '소셜 로그인을 시작하지 못했어요';
+      res.redirect(302, `${siteUrl(req)}/oauth/callback#${new URLSearchParams({ error: message, next: link ? '/me/settings' : '/' })}`);
+      return;
+    }
+    const { url, nonce } = started;
     res.cookie(COOKIE, nonce, {
       httpOnly: true,
       secure: siteUrl(req).startsWith('https://'),
@@ -73,9 +109,12 @@ export class OAuthController {
     res.clearCookie(COOKIE, { path: COOKIE_PATH });
     const back = `${siteUrl(req)}/oauth/callback`;
     try {
-      const { result, next } = await this.oauth.callback(provider, query, readCookie(req, COOKIE), redirectUri(req, provider), String(req.headers['user-agent'] ?? ''));
-      const hash = new URLSearchParams({ next });
-      if (result.twoFactorRequired) {
+      const done = await this.oauth.callback(provider, query, readCookie(req, COOKIE), redirectUri(req, provider), String(req.headers['user-agent'] ?? ''));
+      const hash = new URLSearchParams({ next: done.next });
+      const result = 'result' in done ? done.result : undefined;
+      if (!result) {
+        hash.set('linked', provider);
+      } else if (result.twoFactorRequired) {
         hash.set('challenge', result.challenge ?? '');
         if (result.maskedEmail) hash.set('email', result.maskedEmail);
       } else {
