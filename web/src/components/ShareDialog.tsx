@@ -243,7 +243,7 @@ export function ShareDialog({ content, heading = '공유하기', onClose }: { co
           </button>
         </div>
         {/* 앱이 많으면 옆으로 넘겨 본다 */}
-        <ul className="list-none m-0 px-4 pt-2 pb-4 flex gap-1 overflow-x-auto [scrollbar-width:thin]">
+        <ul className="list-none mt-0 mx-4 mb-4 p-0 pt-2 pb-3 flex gap-1 overflow-x-auto [scrollbar-width:thin]">
           {list.map((t) => (
             <li key={t.id} className="flex-none">
               <button
