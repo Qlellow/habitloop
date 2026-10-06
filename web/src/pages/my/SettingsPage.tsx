@@ -282,7 +282,8 @@ function SocialAccounts() {
                 <div className={s.optionLabel}>
                   {p.label} {item && <span className={cn(ui.badge, 'ml-1 align-[1px]')}>연결됨</span>}
                 </div>
-                <div className={s.optionDesc}>{item ? `${timeAgo(item.createdAt)} 연결` : enabled ? '연결되지 않았어요' : '아직 준비 중이에요'}</div>
+                {/* 연결된 곳은 '연결됨' 배지로 충분해서 연결 시각은 보여 주지 않는다 */}
+                {!item && <div className={s.optionDesc}>{enabled ? '연결되지 않았어요' : '아직 준비 중이에요'}</div>}
               </div>
               {item ? (
                 <button
