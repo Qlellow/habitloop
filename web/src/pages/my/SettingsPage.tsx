@@ -267,7 +267,8 @@ function SocialAccounts() {
         </div>
       </div>
       {ids.error && <p className={cn(ui.error, 'mb-0')}>{ids.error.message}</p>}
-      <ul className={s.sessionList}>
+      {/* 아래 '로그인한 기기'와 붙어 보이지 않게 아래쪽을 띄운다 */}
+      <ul className={cn(s.sessionList, 'mb-4')} aria-busy={ids.isPending}>
         {PROVIDERS.map((p) => {
           const item = linked.get(p.id);
           const enabled = ids.data?.enabled.includes(p.id) ?? true;
@@ -283,9 +284,16 @@ function SocialAccounts() {
                   {p.label} {item && <span className={cn(ui.badge, 'ml-1 align-[1px]')}>연결됨</span>}
                 </div>
                 {/* 연결된 곳은 '연결됨' 배지로 충분해서 연결 시각은 보여 주지 않는다 */}
-                {!item && <div className={s.optionDesc}>{enabled ? '연결되지 않았어요' : '아직 준비 중이에요'}</div>}
+                {/* 불러오는 동안은 '연결되지 않았어요'가 잠깐 보이지 않게 자리만 잡아 둔다 */}
+                {ids.isPending ? (
+                  <span className={cn(ui.skeleton, 'block mt-1 mb-[3px]')} style={{ width: 96, height: 14 }} />
+                ) : (
+                  !item && <div className={s.optionDesc}>{enabled ? '연결되지 않았어요' : '아직 준비 중이에요'}</div>
+                )}
               </div>
-              {item ? (
+              {ids.isPending ? (
+                <span className={cn(ui.skeleton, 'flex-none w-[52px] h-8')} aria-hidden />
+              ) : item ? (
                 <button
                   type="button"
                   className={cn(ui.button, ui.text, ui.danger, ui.small)}
