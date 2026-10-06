@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { CropRect, ImageShape } from '../lib/postImage';
+import { CloseIcon } from './Icons';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 
@@ -150,8 +151,8 @@ export function CropModal({
       <div role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-[640px] rounded-xl border border-border bg-surface shadow-pop overflow-hidden">
         <div className="flex items-center justify-between px-5 h-14 border-b border-border">
           <h2 className="m-0 text-base font-bold text-fg-strong">{title}</h2>
-          <button type="button" className={cn(ui.button, ui.text, ui.small, 'w-8 px-0 text-lg')} aria-label="닫기" onClick={onClose}>
-            ✕
+          <button type="button" className={cn(ui.button, ui.text, ui.small, 'w-8 px-0')} aria-label="닫기" onClick={onClose}>
+            <CloseIcon width={18} height={18} />
           </button>
         </div>
         <div className="grid place-items-center p-5 bg-[#0d1117]">

@@ -9,6 +9,12 @@ export const BackIcon = (p: P) => (
   </svg>
 );
 
+export const CloseIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+  </svg>
+);
+
 export const SearchIcon = (p: P) => (
   <svg {...base} {...p}>
     <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="2.2" />

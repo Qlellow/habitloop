@@ -14,6 +14,7 @@ import {
   ProfileInput,
   SignupInput,
 } from './auth.dto';
+import { intParam } from '../common/cursor-page';
 import { CurrentUser, LoginUser, Public } from './auth.guard';
 import { AuthService } from './auth.service';
 import type { AuthUser } from './jwt.service';
@@ -156,10 +157,16 @@ export class AuthController {
     return this.auth.unlockCustomBanner(user.id);
   }
 
-  /** 포인트 내역 */
+  /** 포인트 내역: ?order=latest|oldest &type=earn|spend &cursor= &size= */
   @Get('me/points')
-  points(@LoginUser() user: AuthUser) {
-    return this.auth.pointLogs(user.id);
+  points(
+    @LoginUser() user: AuthUser,
+    @Query('order') order?: string,
+    @Query('type') type?: string,
+    @Query('cursor') cursor?: string,
+    @Query('size') size?: string,
+  ) {
+    return this.auth.pointLogs(user.id, { order, type, cursor: intParam(cursor), size: intParam(size) });
   }
 
   /** 나이 확인 (생년월일 저장) */
