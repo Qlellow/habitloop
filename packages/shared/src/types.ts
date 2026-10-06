@@ -17,7 +17,7 @@ export interface User {
   banner?: string;
   /** 가진 포인트 */
   points?: number;
-  /** 내 사진 배너를 열었는지 */
+  /** 커스텀 배너를 열었는지 */
   customBanner?: boolean;
 }
 

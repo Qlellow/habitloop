@@ -6,18 +6,16 @@ import {
   compact,
   passwordProblem,
   passwordStrength,
-  timeAgo,
   uploadPostImage,
   useAuth,
   useChangePassword,
-  useMyInvite,
-  usePointLogs,
   useSetAvatar,
   useSetBanner,
   useUnlockBanner,
   useUpdateProfile,
   type User,
 } from '@loop/shared';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CropModal } from '../../components/CropModal';
 import { ProfileBanner } from '../../components/ProfileBanner';
 import { UserAvatar } from '../../components/UserAvatar';
@@ -264,12 +262,12 @@ function AvatarSection({ user }: { user: User }) {
 }
 
 /**
- * 배너: 기본 배너는 누구나 무료로 고를 수 있고, 내 사진 배너는 포인트로 한 번 열면 계속 바꿀 수 있다.
+ * 배너: 기본 배너는 누구나 무료로 고를 수 있고, 커스텀 배너는 포인트로 한 번 열면 계속 바꿀 수 있다.
  */
 function BannerSection({ user }: { user: User }) {
   const setBanner = useSetBanner();
   const unlock = useUnlockBanner();
-  const logs = usePointLogs();
+  const [asking, setAsking] = useState(false);
   const [cropping, setCropping] = useState<{ file: File; url: string }>();
   const [busy, setBusy] = useState(false);
   const pick = useImagePick((file) => setCropping({ file, url: URL.createObjectURL(file) }));
@@ -299,7 +297,7 @@ function BannerSection({ user }: { user: User }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className={s.sectionTitle}>배너</h2>
-          <p className={s.sectionDesc}>프로필 위쪽에 보여요. 기본 배너는 무료, 내 사진 배너는 포인트로 열 수 있어요.</p>
+          <p className={s.sectionDesc}>프로필 위쪽에 보여요. 기본 배너는 무료, 커스텀 배너는 포인트로 열 수 있어요.</p>
         </div>
         <span className="flex-none px-3 py-1.5 rounded-full bg-field text-sm font-bold text-fg-strong" title="가진 포인트">
           {compact(points)}P
@@ -333,7 +331,7 @@ function BannerSection({ user }: { user: User }) {
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-5">
         <span className="text-[13px] font-semibold text-fg-sub mr-auto">
-          내 사진 배너 {user.customBanner ? <span className={cn(ui.badge, 'ml-1')}>열림</span> : `· ${CUSTOM_BANNER_COST}P`}
+          커스텀 배너 {user.customBanner ? <span className={cn(ui.badge, 'ml-1')}>열림</span> : `· ${CUSTOM_BANNER_COST}P`}
         </span>
         {user.customBanner ? (
           <button type="button" className={cn(ui.button, custom ? ui.ghost : ui.secondary, ui.small)} onClick={pick.open} disabled={busy}>
@@ -345,10 +343,7 @@ function BannerSection({ user }: { user: User }) {
             className={cn(ui.button, ui.secondary, ui.small)}
             disabled={points < CUSTOM_BANNER_COST || unlock.isPending}
             title={points < CUSTOM_BANNER_COST ? `포인트가 ${CUSTOM_BANNER_COST - points}P 모자라요` : undefined}
-            onClick={() =>
-              confirm(`${CUSTOM_BANNER_COST}P 를 써서 내 사진 배너를 열까요?\n한 번 열면 계속 바꿀 수 있어요.`) &&
-              unlock.mutate(undefined, { onSuccess: () => toast('내 사진 배너를 열었어요'), onError: (e) => toast(e.message) })
-            }
+            onClick={() => setAsking(true)}
           >
             {CUSTOM_BANNER_COST}P 로 열기
           </button>
@@ -357,23 +352,14 @@ function BannerSection({ user }: { user: User }) {
       {!user.customBanner && points < CUSTOM_BANNER_COST && (
         <p className={cn(ui.help, 'mt-1.5')}>포인트가 {CUSTOM_BANNER_COST - points}P 모자라요.</p>
       )}
-      {logs.data && logs.data.length > 0 && (
-        <details className="mt-4 text-sm">
-          <summary className="cursor-pointer text-fg-sub">포인트 내역</summary>
-          <ul className="list-none m-0 mt-2 p-0">
-            {logs.data.map((l) => (
-              <li key={l.id} className="flex items-center gap-2 py-1.5 text-[13px]">
-                <span className="text-fg">{l.reason}</span>
-                <span className="text-fg-weak">{timeAgo(l.createdAt)}</span>
-                <b className={cn('ml-auto tabular-nums', l.delta < 0 ? 'text-danger-text' : 'text-primary')}>
-                  {l.delta > 0 ? '+' : ''}
-                  {l.delta}P
-                </b>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      <ConfirmDialog
+        open={asking}
+        title="커스텀 배너를 열까요?"
+        message={`${CUSTOM_BANNER_COST}P 를 써요. 한 번 열면 그 뒤로는 계속 바꿀 수 있어요.`}
+        confirmLabel={`${CUSTOM_BANNER_COST}P 로 열기`}
+        onConfirm={() => unlock.mutate(undefined, { onSuccess: () => toast('커스텀 배너를 열었어요'), onError: (e) => toast(e.message) })}
+        onClose={() => setAsking(false)}
+      />
       {pick.element}
       {cropping && (
         <CropModal
@@ -390,49 +376,6 @@ function BannerSection({ user }: { user: User }) {
   );
 }
 
-/** 포인트 모으는 법 (API 의 RewardsService 와 같은 값) */
-const POINT_RULES = [
-  ['매일 출석', '+10P · 7일 연속마다 +50P'],
-  ['글 쓰기', '+5P · 하루 5번까지'],
-  ['내 글이 공감 받기', '공감 하나에 +2P'],
-  ['친구 초대', '친구가 가입하면 +100P (친구도 +30P)'],
-] as const;
-
-/** 친구 초대: 내 초대 링크로 가입하면 둘 다 포인트 */
-function InviteSection() {
-  const invite = useMyInvite();
-  const link = invite.data ? `${location.origin}/signup?ref=${invite.data.code}` : '';
-  const copy = () =>
-    navigator.clipboard.writeText(link).then(
-      () => toast('초대 링크를 복사했어요'),
-      () => toast('복사하지 못했어요. 직접 선택해서 복사해 주세요'),
-    );
-  return (
-    <section className={cn(ui.card, s.section)}>
-      <h2 className={s.sectionTitle}>포인트 모으기 · 친구 초대</h2>
-      <p className={s.sectionDesc}>모은 포인트로 내 사진 배너 같은 꾸미기를 열 수 있어요.</p>
-      <ul className="list-none m-0 mb-4 p-0 grid grid-cols-2 gap-2 max-[520px]:grid-cols-1">
-        {POINT_RULES.map(([what, how]) => (
-          <li key={what} className="rounded-md bg-field px-3 py-2.5">
-            <div className="text-[13px] font-semibold text-fg-strong">{what}</div>
-            <div className="text-[13px] text-primary font-semibold mt-0.5">{how}</div>
-          </li>
-        ))}
-      </ul>
-      <label className="block text-[13px] font-semibold text-fg-sub mb-1.5" htmlFor="invite-link">
-        내 초대 링크
-      </label>
-      <div className="flex items-center gap-2">
-        <input id="invite-link" className={cn(ui.input, 'flex-1 min-w-0')} readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
-        <button type="button" className={cn(ui.button, ui.secondary, ui.small)} onClick={copy} disabled={!link}>
-          복사
-        </button>
-      </div>
-      {invite.data && <p className={cn(ui.help, 'mt-1.5')}>지금까지 {invite.data.invitedCount.toLocaleString()}명을 초대했어요.</p>}
-    </section>
-  );
-}
-
 export default function ProfilePage() {
   const { user } = useAuth();
   if (!user) return null;
@@ -441,11 +384,10 @@ export default function ProfilePage() {
       <div className={s.head}>
         <h1 className={s.title}>내 정보 수정</h1>
       </div>
-      {/* 닉네임 → 프로필 사진 → 배너 → 포인트·초대 → 비밀번호 (이메일은 바꿀 수 없으니 왼쪽 메뉴에서만 보인다) */}
+      {/* 닉네임 → 프로필 사진 → 배너 → 비밀번호 (포인트는 '포인트' 탭) (이메일은 바꿀 수 없으니 왼쪽 메뉴에서만 보인다) */}
       <NicknameForm key={user.nickname} current={user.nickname} />
       <AvatarSection user={user} />
       <BannerSection user={user} />
-      <InviteSection />
       <PasswordForm />
     </>
   );

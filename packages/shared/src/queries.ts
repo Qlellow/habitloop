@@ -341,7 +341,7 @@ export const useSetAvatar = () => useMeMutation((imageId: string | null) => api<
 /** 배너: 'p:기본배너' · 'i:이미지id' · null */
 export const useSetBanner = () => useMeMutation((banner: string | null) => api<User>('/api/me/banner', { method: 'PUT', body: { banner } }));
 
-/** 내 사진 배너 열기 (포인트 사용) */
+/** 커스텀 배너 열기 (포인트 사용) */
 export const useUnlockBanner = () => useMeMutation(() => api<User>('/api/me/banner/unlock', { method: 'POST' }));
 
 /** 포인트 내역 */

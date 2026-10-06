@@ -26,6 +26,7 @@ export class CategoriesService {
     const channel = await this.channels.requireManager(slug, userId);
     const name = input.name.trim();
     const count = await this.db.one<{ n: number }>('SELECT count(*)::int AS n FROM channel_categories WHERE channel_id = $1', [channel.id]);
+    if (input.adult) await this.requireAdult(userId);
     if (count!.n >= MAX_CATEGORIES) throw ApiError.badRequest(`카테고리는 ${MAX_CATEGORIES}개까지 만들 수 있어요`);
     if (await this.db.one('SELECT 1 FROM channel_categories WHERE channel_id = $1 AND name = $2', [channel.id, name])) {
       throw ApiError.conflict('같은 이름의 카테고리가 이미 있어요');
@@ -43,6 +44,9 @@ export class CategoriesService {
   async update(userId: number, slug: string, categoryId: number, input: CategoryInput): Promise<CategoryResponse[]> {
     const channel = await this.channels.requireManager(slug, userId);
     const category = await this.find(channel, categoryId);
+    // 만 19세 이상 카테고리로 새로 바꾸는 건 만 19세 이상만 (이미 그런 카테고리는 그대로 둘 수 있다)
+    const wasAdult = !!(await this.db.one('SELECT 1 FROM channel_categories WHERE id = $1 AND adult', [category.id]));
+    if (input.adult && !wasAdult) await this.requireAdult(userId);
     const name = input.name.trim();
     if (name !== category.name && (await this.db.one('SELECT 1 FROM channel_categories WHERE channel_id = $1 AND name = $2', [channel.id, name]))) {
       throw ApiError.conflict('같은 이름의 카테고리가 이미 있어요');
@@ -140,6 +144,12 @@ export class CategoriesService {
       throw ApiError.forbidden(`'${category.name}' 카테고리는 채널 운영진만 쓸 수 있어요`);
     }
     return category.id;
+  }
+
+  private async requireAdult(userId: number) {
+    if (!(await this.channels.isAdult(userId))) {
+      throw ApiError.forbidden('만 19세 이상 카테고리는 설정에서 나이를 확인한 만 19세 이상만 만들 수 있어요');
+    }
   }
 
   private async find(channel: ChannelRow, categoryId: number): Promise<CategoryRow> {

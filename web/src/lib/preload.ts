@@ -13,6 +13,7 @@ export const loaders = {
   myPosts: () => import('../pages/my/MyPostsPage'),
   myChannels: () => import('../pages/my/MyChannelsPage'),
   profile: () => import('../pages/my/ProfilePage'),
+  points: () => import('../pages/my/PointsPage'),
   settings: () => import('../pages/my/SettingsPage'),
   channel: () => import('../pages/ChannelPage'),
   channels: () => import('../pages/ChannelsPage'),
