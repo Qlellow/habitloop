@@ -147,10 +147,9 @@ export default function PointsPage() {
   // 기기 공유 창(Windows · 휴대폰의 시스템 공유)이 있으면 바로 열고, 없는 브라우저에서만 루프 공유 창을 띄운다
   const share = () => {
     if (typeof navigator.share !== 'function') return setSharing(true);
-    navigator.share(shareContent).catch((e: DOMException) => {
-      // 사용자가 닫은 건(AbortError) 그대로 두고, 그 밖의 실패는 루프 공유 창으로
-      if (e?.name !== 'AbortError') setSharing(true);
-    });
+    // 기기 공유 창을 연 뒤에는 어떻게 닫혀도(X · 바깥 클릭 · Esc) 아무것도 다시 띄우지 않는다.
+    // Windows 는 X 가 아닌 방법으로 닫으면 AbortError 가 아닌 오류를 돌려주므로 오류 종류로 가르지 않는다
+    navigator.share(shareContent).catch(() => undefined);
   };
   const copy = () =>
     navigator.clipboard.writeText(link).then(
