@@ -297,20 +297,8 @@ export default function ChannelPage() {
       {channel?.locked && !isPlaceholderData && <LockedGate channel={channel} />}
       {open && (
         <section className={ui.card} ref={listRef}>
-          {/* 목록 위: 검색(제목·본문) · 카테고리 · 정렬 (공지는 정렬과 상관없이 위에 고정) */}
+          {/* 목록 위: 카테고리 · 정렬 · 검색(제목·본문) · 검색 버튼 (공지는 정렬과 상관없이 위에 고정) */}
           <form role="search" className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3 border-b border-line" onSubmit={submitSearch}>
-            <label className="relative flex-1 min-w-[180px]">
-              <SearchIcon className="absolute left-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none" />
-              <input
-                type="search"
-                className={cn(ui.input, 'pl-7')}
-                placeholder={draft ? `'${draft.name}'에서 검색` : '이 채널에서 검색'}
-                aria-label="채널 글 검색"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                maxLength={50}
-              />
-            </label>
             {categories.length > 0 && (
               <Dropdown
                 label="카테고리"
@@ -326,9 +314,6 @@ export default function ChannelPage() {
                 className="w-[150px] max-[520px]:flex-1"
               />
             )}
-            <button type="submit" className={cn(ui.button, ui.primary, 'max-[520px]:order-last max-[520px]:w-full')}>
-              검색
-            </button>
             <Dropdown
               label="정렬"
               value={sort}
@@ -336,6 +321,21 @@ export default function ChannelPage() {
               onChange={(v) => update({ sort: v })}
               className="w-[120px] max-[520px]:flex-1"
             />
+            <label className="relative flex-1 min-w-[180px]">
+              <SearchIcon className="absolute left-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none" />
+              <input
+                type="search"
+                className={cn(ui.input, 'pl-7')}
+                placeholder={draft ? `'${draft.name}'에서 검색` : '이 채널에서 검색'}
+                aria-label="채널 글 검색"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                maxLength={50}
+              />
+            </label>
+            <button type="submit" className={cn(ui.button, ui.primary)}>
+              검색
+            </button>
           </form>
           {pinNotices && notices.data && <Notices notices={notices.data} />}
           {list.isPending ? (
