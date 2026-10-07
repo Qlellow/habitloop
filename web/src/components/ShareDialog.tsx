@@ -225,7 +225,11 @@ export function ShareDialog({ content, heading = '공유하기', onClose }: { co
             <li key={t.id} className="flex-none">
               <button
                 type="button"
-                onClick={() => void t.run(content)}
+                onClick={() => {
+                  void t.run(content);
+                  // 기기 공유 창을 열면 루프 공유 창은 닫아 창이 두 개 겹치지 않게
+                  if (t.id === 'more') onClose();
+                }}
                 className="group flex flex-col items-center gap-1.5 w-[72px] py-2 rounded-lg hover:bg-pressed focus-visible:outline-2 focus-visible:outline-primary"
               >
                 <span className={cn('grid place-items-center w-12 h-12 rounded-full transition-transform group-hover:scale-105 group-active:scale-95', t.bg)}>

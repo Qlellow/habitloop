@@ -144,11 +144,12 @@ export default function PointsPage() {
     title: '루프에서 같이 이야기 나눠요',
     text: `${user.nickname}님이 루프에 초대했어요. 이 링크로 가입하면 30P 를 받아요!`,
   };
-  // 기기 공유 창(Windows · 휴대폰의 시스템 공유)이 있으면 바로 열고, 없는 브라우저에서만 루프 공유 창을 띄운다
+  // 휴대폰: 기기 공유 시트를 바로 연다 (바깥을 탭하면 닫힌다).
+  // PC: Windows 공유 창은 바깥 클릭으로 닫히지 않는 별도 창이라, 바깥 클릭으로 닫히는 루프 공유 창을 먼저 띄우고
+  //     그 안의 '더보기'로 Windows 공유 창을 연다
   const share = () => {
-    if (typeof navigator.share !== 'function') return setSharing(true);
-    // 기기 공유 창을 연 뒤에는 어떻게 닫혀도(X · 바깥 클릭 · Esc) 아무것도 다시 띄우지 않는다.
-    // Windows 는 X 가 아닌 방법으로 닫으면 AbortError 가 아닌 오류를 돌려주므로 오류 종류로 가르지 않는다
+    const phone = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!phone || typeof navigator.share !== 'function') return setSharing(true);
     navigator.share(shareContent).catch(() => undefined);
   };
   const copy = () =>
