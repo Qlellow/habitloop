@@ -201,19 +201,21 @@ export default function ChannelPage() {
     set('page', 'page' in next && next.page !== 1 ? next.page : null);
     setParams(p, { replace: true });
   };
-  const selectTab = (id?: number) => update({ category: id ?? null });
+  // 위쪽 카테고리 탭은 바로 그 카테고리 글 목록으로 간다: 하던 검색은 지운다 (검색창의 카테고리 선택은 그대로)
+  const selectTab = (id?: number) => update({ category: id ?? null, q: '' });
   const headerRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLElement>(null);
 
-  // 검색창의 검색어 · 카테고리는 고르는 동안엔 그대로 두고, 검색(엔터 · 검색 버튼)할 때 함께 주소에 반영한다
+  // 검색창의 검색어 · 카테고리는 고르는 동안엔 그대로 두고, 검색(엔터 · 검색 버튼)할 때 함께 주소에 반영한다.
+  // 검색창의 카테고리는 위쪽 탭과 따로 움직인다 (탭을 바꿔도 그대로). 검색 결과 주소로 들어오면 그 카테고리로 시작
   const [search, setSearch] = useState(q);
-  const [draftCategory, setDraftCategory] = useState<number | null>(active?.id ?? null);
+  const [draftCategory, setDraftCategory] = useState<number | null>(() => (q && raw ? raw : null));
   useEffect(() => setSearch(q), [q]);
-  useEffect(() => setDraftCategory(active?.id ?? null), [active?.id]);
+  // 다른 채널로 옮겨 가면 이전 채널의 카테고리는 이 채널에 없으니 '전체 카테고리'로 본다
   const draft = categories.find((c) => c.id === draftCategory);
   const submitSearch = (e: FormEvent) => {
     e.preventDefault();
-    update({ q: search, category: draftCategory });
+    update({ q: search, category: draft?.id ?? null });
   };
 
   const goPage = (n: number) => {
@@ -302,7 +304,7 @@ export default function ChannelPage() {
             {categories.length > 0 && (
               <Dropdown
                 label="카테고리"
-                value={draftCategory}
+                value={draft?.id ?? null}
                 options={[
                   { value: null, label: '전체 카테고리' },
                   ...categories.map((c) => ({
