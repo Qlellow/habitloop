@@ -205,15 +205,16 @@ export default function ChannelPage() {
   const headerRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLElement>(null);
 
-  // 검색어는 입력이 멈추고 0.3초 뒤에 주소에 반영한다
+  // 검색창의 검색어 · 카테고리는 고르는 동안엔 그대로 두고, 검색(엔터 · 검색 버튼)할 때 함께 주소에 반영한다
   const [search, setSearch] = useState(q);
+  const [draftCategory, setDraftCategory] = useState<number | null>(active?.id ?? null);
   useEffect(() => setSearch(q), [q]);
-  useEffect(() => {
-    if (search.trim() === q.trim()) return;
-    const t = window.setTimeout(() => update({ q: search }), 300);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  useEffect(() => setDraftCategory(active?.id ?? null), [active?.id]);
+  const draft = categories.find((c) => c.id === draftCategory);
+  const submitSearch = (e: FormEvent) => {
+    e.preventDefault();
+    update({ q: search, category: draftCategory });
+  };
 
   const goPage = (n: number) => {
     update({ page: n });
@@ -297,13 +298,13 @@ export default function ChannelPage() {
       {open && (
         <section className={ui.card} ref={listRef}>
           {/* 목록 위: 검색(제목·본문) · 카테고리 · 정렬 (공지는 정렬과 상관없이 위에 고정) */}
-          <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3 border-b border-line">
+          <form role="search" className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3 border-b border-line" onSubmit={submitSearch}>
             <label className="relative flex-1 min-w-[180px]">
               <SearchIcon className="absolute left-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none" />
               <input
                 type="search"
                 className={cn(ui.input, 'pl-7')}
-                placeholder={active ? `'${active.name}'에서 검색` : '이 채널에서 검색'}
+                placeholder={draft ? `'${draft.name}'에서 검색` : '이 채널에서 검색'}
                 aria-label="채널 글 검색"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -313,7 +314,7 @@ export default function ChannelPage() {
             {categories.length > 0 && (
               <Dropdown
                 label="카테고리"
-                value={active?.id ?? null}
+                value={draftCategory}
                 options={[
                   { value: null, label: '전체 카테고리' },
                   ...categories.map((c) => ({
@@ -321,10 +322,13 @@ export default function ChannelPage() {
                     label: c.name,
                   })),
                 ]}
-                onChange={(v) => selectTab(v ?? undefined)}
+                onChange={setDraftCategory}
                 className="w-[150px] max-[520px]:flex-1"
               />
             )}
+            <button type="submit" className={cn(ui.button, ui.primary, 'max-[520px]:order-last max-[520px]:w-full')}>
+              검색
+            </button>
             <Dropdown
               label="정렬"
               value={sort}
@@ -332,7 +336,7 @@ export default function ChannelPage() {
               onChange={(v) => update({ sort: v })}
               className="w-[120px] max-[520px]:flex-1"
             />
-          </div>
+          </form>
           {pinNotices && notices.data && <Notices notices={notices.data} />}
           {list.isPending ? (
             <PostListSkeleton />
