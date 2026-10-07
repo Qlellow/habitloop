@@ -322,16 +322,17 @@ export default function ChannelPage() {
               className="w-[120px] max-[520px]:flex-1"
             />
             <label className="relative flex-1 min-w-[180px]">
-              <SearchIcon className="absolute left-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none" />
               <input
                 type="search"
-                className={cn(ui.input, 'pl-7')}
+                className={cn(ui.input, 'peer pl-7')}
                 placeholder={draft ? `'${draft.name}'에서 검색` : '이 채널에서 검색'}
                 aria-label="채널 글 검색"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 maxLength={50}
               />
+              {/* 헤더 검색과 같이: 입력칸 뒤에 두어 포커스되면(peer-focus) 돋보기도 브랜드 색 */}
+              <SearchIcon className="absolute left-0.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none peer-focus:text-primary" />
             </label>
             <button type="submit" className={cn(ui.button, ui.primary)}>
               검색

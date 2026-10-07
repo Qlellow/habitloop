@@ -2,6 +2,7 @@ import { memo, useDeferredValue, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { compact, timeAgo, useAuth, useChannelPreviews, plainText, type ChannelPreview } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
+import { SearchIcon } from '../components/Icons';
 import { Page } from '../components/Layout';
 import { Masonry } from '../components/Masonry';
 import { preload } from '../lib/preload';
@@ -106,15 +107,19 @@ export default function ChannelsPage() {
         </div>
         <div className={b.tools}>
           {/* 넓은 화면은 헤더 검색을 쓰고, 헤더 검색이 숨는 폰에서만 여기서 찾는다 */}
-          <input
-            type="search"
-            className={cn(ui.input, b.search)}
-            placeholder="채널 이름으로 찾기"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            aria-label="채널 검색"
-            onDrop={(e) => e.preventDefault()}
-          />
+          <label className={b.search}>
+            <input
+              type="search"
+              className={cn(ui.input, 'peer pl-7')}
+              placeholder="채널 이름으로 찾기"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              aria-label="채널 검색"
+              onDrop={(e) => e.preventDefault()}
+            />
+            {/* 헤더 검색과 같은 돋보기: 입력칸 뒤에 두어 포커스되면(peer-focus) 브랜드 색 */}
+            <SearchIcon className={b.searchIcon} />
+          </label>
           <Link to={createTo} state={isLoggedIn ? undefined : { from: '/channels/new' }} className={cn(ui.button, ui.primary)} onPointerEnter={preload.channelForm}>
             채널 만들기
           </Link>
