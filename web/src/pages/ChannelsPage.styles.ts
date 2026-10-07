@@ -2,7 +2,8 @@
 const s = {
   tools: 'flex items-center gap-2 max-[860px]:flex-wrap',
   // 채널 검색칸은 헤더 검색이 숨는 폰(520px 이하)에서만 보인다
-  search: 'hidden max-[520px]:block max-[520px]:w-full',
+  search: 'relative hidden max-[520px]:block max-[520px]:w-full',
+  searchIcon: 'absolute left-0.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none peer-focus:text-primary',
   board: 'flex flex-col overflow-hidden rounded-lg border border-border bg-surface',
   head: 'group flex items-center gap-3 px-[18px] pt-4 pb-3',
   headText: 'flex-1 min-w-0 flex flex-col',
