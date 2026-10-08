@@ -3,13 +3,11 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { JwtService } from '../auth/jwt.service';
 import { ApiError } from '../common/api-error';
-import { Database } from '../db/database';
-import { adminEmails, sameKey } from './admin.config';
+import { adminConfig, adminVersion, sameKey } from './admin.config';
 
+/** 관리자 (회원 계정과 따로, 환경 변수의 이메일 하나) */
 export interface AdminUser {
-  id: number;
   email: string;
-  nickname: string;
 }
 
 const NO_TOKEN = 'admin-no-token';
@@ -26,33 +24,26 @@ export const hiddenNotFound = () => ApiError.notFound('페이지를 찾을 수 �
 /**
  * 관리자 API 가드.
  * 1) X-Admin-Key 헤더가 ADMIN_KEY 와 같아야 한다 (아니면 404)
- * 2) 관리자 토큰(로그인 + 이메일 인증번호로 받은, 2시간짜리)이 있어야 한다. 일반 로그인 토큰으로는 안 된다
- * 3) 요청마다 그 계정이 아직 ADMIN_EMAILS 에 있고, 탈퇴 · 정지되지 않았고, 비밀번호가 그대로인지 다시 확인한다
+ * 2) 관리자 토큰(비밀번호 + 이메일 인증번호로 받은, 2시간짜리)이 있어야 한다. 일반 로그인 토큰으로는 안 된다
+ * 3) 토큰을 받은 뒤 관리자 이메일 · 비밀번호 · 키가 바뀌었으면 그 토큰은 더 못 쓴다
  */
 @Injectable()
 export class AdminGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly jwt: JwtService,
-    private readonly db: Database,
   ) {}
 
-  async canActivate(ctx: ExecutionContext): Promise<boolean> {
+  canActivate(ctx: ExecutionContext): boolean {
     const req = ctx.switchToHttp().getRequest<Request & { admin?: AdminUser }>();
-    if (!sameKey(req.header('x-admin-key'))) throw hiddenNotFound();
+    const config = adminConfig();
+    if (!config || !sameKey(req.header('x-admin-key'))) throw hiddenNotFound();
     if (this.reflector.getAllAndOverride<boolean>(NO_TOKEN, [ctx.getHandler(), ctx.getClass()])) return true;
 
     const header = req.header('authorization');
     const claims = header?.startsWith('Bearer ') ? this.jwt.parseAdmin(header.slice(7)) : undefined;
-    if (!claims) throw ApiError.unauthorized('관리자 로그인이 필요해요');
-    const user = await this.db.one<{ id: number; email: string; nickname: string; password: string }>(
-      'SELECT id, email, nickname, password FROM users WHERE id = $1 AND withdrawn_at IS NULL AND suspended_at IS NULL',
-      [claims.id],
-    );
-    if (!user || !adminEmails().has(user.email.toLowerCase()) || !this.jwt.samePassword(claims.pv, user.password)) {
-      throw ApiError.unauthorized('관리자 로그인이 필요해요');
-    }
-    req.admin = { id: user.id, email: user.email, nickname: user.nickname };
+    if (!claims || claims.v !== adminVersion(config)) throw ApiError.unauthorized('관리자 로그인이 필요해요');
+    req.admin = { email: config.email };
     return true;
   }
 }

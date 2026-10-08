@@ -61,29 +61,19 @@ export class JwtService {
     }
   }
 
-  /** 관리자 토큰. 비밀번호가 바뀌면(pv) 바로 못 쓴다. 일반 API 에서는 parse() 가 받지 않는다(purpose) */
-  issueAdmin(userId: number, passwordHash: string): string {
-    return jwt.sign({ purpose: ADMIN_PURPOSE, pv: passwordVersion(passwordHash) }, this.secret, {
-      subject: String(userId),
-      expiresIn: ADMIN_TTL,
-      algorithm: 'HS256',
-    });
+  /** 관리자 토큰 (회원 계정과 따로). v 가 지금 설정과 다르면(이메일 · 비밀번호 · 키 변경) 못 쓴다. 일반 API 의 parse() 는 받지 않는다(purpose) */
+  issueAdmin(version: string): string {
+    return jwt.sign({ purpose: ADMIN_PURPOSE, v: version }, this.secret, { subject: 'admin', expiresIn: ADMIN_TTL, algorithm: 'HS256' });
   }
 
-  parseAdmin(token: string): { id: number; pv: string } | undefined {
+  parseAdmin(token: string): { v: string } | undefined {
     try {
       const claims = jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
-      const id = Number(claims.sub);
-      if (claims.purpose !== ADMIN_PURPOSE || !Number.isInteger(id)) return undefined;
-      return { id, pv: String(claims.pv) };
+      if (claims.purpose !== ADMIN_PURPOSE || claims.sub !== 'admin' || typeof claims.v !== 'string') return undefined;
+      return { v: claims.v };
     } catch {
       return undefined;
     }
-  }
-
-  /** 관리자 토큰의 pv 가 지금 비밀번호와 맞는지 */
-  samePassword(pv: string, passwordHash: string) {
-    return pv === passwordVersion(passwordHash);
   }
 
   issueReset(userId: number, passwordHash: string): string {

@@ -62,7 +62,6 @@ interface AdminLog {
   action: string;
   target?: string;
   detail?: string;
-  adminNickname?: string;
   createdAt: string;
 }
 
@@ -117,7 +116,7 @@ function AdminLogin({ adminKey, onDone }: { adminKey: string; onDone: () => void
           루프 관리자
         </div>
         <p className="mt-2 mb-5 text-sm text-fg-sub">
-          {step === 'password' ? '관리자로 지정된 계정만 들어올 수 있어요.' : `${email} 로 보낸 인증번호를 입력해 주세요.`}
+          {step === 'password' ? '관리자 이메일과 비밀번호를 입력해 주세요.' : '관리자 이메일로 보낸 인증번호를 입력해 주세요.'}
         </p>
         {step === 'password' ? (
           <>
@@ -351,7 +350,7 @@ function Users({ adminKey }: { adminKey: string }) {
                     <a href={`/u/${u.id}`} target="_blank" rel="noreferrer" className="hover:underline">
                       {u.nickname}
                     </a>
-                    {u.admin && <span className={cn(ui.badge, 'ml-1.5')}>관리자</span>}
+                    {u.admin && <span className={cn(ui.badge, 'ml-1.5')}>관리자 이메일</span>}
                     {u.suspended && <span className={cn(ui.badge, 'ml-1.5 bg-danger-weak text-danger-text')}>정지</span>}
                     {u.withdrawn && <span className={cn(ui.badge, 'ml-1.5 bg-field text-fg-sub')}>탈퇴</span>}
                   </td>
@@ -464,9 +463,7 @@ function Logs({ adminKey }: { adminKey: string }) {
               <span className="font-semibold text-fg-strong">{ACTION_LABEL[l.action] ?? l.action}</span>
               {l.target && <span className="text-fg-sub">{l.target}</span>}
               {l.detail && <span className="text-fg-sub">{l.detail}</span>}
-              <span className="ml-auto text-[13px] text-fg-weak whitespace-nowrap">
-                {l.adminNickname ?? '-'} · {dateTime(l.createdAt)}
-              </span>
+              <span className="ml-auto text-[13px] text-fg-weak whitespace-nowrap">{dateTime(l.createdAt)}</span>
             </li>
           ))}
         </ul>
@@ -488,7 +485,7 @@ type Tab = (typeof TABS)[number][0];
 
 function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('overview');
-  const me = useAdminQuery<{ nickname: string; email: string }>(adminKey, '/me');
+  const me = useAdminQuery<{ email: string }>(adminKey, '/me');
   useEffect(() => {
     // 토큰이 만료되거나 권한이 사라지면 로그인 화면으로
     if (me.error instanceof ApiError && me.error.status === 401) onLogout();
@@ -516,7 +513,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2 text-sm text-fg-sub whitespace-nowrap">
-            <span className="max-[640px]:hidden">{me.data?.nickname}</span>
+            <span className="max-[640px]:hidden">관리자</span>
             <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={onLogout}>
               로그아웃
             </button>

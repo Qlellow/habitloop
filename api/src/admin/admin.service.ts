@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import bcrypt from 'bcryptjs';
 import { JwtService } from '../auth/jwt.service';
 import { ChannelsService } from '../channels/channels.service';
 import { ApiError } from '../common/api-error';
@@ -8,8 +7,7 @@ import { Database } from '../db/database';
 import { Mailer } from '../mail/mailer';
 import { VerificationService } from '../mail/verification.service';
 import { PostsService } from '../posts/posts.service';
-import { adminEmails } from './admin.config';
-import type { AdminUser } from './admin.guard';
+import { adminConfig, adminVersion, checkAdmin } from './admin.config';
 
 const LOGIN_FAIL_LIMIT = 5;
 const LOGIN_FAIL_WINDOW_MS = 15 * 60_000;
@@ -40,45 +38,37 @@ export class AdminService {
 
   /* ───── 로그인 ───── */
 
-  /** 1단계: 이메일 · 비밀번호 확인 → 그 이메일로 인증번호. 관리자가 아닌 계정도 '맞지 않아요'로 똑같이 답한다 */
+  /** 1단계: 이메일 · 비밀번호 확인 → 관리자 이메일로 인증번호. 틀리면 어느 쪽이 틀렸는지 알리지 않는다 */
   async sendLoginCode(email: string, password: string, ip: string) {
-    const user = await this.checkCredentials(email, password, ip);
-    await this.verification.send(user.email, 'ADMIN_LOGIN', user.id);
+    const config = this.checkCredentials(email, password, ip);
+    await this.verification.send(config.email, 'ADMIN_LOGIN', null);
   }
 
   /** 2단계: 인증번호까지 맞으면 관리자 토큰(2시간) */
   async login(email: string, password: string, code: string, ip: string) {
-    const user = await this.checkCredentials(email, password, ip);
-    await this.verification.verify(user.email, 'ADMIN_LOGIN', code);
+    const config = this.checkCredentials(email, password, ip);
+    await this.verification.verify(config.email, 'ADMIN_LOGIN', code);
     this.failures.delete(ip);
-    await this.log(user.id, 'login', undefined, ip);
+    await this.log('login', undefined, ip);
     await this.mailer
-      .sendNotice(user.email, '관리자 페이지에 로그인했어요', `방금 루프 관리자 페이지에 로그인했어요.\n직접 로그인한 것이 아니라면 바로 비밀번호를 바꿔 주세요.`)
+      .sendNotice(config.email, '관리자 페이지에 로그인했어요', `방금 루프 관리자 페이지에 로그인했어요.\n직접 로그인한 것이 아니라면 바로 ADMIN_PASSWORD 를 바꿔 주세요.`)
       .catch(() => undefined);
-    return { token: this.jwt.issueAdmin(user.id, user.password), nickname: user.nickname };
+    return { token: this.jwt.issueAdmin(adminVersion(config)) };
   }
 
-  private async checkCredentials(email: string, password: string, ip: string) {
+  private checkCredentials(email: string, password: string, ip: string) {
     const fail = this.failures.get(ip);
     if (fail && fail.until > Date.now() && fail.count >= LOGIN_FAIL_LIMIT) {
       throw ApiError.tooMany('로그인을 너무 많이 틀렸어요. 15분 뒤에 다시 시도해 주세요');
     }
-    const normalized = email.trim().toLowerCase();
-    const user = adminEmails().has(normalized)
-      ? await this.db.one<{ id: number; email: string; nickname: string; password: string }>(
-          'SELECT id, email, nickname, password FROM users WHERE lower(email) = $1 AND withdrawn_at IS NULL AND suspended_at IS NULL',
-          [normalized],
-        )
-      : undefined;
-    // 관리자가 아닌 이메일도 비밀번호 비교만큼 시간을 쓴다 (응답 시간으로 관리자 이메일을 알아내지 못하게)
-    const ok = user ? await bcrypt.compare(password, user.password) : (await bcrypt.compare(password, DUMMY_HASH), false);
-    if (!user || !ok) {
+    const config = adminConfig();
+    if (!config || !checkAdmin(email, password)) {
       const now = Date.now();
       const prev = fail && fail.until > now ? fail : { count: 0, until: now + LOGIN_FAIL_WINDOW_MS };
       this.failures.set(ip, { count: prev.count + 1, until: prev.until });
       throw ApiError.unauthorized('이메일 또는 비밀번호가 맞지 않아요');
     }
-    return user;
+    return config;
   }
 
   /* ───── 현황 ───── */
@@ -154,7 +144,7 @@ export class AdminService {
   }
 
   /** 사이트 관리자는 채널 역할과 상관없이 처리할 수 있다 */
-  async reportAction(admin: AdminUser, postId: number, commentId: number | undefined, action: 'hide' | 'unhide' | 'delete' | 'dismiss') {
+  async reportAction(postId: number, commentId: number | undefined, action: 'hide' | 'unhide' | 'delete' | 'dismiss') {
     const target = commentId
       ? await this.db.one<{ channelId: number }>(
           'SELECT p.channel_id AS "channelId" FROM comments cm JOIN posts p ON p.id = cm.post_id WHERE cm.id = $1 AND cm.post_id = $2',
@@ -184,11 +174,11 @@ export class AdminService {
       await this.db.execute(
         `UPDATE reports SET status = $3, handled_by = $4, handled_at = now()
          WHERE post_id = $1 AND comment_id IS NOT DISTINCT FROM $2 AND status ${action === 'unhide' ? "<> 'open'" : "= 'open'"}`,
-        [postId, commentId ?? null, action === 'hide' ? 'hidden' : 'dismissed', admin.id],
+        [postId, commentId ?? null, action === 'hide' ? 'hidden' : 'dismissed', null],
       );
     });
     this.posts.visibilityChanged();
-    await this.log(admin.id, `report.${action}`, label);
+    await this.log(`report.${action}`, label);
   }
 
   /* ───── 사용자 ───── */
@@ -217,7 +207,7 @@ export class AdminService {
        ORDER BY u.id DESC LIMIT 31`,
       [keyword ? `%${escapeLike(keyword)}%` : null, cursor ?? null],
     );
-    const admins = adminEmails();
+    const adminEmail = adminConfig()?.email;
     const page = cursorPage(rows, 30);
     return {
       nextCursor: page.nextCursor,
@@ -227,23 +217,23 @@ export class AdminService {
         // 탈퇴한 계정의 이메일은 내부용 주소라 보여 주지 않는다
         email: withdrawn ? undefined : email,
         withdrawn,
-        admin: admins.has(email.toLowerCase()),
+        admin: email.toLowerCase() === adminEmail,
       })),
     };
   }
 
   /** 이용 정지 · 해제. 정지하면 모든 기기에서 로그아웃되고 다시 로그인할 수 없다. 관리자는 정지할 수 없다 */
-  async suspend(admin: AdminUser, uid: string, suspend: boolean) {
+  async suspend(uid: string, suspend: boolean) {
     const user = /^[0-9a-f-]{36}$/i.test(uid)
       ? await this.db.one<{ id: number; email: string; nickname: string }>('SELECT id, email, nickname FROM users WHERE uid::text = $1', [uid.toLowerCase()])
       : undefined;
     if (!user) throw ApiError.notFound('없는 사용자예요');
-    if (adminEmails().has(user.email.toLowerCase())) throw ApiError.badRequest('관리자 계정은 정지할 수 없어요');
+    if (user.email.toLowerCase() === adminConfig()?.email) throw ApiError.badRequest('관리자 이메일의 계정은 정지할 수 없어요');
     await this.db.transaction(async () => {
       await this.db.execute(`UPDATE users SET suspended_at = ${suspend ? 'now()' : 'NULL'} WHERE id = $1`, [user.id]);
       if (suspend) await this.db.execute('DELETE FROM sessions WHERE user_id = $1', [user.id]);
     });
-    await this.log(admin.id, suspend ? 'user.suspend' : 'user.unsuspend', `user:${uid}`, user.nickname);
+    await this.log(suspend ? 'user.suspend' : 'user.unsuspend', `user:${uid}`, user.nickname);
   }
 
   /* ───── 채널 ───── */
@@ -265,15 +255,13 @@ export class AdminService {
 
   logs() {
     return this.db.query(
-      `SELECT l.id, l.action, l.target, l.detail, l.created_at AS "createdAt", u.nickname AS "adminNickname"
-       FROM admin_logs l LEFT JOIN users u ON u.id = l.admin_id ORDER BY l.id DESC LIMIT 200`,
+      'SELECT id, action, target, detail, created_at AS "createdAt" FROM admin_logs ORDER BY id DESC LIMIT 200',
     );
   }
 
-  private async log(adminId: number, action: string, target?: string, detail?: string) {
+  private async log(action: string, target?: string, detail?: string) {
     await this.db
-      .execute('INSERT INTO admin_logs (admin_id, action, target, detail) VALUES ($1, $2, $3, $4)', [
-        adminId,
+      .execute('INSERT INTO admin_logs (action, target, detail) VALUES ($1, $2, $3)', [
         action,
         target ?? null,
         detail?.slice(0, 300) ?? null,
@@ -283,6 +271,3 @@ export class AdminService {
     this.channels.popularCache.clear();
   }
 }
-
-/** 없는 계정일 때 비교용 (아무 비밀번호와도 맞지 않는 해시) */
-const DUMMY_HASH = bcrypt.hashSync(`no-account-${Math.random()}`, 10);
