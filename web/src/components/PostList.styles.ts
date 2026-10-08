@@ -14,7 +14,8 @@ const s = {
   // 제목·내용(왼쪽)과 공감·댓글·조회(오른쪽 아래)
   bottom: 'flex items-end gap-4 mt-1 max-[520px]:flex-col max-[520px]:items-stretch max-[520px]:gap-1.5',
   badge: 'font-semibold text-primary',
-  title: 'mt-1 mb-0.5 text-base font-semibold leading-[1.45] text-fg-strong transition-colors group-hover:text-primary',
+  // 제목 색은 hover 해도 그대로 (카드 배경만 바뀐다)
+  title: 'mt-1 mb-0.5 text-base font-semibold leading-[1.45] text-fg-strong',
   excerpt: 'm-0 text-sm text-fg-sub line-clamp-2',
   stats: 'flex-none flex items-center gap-3 text-[13px] text-fg-weak max-[520px]:justify-end',
   stat: 'inline-flex items-center gap-[3px] [&>svg]:w-3.5 [&>svg]:h-3.5',

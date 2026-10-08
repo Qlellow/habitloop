@@ -62,7 +62,7 @@ function Notices({ notices }: { notices: PostSummary[] }) {
                 <PinIcon />
                 {n.categoryName ?? '공지'}
               </span>
-              <span className="min-w-0 truncate font-semibold text-fg-strong group-hover:text-primary">{n.title}</span>
+              <span className="min-w-0 truncate font-semibold text-fg-strong">{n.title}</span>
               <time className="flex-none ml-auto pl-2 text-xs text-fg-weak" dateTime={n.createdAt}>
                 {timeAgo(n.createdAt)}
               </time>

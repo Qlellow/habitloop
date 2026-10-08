@@ -15,7 +15,7 @@ const s = {
   list: 'list-none m-0 pt-1 pb-2 border-t border-line',
   row: 'group flex items-center gap-1.5 px-[18px] py-[7px] text-sm transition-colors hover:bg-pressed',
   badge: 'flex-none px-1.5 rounded-[5px] bg-field text-xs font-semibold leading-5 text-fg-sub',
-  title: 'min-w-0 truncate text-fg transition-colors group-hover:text-primary',
+  title: 'min-w-0 truncate text-fg',
   comments: 'flex-none text-[13px] font-semibold text-primary',
   time: 'flex-none ml-auto pl-2 text-xs text-fg-weak',
   empty: 'm-0 px-[18px] pt-[22px] pb-[26px] border-t border-line text-sm text-center text-fg-weak',
