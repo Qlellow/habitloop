@@ -27,6 +27,7 @@ import { PostsController } from './posts/posts.controller';
 import { PostsService } from './posts/posts.service';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
+import { BlocksService } from './users/blocks.service';
 import { RewardsService } from './users/rewards.service';
 import { UsersController } from './users/users.controller';
 
@@ -59,6 +60,7 @@ class HealthController {
     CommentsService,
     PreviewsService,
     RewardsService,
+    BlocksService,
     NotificationsService,
     ReportsService,
     OAuthService,

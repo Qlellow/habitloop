@@ -1173,6 +1173,55 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/channels/reports/reports').set(bearer(owner))).body).toHaveLength(0);
   });
 
+  it('사용자 차단: 글은 목록에서 빠지고, 댓글은 가려지고, 알림도 오지 않는다', async () => {
+    const me = await signup('block-me@test.dev', '차단하는사람');
+    const troll = await signup('block-troll@test.dev', '차단될사람');
+    const meId = (await http().get('/api/me').set(bearer(me))).body.id;
+    const trollId = (await http().get('/api/me').set(bearer(troll))).body.id;
+    await http().post('/api/channels').set(bearer(me)).send({ slug: 'blocks', name: '차단채널' }).expect(201);
+    await http().post('/api/channels/blocks/members').set(bearer(troll)).expect(200);
+    const mine = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'blocks', title: '내 글', content: '내용' }).expect(201)).body;
+    const theirs = (await http().post('/api/posts').set(bearer(troll)).send({ channel: 'blocks', title: '트롤 글', content: '내용' }).expect(201)).body;
+    await http().post(`/api/posts/${mine.id}/comments`).set(bearer(troll)).send({ content: '트롤 댓글' }).expect(201);
+    const titles = async (token?: string) => {
+      const req = http().get('/api/posts/page').query({ channel: 'blocks' });
+      return ((await (token ? req.set(bearer(token)) : req)).body.items as { title: string }[]).map((p) => p.title);
+    };
+    expect(await titles(me)).toEqual(['트롤 글', '내 글']);
+
+    // 차단: 로그인 필요, 나는 안 됨, 없는 사람은 404
+    await http().put(`/api/users/${trollId}/block`).expect(401);
+    await http().put(`/api/users/${meId}/block`).set(bearer(me)).expect(400);
+    await http().put('/api/users/00000000-0000-0000-0000-000000000000/block').set(bearer(me)).expect(404);
+    await http().put(`/api/users/${trollId}/block`).set(bearer(me)).expect(204);
+    await http().put(`/api/users/${trollId}/block`).set(bearer(me)).expect(204); // 여러 번 눌러도 같다
+    expect((await http().get(`/api/users/${trollId}`).set(bearer(me))).body.blocked).toBe(true);
+    expect((await http().get(`/api/users/${trollId}`)).body.blocked).toBe(false);
+    expect((await http().get('/api/me/blocks').set(bearer(me))).body).toMatchObject([{ id: trollId, nickname: '차단될사람' }]);
+
+    // 내 목록에서는 빠지고, 다른 사람(비로그인)에게는 그대로
+    expect(await titles(me)).toEqual(['내 글']);
+    expect(await titles()).toEqual(['트롤 글', '내 글']);
+    expect((await http().get('/api/posts').query({ channel: 'blocks' }).set(bearer(me))).body.items).toHaveLength(1);
+    // 글 자체는 열 수 있지만 차단한 사람의 글이라고 알려 준다
+    expect((await http().get(`/api/posts/${theirs.id}`).set(bearer(me))).body.blockedAuthor).toBe(true);
+    // 댓글은 내용이 가려진다
+    const comment = (await http().get(`/api/posts/${mine.id}/comments`).set(bearer(me))).body.items[0];
+    expect(comment).toMatchObject({ blocked: true, content: '' });
+    expect((await http().get(`/api/posts/${mine.id}/comments`)).body.items[0].content).toBe('트롤 댓글');
+
+    // 알림이 오지 않는다
+    await http().post('/api/me/notifications/read').set(bearer(me)).expect(204);
+    await http().post(`/api/posts/${mine.id}/comments`).set(bearer(troll)).send({ content: '또 댓글' }).expect(201);
+    await http().post(`/api/posts/${mine.id}/like`).set(bearer(troll)).expect(200);
+    expect((await http().get('/api/me/notifications/unread').set(bearer(me))).body.count).toBe(0);
+
+    // 해제하면 다시 보인다
+    await http().delete(`/api/users/${trollId}/block`).set(bearer(me)).expect(204);
+    expect(await titles(me)).toEqual(['트롤 글', '내 글']);
+    expect((await http().get('/api/me/blocks').set(bearer(me))).body).toHaveLength(0);
+  });
+
   it('DB 에 없는 사용자의 토큰은 비로그인으로 본다', async () => {
     const ghost = jwt.issue(999_999, '유령', 'no-such-session').token;
     const real = await signup('ghost-check@test.dev', '진짜회원');

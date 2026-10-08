@@ -62,7 +62,7 @@ export function ReportDialog({ postId, commentId, onClose }: { postId: number; c
                 aria-hidden
                 className={cn(
                   'flex-none grid place-items-center w-[18px] h-[18px] rounded-full border-2 transition-colors',
-                  reason === r.value ? 'border-primary' : 'border-border',
+                  reason === r.value ? 'border-primary' : 'border-fg-weak',
                 )}
               >
                 {reason === r.value && <span className="w-2 h-2 rounded-full bg-primary" />}

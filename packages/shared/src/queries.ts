@@ -19,6 +19,7 @@ import type {
   ReportReason,
   ReportGroup,
   ReportAction,
+  BlockedUser,
   PostPage,
   UserProfile,
   ChannelCategory,
@@ -833,6 +834,30 @@ export function useReportAction(slug: string) {
       markListsStale(qc);
     },
   });
+}
+
+/* ───────── 차단 ───────── */
+
+/** 사용자 차단 · 해제. 목록 · 댓글 · 알림이 바뀌므로 관련 캐시를 새로 받는다 */
+export function useBlockUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, block }: { userId: string; block: boolean }) =>
+      api<void>(`/api/users/${encodeURIComponent(userId)}/block`, { method: block ? 'PUT' : 'DELETE' }),
+    onSuccess: (_, { userId }) => {
+      qc.invalidateQueries({ queryKey: ['user', userId] });
+      qc.invalidateQueries({ queryKey: ['blocks'] });
+      qc.invalidateQueries({ queryKey: keys.posts });
+      qc.invalidateQueries({ queryKey: ['post'] });
+      qc.invalidateQueries({ queryKey: ['comments'] });
+      qc.invalidateQueries({ queryKey: ['channels'] });
+    },
+  });
+}
+
+/** 내가 차단한 사용자 */
+export function useMyBlocks() {
+  return useQuery({ queryKey: ['blocks'], queryFn: ({ signal }) => api<BlockedUser[]>('/api/me/blocks', { signal }) });
 }
 
 /* ───────── 인증 ───────── */

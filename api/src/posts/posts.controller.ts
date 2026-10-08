@@ -83,12 +83,12 @@ export class PostsController {
 
   @Public()
   @Get('posts/popular')
-  // 비공개 채널 인기글이 공용 캐시에 남지 않게 private
-  @Header('Cache-Control', 'private, max-age=30')
+  // 보는 사람마다 결과가 다르고(차단) 숨김 · 차단 직후 바로 바뀌어야 하므로 브라우저에 담아 두지 않는다 (서버가 60초 캐시)
+  @Header('Cache-Control', 'private, no-cache')
   async popular(@Query('channel') channel: string | undefined, @CurrentUser() user?: AuthUser) {
     const slug = channel?.trim() || undefined;
     if (slug) await this.posts.requireChannelAccess(slug, user?.id);
-    return this.posts.popular(slug);
+    return this.posts.popular(slug, user?.id);
   }
 
   @Public()

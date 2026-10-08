@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import {
+  useBlockUser,
+  useMyBlocks,
   CODE_LENGTH,
   timeAgo,
   useAuth,
@@ -12,7 +14,9 @@ import {
   useVerifyAge,
   useWithdraw,
 } from '@loop/shared';
+import { Link } from 'react-router-dom';
 import { useLeaveThenSignOut } from '../../lib/authNav';
+import { UserAvatar } from '../../components/UserAvatar';
 import { Modal } from '../../components/Modal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PROVIDERS } from '../../components/SocialLogin';
@@ -510,6 +514,44 @@ function LoginSessions() {
   );
 }
 
+/** 차단한 사용자: 이 사람들의 글 · 댓글 · 알림은 나에게 보이지 않는다. 해제하면 다시 보인다 */
+function BlockedUsers() {
+  const blocks = useMyBlocks();
+  const block = useBlockUser();
+  return (
+    <section className={cn(ui.card, s.section)}>
+      <h2 className={s.sectionTitle}>차단한 사용자</h2>
+      <p className={s.sectionDesc}>차단한 사람의 글은 목록에서 빠지고, 댓글은 가려지고, 그 사람 때문에 오는 알림도 받지 않아요. 프로필에서 차단할 수 있어요.</p>
+      {blocks.isPending ? (
+        <div className={ui.spinner} />
+      ) : !blocks.data?.length ? (
+        <p className="m-0 text-sm text-fg-weak">차단한 사용자가 없어요</p>
+      ) : (
+        <ul className={s.sessionList}>
+          {blocks.data.map((u) => (
+            <li key={u.id} className={s.session}>
+              <Link to={`/u/${u.id}`} className="flex-1 min-w-0 flex items-center gap-3">
+                <UserAvatar nickname={u.nickname} avatarUrl={u.avatarUrl} size={36} />
+                <span className={cn(s.optionLabel, 'truncate')}>{u.nickname}</span>
+              </Link>
+              <button
+                type="button"
+                className={cn(ui.button, ui.secondary, ui.small)}
+                disabled={block.isPending}
+                onClick={() =>
+                  block.mutate({ userId: u.id, block: false }, { onSuccess: () => toast(`${u.nickname}님 차단을 풀었어요`), onError: (e) => toast(e.message) })
+                }
+              >
+                차단 해제
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const settings = useSettings();
   const phone = usePhone();
@@ -526,6 +568,7 @@ export default function SettingsPage() {
         <SocialAccounts />
         <LoginSessions />
       </section>
+      <BlockedUsers />
       <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>화면</h2>
         <div className={s.option}>

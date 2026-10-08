@@ -62,6 +62,7 @@ export class NotificationsService {
     await this.safe(async () => {
       const post = await this.db.one<{ authorId: number }>('SELECT author_id AS "authorId" FROM posts WHERE id = $1', [postId]);
       if (!post || post.authorId === actorId) return;
+      if (await this.db.one('SELECT 1 FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2', [post.authorId, actorId])) return;
       const merged = await this.db.execute(
         `UPDATE notifications SET count = count + 1, actor_id = $3, created_at = now()
          WHERE id = (SELECT id FROM notifications WHERE user_id = $1 AND type = 'like' AND post_id = $2 AND read_at IS NULL
@@ -77,7 +78,9 @@ export class NotificationsService {
     await this.safe(() =>
       this.db.execute(
         `INSERT INTO notifications (user_id, type, actor_id, post_id)
-         SELECT user_id, 'notice', $3, $1 FROM channel_members WHERE channel_id = $2 AND user_id <> $3`,
+         SELECT m.user_id, 'notice', $3, $1 FROM channel_members m
+         WHERE m.channel_id = $2 AND m.user_id <> $3
+           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = m.user_id AND b.blocked_id = $3)`,
         [postId, channelId, authorId],
       ),
     );
@@ -115,14 +118,14 @@ export class NotificationsService {
     await this.db.execute('UPDATE notifications SET read_at = now() WHERE user_id = $1 AND read_at IS NULL', [userId]);
   }
 
+  /** 받는 사람이 actor 를 차단했으면 보내지 않는다 */
   private insert(userId: number, type: NotificationType, actorId: number, postId: number, commentId: number | null) {
-    return this.db.execute('INSERT INTO notifications (user_id, type, actor_id, post_id, comment_id) VALUES ($1, $2, $3, $4, $5)', [
-      userId,
-      type,
-      actorId,
-      postId,
-      commentId,
-    ]);
+    return this.db.execute(
+      `INSERT INTO notifications (user_id, type, actor_id, post_id, comment_id)
+       SELECT $1::int, $2::varchar, $3::int, $4::int, $5::int
+       WHERE NOT EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = $1::int AND blocked_id = $3::int)`,
+      [userId, type, actorId, postId, commentId],
+    );
   }
 
   private async safe(fn: () => Promise<unknown>) {
