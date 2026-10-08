@@ -150,8 +150,8 @@ Vercel 프로젝트에서 할 일:
 | `SITE_URL` | 사이트 바깥 주소 (예: `https://habitloop-eight.vercel.app`). 소셜 로그인 Redirect URI · 로그인 뒤 돌아갈 주소 |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` · `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` · `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | 소셜 로그인 키 (비우면 그 버튼은 "준비 중") |
 | `KAKAO_JS_KEY` | 카카오톡 공유용 JavaScript 키 (서버가 웹에 넘겨줌, Secret 으로 저장해도 됨). 카카오 콘솔에 사이트 도메인 등록 필요. 비우면 공유 창에서 카카오톡만 빠짐 |
-| `ADMIN_KEY` | 관리자 페이지 비밀 주소 키 (영문·숫자·`-`·`_` 32자 이상, **Secret 으로**). 사이트 주소/`ADMIN_KEY` 에서만 열림. 비우면 관리자 기능 꺼짐 |
-| `ADMIN_EMAILS` | 관리자 로그인을 허락할 계정 이메일 (쉼표로 여러 개). 비밀번호 + 매번 이메일 인증번호 |
+| `ADMIN_KEY` | 관리자 페이지 비밀 주소 키 (영문·숫자·`-`·`_` 32자 이상, **Secret 으로**). 사이트 주소/`ADMIN_KEY` 에서만 열림 |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | 관리자 계정 (회원 계정과 따로, 회원가입 필요 없음). 비밀번호는 12자 이상, **Secret 으로**. 로그인마다 이 이메일로 인증번호. 셋 중 하나라도 비우면 관리자 기능 꺼짐 |
 
 **2) CI/CD (`.github/workflows/ci.yml`)**
 

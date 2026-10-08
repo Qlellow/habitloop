@@ -11,7 +11,7 @@ const ipOf = (req: Request) => String(req.header('x-forwarded-for') ?? req.socke
 /**
  * 사이트 관리자 API. 일반 로그인과 완전히 따로다.
  * - 모든 요청에 X-Admin-Key(=ADMIN_KEY) 가 있어야 하고, 틀리면 '없는 주소'처럼 404
- * - 로그인: ADMIN_EMAILS 에 있는 계정의 비밀번호 + 매번 이메일 인증번호 → 2시간짜리 관리자 토큰
+ * - 로그인: ADMIN_EMAIL · ADMIN_PASSWORD (회원 계정과 따로) + 매번 그 이메일로 받은 인증번호 → 2시간짜리 관리자 토큰
  * 일반 사용자 토큰 검사는 건너뛰고(@Public) AdminGuard 가 따로 확인한다
  */
 @Public()
@@ -44,7 +44,7 @@ export class AdminController {
 
   @Get('me')
   me(@CurrentAdmin() admin: AdminUser) {
-    return { nickname: admin.nickname, email: admin.email };
+    return { email: admin.email };
   }
 
   @Get('stats')
@@ -59,8 +59,8 @@ export class AdminController {
 
   @Post('reports/action')
   @HttpCode(HttpStatus.NO_CONTENT)
-  reportAction(@CurrentAdmin() admin: AdminUser, @Body() input: AdminReportActionInput) {
-    return this.admin.reportAction(admin, input.postId, input.commentId, input.action);
+  reportAction(@Body() input: AdminReportActionInput) {
+    return this.admin.reportAction(input.postId, input.commentId, input.action);
   }
 
   @Get('users')
@@ -70,8 +70,8 @@ export class AdminController {
 
   @Post('users/:id/suspend')
   @HttpCode(HttpStatus.NO_CONTENT)
-  suspend(@CurrentAdmin() admin: AdminUser, @Param('id') id: string, @Body() input: SuspendInput) {
-    return this.admin.suspend(admin, id, input.suspend);
+  suspend(@Param('id') id: string, @Body() input: SuspendInput) {
+    return this.admin.suspend(id, input.suspend);
   }
 
   @Get('channels')

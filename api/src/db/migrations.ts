@@ -399,4 +399,9 @@ CREATE TABLE admin_logs (
 );
 `,
   },
+  {
+    // 관리자 계정을 회원 계정과 따로(환경 변수) 쓰기로 해서 기록에 회원 id 를 남기지 않는다
+    name: '021_admin_logs_no_user',
+    sql: `ALTER TABLE admin_logs DROP COLUMN admin_id;`,
+  },
 ];
