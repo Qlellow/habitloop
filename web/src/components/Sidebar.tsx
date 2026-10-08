@@ -158,21 +158,24 @@ export function PopularCard({ channel, title = '지금 인기 있는 글' }: { c
           {title}
         </h2>
       </div>
-      <ol className={s.list}>
-        {data.slice(0, POPULAR_LIMIT).map((post, i) => (
-          <li key={post.id}>
-            <Link to={`/posts/${post.id}`} state={{ summary: post }} className={s.rank} onPointerEnter={preload.post}>
-              <RankMark rank={i + 1} />
-              <span className={s.rankBody}>
-                <span className={s.rankTitle}>{post.title}</span>
-                <span className={s.rankMeta}>
-                  {post.channelName} · 좋아요 {compact(post.likeCount)} · 댓글 {compact(post.commentCount)}
+      {/* 인기 채널과 같이: hover 상자가 글을 따라 미끄러져 움직인다 */}
+      <SlideHover className={s.rankList}>
+        <ol className={s.list}>
+          {data.slice(0, POPULAR_LIMIT).map((post, i) => (
+            <li key={post.id}>
+              <Link to={`/posts/${post.id}`} state={{ summary: post }} className={s.rank} onPointerEnter={preload.post}>
+                <RankMark rank={i + 1} />
+                <span className={s.rankBody}>
+                  <span className={s.rankTitle}>{post.title}</span>
+                  <span className={s.rankMeta}>
+                    {post.channelName} · 좋아요 {compact(post.likeCount)} · 댓글 {compact(post.commentCount)}
+                  </span>
                 </span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ol>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </SlideHover>
     </section>
   );
 }

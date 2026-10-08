@@ -27,7 +27,9 @@ const s = {
     'flex-none flex items-center gap-2 h-10 pl-1.5 pr-3.5 rounded-full border border-border bg-surface ' +
     'text-[14px] font-semibold text-fg whitespace-nowrap transition-colors hover:bg-field',
   stripBadge: 'text-[11px] font-bold text-primary',
-  rank: 'flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-pressed [li:last-child>&]:pb-4',
+  // 인기글: hover 배경은 SlideHover 가 그린다 (인기 채널과 같은 둥근 상자). 글자는 카드 제목과 같은 줄(20px)에서 시작
+  rankList: 'px-2.5 pb-2.5',
+  rank: 'flex items-center gap-3 px-2.5 py-2.5 rounded-sm',
   rankNo: 'flex-none w-5 text-center text-[15px] font-bold text-fg-weak',
   rankBody: 'flex-1 min-w-0',
   rankTitle: 'line-clamp-2 text-[15px] font-medium text-fg-strong',
