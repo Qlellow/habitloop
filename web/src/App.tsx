@@ -26,6 +26,7 @@ const ChannelPage = lazy(loaders.channel);
 const ChannelsPage = lazy(loaders.channels);
 const ChannelFormPage = lazy(loaders.channelForm);
 const ChannelManagePage = lazy(loaders.channelManage);
+const ChannelReportsPage = lazy(loaders.channelReports);
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage'));
 
@@ -88,6 +89,8 @@ const router = createBrowserRouter([
       { path: '/c/:slug', element: <ChannelPage /> },
       { path: '/c/:slug/edit', element: auth(<ChannelFormPage />) },
       { path: '/c/:slug/manage', element: auth(<ChannelManagePage />) },
+      // 채널 신고함 (운영진만)
+      { path: '/c/:slug/reports', element: auth(<ChannelReportsPage />) },
       { path: '/login', element: guest(<LoginPage />) },
       { path: '/signup', element: guest(<SignupPage />) },
       { path: '/password/reset', element: guest(<ResetPasswordPage />) },

@@ -129,6 +129,8 @@ export interface ChannelDetail extends ChannelSummary {
   canManage: boolean;
   /** 운영진 전용 카테고리에 글을 쓸 수 있는지: 소유자·관리자·매니저 */
   staff: boolean;
+  /** 운영진에게만: 처리 전 신고 수 */
+  reportCount?: number;
   /** 가입해야 글을 쓸 수 있다 (보기·공감·댓글은 가입 없이 가능) */
   joined: boolean;
   /** 북마크 (가입과 별개) */
@@ -258,6 +260,8 @@ export interface PostDetail {
   mine: boolean;
   /** 보는 사람이 작성자보다 높은 채널 운영진이라 이 글을 지울 수 있는지 */
   canModerate: boolean;
+  /** 운영진이 숨긴 글 (쓴 사람 · 운영진에게만 보인다) */
+  hidden?: boolean;
 }
 
 export interface PostInput {
@@ -288,7 +292,42 @@ export interface Comment {
   parentId?: number;
   /** 답글 (오래된 순, 목록에서만) */
   replies?: Comment[];
+  /** 운영진이 숨긴 댓글. 쓴 사람 · 운영진이 아니면 content 가 비어 있다 */
+  hidden?: boolean;
 }
+
+/** 신고 사유 */
+export type ReportReason = 'spam' | 'abuse' | 'adult' | 'illegal' | 'privacy' | 'other';
+export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
+  { value: 'spam', label: '스팸 · 홍보' },
+  { value: 'abuse', label: '욕설 · 비하 · 괴롭힘' },
+  { value: 'adult', label: '음란 · 선정적인 내용' },
+  { value: 'illegal', label: '불법 정보' },
+  { value: 'privacy', label: '개인정보 노출' },
+  { value: 'other', label: '기타' },
+];
+
+/** 신고함 한 줄: 같은 글 · 댓글의 신고를 모은 것 */
+export interface ReportGroup {
+  postId: number;
+  /** 댓글 신고면 그 댓글 */
+  commentId?: number;
+  postTitle: string;
+  /** 댓글 내용 또는 글 앞부분 */
+  excerpt: string;
+  author: { id: string; nickname: string };
+  count: number;
+  reasons: ReportReason[];
+  /** 신고한 사람들이 적은 자세한 내용 (최근 5개) */
+  details: string[];
+  status: 'open' | 'hidden' | 'dismissed';
+  hidden: boolean;
+  lastReportedAt: string;
+  /** 숨기기 · 지우기를 할 수 있는지 (나보다 아래 역할의 글 · 댓글만) */
+  canAct: boolean;
+}
+
+export type ReportAction = 'hide' | 'unhide' | 'delete' | 'dismiss';
 
 export interface LikeResponse {
   liked: boolean;

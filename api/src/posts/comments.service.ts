@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ChannelsService } from '../channels/channels.service';
-import { badge, canModerate, type ChannelRole } from '../channels/roles';
+import { badge, canModerate, isStaff, type ChannelRole } from '../channels/roles';
 import { ApiError } from '../common/api-error';
 import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
@@ -23,11 +23,13 @@ interface CommentRow {
   createdAt: Date;
   updatedAt: Date | null;
   parentId: number | null;
+  hidden: boolean;
 }
 
 const SELECT_COMMENT = `SELECT c.id, c.author_id AS "authorId", u.uid::text AS "authorUid", u.nickname AS "authorNickname",
   CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "authorAvatar", c.content,
-  c.like_count AS "likeCount", c.created_at AS "createdAt", c.updated_at AS "updatedAt", c.parent_id AS "parentId"
+  c.like_count AS "likeCount", c.created_at AS "createdAt", c.updated_at AS "updatedAt", c.parent_id AS "parentId",
+  c.hidden_at IS NOT NULL AS hidden
   FROM comments c JOIN users u ON u.id = c.author_id`;
 
 @Injectable()
@@ -61,7 +63,7 @@ export class CommentsService {
   /** 베스트 댓글: (post_id, like_count) 인덱스로 좋아요가 일정 수 이상인 댓글만 본다 */
   async best(postId: number, viewerId?: number) {
     const rows = await this.db.query<CommentRow>(
-      `${SELECT_COMMENT} WHERE c.post_id = $1 AND c.like_count >= $2 ORDER BY c.like_count DESC, c.id ASC LIMIT $3`,
+      `${SELECT_COMMENT} WHERE c.post_id = $1 AND c.like_count >= $2 AND c.hidden_at IS NULL ORDER BY c.like_count DESC, c.id ASC LIMIT $3`,
       [postId, BEST_MIN_LIKES, BEST_SIZE],
     );
     return this.toResponses(postId, rows, viewerId);
@@ -204,13 +206,16 @@ export class CommentsService {
     viewerRole: ChannelRole | undefined,
   ) {
     const mine = viewerId != null && c.authorId === viewerId;
+    // 운영진이 숨긴 댓글: 쓴 사람과 운영진에게만 내용을 보여 준다 (다른 사람에게는 '숨긴 댓글' 자리만)
+    const masked = c.hidden && !mine && !isStaff(viewerRole);
     return {
       id: c.id,
       authorId: c.authorUid,
       authorNickname: c.authorNickname,
       authorAvatar: c.authorAvatar ?? undefined,
       authorRole: badge(authorRole),
-      content: c.content,
+      content: masked ? '' : c.content,
+      hidden: c.hidden,
       likeCount: c.likeCount,
       liked,
       createdAt: c.createdAt,

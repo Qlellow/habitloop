@@ -31,6 +31,7 @@ import { UserAvatar } from '../components/UserAvatar';
 import { Markdown } from '../components/Markdown';
 import { CollapsibleBody } from '../components/CollapsibleBody';
 import { PopularCard } from '../components/Sidebar';
+import { ReportDialog } from '../components/ReportDialog';
 import { toast } from '../components/Toast';
 import { preload } from '../lib/preload';
 import { ui } from '../components/ui';
@@ -145,6 +146,9 @@ function CommentItem({ comment: c, postId, best, reply }: { comment: Comment; po
   const edit = useEditComment(postId);
   const add = useAddComment(postId);
   const [mode, setMode] = useState<'edit' | 'reply'>();
+  const [reporting, setReporting] = useState(false);
+  // 운영진이 숨긴 댓글: 쓴 사람 · 운영진이 아니면 내용이 비어 온다
+  const masked = !!c.hidden && !c.content;
   const onLike = () => {
     if (!isLoggedIn) return toLogin();
     like.mutate({ commentId: c.id, like: !c.liked }, { onError: (e) => toast(e.message) });
@@ -172,10 +176,15 @@ function CommentItem({ comment: c, postId, best, reply }: { comment: Comment; po
           onCancel={() => setMode(undefined)}
           onSubmit={(content) => edit.mutate({ id: c.id, content }, { onSuccess: () => setMode(undefined), onError: (e) => toast(e.message) })}
         />
+      ) : masked ? (
+        <p className={cn(s.commentBody, 'text-fg-weak italic')}>운영진이 숨긴 댓글이에요</p>
       ) : (
-        <CommentBody content={c.content} />
+        <>
+          {c.hidden && <span className={cn(ui.badge, 'mb-1.5 bg-danger-weak text-danger-text')}>숨겨진 댓글 · 쓴 사람과 운영진에게만 보여요</span>}
+          <CommentBody content={c.content} />
+        </>
       )}
-      {mode !== 'edit' && (
+      {mode !== 'edit' && !masked && (
         <div className={s.commentActions}>
           <button type="button" className={s.commentLike} aria-pressed={c.liked} aria-label={`좋아요 ${c.likeCount}`} onClick={onLike}>
             <HeartIcon filled={c.liked} />
@@ -212,8 +221,14 @@ function CommentItem({ comment: c, postId, best, reply }: { comment: Comment; po
               삭제
             </button>
           )}
+          {isLoggedIn && !c.mine && !best && (
+            <button type="button" className={s.commentAction} onClick={() => setReporting(true)}>
+              신고
+            </button>
+          )}
         </div>
       )}
+      {reporting && <ReportDialog postId={postId} commentId={c.id} onClose={() => setReporting(false)} />}
       {mode === 'reply' && (
         <InlineComposer
           placeholder={`${c.authorNickname}님에게 답글`}
@@ -434,9 +449,15 @@ export default function PostDetailPage() {
   const navigate = useNavigate();
   const { data: post, isPlaceholderData, error } = usePost(id, summary?.id === id ? summary : undefined);
   const del = useDeletePost();
+  const { isLoggedIn } = useAuth();
+  const [reporting, setReporting] = useState(false);
 
   if (!Number.isInteger(id) || (error instanceof ApiError && error.status === 404)) {
     return <NotFoundPage message="삭제되었거나 없는 글이에요" />;
+  }
+  // 운영진이 숨긴 글 · 볼 수 없는 채널의 글
+  if (error instanceof ApiError && error.status === 403) {
+    return <NotFoundPage message={error.message} hint="이 글은 지금 볼 수 없어요." />;
   }
 
   const onDelete = () => {
@@ -484,6 +505,11 @@ export default function PostDetailPage() {
                 </>
               )}
             </nav>
+            {post.hidden && (
+              <p className="mt-3 mb-0 px-3.5 py-2.5 rounded-md bg-danger-weak text-sm font-medium text-danger-text">
+                운영진이 숨긴 글이에요. 쓴 사람과 운영진에게만 보여요.
+              </p>
+            )}
             <h1 className={s.title}>{post.title}</h1>
             <div className={s.byline}>
               <Link to={`/u/${post.author.id}`} aria-label={`${post.author.nickname} 프로필`} onPointerEnter={preload.user}>
@@ -501,18 +527,26 @@ export default function PostDetailPage() {
                   · 조회 {compact(post.viewCount)}
                 </div>
               </div>
-              {(post.mine || post.canModerate) && !isPlaceholderData && (
+              {(post.mine || post.canModerate || isLoggedIn) && !isPlaceholderData && (
                 <div className={s.bylineActions}>
                   {post.mine && (
                     <Link to={`/posts/${id}/edit`} className={cn(ui.button, ui.text, ui.small)}>
                       수정
                     </Link>
                   )}
-                  <button type="button" className={cn(ui.button, ui.text, ui.small, ui.danger)} onClick={onDelete}>
-                    삭제
-                  </button>
+                  {(post.mine || post.canModerate) && (
+                    <button type="button" className={cn(ui.button, ui.text, ui.small, ui.danger)} onClick={onDelete}>
+                      삭제
+                    </button>
+                  )}
+                  {isLoggedIn && !post.mine && (
+                    <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={() => setReporting(true)}>
+                      신고
+                    </button>
+                  )}
                 </div>
               )}
+              {reporting && <ReportDialog postId={id} onClose={() => setReporting(false)} />}
             </div>
             <div className={s.content}>
               {isPlaceholderData ? (

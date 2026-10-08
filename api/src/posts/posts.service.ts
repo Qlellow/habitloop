@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CategoriesService } from '../channels/categories.service';
 import { ChannelsService } from '../channels/channels.service';
 import { MembershipService } from '../channels/membership.service';
-import { badge, canModerate, type ChannelRole } from '../channels/roles';
+import { badge, canModerate, isStaff, type ChannelRole } from '../channels/roles';
 import { ApiError } from '../common/api-error';
 import { clamp, cursorPage, escapeLike, type CursorPage } from '../common/cursor-page';
 import { TtlCache } from '../common/ttl-cache';
@@ -104,6 +104,7 @@ interface PostRow {
   viewCount: number;
   createdAt: Date;
   updatedAt: Date;
+  hidden: boolean;
 }
 
 @Injectable()
@@ -133,6 +134,8 @@ export class PostsService {
       where.push(sql.replace('?', `$${params.length}`));
     };
     if (cursor != null) add('p.id < ?', cursor);
+    // 운영진이 숨긴 글은 목록에 나오지 않는다 (글 보기에서 쓴 사람 · 운영진만)
+    where.push('p.hidden_at IS NULL');
     if (search.channel) {
       // 채널 안: 볼 수 없는 채널(비공개·19세 이상)이면 403
       await this.channels.requireAccess(await this.channels.findBySlug(search.channel), viewerId);
@@ -162,7 +165,7 @@ export class PostsService {
     await this.channels.requireAccess(await this.channels.findBySlug(query.channel), viewerId);
     const adult = await this.channels.isAdult(viewerId);
     const pageSize = clamp(size, 1, MAX_PAGE_SIZE);
-    const where: string[] = ['c.slug = $1'];
+    const where: string[] = ['c.slug = $1', 'p.hidden_at IS NULL'];
     const params: unknown[] = [query.channel];
     const add = (sql: string, value: unknown) => {
       params.push(value);
@@ -194,7 +197,7 @@ export class PostsService {
     await this.channels.requireAccess(await this.channels.findBySlug(channel), viewerId);
     const adult = await this.channels.isAdult(viewerId);
     const rows = await this.db.query(
-      `${SELECT_SUMMARY} WHERE c.slug = $1 AND cat.owner_only AND ($3 OR cat.adult IS NOT TRUE) ORDER BY p.id DESC LIMIT $2`,
+      `${SELECT_SUMMARY} WHERE c.slug = $1 AND cat.owner_only AND p.hidden_at IS NULL AND ($3 OR cat.adult IS NOT TRUE) ORDER BY p.id DESC LIMIT $2`,
       [channel, NOTICE_LIMIT, adult],
     );
     return rows.map(toSummary);
@@ -205,13 +208,13 @@ export class PostsService {
       const since = new Date(Date.now() - POPULAR_DAYS * 24 * 3600 * 1000);
       const rows = channel
         ? await this.db.query(
-            `${SELECT_SUMMARY} WHERE c.slug = $1 AND p.created_at >= $2 AND cat.adult IS NOT TRUE
+            `${SELECT_SUMMARY} WHERE c.slug = $1 AND p.created_at >= $2 AND p.hidden_at IS NULL AND cat.adult IS NOT TRUE
              ORDER BY p.like_count DESC, p.comment_count DESC, p.id DESC LIMIT $3`,
             [channel, since, POPULAR_SIZE],
           )
         : await this.db.query(
             // 모두에게 같은 결과(캐시): 비공개·19세 이상 채널과 19세 이상 카테고리 글은 빼다
-            `${SELECT_SUMMARY} WHERE p.created_at >= $1 AND c.visibility = 'public' AND NOT c.adult AND cat.adult IS NOT TRUE
+            `${SELECT_SUMMARY} WHERE p.created_at >= $1 AND p.hidden_at IS NULL AND c.visibility = 'public' AND NOT c.adult AND cat.adult IS NOT TRUE
              ORDER BY p.like_count DESC, p.comment_count DESC, p.id DESC LIMIT $2`,
             [since, POPULAR_SIZE],
           );
@@ -226,7 +229,7 @@ export class PostsService {
       `${SELECT_SUMMARY}
        WHERE p.id IN (
          SELECT r.id FROM unnest($1::int[]) AS ch(id)
-         CROSS JOIN LATERAL (SELECT id FROM posts WHERE channel_id = ch.id ORDER BY id DESC LIMIT $2) r)
+         CROSS JOIN LATERAL (SELECT id FROM posts WHERE channel_id = ch.id AND hidden_at IS NULL ORDER BY id DESC LIMIT $2) r)
          AND ($3 OR cat.adult IS NOT TRUE)
        ORDER BY p.id DESC`,
       [channelIds, perChannel, adult],
@@ -243,13 +246,17 @@ export class PostsService {
    * 글 · 댓글 · 좋아요 모두 이걸 먼저 확인한다.
    */
   async requirePostAccess(postId: number, viewerId?: number) {
-    const row = await this.db.one<{ channelId: number; visibility: string; adult: boolean; catAdult: boolean | null }>(
-      `SELECT c.id AS "channelId", c.visibility, c.adult, cat.adult AS "catAdult"
+    const row = await this.db.one<{ channelId: number; visibility: string; adult: boolean; catAdult: boolean | null; authorId: number; hidden: boolean }>(
+      `SELECT c.id AS "channelId", c.visibility, c.adult, cat.adult AS "catAdult", p.author_id AS "authorId", p.hidden_at IS NOT NULL AS hidden
        FROM posts p JOIN channels c ON c.id = p.channel_id LEFT JOIN channel_categories cat ON cat.id = p.category_id
        WHERE p.id = $1`,
       [postId],
     );
     if (!row) throw notFound();
+    // 운영진이 숨긴 글: 쓴 사람과 운영진만 본다
+    if (row.hidden && viewerId !== row.authorId && !isStaff(await this.channels.roleOf(row.channelId, viewerId))) {
+      throw ApiError.forbidden('운영진이 숨긴 글이에요');
+    }
     if ((row.adult || row.catAdult) && !(await this.channels.isAdult(viewerId))) {
       throw ApiError.forbidden('만 19세 이상만 볼 수 있는 글이에요. 설정에서 나이를 확인해 주세요');
     }
@@ -355,6 +362,12 @@ export class PostsService {
     this.channels.popularCache.clear();
   }
 
+  /** 운영진이 글을 숨기거나 되돌렸을 때: 인기글 · 인기 채널 캐시를 비운다 */
+  visibilityChanged() {
+    this.popularCache.clear();
+    this.channels.popularCache.clear();
+  }
+
   /** 여러 번 눌러도 결과가 같다. 동시에 두 번 눌려도 (post_id, user_id) unique + ON CONFLICT 가 막는다 */
   async like(userId: number, postId: number) {
     await this.ensureExists(postId);
@@ -398,7 +411,7 @@ export class PostsService {
               c.slug AS "channelSlug", c.name AS "channelName", c.icon_version AS "iconVersion", c.color AS "channelColor",
               p.category_id AS "categoryId", cat.name AS "categoryName", p.title, p.content,
               p.like_count AS "likeCount", p.comment_count AS "commentCount", p.view_count AS "viewCount",
-              p.created_at AS "createdAt", p.updated_at AS "updatedAt"
+              p.created_at AS "createdAt", p.updated_at AS "updatedAt", p.hidden_at IS NOT NULL AS hidden
        FROM posts p JOIN users a ON a.id = p.author_id JOIN channels c ON c.id = p.channel_id
        LEFT JOIN channel_categories cat ON cat.id = p.category_id
        WHERE p.id = $1`,
@@ -430,6 +443,8 @@ export class PostsService {
       liked,
       mine,
       canModerate: viewerId != null && !mine && canModerate(viewerRole, authorRole),
+      /** 운영진이 숨긴 글 (쓴 사람 · 운영진에게만 보인다) */
+      hidden: post.hidden,
     };
   }
 }

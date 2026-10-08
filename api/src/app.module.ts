@@ -25,6 +25,8 @@ import { VerificationService } from './mail/verification.service';
 import { CommentsService } from './posts/comments.service';
 import { PostsController } from './posts/posts.controller';
 import { PostsService } from './posts/posts.service';
+import { ReportsController } from './reports/reports.controller';
+import { ReportsService } from './reports/reports.service';
 import { RewardsService } from './users/rewards.service';
 import { UsersController } from './users/users.controller';
 
@@ -39,7 +41,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController],
   providers: [
     Database,
     ImagesService,
@@ -58,6 +60,7 @@ class HealthController {
     PreviewsService,
     RewardsService,
     NotificationsService,
+    ReportsService,
     OAuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
