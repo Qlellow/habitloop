@@ -311,4 +311,15 @@ CREATE INDEX idx_user_identities_user ON user_identities (user_id);
     name: '015_withdrawn',
     sql: `ALTER TABLE users ADD COLUMN withdrawn_at TIMESTAMPTZ;`,
   },
+  {
+    // 인기 채널 점수: 최근 7일의 댓글 · 공감 · 조회 · 새 팔로워만 골라 읽는다 (글은 idx_posts_created_at)
+    name: '016_popular_channel_score',
+    sql: `
+CREATE INDEX idx_comments_created_at ON comments (created_at);
+CREATE INDEX idx_post_likes_created_at ON post_likes (created_at);
+CREATE INDEX idx_post_views_created_at ON post_views (created_at);
+CREATE INDEX idx_channel_members_joined_at ON channel_members (joined_at);
+DROP INDEX IF EXISTS idx_channels_popular;
+`,
+  },
 ];
