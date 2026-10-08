@@ -62,7 +62,7 @@ function SidebarSkeleton({ sections }: { sections: number[] }) {
 }
 
 /**
- * 왼쪽 사이드바: 팔로우한 채널(북마크한 채널 먼저) + 인기 채널 TOP 5.
+ * 왼쪽 사이드바: 팔로우한 채널(북마크한 채널 먼저) + 인기 채널 TOP 5 (등수는 API 의 최근 7일 활동 점수).
  * 내가 만든 채널은 홈에서 보여 주지 않는다 (마이페이지 > 내 채널).
  * 필요한 목록을 다 불러오기 전에는 스켈레톤만 보여 준다 (빈 제목이 잠깐 보였다 바뀌지 않게).
  */
@@ -87,7 +87,9 @@ export function ChannelSidebar() {
           )}
         </div>
       )}
-      <h2 className={s.heading}>인기 채널</h2>
+      <h2 className={s.heading} title="최근 7일 동안 새 글 · 댓글 · 공감 · 새 팔로워 · 활동한 사람이 많은 순">
+        인기 채널 <span className="font-medium">· 최근 7일</span>
+      </h2>
       {/* 다른 채널로 옮기면 hover 상자가 이전 채널에서 미끄러져 온다 */}
       <SlideHover>
         <ul className={s.list}>

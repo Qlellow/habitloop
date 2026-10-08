@@ -54,6 +54,49 @@ export const newInviteCode = () =>
 
 const POPULAR_SIZE = 30;
 const SEARCH_SIZE = 30;
+
+/** 인기 채널은 최근 이만큼의 활동으로 등수를 매긴다 */
+const POPULAR_DAYS = 7;
+/**
+ * 인기 채널 점수 (최근 7일). 한 사람이 몰아서 올린 글 · 댓글로 등수가 뛰지 않도록 사람마다 셀 수 있는 개수를 둔다.
+ * - 새 글 3점 (글쓴이마다 5개까지)          - 댓글 2점 (쓴 사람마다 10개까지)
+ * - 글 공감 1점                            - 새 팔로워 4점 (만든 사람 제외)
+ * - 활동한 사람(글 · 댓글 · 공감) 한 명당 5점  - 글 조회(사람마다 한 번) 0.1점
+ * - 전체 팔로워 한 명당 0.1점 (조용해도 큰 채널이 바닥으로 떨어지지 않게)
+ */
+export const POPULAR_WEIGHTS = {
+  post: 3,
+  postPerAuthor: 5,
+  comment: 2,
+  commentPerAuthor: 10,
+  like: 1,
+  newFollower: 4,
+  activeUser: 5,
+  view: 0.1,
+  follower: 0.1,
+} as const;
+const W = POPULAR_WEIGHTS;
+/** 채널별 최근 활동 점수 (WITH … score(channel_id, score)). $3 = 기준 시각 */
+const POPULAR_SCORE = `WITH
+  recent_posts AS (SELECT p.channel_id, p.author_id, count(*) AS n FROM posts p WHERE p.created_at >= $3 GROUP BY 1, 2),
+  recent_comments AS (
+    SELECT p.channel_id, cm.author_id, count(*) AS n FROM comments cm JOIN posts p ON p.id = cm.post_id
+    WHERE cm.created_at >= $3 GROUP BY 1, 2),
+  recent_likes AS (
+    SELECT p.channel_id, l.user_id FROM post_likes l JOIN posts p ON p.id = l.post_id WHERE l.created_at >= $3),
+  active AS (
+    SELECT channel_id, count(DISTINCT user_id) AS n FROM (
+      SELECT channel_id, author_id AS user_id FROM recent_posts
+      UNION ALL SELECT channel_id, author_id FROM recent_comments
+      UNION ALL SELECT channel_id, user_id FROM recent_likes) a GROUP BY 1),
+  parts AS (
+    SELECT channel_id, LEAST(n, ${W.postPerAuthor}) * ${W.post} AS pts FROM recent_posts
+    UNION ALL SELECT channel_id, LEAST(n, ${W.commentPerAuthor}) * ${W.comment} FROM recent_comments
+    UNION ALL SELECT channel_id, ${W.like} FROM recent_likes
+    UNION ALL SELECT channel_id, n * ${W.activeUser} FROM active
+    UNION ALL SELECT channel_id, ${W.newFollower} FROM channel_members WHERE joined_at >= $3 AND role <> 'OWNER'
+    UNION ALL SELECT p.channel_id, ${W.view} FROM post_views v JOIN posts p ON p.id = v.post_id WHERE v.created_at >= $3),
+  score AS (SELECT channel_id, sum(pts) AS score FROM parts GROUP BY 1)`;
 /** 라우트와 겹치거나 오해를 부를 수 있는 고리는 막는다 */
 const RESERVED = new Set(['new', 'all', 'admin', 'api', 'me', 'search', 'write', 'loop', 'previews']);
 
@@ -72,13 +115,19 @@ export class ChannelsService {
   /**
    * 인기 채널. 비공개 채널은 목록·검색에 나오지 않고(초대로만), 19세 이상 채널은 나이를 확인한 사람에게만 보인다.
    * 모든 방문자가 같은 결과를 보므로 성인/일반 두 가지로만 캐시한다.
+   *
+   * 등수는 최근 7일 활동 점수(POPULAR_SCORE) 순. 같으면 팔로워 → 전체 글 → 먼저 만든 채널 순.
    */
   popular(adult = false): Promise<ChannelSummary[]> {
     return this.popularCache.getOrLoad(adult ? 'adult' : '*', () =>
       this.db.query(
-        `SELECT ${SUMMARY_COLUMNS} FROM channels c WHERE c.visibility = 'public' AND ($2 OR NOT c.adult)
-         ORDER BY c.post_count DESC, c.id ASC LIMIT $1`,
-        [POPULAR_SIZE, adult],
+        `${POPULAR_SCORE}
+         SELECT ${SUMMARY_COLUMNS} FROM channels c LEFT JOIN score s ON s.channel_id = c.id
+         WHERE c.visibility = 'public' AND ($2 OR NOT c.adult)
+         ORDER BY COALESCE(s.score, 0) + c.member_count * ${POPULAR_WEIGHTS.follower} DESC,
+                  c.member_count DESC, c.post_count DESC, c.id ASC
+         LIMIT $1`,
+        [POPULAR_SIZE, adult, new Date(Date.now() - POPULAR_DAYS * 24 * 3600 * 1000)],
       ),
     );
   }

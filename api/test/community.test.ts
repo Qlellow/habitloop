@@ -1015,6 +1015,34 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/channels').query({ q: '%' })).body).toHaveLength(0);
   });
 
+  it('인기 채널: 최근 7일 활동 점수 순, 한 사람이 몰아 쓴 글은 5개까지만', async () => {
+    const owner = await signup('rank-owner@test.dev', '랭킹주인');
+    const bob = await signup('rank-bob@test.dev', '랭킹바비');
+    const carol = await signup('rank-carol@test.dev', '랭킹캐럴');
+    for (const [slug, name] of [['rank-quiet', '예전에북적'], ['rank-spam', '혼자도배'], ['rank-lively', '요즘활발']]) {
+      await http().post('/api/channels').set(bearer(owner)).send({ slug, name }).expect(201);
+    }
+    const write = (channel: string) =>
+      http().post('/api/posts').set(bearer(owner)).send({ channel, title: '글', content: '내용' }).expect(201);
+    // 글은 가장 많지만 한 달 전 글뿐인 채널
+    for (let i = 0; i < 8; i++) await write('rank-quiet');
+    await app.get(Database).execute(
+      "UPDATE posts SET created_at = now() - interval '30 days' WHERE channel_id = (SELECT id FROM channels WHERE slug = 'rank-quiet')",
+    );
+    // 혼자 최근 글 8개: 5개만 센다 → 5×3 + 활동한 사람 1×5 = 20점
+    for (let i = 0; i < 8; i++) await write('rank-spam');
+    // 글 1 · 댓글 1 · 공감 1 · 새 팔로워 1 · 활동한 사람 3명 → 3 + 2 + 1 + 4 + 15 = 25점
+    const post = (await write('rank-lively')).body;
+    await http().post(`/api/posts/${post.id}/comments`).set(bearer(bob)).send({ content: '좋아요' }).expect(201);
+    await http().post(`/api/posts/${post.id}/like`).set(bearer(carol));
+    await http().post('/api/channels/rank-lively/members').set(bearer(carol)).expect(200);
+
+    const order = ((await http().get('/api/channels')).body as { slug: string }[])
+      .map((c) => c.slug)
+      .filter((slug) => slug.startsWith('rank-'));
+    expect(order).toEqual(['rank-lively', 'rank-spam', 'rank-quiet']);
+  });
+
   it('DB 에 없는 사용자의 토큰은 비로그인으로 본다', async () => {
     const ghost = jwt.issue(999_999, '유령', 'no-such-session').token;
     const real = await signup('ghost-check@test.dev', '진짜회원');
