@@ -27,16 +27,19 @@ export function RankMark({ rank }: { rank: number }) {
 
 function ChannelLinks({ channels }: { channels: ChannelSummary[] }) {
   return (
-    <ul className={s.list}>
-      {channels.map((c) => (
-        <li key={c.slug}>
-          <NavLink to={`/c/${c.slug}`} className={s.channel} onPointerEnter={preload.channel}>
-            <ChannelIcon channel={c} size={26} />
-            <span className={s.channelName}>{c.name}</span>
-          </NavLink>
-        </li>
-      ))}
-    </ul>
+    // 인기 채널과 같이: hover 상자가 채널을 따라 미끄러져 움직인다
+    <SlideHover>
+      <ul className={s.list}>
+        {channels.map((c) => (
+          <li key={c.slug}>
+            <NavLink to={`/c/${c.slug}`} className={s.popularChannel} onPointerEnter={preload.channel}>
+              <ChannelIcon channel={c} size={26} />
+              <span className={s.channelName}>{c.name}</span>
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </SlideHover>
   );
 }
 

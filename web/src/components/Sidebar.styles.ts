@@ -8,7 +8,7 @@ const s = {
   channel:
     'flex items-center gap-2.5 px-2.5 py-[7px] rounded-sm text-[15px] font-medium text-fg transition-colors ' +
     'hover:bg-field aria-[current=page]:bg-primary-weak aria-[current=page]:text-primary aria-[current=page]:font-bold',
-  // 인기 채널: hover 배경은 SlideHover 가 그린다
+  // 팔로우한 채널 · 인기 채널: hover 배경은 SlideHover 가 그린다
   popularChannel:
     'flex items-center gap-2.5 px-2.5 py-[7px] rounded-sm text-[15px] font-medium text-fg ' +
     'aria-[current=page]:bg-primary-weak aria-[current=page]:text-primary aria-[current=page]:font-bold',
