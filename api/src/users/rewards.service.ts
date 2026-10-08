@@ -109,14 +109,17 @@ export class RewardsService {
   }
 
   /** 내 글이 공감을 받으면 +2P (같은 사람의 공감은 한 번만, 내 글에 내가 누른 건 빼고) */
-  async postLiked(postId: number, likerId: number) {
+  /** 이 사람이 이 글에 처음 공감했으면 true (알림도 처음 한 번만 보낸다) */
+  async postLiked(postId: number, likerId: number): Promise<boolean> {
     const post = await this.db.one<{ authorId: number }>('SELECT author_id AS "authorId" FROM posts WHERE id = $1', [postId]);
-    if (!post || post.authorId === likerId) return;
-    await this.db.transaction(async () => {
-      const first = await this.db.execute('INSERT INTO like_rewards (post_id, liker_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [postId, likerId]);
-      if (first) await this.grant(post.authorId, LIKE_POINTS, '공감 받음');
+    if (!post || post.authorId === likerId) return false;
+    const first = await this.db.transaction(async () => {
+      const added = await this.db.execute('INSERT INTO like_rewards (post_id, liker_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [postId, likerId]);
+      if (added) await this.grant(post.authorId, LIKE_POINTS, '공감 받음');
+      return added > 0;
     });
     await this.checkBadges(post.authorId);
+    return first;
   }
 
   /** 초대 코드로 가입하면 초대한 사람 +100P, 가입한 사람 +30P */

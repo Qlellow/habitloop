@@ -15,6 +15,7 @@ import type {
   AttendanceResult,
   MyInvite,
   PointLog,
+  NotificationItem,
   PostPage,
   UserProfile,
   ChannelCategory,
@@ -359,6 +360,39 @@ export function usePointLogs(filter: PointLogFilter, enabled = true) {
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (last) => last.nextCursor,
     enabled,
+  });
+}
+
+/** 안 읽은 알림 수 (헤더 종의 빨간 점). 창을 보고 있는 동안 30초마다, 창으로 돌아올 때 새로 받는다 */
+export function useUnreadNotifications(enabled = true) {
+  return useQuery({
+    queryKey: ['notifications', 'unread'],
+    queryFn: ({ signal }) => api<{ count: number }>('/api/me/notifications/unread', { signal }),
+    enabled,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/** 내 알림 목록 (최신순) */
+export function useNotifications(enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ['notifications', 'list'],
+    queryFn: ({ pageParam, signal }) =>
+      api<CursorPage<NotificationItem>>('/api/me/notifications', { query: { cursor: pageParam, size: 20 }, signal }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.nextCursor,
+    enabled,
+  });
+}
+
+/** 알림 읽음 표시: id 가 없으면 모두 읽음 */
+export function useReadNotifications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id?: number) =>
+      api<void>(id == null ? '/api/me/notifications/read' : `/api/me/notifications/${id}/read`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 }
 

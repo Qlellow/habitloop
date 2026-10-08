@@ -225,6 +225,23 @@ export interface PointLog {
   createdAt: string;
 }
 
+/** 알림 종류: 내 글에 댓글 · 내 댓글에 답글 · 내 글에 공감 · 팔로우한 채널의 새 공지 */
+export type NotificationType = 'comment' | 'reply' | 'like' | 'notice';
+
+export interface NotificationItem {
+  id: number;
+  type: NotificationType;
+  /** 알림을 만든 사람 (공감은 마지막으로 누른 사람). 없어진 계정이면 비어 있다 */
+  actor?: { id: string; nickname: string; avatarUrl?: string };
+  /** 공감: 읽기 전까지 모인 사람 수 */
+  count: number;
+  post: { id: number; title: string; channelSlug: string; channelName: string };
+  /** 댓글 · 답글 앞부분 */
+  comment?: { id: number; excerpt: string };
+  read: boolean;
+  createdAt: string;
+}
+
 export interface PostDetail {
   id: number;
   channel: { slug: string; name: string; iconVersion: number; color?: number | null };
