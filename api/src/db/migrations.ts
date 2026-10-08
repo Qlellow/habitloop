@@ -372,4 +372,16 @@ CREATE UNIQUE INDEX uk_reports_comment ON reports (reporter_id, comment_id) WHER
 CREATE INDEX idx_reports_channel ON reports (channel_id, status, id);
 `,
   },
+  {
+    // 사용자 차단: 차단한 사람의 글은 내 목록에서 빠지고, 댓글은 가려지고, 알림도 오지 않는다
+    name: '019_user_blocks',
+    sql: `
+CREATE TABLE user_blocks (
+    blocker_id  INTEGER      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    blocked_id  INTEGER      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    PRIMARY KEY (blocker_id, blocked_id)
+);
+`,
+  },
 ];

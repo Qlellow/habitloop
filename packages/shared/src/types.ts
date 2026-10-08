@@ -198,6 +198,16 @@ export interface UserProfile {
   banner?: string | null;
   /** 받은 배지 (도전과제) */
   badges?: Badge[];
+  /** 내가 이 사람을 차단했는지 */
+  blocked?: boolean;
+}
+
+/** 내가 차단한 사용자 (설정) */
+export interface BlockedUser {
+  id: string;
+  nickname: string;
+  avatarUrl?: string;
+  blockedAt: string;
 }
 
 export interface Badge {
@@ -262,6 +272,8 @@ export interface PostDetail {
   canModerate: boolean;
   /** 운영진이 숨긴 글 (쓴 사람 · 운영진에게만 보인다) */
   hidden?: boolean;
+  /** 내가 차단한 사람의 글 */
+  blockedAuthor?: boolean;
 }
 
 export interface PostInput {
@@ -294,6 +306,8 @@ export interface Comment {
   replies?: Comment[];
   /** 운영진이 숨긴 댓글. 쓴 사람 · 운영진이 아니면 content 가 비어 있다 */
   hidden?: boolean;
+  /** 내가 차단한 사람의 댓글 (content 가 비어 있다) */
+  blocked?: boolean;
 }
 
 /** 신고 사유 */

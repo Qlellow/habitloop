@@ -5,6 +5,7 @@ import { ApiError } from '../common/api-error';
 import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BlocksService } from '../users/blocks.service';
 import { RewardsService } from '../users/rewards.service';
 
 const MAX_PAGE_SIZE = 100;
@@ -39,6 +40,7 @@ export class CommentsService {
     private readonly channels: ChannelsService,
     private readonly rewards: RewardsService,
     private readonly notifications: NotificationsService,
+    private readonly blocks: BlocksService,
   ) {}
 
   /**
@@ -174,7 +176,7 @@ export class CommentsService {
     const ids = rows.map((r) => r.id);
     const authorIds = [...new Set(rows.map((r) => r.authorId))];
     const channel = await this.db.one<{ channelId: number }>('SELECT channel_id AS "channelId" FROM posts WHERE id = $1', [postId]);
-    const [liked, staff, viewerRole] = await Promise.all([
+    const [liked, staff, viewerRole, blocked] = await Promise.all([
       viewerId == null
         ? Promise.resolve(new Set<number>())
         : this.db
@@ -192,9 +194,10 @@ export class CommentsService {
           )
         : Promise.resolve([]),
       channel ? this.channels.roleOf(channel.channelId, viewerId) : Promise.resolve(undefined),
+      this.blocks.blockedAmong(viewerId, authorIds),
     ]);
     const roles = new Map(staff.map((s) => [s.userId, s.role]));
-    return rows.map((r) => this.toResponse(r, viewerId, liked.has(r.id), roles.get(r.authorId), viewerRole));
+    return rows.map((r) => this.toResponse(r, viewerId, liked.has(r.id), roles.get(r.authorId), viewerRole, blocked.has(r.authorId)));
   }
 
   /** deletable: 내 댓글이거나, 내가 작성자보다 높은 채널 운영진이라 지울 수 있는지 */
@@ -204,10 +207,12 @@ export class CommentsService {
     liked: boolean,
     authorRole: ChannelRole | undefined,
     viewerRole: ChannelRole | undefined,
+    blocked = false,
   ) {
     const mine = viewerId != null && c.authorId === viewerId;
     // 운영진이 숨긴 댓글: 쓴 사람과 운영진에게만 내용을 보여 준다 (다른 사람에게는 '숨긴 댓글' 자리만)
-    const masked = c.hidden && !mine && !isStaff(viewerRole);
+    // 내가 차단한 사람의 댓글: 내용을 비우고 '차단한 사용자의 댓글' 자리만
+    const masked = (c.hidden && !mine && !isStaff(viewerRole)) || blocked;
     return {
       id: c.id,
       authorId: c.authorUid,
@@ -216,6 +221,7 @@ export class CommentsService {
       authorRole: badge(authorRole),
       content: masked ? '' : c.content,
       hidden: c.hidden,
+      blocked: blocked || undefined,
       likeCount: c.likeCount,
       liked,
       createdAt: c.createdAt,

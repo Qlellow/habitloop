@@ -147,8 +147,8 @@ function CommentItem({ comment: c, postId, best, reply }: { comment: Comment; po
   const add = useAddComment(postId);
   const [mode, setMode] = useState<'edit' | 'reply'>();
   const [reporting, setReporting] = useState(false);
-  // 운영진이 숨긴 댓글: 쓴 사람 · 운영진이 아니면 내용이 비어 온다
-  const masked = !!c.hidden && !c.content;
+  // 운영진이 숨긴 댓글 · 내가 차단한 사람의 댓글: 내용이 비어 온다
+  const masked = (!!c.hidden || !!c.blocked) && !c.content;
   const onLike = () => {
     if (!isLoggedIn) return toLogin();
     like.mutate({ commentId: c.id, like: !c.liked }, { onError: (e) => toast(e.message) });
@@ -177,7 +177,7 @@ function CommentItem({ comment: c, postId, best, reply }: { comment: Comment; po
           onSubmit={(content) => edit.mutate({ id: c.id, content }, { onSuccess: () => setMode(undefined), onError: (e) => toast(e.message) })}
         />
       ) : masked ? (
-        <p className={cn(s.commentBody, 'text-fg-weak italic')}>운영진이 숨긴 댓글이에요</p>
+        <p className={cn(s.commentBody, 'text-fg-weak italic')}>{c.blocked ? '차단한 사용자의 댓글이에요' : '운영진이 숨긴 댓글이에요'}</p>
       ) : (
         <>
           {c.hidden && <span className={cn(ui.badge, 'mb-1.5 bg-danger-weak text-danger-text')}>숨겨진 댓글 · 쓴 사람과 운영진에게만 보여요</span>}
@@ -451,6 +451,9 @@ export default function PostDetailPage() {
   const del = useDeletePost();
   const { isLoggedIn } = useAuth();
   const [reporting, setReporting] = useState(false);
+  // 내가 차단한 사람의 글은 내용을 접어 두고, 누르면 보여 준다
+  const [shownBlocked, setShownBlocked] = useState<number>();
+  const showBlocked = shownBlocked === id;
 
   if (!Number.isInteger(id) || (error instanceof ApiError && error.status === 404)) {
     return <NotFoundPage message="삭제되었거나 없는 글이에요" />;
@@ -555,6 +558,13 @@ export default function PostDetailPage() {
                   <div className={ui.skeleton} style={{ width: '90%', height: 18, marginTop: 10 }} />
                   <div className={ui.skeleton} style={{ width: '60%', height: 18, marginTop: 10 }} />
                 </>
+              ) : post.blockedAuthor && !showBlocked ? (
+                <div className="flex flex-col items-center gap-3 py-10 rounded-md bg-field text-sm text-fg-sub">
+                  차단한 사용자의 글이에요
+                  <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => setShownBlocked(id)}>
+                    그래도 보기
+                  </button>
+                </div>
               ) : (
                 <CollapsibleBody key={post.id}>
                   <Markdown source={post.content} />

@@ -23,7 +23,7 @@ export class PreviewsService {
     const ids = list.map((c) => c.id);
     const [joined, recent] = await Promise.all([
       this.membership.joinedAmong(viewerId, ids),
-      this.posts.recentByChannels(ids, perChannel, adult),
+      this.posts.recentByChannels(ids, perChannel, adult, viewerId),
     ]);
     const byChannel = new Map<string, PostSummary[]>();
     for (const post of recent) {

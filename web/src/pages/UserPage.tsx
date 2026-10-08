@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ApiError, compact, isUserId, useFeed, useUserProfile, type Badge } from '@loop/shared';
+import { ApiError, compact, isUserId, useAuth, useBlockUser, useFeed, useUserProfile, type Badge, type UserProfile } from '@loop/shared';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { toast } from '../components/Toast';
 import { Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { ui } from '../components/ui';
@@ -61,11 +64,47 @@ function Badges({ badges }: { badges: Badge[] }) {
   );
 }
 
+/** 차단 · 차단 해제 버튼 (로그인했고 내 프로필이 아닐 때) */
+function BlockButton({ user }: { user: UserProfile }) {
+  const block = useBlockUser();
+  const [asking, setAsking] = useState(false);
+  const run = (on: boolean) =>
+    block.mutate(
+      { userId: user.id, block: on },
+      { onSuccess: () => toast(on ? `${user.nickname}님을 차단했어요` : '차단을 풀었어요'), onError: (e) => toast(e.message) },
+    );
+  return (
+    <>
+      <button
+        type="button"
+        className={cn(ui.button, ui.small, user.blocked ? ui.secondary : cn(ui.ghost, 'text-danger-text'))}
+        disabled={block.isPending}
+        onClick={() => (user.blocked ? run(false) : setAsking(true))}
+      >
+        {user.blocked ? '차단 해제' : '차단'}
+      </button>
+      <ConfirmDialog
+        open={asking}
+        title={`${user.nickname}님을 차단할까요?`}
+        message="이 사람의 글은 내 목록에서 빠지고, 댓글은 가려지고, 이 사람 때문에 오는 알림도 받지 않아요. 상대에게는 알리지 않아요."
+        confirmLabel="차단"
+        danger
+        onConfirm={() => {
+          setAsking(false);
+          run(true);
+        }}
+        onClose={() => setAsking(false)}
+      />
+    </>
+  );
+}
+
 /** 작성자 프로필: 닉네임 · 가입일 · 글/댓글 수 + 쓴 글 목록 */
 export default function UserPage() {
   const id = useParams().id ?? '';
   const profile = useUserProfile(id);
   const feed = useFeed({ authorId: id }, isUserId(id));
+  const { user: me } = useAuth();
 
   if (!isUserId(id) || (profile.error instanceof ApiError && profile.error.status === 404)) {
     return <NotFoundPage message="없는 사용자예요" />;
@@ -86,6 +125,11 @@ export default function UserPage() {
               </p>
               <p className="mt-0.5 mb-0 text-[13px] text-fg-weak">{joinedAt(user.createdAt)}</p>
             </div>
+            {me && me.id !== user.id && (
+              <div className="ml-auto self-center pt-3">
+                <BlockButton user={user} />
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-4 p-6" aria-hidden>
@@ -99,7 +143,7 @@ export default function UserPage() {
         <div className={ui.cardHead}>
           <h2 className={ui.sectionTitle}>쓴 글</h2>
         </div>
-        <PostList query={feed} empty="아직 쓴 글이 없어요" />
+        <PostList query={feed} empty={user?.blocked ? '차단한 사용자의 글은 보이지 않아요' : '아직 쓴 글이 없어요'} />
       </section>
     </Page>
   );

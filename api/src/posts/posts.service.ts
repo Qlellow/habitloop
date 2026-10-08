@@ -8,6 +8,7 @@ import { clamp, cursorPage, escapeLike, type CursorPage } from '../common/cursor
 import { TtlCache } from '../common/ttl-cache';
 import { Database } from '../db/database';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BlocksService, notBlockedPost } from '../users/blocks.service';
 import { RewardsService } from '../users/rewards.service';
 import { makeExcerpt } from './excerpt';
 import type { CreatePostInput, UpdatePostInput } from './posts.dto';
@@ -64,6 +65,8 @@ export interface PostPageQuery {
 const NOTICE_LIMIT = 30;
 const POPULAR_DAYS = 7;
 const POPULAR_SIZE = 5;
+/** 인기글 캐시는 넉넉히 두고, 보는 사람이 차단한 사람의 글을 뺀 뒤 POPULAR_SIZE 개만 준다 */
+const POPULAR_CACHE_SIZE = 20;
 
 /**
  * 목록 조회: 본문(TEXT) 없이 필요한 컬럼만 읽는다.
@@ -119,6 +122,7 @@ export class PostsService {
     private readonly membership: MembershipService,
     private readonly rewards: RewardsService,
     private readonly notifications: NotificationsService,
+    private readonly blocks: BlocksService,
   ) {}
 
   /**
@@ -136,6 +140,8 @@ export class PostsService {
     if (cursor != null) add('p.id < ?', cursor);
     // 운영진이 숨긴 글은 목록에 나오지 않는다 (글 보기에서 쓴 사람 · 운영진만)
     where.push('p.hidden_at IS NULL');
+    // 내가 차단한 사람의 글은 빼고 보여 준다
+    if (viewerId != null) add(notBlockedPost('?'), viewerId);
     if (search.channel) {
       // 채널 안: 볼 수 없는 채널(비공개·19세 이상)이면 403
       await this.channels.requireAccess(await this.channels.findBySlug(search.channel), viewerId);
@@ -172,6 +178,7 @@ export class PostsService {
       where.push(sql.replaceAll('?', `$${params.length}`));
     };
     if (query.category != null) add('p.category_id = ?', query.category);
+    if (viewerId != null) add(notBlockedPost('?'), viewerId);
     if (query.excludeNotices) where.push('(cat.owner_only IS NOT TRUE)');
     if (!adult) where.push('cat.adult IS NOT TRUE');
     const q = query.q?.trim().toLowerCase();
@@ -197,42 +204,51 @@ export class PostsService {
     await this.channels.requireAccess(await this.channels.findBySlug(channel), viewerId);
     const adult = await this.channels.isAdult(viewerId);
     const rows = await this.db.query(
-      `${SELECT_SUMMARY} WHERE c.slug = $1 AND cat.owner_only AND p.hidden_at IS NULL AND ($3 OR cat.adult IS NOT TRUE) ORDER BY p.id DESC LIMIT $2`,
-      [channel, NOTICE_LIMIT, adult],
+      `${SELECT_SUMMARY} WHERE c.slug = $1 AND cat.owner_only AND p.hidden_at IS NULL AND ($3 OR cat.adult IS NOT TRUE)
+       AND ($4::int IS NULL OR ${notBlockedPost('$4')}) ORDER BY p.id DESC LIMIT $2`,
+      [channel, NOTICE_LIMIT, adult, viewerId ?? null],
     );
     return rows.map(toSummary);
   }
 
-  popular(channel?: string): Promise<PostSummary[]> {
+  async popular(channel?: string, viewerId?: number): Promise<PostSummary[]> {
+    const [all, blocked] = await Promise.all([this.popularAll(channel), this.blocks.blockedUids(viewerId)]);
+    return all.filter((p) => !blocked.has(p.authorId)).slice(0, POPULAR_SIZE);
+  }
+
+  private popularAll(channel?: string): Promise<PostSummary[]> {
     return this.popularCache.getOrLoad(channel ?? '*', async () => {
       const since = new Date(Date.now() - POPULAR_DAYS * 24 * 3600 * 1000);
       const rows = channel
         ? await this.db.query(
             `${SELECT_SUMMARY} WHERE c.slug = $1 AND p.created_at >= $2 AND p.hidden_at IS NULL AND cat.adult IS NOT TRUE
              ORDER BY p.like_count DESC, p.comment_count DESC, p.id DESC LIMIT $3`,
-            [channel, since, POPULAR_SIZE],
+            [channel, since, POPULAR_CACHE_SIZE],
           )
         : await this.db.query(
             // 모두에게 같은 결과(캐시): 비공개·19세 이상 채널과 19세 이상 카테고리 글은 빼다
             `${SELECT_SUMMARY} WHERE p.created_at >= $1 AND p.hidden_at IS NULL AND c.visibility = 'public' AND NOT c.adult AND cat.adult IS NOT TRUE
              ORDER BY p.like_count DESC, p.comment_count DESC, p.id DESC LIMIT $2`,
-            [since, POPULAR_SIZE],
+            [since, POPULAR_CACHE_SIZE],
           );
       return rows.map(toSummary);
     });
   }
 
   /** 여러 채널의 최근 글 N개씩 (채널 목록 미리보기). 채널마다 (channel_id, id) 인덱스로 N행만 읽는다 */
-  async recentByChannels(channelIds: number[], perChannel: number, adult = false): Promise<PostSummary[]> {
+  async recentByChannels(channelIds: number[], perChannel: number, adult = false, viewerId?: number): Promise<PostSummary[]> {
     if (channelIds.length === 0 || perChannel <= 0) return [];
     const rows = await this.db.query(
       `${SELECT_SUMMARY}
        WHERE p.id IN (
          SELECT r.id FROM unnest($1::int[]) AS ch(id)
-         CROSS JOIN LATERAL (SELECT id FROM posts WHERE channel_id = ch.id AND hidden_at IS NULL ORDER BY id DESC LIMIT $2) r)
+         CROSS JOIN LATERAL (
+           SELECT id FROM posts WHERE channel_id = ch.id AND hidden_at IS NULL
+             AND ($4::int IS NULL OR author_id NOT IN (SELECT blocked_id FROM user_blocks WHERE blocker_id = $4))
+           ORDER BY id DESC LIMIT $2) r)
          AND ($3 OR cat.adult IS NOT TRUE)
        ORDER BY p.id DESC`,
-      [channelIds, perChannel, adult],
+      [channelIds, perChannel, adult, viewerId ?? null],
     );
     return rows.map(toSummary);
   }
@@ -423,9 +439,10 @@ export class PostsService {
 
   /** canModerate: 보는 사람이 작성자보다 높은 채널 운영진이라 이 글을 지울 수 있는지 */
   private async toDetail(post: PostRow, viewerId: number | undefined, liked: boolean) {
-    const [authorRole, viewerRole] = await Promise.all([
+    const [authorRole, viewerRole, blockedAuthor] = await Promise.all([
       this.channels.roleOf(post.channelId, post.authorId),
       this.channels.roleOf(post.channelId, viewerId),
+      this.blocks.isBlocked(viewerId, post.authorId),
     ]);
     const mine = viewerId === post.authorId;
     return {
@@ -445,6 +462,8 @@ export class PostsService {
       canModerate: viewerId != null && !mine && canModerate(viewerRole, authorRole),
       /** 운영진이 숨긴 글 (쓴 사람 · 운영진에게만 보인다) */
       hidden: post.hidden,
+      /** 내가 차단한 사람의 글 (웹은 내용을 접어 두고 '보기'를 누르면 보여 준다) */
+      blockedAuthor,
     };
   }
 }
