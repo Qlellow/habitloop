@@ -236,3 +236,15 @@ export const TrophyIcon = (p: P) => (
     <path d="M9.6 6.2v2.1a2.4 2.4 0 0 0 1.1 2" stroke="#fff" strokeOpacity=".55" strokeWidth="1.3" strokeLinecap="round" />
   </svg>
 );
+
+export const BellIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path
+      d="M6 10a6 6 0 1 1 12 0v3.6l1.6 2.6a.9.9 0 0 1-.77 1.37H5.17a.9.9 0 0 1-.77-1.37L6 13.6V10z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    <path d="M10 20.2a2.2 2.2 0 0 0 4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);

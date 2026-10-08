@@ -5,6 +5,7 @@ import { useConfirmSignOut } from './ConfirmDialog';
 import { UserAvatar } from './UserAvatar';
 import { toast } from './Toast';
 import { ChannelSearch } from './ChannelSearch';
+import { NotificationBell } from './NotificationBell';
 import { preload } from '../lib/preload';
 import { GridIcon, HomeIcon, PencilIcon, UserIcon } from './Icons';
 import { useAuthState } from '../lib/authNav';
@@ -144,7 +145,10 @@ export function SiteHeader() {
         <div className={s.actions}>
           {/* 글은 채널 안에서만 쓰므로 글쓰기 버튼은 각 채널 페이지에 있다 */}
           {isLoggedIn ? (
-            <UserMenu />
+            <>
+              <NotificationBell />
+              <UserMenu />
+            </>
           ) : (
             <>
               <Link to="/login" state={authState} className={cn(ui.button, ui.text)} onPointerEnter={preload.login} draggable={false}>

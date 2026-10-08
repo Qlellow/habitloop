@@ -19,6 +19,8 @@ import { ImagesService } from './images/images.service';
 import { Database } from './db/database';
 import { Seeder } from './db/seed';
 import { Mailer } from './mail/mailer';
+import { NotificationsController } from './notifications/notifications.controller';
+import { NotificationsService } from './notifications/notifications.service';
 import { VerificationService } from './mail/verification.service';
 import { CommentsService } from './posts/comments.service';
 import { PostsController } from './posts/posts.controller';
@@ -37,7 +39,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController],
   providers: [
     Database,
     ImagesService,
@@ -55,6 +57,7 @@ class HealthController {
     CommentsService,
     PreviewsService,
     RewardsService,
+    NotificationsService,
     OAuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

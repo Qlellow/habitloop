@@ -340,7 +340,7 @@ export class AuthService {
   /**
    * 회원 탈퇴 2단계: 번호가 맞으면 개인정보를 지우고 계정을 닫는다.
    * - 글 · 댓글 · 공감은 남기고, 작성자는 '탈퇴한 사용자 ○○○○' 로 보인다 (다른 사람의 대화가 끊기지 않게)
-   * - 이메일 · 비밀번호 · 사진 · 배너 · 생일 · 소셜 연결 · 로그인 기기 · 포인트 · 배지 · 출석 · 팔로우 · 북마크는 지운다
+   * - 이메일 · 비밀번호 · 사진 · 배너 · 생일 · 소셜 연결 · 로그인 기기 · 포인트 · 배지 · 출석 · 팔로우 · 북마크 · 알림은 지운다
    * - 내가 만든 채널은 관리자 → 매니저 → 팔로워 순(먼저 들어온 사람)으로 넘긴다. 아무도 없으면 주인 없는 채널로 남는다
    * 이메일을 비우므로 같은 이메일로 다시 가입할 수 있다
    */
@@ -363,7 +363,7 @@ export class AuthService {
         'UPDATE channels c SET member_count = greatest(c.member_count - 1, 0) FROM channel_members m WHERE m.channel_id = c.id AND m.user_id = $1',
         [userId],
       );
-      for (const table of ['channel_members', 'channel_bookmarks', 'user_identities', 'sessions', 'user_badges', 'attendance', 'point_logs']) {
+      for (const table of ['channel_members', 'channel_bookmarks', 'user_identities', 'sessions', 'user_badges', 'attendance', 'point_logs', 'notifications']) {
         await this.db.execute(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
       }
       const tag = randomBytes(2).toString('hex');

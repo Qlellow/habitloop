@@ -4,6 +4,7 @@ import { badge, canModerate, type ChannelRole } from '../channels/roles';
 import { ApiError } from '../common/api-error';
 import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
+import { NotificationsService } from '../notifications/notifications.service';
 import { RewardsService } from '../users/rewards.service';
 
 const MAX_PAGE_SIZE = 100;
@@ -35,6 +36,7 @@ export class CommentsService {
     private readonly db: Database,
     private readonly channels: ChannelsService,
     private readonly rewards: RewardsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -86,6 +88,7 @@ export class CommentsService {
       return row!.id;
     });
     await this.rewards.checkBadges(userId);
+    await this.notifications.commented(postId, id, userId, parentId ?? null);
     const row = await this.db.one<CommentRow>(`${SELECT_COMMENT} WHERE c.id = $1`, [id]);
     const role = await this.channels.roleOf(channelId, userId);
     return this.toResponse(row!, userId, false, role, role);

@@ -7,6 +7,7 @@ import { ApiError } from '../common/api-error';
 import { clamp, cursorPage, escapeLike, type CursorPage } from '../common/cursor-page';
 import { TtlCache } from '../common/ttl-cache';
 import { Database } from '../db/database';
+import { NotificationsService } from '../notifications/notifications.service';
 import { RewardsService } from '../users/rewards.service';
 import { makeExcerpt } from './excerpt';
 import type { CreatePostInput, UpdatePostInput } from './posts.dto';
@@ -116,6 +117,7 @@ export class PostsService {
     private readonly categories: CategoriesService,
     private readonly membership: MembershipService,
     private readonly rewards: RewardsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -299,6 +301,10 @@ export class PostsService {
     });
     this.channels.popularCache.clear();
     await this.rewards.postWritten(userId);
+    // 운영진 전용 카테고리 글은 공지: 채널 팔로워에게 알린다
+    if (categoryId != null && (await this.db.one('SELECT 1 FROM channel_categories WHERE id = $1 AND owner_only', [categoryId]))) {
+      await this.notifications.noticePosted(id, channel.id, userId);
+    }
     return this.toDetail(await this.find(id), userId, false);
   }
 
@@ -359,7 +365,8 @@ export class PostsService {
       );
       return this.addLikeCount(postId, added);
     });
-    await this.rewards.postLiked(postId, userId);
+    // 이 사람이 처음 공감했을 때만 글쓴이에게 알린다 (눌렀다 취소했다 반복해도 한 번)
+    if (await this.rewards.postLiked(postId, userId)) await this.notifications.liked(postId, userId);
     return { liked: true, likeCount };
   }
 

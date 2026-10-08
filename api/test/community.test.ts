@@ -1043,6 +1043,61 @@ describe('커뮤니티', () => {
     expect(order).toEqual(['rank-lively', 'rank-spam', 'rank-quiet']);
   });
 
+  it('알림: 댓글 · 답글 · 공감(묶기) · 공지, 읽음 표시', async () => {
+    const owner = await signup('noti-owner@test.dev', '알림주인');
+    const fan = await signup('noti-fan@test.dev', '알림팬');
+    const other = await signup('noti-other@test.dev', '알림이웃');
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'noti', name: '알림채널' }).expect(201);
+    await http().post('/api/channels/noti/members').set(bearer(fan)).expect(200);
+    const post = (await http().post('/api/posts').set(bearer(owner)).send({ channel: 'noti', title: '알림 글', content: '내용' }).expect(201)).body;
+    const unread = async (token: string) => (await http().get('/api/me/notifications/unread').set(bearer(token)).expect(200)).body.count;
+    const list = async (token: string) => (await http().get('/api/me/notifications').set(bearer(token)).expect(200)).body.items;
+    await http().get('/api/me/notifications').expect(401);
+
+    // 내 글에 내가 댓글: 알림 없음 / 다른 사람 댓글: 글쓴이에게
+    await http().post(`/api/posts/${post.id}/comments`).set(bearer(owner)).send({ content: '첫 댓글' }).expect(201);
+    expect(await unread(owner)).toBe(0);
+    const c1 = (await http().post(`/api/posts/${post.id}/comments`).set(bearer(fan)).send({ content: '팬의 댓글입니다' }).expect(201)).body;
+    let items = await list(owner);
+    expect(items[0]).toMatchObject({ type: 'comment', actor: { nickname: '알림팬' }, post: { id: post.id, title: '알림 글' }, read: false });
+    expect(items[0].comment.excerpt).toBe('팬의 댓글입니다');
+
+    // 팬 댓글에 다른 사람이 답글: 팬에게 답글 알림, 글쓴이에게 댓글 알림
+    await http().post(`/api/posts/${post.id}/comments`).set(bearer(other)).send({ content: '답글', parentId: c1.id }).expect(201);
+    expect((await list(fan))[0]).toMatchObject({ type: 'reply', actor: { nickname: '알림이웃' } });
+    expect(await unread(owner)).toBe(2);
+
+    // 공감: 읽기 전에는 한 줄로 모이고, 눌렀다 취소했다 다시 눌러도 한 번만
+    await http().post(`/api/posts/${post.id}/like`).set(bearer(fan)).expect(200);
+    await http().delete(`/api/posts/${post.id}/like`).set(bearer(fan)).expect(200);
+    await http().post(`/api/posts/${post.id}/like`).set(bearer(fan)).expect(200);
+    await http().post(`/api/posts/${post.id}/like`).set(bearer(other)).expect(200);
+    items = await list(owner);
+    expect(items.filter((n: { type: string }) => n.type === 'like')).toHaveLength(1);
+    expect(items[0]).toMatchObject({ type: 'like', count: 2, actor: { nickname: '알림이웃' } });
+    expect(await unread(owner)).toBe(3);
+
+    // 하나 읽기 → 모두 읽기
+    await http().post(`/api/me/notifications/${items[0].id}/read`).set(bearer(owner)).expect(204);
+    expect(await unread(owner)).toBe(2);
+    // 남의 알림은 못 읽음 처리한다
+    await http().post(`/api/me/notifications/${items[1].id}/read`).set(bearer(fan)).expect(204);
+    expect(await unread(owner)).toBe(2);
+    await http().post('/api/me/notifications/read').set(bearer(owner)).expect(204);
+    expect(await unread(owner)).toBe(0);
+    // 읽은 뒤의 공감은 새 줄로
+    const late = await signup('noti-late@test.dev', '늦은공감');
+    await http().post(`/api/posts/${post.id}/like`).set(bearer(late)).expect(200);
+    expect((await list(owner))[0]).toMatchObject({ type: 'like', count: 1, read: false });
+
+    // 공지(운영진 전용 카테고리) 글: 팔로워에게만, 쓴 사람 제외
+    const cat = (await http().post('/api/channels/noti/categories').set(bearer(owner)).send({ name: '공지', ownerOnly: true }).expect(200)).body[0];
+    await http().post('/api/posts').set(bearer(owner)).send({ channel: 'noti', categoryId: cat.id, title: '새 공지', content: '공지 내용' }).expect(201);
+    expect((await list(fan))[0]).toMatchObject({ type: 'notice', post: { title: '새 공지', channelSlug: 'noti' } });
+    expect((await list(other)).some((n: { type: string }) => n.type === 'notice')).toBe(false);
+    expect((await list(owner)).some((n: { type: string }) => n.type === 'notice')).toBe(false);
+  });
+
   it('DB 에 없는 사용자의 토큰은 비로그인으로 본다', async () => {
     const ghost = jwt.issue(999_999, '유령', 'no-such-session').token;
     const real = await signup('ghost-check@test.dev', '진짜회원');
