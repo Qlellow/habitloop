@@ -1098,6 +1098,81 @@ describe('커뮤니티', () => {
     expect((await list(owner)).some((n: { type: string }) => n.type === 'notice')).toBe(false);
   });
 
+  it('신고: 운영진 신고함에서 숨기기 · 숨김 풀기 · 문제 없음 · 지우기', async () => {
+    const owner = await signup('rep-owner@test.dev', '신고방장');
+    const manager = await signup('rep-manager@test.dev', '신고매니');
+    const writer = await signup('rep-writer@test.dev', '신고글쓴이');
+    const reporter = await signup('rep-reporter@test.dev', '신고자');
+    const reporter2 = await signup('rep-reporter2@test.dev', '신고자둘');
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'reports', name: '신고채널' }).expect(201);
+    for (const t of [manager, writer]) await http().post('/api/channels/reports/members').set(bearer(t)).expect(200);
+    const managerId = (await http().get('/api/channels/reports/members').query({ q: '신고매니' }).set(bearer(owner))).body[0].userId;
+    await http().put(`/api/channels/reports/members/${managerId}/role`).set(bearer(owner)).send({ role: 'MANAGER' }).expect(200);
+    const post = (await http().post('/api/posts').set(bearer(writer)).send({ channel: 'reports', title: '문제 글', content: '광고 광고' }).expect(201)).body;
+    const comment = (await http().post(`/api/posts/${post.id}/comments`).set(bearer(writer)).send({ content: '나쁜 댓글' }).expect(201)).body;
+    const ownerPost = (await http().post('/api/posts').set(bearer(owner)).send({ channel: 'reports', title: '방장 글', content: '내용' }).expect(201)).body;
+
+    // 신고: 로그인 필요, 사유 확인, 내 글 · 댓글은 안 됨, 같은 대상은 한 번만
+    await http().post(`/api/posts/${post.id}/report`).send({ reason: 'spam' }).expect(401);
+    await http().post(`/api/posts/${post.id}/report`).set(bearer(reporter)).send({ reason: 'nope' }).expect(400);
+    await http().post(`/api/posts/${post.id}/report`).set(bearer(writer)).send({ reason: 'spam' }).expect(400);
+    await http().post(`/api/posts/${post.id}/report`).set(bearer(reporter)).send({ reason: 'spam', detail: '광고예요' }).expect(204);
+    await http().post(`/api/posts/${post.id}/report`).set(bearer(reporter)).send({ reason: 'abuse' }).expect(409);
+    await http().post(`/api/posts/${post.id}/report`).set(bearer(reporter2)).send({ reason: 'abuse' }).expect(204);
+    await http().post(`/api/posts/${post.id}/comments/${comment.id}/report`).set(bearer(reporter)).send({ reason: 'abuse' }).expect(204);
+    await http().post(`/api/posts/${ownerPost.id}/report`).set(bearer(reporter)).send({ reason: 'other' }).expect(204);
+
+    // 신고함은 운영진만. 같은 대상은 한 줄로 모인다
+    await http().get('/api/channels/reports/reports').set(bearer(writer)).expect(403);
+    expect((await http().get('/api/channels/reports').set(bearer(manager))).body.reportCount).toBe(3);
+    expect((await http().get('/api/channels/reports').set(bearer(writer))).body.reportCount).toBeUndefined();
+    const inbox = (await http().get('/api/channels/reports/reports').set(bearer(manager)).expect(200)).body;
+    expect(inbox).toHaveLength(3);
+    const postRow = inbox.find((r: { postId: number; commentId?: number }) => r.postId === post.id && !r.commentId);
+    expect(postRow).toMatchObject({ count: 2, postTitle: '문제 글', author: { nickname: '신고글쓴이' }, canAct: true, hidden: false });
+    expect(postRow.reasons.sort()).toEqual(['abuse', 'spam']);
+    expect(postRow.details).toEqual(['광고예요']);
+    // 매니저는 방장 글을 숨기거나 지울 수 없다 (문제 없음은 된다)
+    expect(inbox.find((r: { postId: number }) => r.postId === ownerPost.id).canAct).toBe(false);
+    const act = (token: string, body: object) => http().post('/api/channels/reports/reports/action').set(bearer(token)).send(body);
+    await act(manager, { postId: ownerPost.id, action: 'hide' }).expect(403);
+    await act(writer, { postId: post.id, action: 'hide' }).expect(403);
+    await act(manager, { postId: ownerPost.id, action: 'dismiss' }).expect(204);
+
+    // 숨기기: 목록에서 빠지고, 다른 사람은 못 보고, 쓴 사람 · 운영진은 본다
+    await act(manager, { postId: post.id, action: 'hide' }).expect(204);
+    expect((await http().get('/api/posts').query({ channel: 'reports' })).body.items.map((p: { id: number }) => p.id)).toEqual([ownerPost.id]);
+    await http().get(`/api/posts/${post.id}`).set(bearer(reporter)).expect(403);
+    await http().get(`/api/posts/${post.id}`).expect(403);
+    expect((await http().get(`/api/posts/${post.id}`).set(bearer(writer)).expect(200)).body.hidden).toBe(true);
+    await http().get(`/api/posts/${post.id}`).set(bearer(owner)).expect(200);
+    const after = (await http().get('/api/channels/reports/reports').set(bearer(owner))).body;
+    expect(after).toHaveLength(1); // 댓글 신고만 남는다
+    const done = (await http().get('/api/channels/reports/reports').query({ status: 'done' }).set(bearer(owner))).body;
+    expect(done.map((r: { status: string }) => r.status).sort()).toEqual(['dismissed', 'hidden']);
+
+    // 숨김 풀기 → 다시 보인다
+    await act(owner, { postId: post.id, action: 'unhide' }).expect(204);
+    await http().get(`/api/posts/${post.id}`).set(bearer(reporter)).expect(200);
+
+    // 댓글 숨기기: 다른 사람에게는 내용이 비고, 쓴 사람 · 운영진은 본다
+    await act(owner, { postId: post.id, commentId: comment.id, action: 'hide' }).expect(204);
+    const seen = async (token?: string) => {
+      const req = http().get(`/api/posts/${post.id}/comments`);
+      return (await (token ? req.set(bearer(token)) : req)).body.items[0];
+    };
+    expect(await seen(reporter)).toMatchObject({ hidden: true, content: '' });
+    expect(await seen()).toMatchObject({ hidden: true, content: '' });
+    expect(await seen(writer)).toMatchObject({ hidden: true, content: '나쁜 댓글' });
+    expect(await seen(manager)).toMatchObject({ hidden: true, content: '나쁜 댓글' });
+
+    // 지우기: 글이 지워지고 그 신고도 사라진다
+    await http().post(`/api/posts/${post.id}/report`).set(bearer(owner)).send({ reason: 'spam' }).expect(204);
+    await act(manager, { postId: post.id, action: 'delete' }).expect(204);
+    await http().get(`/api/posts/${post.id}`).set(bearer(owner)).expect(404);
+    expect((await http().get('/api/channels/reports/reports').set(bearer(owner))).body).toHaveLength(0);
+  });
+
   it('DB 에 없는 사용자의 토큰은 비로그인으로 본다', async () => {
     const ghost = jwt.issue(999_999, '유령', 'no-such-session').token;
     const real = await signup('ghost-check@test.dev', '진짜회원');

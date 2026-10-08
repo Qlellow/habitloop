@@ -312,12 +312,19 @@ export class ChannelsService {
       };
     }
     const adultViewer = c.adult || (await this.isAdult(viewerId));
-    const [bookmarked, allCategories, invite] = await Promise.all([
+    const [bookmarked, allCategories, invite, reports] = await Promise.all([
       viewerId == null
         ? Promise.resolve(false)
         : this.db.one('SELECT 1 FROM channel_bookmarks WHERE channel_id = $1 AND user_id = $2', [c.id, viewerId]).then(Boolean),
       this.categories(c.id),
       canManage(role) ? this.db.one<{ code: string | null }>('SELECT invite_code AS code FROM channels WHERE id = $1', [c.id]) : undefined,
+      // 운영진에게만: 처리 전 신고가 걸린 글 · 댓글 수 (신고함 버튼)
+      isStaff(role)
+        ? this.db.one<{ n: number }>(
+            "SELECT count(DISTINCT (post_id, comment_id))::int AS n FROM reports WHERE channel_id = $1 AND status = 'open'",
+            [c.id],
+          )
+        : undefined,
     ]);
     // 19세 이상 카테고리는 나이를 확인한 사람(과 관리자)에게만
     const categories = adultViewer || canManage(role) ? allCategories : allCategories.filter((cat) => !cat.adult);
@@ -340,6 +347,8 @@ export class ChannelsService {
       myRole: badge(role),
       canManage: canManage(role),
       staff: isStaff(role),
+      /** 운영진에게만: 처리 전 신고 수 */
+      reportCount: reports?.n,
       joined: role !== undefined,
       bookmarked,
       categories,

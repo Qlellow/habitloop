@@ -262,6 +262,16 @@ export default function ChannelPage() {
                 <div className={s.bannerActions}>
                   {!isPlaceholderData && !channel.locked && <BookmarkButton channel={channel} />}
                   {!isPlaceholderData && !channel.locked && <JoinButton channel={channel} />}
+                  {channel.staff && !isPlaceholderData && (
+                    <Link to={`/c/${slug}/reports`} className={cn(ui.button, ui.ghost, 'gap-1.5')} onPointerEnter={preload.channelReports}>
+                      신고함
+                      {!!channel.reportCount && (
+                        <span className="min-w-[20px] h-5 px-1.5 grid place-items-center rounded-full bg-danger text-white text-xs font-bold tabular-nums">
+                          {channel.reportCount > 99 ? '99+' : channel.reportCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
                   {channel.canManage && (
                     <Link to={`/c/${slug}/manage`} className={cn(ui.button, ui.ghost)} onPointerEnter={preload.channelManage}>
                       채널 관리

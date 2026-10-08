@@ -16,6 +16,9 @@ import type {
   MyInvite,
   PointLog,
   NotificationItem,
+  ReportReason,
+  ReportGroup,
+  ReportAction,
   PostPage,
   UserProfile,
   ChannelCategory,
@@ -791,6 +794,42 @@ export function useDeleteComment(postId: number) {
       // 답글까지 함께 지워지므로 글의 댓글 수는 다시 받는다
       qc.invalidateQueries({ queryKey: keys.comments(postId) });
       qc.invalidateQueries({ queryKey: keys.post(postId) });
+      markListsStale(qc);
+    },
+  });
+}
+
+/* ───────── 신고 ───────── */
+
+/** 글(commentId 없음) 또는 댓글 신고 */
+export function useReport() {
+  return useMutation({
+    mutationFn: ({ postId, commentId, reason, detail }: { postId: number; commentId?: number; reason: ReportReason; detail?: string }) =>
+      api<void>(commentId ? `/api/posts/${postId}/comments/${commentId}/report` : `/api/posts/${postId}/report`, {
+        method: 'POST',
+        body: { reason, detail: detail?.trim() || undefined },
+      }),
+  });
+}
+
+/** 채널 신고함 (운영진만). open: 처리 전 / done: 처리한 것 */
+export function useChannelReports(slug: string, status: 'open' | 'done') {
+  return useQuery({
+    queryKey: ['channel', slug, 'reports', status],
+    queryFn: ({ signal }) => api<ReportGroup[]>(`/api/channels/${slug}/reports`, { query: { status }, signal }),
+  });
+}
+
+/** 신고 처리: 숨기기 · 숨김 풀기 · 지우기 · 문제 없음. 처리하면 신고함 · 채널(신고 수) · 글 목록을 새로 받는다 */
+export function useReportAction(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { postId: number; commentId?: number; action: ReportAction }) =>
+      api<void>(`/api/channels/${slug}/reports/action`, { method: 'POST', body: input }),
+    onSuccess: (_, input) => {
+      qc.invalidateQueries({ queryKey: ['channel', slug] });
+      qc.invalidateQueries({ queryKey: keys.post(input.postId) });
+      qc.invalidateQueries({ queryKey: keys.comments(input.postId) });
       markListsStale(qc);
     },
   });
