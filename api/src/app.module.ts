@@ -1,5 +1,8 @@
 import { Controller, Get, Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { AdminController } from './admin/admin.controller';
+import { AdminGuard } from './admin/admin.guard';
+import { AdminService } from './admin/admin.service';
 import { AuthController } from './auth/auth.controller';
 import { AuthGuard, Public } from './auth/auth.guard';
 import { AuthService } from './auth/auth.service';
@@ -42,7 +45,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController],
   providers: [
     Database,
     ImagesService,
@@ -63,6 +66,8 @@ class HealthController {
     BlocksService,
     NotificationsService,
     ReportsService,
+    AdminService,
+    AdminGuard,
     OAuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

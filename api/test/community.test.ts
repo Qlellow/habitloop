@@ -1222,6 +1222,70 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/me/blocks').set(bearer(me))).body).toHaveLength(0);
   });
 
+  it('관리자: 비밀 주소 키 + 허용 이메일 + 비밀번호 + 이메일 인증번호, 일반 토큰으로는 못 들어간다', async () => {
+    const KEY = 'test-admin-key-0123456789-abcdefghijklmnop';
+    const boss = await signup('boss@test.dev', '사이트관리자');
+    const user = await signup('plain@test.dev', '평범한사람');
+    const userId = (await http().get('/api/me').set(bearer(user))).body.id;
+    const k = { 'X-Admin-Key': KEY };
+
+    // 키가 없으면(설정 안 함) 관리자 기능은 통째로 404
+    delete process.env.ADMIN_KEY;
+    await http().get('/api/admin/gate').set(k).expect(404);
+    process.env.ADMIN_KEY = KEY;
+    process.env.ADMIN_EMAILS = 'Boss@test.dev, other@test.dev';
+    try {
+      // 키가 틀리거나 없으면 404 (관리자 기능이 있다는 것도 알리지 않는다)
+      await http().get('/api/admin/gate').expect(404);
+      await http().get('/api/admin/gate').set({ 'X-Admin-Key': KEY.slice(0, -1) + 'x' }).expect(404);
+      await http().get('/api/admin/stats').set(bearer(boss)).expect(404);
+      await http().get('/api/admin/gate').set(k).expect(204);
+
+      // 키가 맞아도 일반 로그인 토큰으로는 401
+      await http().get('/api/admin/stats').set(k).set(bearer(boss)).expect(401);
+
+      // 허용 목록에 없는 계정 · 틀린 비밀번호는 똑같이 401, 인증번호도 안 간다
+      const code = (body: object) => http().post('/api/admin/login/code').set(k).send(body);
+      await code({ email: 'plain@test.dev', password: 'password1234!' }).expect(401);
+      await code({ email: 'boss@test.dev', password: 'wrong-password1!' }).expect(401);
+      // 비밀번호만으로는 안 되고 이메일 인증번호까지
+      await code({ email: 'BOSS@test.dev', password: 'password1234!' }).expect(204);
+      const login = (c: string) => http().post('/api/admin/login').set(k).send({ email: 'boss@test.dev', password: 'password1234!', code: c });
+      await login(other(lastCode('boss@test.dev'))).expect(400);
+      const { token } = (await login(lastCode('boss@test.dev')).expect(200)).body;
+      const admin = { ...k, Authorization: `Bearer ${token}` };
+
+      // 관리자 토큰은 일반 API 에서 로그인으로 쳐 주지 않고, 키 없이 쓰면 404
+      await http().get('/api/me').set({ Authorization: `Bearer ${token}` }).expect(401);
+      await http().get('/api/admin/stats').set({ Authorization: `Bearer ${token}` }).expect(404);
+
+      const stats = (await http().get('/api/admin/stats').set(admin).expect(200)).body;
+      expect(stats.users).toBeGreaterThan(1);
+      const found = (await http().get('/api/admin/users').query({ q: '평범한' }).set(admin).expect(200)).body.items;
+      expect(found).toMatchObject([{ id: userId, nickname: '평범한사람', email: 'plain@test.dev', suspended: false, admin: false }]);
+
+      // 이용 정지: 모든 기기 로그아웃 + 다시 로그인 불가. 관리자는 정지할 수 없다
+      const bossId = (await http().get('/api/me').set(bearer(boss))).body.id;
+      await http().post(`/api/admin/users/${bossId}/suspend`).set(admin).send({ suspend: true }).expect(400);
+      await http().post(`/api/admin/users/${userId}/suspend`).set(admin).send({ suspend: true }).expect(204);
+      await http().get('/api/me').set(bearer(user)).expect(401);
+      await http().post('/api/auth/login').send({ email: 'plain@test.dev', password: 'password1234!' }).expect(403);
+      await http().post(`/api/admin/users/${userId}/suspend`).set(admin).send({ suspend: false }).expect(204);
+      await http().post('/api/auth/login').send({ email: 'plain@test.dev', password: 'password1234!' }).expect(200);
+
+      // 기록이 남는다
+      const logs = (await http().get('/api/admin/logs').set(admin).expect(200)).body.map((l: { action: string }) => l.action);
+      expect(logs.slice(0, 3)).toEqual(['user.unsuspend', 'user.suspend', 'login']);
+
+      // 허용 목록에서 빠지면 이미 받은 토큰도 바로 못 쓴다
+      process.env.ADMIN_EMAILS = 'other@test.dev';
+      await http().get('/api/admin/stats').set(admin).expect(401);
+    } finally {
+      delete process.env.ADMIN_KEY;
+      delete process.env.ADMIN_EMAILS;
+    }
+  });
+
   it('DB 에 없는 사용자의 토큰은 비로그인으로 본다', async () => {
     const ghost = jwt.issue(999_999, '유령', 'no-such-session').token;
     const real = await signup('ghost-check@test.dev', '진짜회원');
