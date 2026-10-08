@@ -14,6 +14,9 @@ const RESET_TTL = '10m';
 const RESET_PURPOSE = 'password-reset';
 const OAUTH_PURPOSE = 'oauth-state';
 const OAUTH_LINK_PURPOSE = 'oauth-link';
+/** 관리자 토큰: 일반 로그인 토큰과 따로, 짧게 */
+const ADMIN_PURPOSE = 'admin';
+const ADMIN_TTL = '2h';
 
 /** 비밀번호가 바뀌면 달라지는 값. 재설정 토큰에 넣어서 한 번 쓰면 다시 못 쓰게 한다 */
 const passwordVersion = (passwordHash: string) => createHash('sha256').update(passwordHash).digest('hex').slice(0, 16);
@@ -56,6 +59,31 @@ export class JwtService {
     } catch {
       return undefined;
     }
+  }
+
+  /** 관리자 토큰. 비밀번호가 바뀌면(pv) 바로 못 쓴다. 일반 API 에서는 parse() 가 받지 않는다(purpose) */
+  issueAdmin(userId: number, passwordHash: string): string {
+    return jwt.sign({ purpose: ADMIN_PURPOSE, pv: passwordVersion(passwordHash) }, this.secret, {
+      subject: String(userId),
+      expiresIn: ADMIN_TTL,
+      algorithm: 'HS256',
+    });
+  }
+
+  parseAdmin(token: string): { id: number; pv: string } | undefined {
+    try {
+      const claims = jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+      const id = Number(claims.sub);
+      if (claims.purpose !== ADMIN_PURPOSE || !Number.isInteger(id)) return undefined;
+      return { id, pv: String(claims.pv) };
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** 관리자 토큰의 pv 가 지금 비밀번호와 맞는지 */
+  samePassword(pv: string, passwordHash: string) {
+    return pv === passwordVersion(passwordHash);
   }
 
   issueReset(userId: number, passwordHash: string): string {

@@ -3,7 +3,7 @@ import { ApiError } from '../common/api-error';
 import { HttpStatus } from '@nestjs/common';
 
 /** 인증번호를 어디에 쓰는지. 메일 제목과 안내 문구가 달라진다 */
-export type CodePurpose = 'SIGNUP' | 'LOGIN' | 'ENABLE_2FA' | 'PASSWORD_RESET' | 'WITHDRAW';
+export type CodePurpose = 'SIGNUP' | 'LOGIN' | 'ENABLE_2FA' | 'PASSWORD_RESET' | 'WITHDRAW' | 'ADMIN_LOGIN';
 
 const PURPOSE: Record<CodePurpose, { label: string; guide: string }> = {
   SIGNUP: { label: '회원가입', guide: '루프 회원가입을 마치려면 아래 인증번호를 입력해 주세요.' },
@@ -11,6 +11,7 @@ const PURPOSE: Record<CodePurpose, { label: string; guide: string }> = {
   ENABLE_2FA: { label: '2단계 인증 설정', guide: '2단계 인증을 켜려면 아래 인증번호를 입력해 주세요.' },
   PASSWORD_RESET: { label: '비밀번호 재설정', guide: '비밀번호를 다시 설정하려면 아래 인증번호를 입력해 주세요.' },
   WITHDRAW: { label: '회원 탈퇴', guide: '루프 회원 탈퇴를 마치려면 아래 인증번호를 입력해 주세요. 직접 요청하지 않았다면 이 메일을 무시하고 비밀번호를 바꿔 주세요.' },
+  ADMIN_LOGIN: { label: '관리자 로그인', guide: '루프 관리자 페이지에 로그인하려면 아래 인증번호를 입력해 주세요. 직접 요청하지 않았다면 바로 비밀번호를 바꿔 주세요.' },
 };
 
 export const CODE_TTL_MINUTES = 5;

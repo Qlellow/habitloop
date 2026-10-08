@@ -22,6 +22,8 @@ interface UserRow {
   /** 생년월일로 나이를 확인했는지 · 만 19세 이상인지 */
   ageChecked?: boolean;
   adult?: boolean;
+  /** 관리자가 이용을 정지했는지 */
+  suspended?: boolean;
   birthDate?: string | null;
   avatarUrl?: string | null;
   banner?: string | null;
@@ -37,7 +39,8 @@ export const CUSTOM_BANNER_COST = 300;
 const USER_COLUMNS = `id, uid::text AS uid, email, password, nickname, two_factor_enabled AS "twoFactorEnabled",
   birth_date IS NOT NULL AS "ageChecked", to_char(birth_date, 'YYYY-MM-DD') AS "birthDate",
   CASE WHEN avatar_id IS NULL THEN NULL ELSE '/api/images/' || avatar_id END AS "avatarUrl", banner, points,
-  custom_banner AS "customBanner", coalesce(birth_date <= (current_date - interval '19 years'), false) AS adult`;
+  custom_banner AS "customBanner", coalesce(birth_date <= (current_date - interval '19 years'), false) AS adult,
+  suspended_at IS NOT NULL AS suspended`;
 const SELECT_USER = `SELECT ${USER_COLUMNS} FROM users`;
 
 export const userResponse = (u: UserRow) => ({
@@ -425,6 +428,8 @@ export class AuthService {
 
   /** 로그인 성공: 이 기기의 세션을 만들고 그 세션 id 가 든 토큰을 준다 */
   private async toAuth(user: UserRow, userAgent: string) {
+    // 관리자가 이용을 정지한 계정은 (비밀번호 · 소셜 · 2단계 인증 모두) 로그인할 수 없다
+    if (user.suspended) throw ApiError.forbidden('이용이 정지된 계정이에요. 사이트 아래 "문의 남기기"로 알려 주세요');
     const sid = randomBytes(16).toString('base64url');
     const { token, expiresAt } = this.jwt.issue(user.id, user.nickname, sid);
     // 만료된 세션은 로그인할 때 같이 치운다

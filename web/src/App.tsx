@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useState, type ReactNode } from 'react';
 import { useRunPendingSignOut } from './lib/authNav';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, ScrollRestoration, useLocation } from 'react-router-dom';
 import { useAuth } from '@loop/shared';
@@ -29,6 +29,15 @@ const ChannelManagePage = lazy(loaders.channelManage);
 const ChannelReportsPage = lazy(loaders.channelReports);
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage'));
+// 관리자 화면은 따로 받는다 (일반 방문자는 이 코드를 받지 않는다)
+const AdminApp = lazy(() => import('./admin/AdminApp'));
+
+/**
+ * 관리자 주소: 사이트 주소/{ADMIN_KEY}. 키는 서버 환경 변수에만 있고 웹 코드에는 없다.
+ * 주소 첫 칸이 키처럼 생겼을 때(영문 · 숫자 · - · _ 32자 이상)만 서버에 맞는지 물어보고, 아니면 평범한 '없는 페이지'.
+ * 일반 화면의 주소(/c/…, /posts/… 등)는 모두 짧아서 겹치지 않는다
+ */
+const ADMIN_PATH = /^\/([A-Za-z0-9_-]{32,128})\/?$/;
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth();
@@ -50,6 +59,17 @@ function GuestOnly({ children }: { children: ReactNode }) {
 
 function Root() {
   useRunPendingSignOut();
+  const { pathname } = useLocation();
+  const adminKey = pathname.match(ADMIN_PATH)?.[1];
+  const [denied, setDenied] = useState<string>();
+  const deny = useCallback(() => setDenied(adminKey), [adminKey]);
+  if (adminKey && denied !== adminKey) {
+    return (
+      <Suspense fallback={null}>
+        <AdminApp adminKey={adminKey} onDenied={deny} />
+      </Suspense>
+    );
+  }
   return (
     <>
       {/* 폰에서는 하단 탭바 높이만큼 아래를 비워 둔다 (--tabbar-h, global.css) */}
