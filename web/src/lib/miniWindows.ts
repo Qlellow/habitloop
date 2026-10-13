@@ -23,9 +23,10 @@ const DEFAULT_W = 420;
 const DEFAULT_H = 520;
 /** 접힌 창 높이 (제목 줄만) */
 export const BAR_H = 44;
-const MARGIN = 16;
-/** 사이트 헤더(64px) 아래에서만 움직인다 (창은 헤더 · 메뉴보다 아래 층) */
+/** 새 창이 처음 열리는 높이 (사이트 헤더 바로 아래) */
 const TOP = 64 + 12;
+/** 창을 브라우저 밖으로 밀어내도 다시 잡을 수 있게 제목 줄은 이만큼 남긴다 (오른쪽 버튼 셋을 빼고도 잡을 곳이 남게) */
+const KEEP = 180;
 const KEY = 'loop:mini-windows';
 
 let windows: MiniWindow[] = load();
@@ -52,19 +53,21 @@ function set(next: MiniWindow[]) {
 
 const topZ = () => windows.reduce((m, w) => Math.max(m, w.z), 0) + 1;
 
-/** 창이 화면 밖으로 나가지 않게 (제목 줄은 늘 잡을 수 있게) */
+/**
+ * 창은 헤더 위로도, 브라우저 밖으로도 옮길 수 있다 (밖으로 나간 부분은 브라우저 경계에서 잘려 보인다).
+ * 다만 제목 줄은 다시 잡을 수 있게: 위로는 브라우저 위 끝까지, 좌우 · 아래로는 제목 줄이 조금(KEEP · 한 줄) 남을 때까지만
+ */
 export function clampToViewport(w: MiniWindow): MiniWindow {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const width = Math.min(Math.max(w.w, MIN_W), vw - MARGIN * 2);
-  const height = Math.min(Math.max(w.h, MIN_H), vh - TOP - MARGIN);
-  const shownH = w.minimized ? BAR_H : height;
+  const width = Math.min(Math.max(w.w, MIN_W), vw);
+  const height = Math.min(Math.max(w.h, MIN_H), vh);
   return {
     ...w,
     w: width,
     h: height,
-    x: Math.min(Math.max(w.x, MARGIN), vw - width - MARGIN),
-    y: Math.max(TOP, Math.min(w.y, vh - shownH - MARGIN)),
+    x: Math.min(Math.max(w.x, KEEP - width), vw - KEEP),
+    y: Math.min(Math.max(w.y, 0), vh - BAR_H),
   };
 }
 

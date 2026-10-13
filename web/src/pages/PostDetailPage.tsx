@@ -45,7 +45,8 @@ function useLoginRedirect(postId: number) {
   return () => navigate('/login', { state: { from: `/posts/${postId}` } });
 }
 
-function LikeButton({ post }: { post: PostDetail }) {
+/** 공감 버튼 (게시글 미니 창에서도 쓴다) */
+export function LikeButton({ post }: { post: PostDetail }) {
   const { isLoggedIn } = useAuth();
   const toLogin = useLoginRedirect(post.id);
   const toggle = useToggleLike(post.id);
@@ -253,7 +254,8 @@ function CommentItem({ comment: c, postId, best, reply }: { comment: Comment; po
   );
 }
 
-function Comments({ postId, count }: { postId: number; count?: number }) {
+/** 댓글 목록 + 쓰기. embedded: 게시글 미니 창 안 (카드 테두리 없이) */
+export function Comments({ postId, count, embedded }: { postId: number; count?: number; embedded?: boolean }) {
   const { isLoggedIn } = useAuth();
   const { pathname } = useLocation();
   const query = useComments(postId);
@@ -294,7 +296,7 @@ function Comments({ postId, count }: { postId: number; count?: number }) {
   const comments = query.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
-    <section className={ui.card}>
+    <section className={embedded ? 'border-t border-line' : ui.card}>
       <div className={ui.cardHead}>
         <h2 className={ui.sectionTitle}>
           댓글 {count ? <span style={{ color: 'var(--primary)' }}>{count}</span> : null}
