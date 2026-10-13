@@ -166,7 +166,8 @@
   --primary-weak: rgba(91, 124, 250, 0.18);
 }
 
-/* 하늘: 화면 뒤에 고정. 글 · 카드는 불투명해서 가장자리 · 헤더(반투명) 사이로만 비친다 */
+/* 하늘: 화면 뒤에 고정. 시간대가 바뀔 때는 이전 하늘을 복제(data-period)해 위에 겹쳐 1.2초 동안 사라지게 한다(크로스페이드).
+   그래서 하늘 규칙은 :root[data-time] 와 .time-sky[data-period] 두 가지로 쓴다. 글 · 카드는 불투명해서 가장자리 · 헤더(반투명) 사이로만 비친다 */
 .time-sky {
   display: none;
   position: fixed;
@@ -176,30 +177,36 @@
   pointer-events: none;
   transition: opacity 1.2s ease;
 }
-:root[data-time] .time-sky {
+:root[data-time] .time-sky,
+.time-sky[data-period] {
   display: block;
 }
 .time-sky > * {
   position: absolute;
   display: none;
 }
-:root[data-time='morning'] .time-sky {
+:root[data-time='morning'] .time-sky:not([data-period]),
+.time-sky[data-period='morning'] {
   background: linear-gradient(180deg, #dfe7fb 0%, #ece6f6 30%, #f8e6ea 56%, #ffe6da 78%, #ffdcc4 100%);
 }
-:root[data-time='day'] .time-sky {
+:root[data-time='day'] .time-sky:not([data-period]),
+.time-sky[data-period='day'] {
   background: linear-gradient(180deg, #bfdcff 0%, #d9ebff 24%, #ecf5ff 52%, #f2f8ff 100%);
 }
-:root[data-time='evening'] .time-sky {
+:root[data-time='evening'] .time-sky:not([data-period]),
+.time-sky[data-period='evening'] {
   background: linear-gradient(180deg, #121326 0%, #1a1b33 34%, #2b2546 58%, #4e3556 76%, #8a5466 90%, #c27a6e 100%);
 }
-:root[data-time='dawn'] .time-sky {
+:root[data-time='dawn'] .time-sky:not([data-period]),
+.time-sky[data-period='dawn'] {
   background: linear-gradient(180deg, #04070f 0%, #0a101c 55%, #121b30 100%);
 }
 /* 해: 아침은 왼쪽 아래에서 떠오르고, 낮은 오른쪽 위 높이, 저녁은 가운데 아래로 진다 */
 .time-sky .sky-sun {
   border-radius: 50%;
 }
-:root[data-time='morning'] .sky-sun {
+:root[data-time='morning'] .time-sky:not([data-period]) .sky-sun,
+.time-sky[data-period='morning'] .sky-sun {
   display: block;
   right: 14vw;
   bottom: -7vmax;
@@ -209,7 +216,8 @@
   box-shadow: 0 0 9vmax 3vmax rgba(255, 196, 150, 0.45);
   animation: sky-rise 40s ease-in-out infinite alternate;
 }
-:root[data-time='day'] .sky-sun {
+:root[data-time='day'] .time-sky:not([data-period]) .sky-sun,
+.time-sky[data-period='day'] .sky-sun {
   display: block;
   right: 4vw;
   top: -10vmax;
@@ -218,7 +226,8 @@
   background: radial-gradient(circle, #fffef6 0%, #fff7cc 12%, rgba(255, 244, 190, 0.55) 26%, rgba(255, 255, 255, 0) 60%);
 }
 /* 한낮의 햇살: 천천히 도는 빛줄기 */
-:root[data-time='day'] .sky-rays {
+:root[data-time='day'] .time-sky:not([data-period]) .sky-rays,
+.time-sky[data-period='day'] .sky-rays {
   display: block;
   right: calc(4vw + 17vmax - 40vmax);
   top: calc(-10vmax + 17vmax - 40vmax);
@@ -229,7 +238,8 @@
   mask: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.5) 30%, transparent 60%);
   animation: sky-spin 120s linear infinite;
 }
-:root[data-time='evening'] .sky-sun {
+:root[data-time='evening'] .time-sky:not([data-period]) .sky-sun,
+.time-sky[data-period='evening'] .sky-sun {
   display: block;
   left: 50%;
   bottom: -9vmax;
@@ -240,7 +250,8 @@
   box-shadow: 0 0 10vmax 2vmax rgba(232, 121, 94, 0.28);
 }
 /* 별밤: 달 + 반짝이는 별 + 가끔 별똥별 */
-:root[data-time='dawn'] .sky-moon {
+:root[data-time='dawn'] .time-sky:not([data-period]) .sky-moon,
+.time-sky[data-period='dawn'] .sky-moon {
   display: block;
   right: 9vw;
   top: 13vh;
@@ -252,16 +263,20 @@
     inset -14px 8px 0 0 #f4f1de,
     0 0 40px 6px rgba(244, 241, 222, 0.12);
 }
-:root[data-time='dawn'] .sky-stars,
-:root[data-time='evening'] .sky-stars {
+:root[data-time='dawn'] .time-sky:not([data-period]) .sky-stars,
+.time-sky[data-period='dawn'] .sky-stars,
+:root[data-time='evening'] .time-sky:not([data-period]) .sky-stars,
+.time-sky[data-period='evening'] .sky-stars {
   display: block;
   inset: 0;
 }
 /* 저녁: 아직 노을이 남아 있어 하늘 위쪽에만 몇 개, 조금 흐리게 */
-:root[data-time='evening'] .sky-star:not(.sky-star-early) {
+:root[data-time='evening'] .time-sky:not([data-period]) .sky-star:not(.sky-star-early),
+.time-sky[data-period='evening'] .sky-star:not(.sky-star-early) {
   display: none;
 }
-:root[data-time='evening'] .sky-star-early {
+:root[data-time='evening'] .time-sky:not([data-period]) .sky-star-early,
+.time-sky[data-period='evening'] .sky-star-early {
   filter: brightness(0.8);
 }
 .sky-star {
@@ -270,7 +285,8 @@
   background: #fff;
   animation: sky-twinkle var(--d, 3s) ease-in-out var(--delay, 0s) infinite;
 }
-:root[data-time='dawn'] .sky-shooting {
+:root[data-time='dawn'] .time-sky:not([data-period]) .sky-shooting,
+.time-sky[data-period='dawn'] .sky-shooting {
   display: block;
   top: 12vh;
   left: 62vw;

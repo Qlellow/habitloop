@@ -87,13 +87,40 @@ export function applyTheme(s: Pick<Settings, 'theme' | 'timeTheme'> = state) {
   withoutTransitions(() => setThemeAttributes(s));
 }
 
-/** 시간이 흘러 시간대가 넘어갈 때: 1.2초 동안 색이 자연스럽게 바뀐다 */
-function fadeTheme() {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return applyTheme(state);
+const FADE_MS = 1200;
+let fadeTimer = 0;
+
+/**
+ * 1.2초 동안 자연스럽게 바꾼다: 시간이 흘러 시간대가 넘어갈 때, 그리고 설정에서 시간대 테마를 켜고 끄거나 시간대를 고를 때.
+ * - 글자 · 카드 · 버튼 색은 CSS transition(.theme-fade)으로
+ * - 하늘(그라디언트 · 해 · 별)은 transition 이 안 되므로, 이전 하늘을 복제해(data-period) 위에 겹쳐 두고 서서히 지운다
+ * 동작 줄이기 설정이면 바로 바꾼다
+ */
+function fadeTheme(s: Pick<Settings, 'theme' | 'timeTheme'> = state) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return applyTheme(s);
   const root = document.documentElement;
+  const sky = document.querySelector<HTMLElement>('.time-sky:not([data-period])');
+  const prev = root.dataset.time;
+  // 이전 하늘을 그대로 얼려서(data-period) 새 하늘 위에 겹친다
+  document.querySelectorAll('.time-sky[data-period]').forEach((g) => g.remove());
+  let ghost: HTMLElement | undefined;
+  if (sky && prev) {
+    ghost = sky.cloneNode(true) as HTMLElement;
+    ghost.dataset.period = prev;
+    sky.after(ghost);
+  }
   root.classList.add('theme-fade');
-  setThemeAttributes(state);
-  window.setTimeout(() => root.classList.remove('theme-fade'), 1500);
+  setThemeAttributes(s);
+  const next = root.dataset.time;
+  if (ghost) {
+    if (next === prev) ghost.remove();
+    else ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FADE_MS, easing: 'ease', fill: 'forwards' }).finished.then(() => ghost!.remove(), () => ghost!.remove());
+  } else if (sky && next) {
+    // 하늘이 없던 테마에서 시간대 테마로: 새 하늘이 서서히 나타난다
+    sky.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FADE_MS, easing: 'ease' });
+  }
+  window.clearTimeout(fadeTimer);
+  fadeTimer = window.setTimeout(() => root.classList.remove('theme-fade'), FADE_MS + 300);
 }
 
 // 시간대 테마(자동)는 1분마다, 그리고 탭으로 돌아올 때 시간대가 넘어갔는지 본다
@@ -118,13 +145,19 @@ try {
 }
 
 export function updateSettings(patch: Partial<Settings>) {
+  const prev = state;
   state = { ...state, ...patch };
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
     // 저장 실패해도 이번 방문 동안은 적용
   }
-  if (patch.theme || patch.timeTheme) applyTheme(state);
+  if (patch.theme || patch.timeTheme) {
+    // 시간대 테마를 켜고 끄거나 시간대를 고를 때는 시간이 흘러 바뀔 때와 같은 1.2초 전환, 나머지(시스템 · 라이트 · 다크 사이)는 바로
+    const involvesTime = prev.theme === 'time' || state.theme === 'time';
+    if (involvesTime) fadeTheme(state);
+    else applyTheme(state);
+  }
   listeners.forEach((l) => l());
 }
 
