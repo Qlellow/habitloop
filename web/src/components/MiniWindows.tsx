@@ -1,14 +1,18 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import { lazy, Suspense, useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
-import { ApiError, compact, timeAgo, usePost } from '@loop/shared';
+import { useNavigate } from 'react-router-dom';
+import { ApiError, timeAgo, usePost } from '@loop/shared';
 import { BAR_H, miniWindows, useMiniEnabled, useMiniWindows, type MiniWindow } from '../lib/miniWindows';
-import { CloseIcon, CommentIcon, ExpandIcon, HeartIcon, MinimizeIcon, RestoreIcon } from './Icons';
+import { CloseIcon, ExpandIcon, MinimizeIcon, RestoreIcon } from './Icons';
 import { Markdown } from './Markdown';
 import { RoleBadge } from './RoleBadge';
 import { UserAvatar } from './UserAvatar';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
+
+// 공감 · 댓글은 글 화면의 것을 그대로 쓴다 (작은 창을 처음 열 때 받는다)
+const LikeButton = lazy(() => import('../pages/PostDetailPage').then((m) => ({ default: m.LikeButton })));
+const Comments = lazy(() => import('../pages/PostDetailPage').then((m) => ({ default: m.Comments })));
 
 const barButton =
   'grid place-items-center w-7 h-7 rounded-sm text-fg-sub transition-colors hover:bg-field hover:text-fg-strong [&>svg]:w-4 [&>svg]:h-4';
@@ -32,7 +36,7 @@ function useDrag(onMove: (dx: number, dy: number) => void) {
   };
 }
 
-/** 미니 창 안의 글: 제목 · 작성자 · 본문 · 공감/댓글 수 (댓글은 글 페이지에서) */
+/** 미니 창 안의 글: 제목 · 작성자 · 본문 · 공감 · 댓글 (댓글도 여기서 쓸 수 있다) */
 function MiniPost({ postId }: { postId: number }) {
   const { data: post, error, isPlaceholderData } = usePost(postId);
   if (error) {
@@ -65,18 +69,16 @@ function MiniPost({ postId }: { postId: number }) {
           <Markdown source={post.content} className="text-[15px]" />
         )}
       </div>
-      <div className="flex items-center gap-3 mt-5 text-[13px] text-fg-weak [&_svg]:w-3.5 [&_svg]:h-3.5">
-        <span className="inline-flex items-center gap-1">
-          <HeartIcon /> {compact(post.likeCount)}
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <CommentIcon /> {compact(post.commentCount)}
-        </span>
-        <span>조회 {compact(post.viewCount)}</span>
-        <Link to={`/posts/${post.id}`} className="ml-auto font-semibold text-fg-sub hover:text-primary">
-          댓글 · 공감은 글 페이지에서 →
-        </Link>
-      </div>
+      {!isPlaceholderData && (
+        <Suspense fallback={<div className={ui.spinner} />}>
+          <div className="flex justify-center mt-6">
+            <LikeButton post={post} />
+          </div>
+          <div className="-mx-5 mt-5">
+            <Comments postId={post.id} count={post.commentCount} embedded />
+          </div>
+        </Suspense>
+      )}
     </article>
   );
 }
@@ -98,9 +100,9 @@ function Window({ win, title, layer, active }: { win: MiniWindow; title?: string
       role="dialog"
       aria-label={`작은 창: ${title ?? '게시글'}`}
       onPointerDown={() => miniWindows.focus(win.postId)}
-      // 헤더(z-30) · 팝업(z-50)보다 아래, 글 화면보다 위. 나중에 누른 창이 위로
+      // 사이트 헤더(z-30)보다 위, 팝업 · 알림 메시지(z-50)보다 아래. 나중에 누른 창이 위로
       className="fixed flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop animate-pop"
-      style={{ left: win.x, top: win.y, width: win.w, height, zIndex: 25 + layer }}
+      style={{ left: win.x, top: win.y, width: win.w, height, zIndex: 31 + layer }}
     >
       {/* 제목 줄: 끌어서 옮기기, 두 번 누르면 접기/펼치기 */}
       <header
