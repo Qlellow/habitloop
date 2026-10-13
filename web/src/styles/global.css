@@ -358,7 +358,15 @@
   height: 32px;
   z-index: 29;
   pointer-events: none;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--surface) 85%, transparent), transparent);
+}
+/* 헤더 색이 아래로 옅어지는 부분. 그라디언트는 색이 전환되지 않으므로 단색 + 마스크로 (테마가 바뀔 때 헤더와 같이 천천히) */
+.header-fade::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: color-mix(in srgb, var(--surface) 85%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+  mask-image: linear-gradient(to bottom, #000, transparent);
 }
 .header-fade > span {
   position: absolute;
