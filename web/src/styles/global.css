@@ -106,6 +106,64 @@
   }
 }
 
+/*
+ * 시간대 테마 (설정 → 화면 → 테마 '시간대'). 아침 · 낮은 밝은 화면, 저녁 · 새벽은 어두운 화면을 바탕으로
+ * 배경과 포인트 색만 바꾼다. 낮은 기본 색 그대로. 시간대가 넘어가면 .theme-fade 로 천천히 바뀐다
+ */
+/* 아침: 햇살 같은 따뜻한 크림 바탕 + 코랄 */
+:root[data-time='morning'] {
+  --bg: #fdf7f0;
+  --surface-pressed: #fcf1e6;
+  --line: #f4ebe1;
+  --border: #ece0d3;
+  --field: #f7eee5;
+  --field-hover: #efe3d6;
+  --skeleton: #f4ebe1;
+  --primary: #ef6c2f;
+  --primary-pressed: #dc5b20;
+  --primary-weak: #fff0e5;
+  --shadow-pop: 0 12px 32px rgba(84, 44, 12, 0.14);
+}
+/* 저녁: 노을이 진 보랏빛 어스름 + 보라 */
+:root[data-time='evening'] {
+  --bg: #16121c;
+  --surface: #201a28;
+  --surface-pressed: #2a2334;
+  --line: #322a3d;
+  --border: #382e45;
+  --field: #2e2638;
+  --field-hover: #3a3046;
+  --skeleton: #2e2638;
+  --primary: #8b5cf6;
+  --primary-pressed: #7c4ae8;
+  --primary-weak: rgba(139, 92, 246, 0.18);
+}
+/* 새벽: 깊은 남색 + 차분한 파랑 */
+:root[data-time='dawn'] {
+  --bg: #0b111d;
+  --surface: #121a29;
+  --surface-pressed: #182234;
+  --line: #1f2b40;
+  --border: #243249;
+  --field: #1c273b;
+  --field-hover: #253249;
+  --skeleton: #1c273b;
+  --primary: #5b7cfa;
+  --primary-pressed: #4a6aee;
+  --primary-weak: rgba(91, 124, 250, 0.18);
+}
+.theme-fade,
+.theme-fade *,
+.theme-fade *::before,
+.theme-fade *::after {
+  transition:
+    background-color 1.2s ease,
+    border-color 1.2s ease,
+    color 1.2s ease,
+    fill 1.2s ease,
+    box-shadow 1.2s ease !important;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

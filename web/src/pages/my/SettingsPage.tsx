@@ -23,7 +23,7 @@ import { PROVIDERS } from '../../components/SocialLogin';
 import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
 import { toast } from '../../components/Toast';
 import { usePhone } from '../../lib/media';
-import { updateSettings, useSettings, type Settings } from '../../lib/settings';
+import { PERIODS, periodAt, updateSettings, useSettings, type Settings } from '../../lib/settings';
 import { ui } from '../../components/ui';
 import s from './my.styles';
 import { cn } from '../../lib/cn';
@@ -552,6 +552,36 @@ function BlockedUsers() {
   );
 }
 
+/** 시간대 테마: 자동(지금 시각) 또는 한 시간대로 고정 */
+function TimeThemeOption() {
+  const settings = useSettings();
+  const now = periodAt();
+  const shown = settings.timeTheme === 'auto' ? now : settings.timeTheme;
+  return (
+    <div className={s.option}>
+      <div>
+        <div className={s.optionLabel}>시간대</div>
+        <div className={s.optionDesc}>
+          {settings.timeTheme === 'auto'
+            ? `지금은 ${PERIODS[now].label} (${PERIODS[now].hours}). 시간대가 바뀌면 색도 천천히 바뀌어요.`
+            : `${PERIODS[shown].label} 테마로 고정했어요. 자동을 고르면 시각에 따라 바뀌어요.`}
+        </div>
+      </div>
+      <Segment
+        name="timeTheme"
+        value={settings.timeTheme}
+        options={[
+          ['auto', '자동'],
+          ['morning', '아침'],
+          ['day', '낮'],
+          ['evening', '저녁'],
+          ['dawn', '새벽'],
+        ]}
+      />
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const settings = useSettings();
   const phone = usePhone();
@@ -574,7 +604,9 @@ export default function SettingsPage() {
         <div className={s.option}>
           <div>
             <div className={s.optionLabel}>테마</div>
-            <div className={s.optionDesc}>시스템 설정을 고르면 기기의 라이트/다크 모드를 따라가요.</div>
+            <div className={s.optionDesc}>
+              시스템 설정은 기기의 라이트/다크 모드를, 시간대는 아침 · 낮 · 저녁 · 새벽에 맞춰 배경과 포인트 색을 바꿔요.
+            </div>
           </div>
           <Segment
             name="theme"
@@ -583,9 +615,11 @@ export default function SettingsPage() {
               ['system', '시스템 설정'],
               ['light', '라이트'],
               ['dark', '다크'],
+              ['time', '시간대'],
             ]}
           />
         </div>
+        {settings.theme === 'time' && <TimeThemeOption />}
         <div className={s.option}>
           <div>
             <div className={s.optionLabel}>글 목록 미리보기</div>
