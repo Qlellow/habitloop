@@ -1,7 +1,8 @@
 /** 헤더 · 사용자 메뉴 · 페이지 그리드 · 토스트 (Tailwind) */
 const s = {
+  // 85% 불투명 + 뒤를 흐리게. 헤더 바로 아래로는 블러가 서서히 옅어지는 띠(.header-fade)가 이어진다
   header:
-    'sticky top-0 z-30 border-b border-border bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] ' +
+    'sticky top-0 z-30 border-b border-border bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] ' +
     'backdrop-blur-[14px] backdrop-saturate-[1.8]',
   headerInner: 'flex items-center gap-5 h-header max-w-page mx-auto px-6 max-[860px]:gap-3 max-[860px]:px-4',
   // 로고·메뉴는 드래그로 글자가 선택되지 않게 (select-none)

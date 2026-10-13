@@ -321,6 +321,24 @@
   }
 }
 
+/*
+ * 헤더 아래 블러 띠: 글이 헤더 밑으로 스크롤될 때 경계에서 툭 끊기지 않고 흐릿하게 사라진다.
+ * 위쪽은 헤더만큼 흐리고 아래로 갈수록 옅어진다 (mask). 누르는 데는 방해하지 않는다
+ */
+.header-fade {
+  position: fixed;
+  top: var(--header-h);
+  inset-inline: 0;
+  height: 28px;
+  z-index: 29;
+  pointer-events: none;
+  backdrop-filter: blur(10px) saturate(1.4);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--surface) 35%, transparent), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+  mask-image: linear-gradient(to bottom, #000, transparent);
+}
+
 .theme-fade,
 .theme-fade *,
 .theme-fade *::before,

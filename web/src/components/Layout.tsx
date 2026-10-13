@@ -127,41 +127,45 @@ export function SiteHeader() {
   const authState = useAuthState();
 
   return (
-    <header className={s.header}>
-      <div className={s.headerInner}>
-        <Link to="/" className={s.logo} aria-label="루프 홈" draggable={false}>
-          <LogoMark className={s.logoMark} />
-          루프
-        </Link>
-        <nav className={s.nav} aria-label="주요 메뉴">
-          <NavLink to="/" end className={s.navLink} draggable={false}>
-            홈
-          </NavLink>
-          <NavLink to="/channels" className={s.navLink} onPointerEnter={preload.channels} draggable={false}>
-            채널
-          </NavLink>
-        </nav>
-        <ChannelSearch />
-        <div className={s.actions}>
-          {/* 글은 채널 안에서만 쓰므로 글쓰기 버튼은 각 채널 페이지에 있다 */}
-          {isLoggedIn ? (
-            <>
-              <NotificationBell />
-              <UserMenu />
-            </>
-          ) : (
-            <>
-              <Link to="/login" state={authState} className={cn(ui.button, ui.text)} onPointerEnter={preload.login} draggable={false}>
-                로그인
-              </Link>
-              <Link to="/signup" state={authState} className={cn(ui.button, ui.primary)} onPointerEnter={preload.signup} draggable={false}>
-                회원가입
-              </Link>
-            </>
-          )}
+    <>
+      <header className={s.header}>
+        <div className={s.headerInner}>
+          <Link to="/" className={s.logo} aria-label="루프 홈" draggable={false}>
+            <LogoMark className={s.logoMark} />
+            루프
+          </Link>
+          <nav className={s.nav} aria-label="주요 메뉴">
+            <NavLink to="/" end className={s.navLink} draggable={false}>
+              홈
+            </NavLink>
+            <NavLink to="/channels" className={s.navLink} onPointerEnter={preload.channels} draggable={false}>
+              채널
+            </NavLink>
+          </nav>
+          <ChannelSearch />
+          <div className={s.actions}>
+            {/* 글은 채널 안에서만 쓰므로 글쓰기 버튼은 각 채널 페이지에 있다 */}
+            {isLoggedIn ? (
+              <>
+                <NotificationBell />
+                <UserMenu />
+              </>
+            ) : (
+              <>
+                <Link to="/login" state={authState} className={cn(ui.button, ui.text)} onPointerEnter={preload.login} draggable={false}>
+                  로그인
+                </Link>
+                <Link to="/signup" state={authState} className={cn(ui.button, ui.primary)} onPointerEnter={preload.signup} draggable={false}>
+                  회원가입
+                </Link>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+      {/* 헤더 아래 블러: 헤더의 자식이면 헤더 안쪽만 흐려지므로 형제로 둔다 */}
+      <div className="header-fade" aria-hidden />
+    </>
   );
 }
 
