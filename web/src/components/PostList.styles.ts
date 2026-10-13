@@ -8,6 +8,10 @@ const s = {
     "[&:not(:first-child)]:before:content-[''] [&:not(:first-child)]:before:block [&:not(:first-child)]:before:h-px " +
     '[&:not(:first-child)]:before:mx-5 [&:not(:first-child)]:before:bg-line',
   link: 'group block px-5 py-4 transition-colors hover:bg-pressed',
+  // 미니 창 버튼: 마우스를 올리면 오른쪽 위(시간 자리)에 뜬다
+  miniButton:
+    'absolute right-3 top-3 inline-flex items-center gap-1 h-7 px-2 rounded-sm border border-border bg-surface text-xs font-semibold text-fg-sub ' +
+    'opacity-0 transition-opacity group-hover/item:opacity-100 focus-visible:opacity-100 hover:text-primary hover:border-primary [&>svg]:w-3.5 [&>svg]:h-3.5',
   meta: 'flex items-center gap-1.5 min-h-5 text-[13px] text-fg-weak',
   time: 'ml-auto flex-none',
   author: 'min-w-0 max-w-full inline-flex items-center gap-1.5 text-[13px] text-fg-sub font-medium',
