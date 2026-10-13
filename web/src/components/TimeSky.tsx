@@ -15,7 +15,7 @@ const STARS = (() => {
 })();
 
 /**
- * 시간대 테마의 하늘: 일출(아침) · 한낮의 해와 햇살(낮) · 지는 해(저녁) · 달과 반짝이는 별(새벽).
+ * 시간대 테마의 하늘: 일출(아침) · 한낮의 해와 햇살(낮) · 지는 해와 첫 별 몇 개(저녁) · 달과 반짝이는 별(새벽).
  * 무엇을 보일지는 CSS(:root[data-time])가 정해서, 시간대가 바뀌어도 다시 그리지 않는다. 시간대 테마가 아니면 숨는다
  */
 export const TimeSky = memo(function TimeSky() {
@@ -28,7 +28,8 @@ export const TimeSky = memo(function TimeSky() {
         {STARS.map((s, i) => (
           <span
             key={i}
-            className="sky-star"
+            // 저녁에는 하늘 위쪽(노을이 닿지 않는 곳)의 몇 개만 먼저 뜬다
+            className={s.top < 50 && i % 3 === 0 ? 'sky-star sky-star-early' : 'sky-star'}
             style={
               {
                 left: `${s.left}%`,

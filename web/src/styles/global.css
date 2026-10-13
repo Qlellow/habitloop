@@ -252,9 +252,17 @@
     inset -14px 8px 0 0 #f4f1de,
     0 0 40px 6px rgba(244, 241, 222, 0.12);
 }
-:root[data-time='dawn'] .sky-stars {
+:root[data-time='dawn'] .sky-stars,
+:root[data-time='evening'] .sky-stars {
   display: block;
   inset: 0;
+}
+/* 저녁: 아직 노을이 남아 있어 하늘 위쪽에만 몇 개, 조금 흐리게 */
+:root[data-time='evening'] .sky-star:not(.sky-star-early) {
+  display: none;
+}
+:root[data-time='evening'] .sky-star-early {
+  filter: brightness(0.8);
 }
 .sky-star {
   position: absolute;
