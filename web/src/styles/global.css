@@ -111,19 +111,18 @@
  * 배경 · 선 · 포인트 색을 바꾸고, 뒤에 하늘(.time-sky: 일출 · 한낮의 해 · 노을 · 별)을 깐다.
  * 시간대가 넘어가면 .theme-fade 로 천천히 바뀐다
  */
-/* 아침 · 일출: 복숭아빛 하늘 + 코랄 */
+/* 아침 · 일출: 새벽빛 하늘이 지평선에서 살구빛으로 밝아온다 + 선라이즈 코랄 */
 :root[data-time='morning'] {
-  --bg: #fff6ee;
-  --surface-pressed: #fff1e4;
-  --line: #f6e8da;
-  --border: #eedccb;
-  --field: #faefe4;
-  --field-hover: #f2e2d3;
-  --skeleton: #f6e8da;
-  --primary: #ef6c2f;
-  --primary-pressed: #dc5b20;
-  --primary-weak: #ffeee2;
-  --shadow-pop: 0 12px 32px rgba(120, 60, 20, 0.14);
+  --bg: #fbf6f4;
+  --surface-pressed: #faf4f2;
+  --line: #f2ebe8;
+  --border: #e9e0dc;
+  --field: #f6f0ee;
+  --field-hover: #ece3df;
+  --skeleton: #f2ebe8;
+  --primary: #f2674a;
+  --primary-pressed: #e0563a;
+  --primary-weak: #ffece6;
 }
 /* 낮 · 한낮: 맑은 하늘색 + 선명한 파랑 */
 :root[data-time='day'] {
@@ -138,19 +137,19 @@
   --primary-pressed: #1f6fdc;
   --primary-weak: #e5f0ff;
 }
-/* 저녁 · 노을: 자줏빛 어둠 위 붉은 지평선 + 노을 장밋빛 */
+/* 저녁 · 노을: 남보랏빛 어스름, 지평선에만 부드러운 살구 · 장밋빛이 남는다 + 노을 살구색 */
 :root[data-time='evening'] {
-  --bg: #1d131d;
-  --surface: #251a26;
-  --surface-pressed: #302230;
-  --line: #3b2a39;
-  --border: #463242;
-  --field: #352634;
-  --field-hover: #413041;
-  --skeleton: #352634;
-  --primary: #f0567a;
-  --primary-pressed: #dd4469;
-  --primary-weak: rgba(240, 86, 122, 0.18);
+  --bg: #17182a;
+  --surface: #1f2034;
+  --surface-pressed: #282a40;
+  --line: #2c2e46;
+  --border: #33354f;
+  --field: #2a2c43;
+  --field-hover: #34364f;
+  --skeleton: #2a2c43;
+  --primary: #e8795e;
+  --primary-pressed: #d9684e;
+  --primary-weak: rgba(232, 121, 94, 0.18);
 }
 /* 새벽 · 별밤: 깊은 남색 + 차분한 파랑 */
 :root[data-time='dawn'] {
@@ -185,13 +184,13 @@
   display: none;
 }
 :root[data-time='morning'] .time-sky {
-  background: linear-gradient(180deg, #ffcfae 0%, #ffe0c9 20%, #fff0e3 46%, #fff6ee 100%);
+  background: linear-gradient(180deg, #dfe7fb 0%, #ece6f6 30%, #f8e6ea 56%, #ffe6da 78%, #ffdcc4 100%);
 }
 :root[data-time='day'] .time-sky {
   background: linear-gradient(180deg, #bfdcff 0%, #d9ebff 24%, #ecf5ff 52%, #f2f8ff 100%);
 }
 :root[data-time='evening'] .time-sky {
-  background: linear-gradient(180deg, #1d131d 0%, #2c1832 26%, #5a2140 50%, #a1393f 74%, #e36f3c 92%, #f59a4a 100%);
+  background: linear-gradient(180deg, #121326 0%, #1a1b33 34%, #2b2546 58%, #4e3556 76%, #8a5466 90%, #c27a6e 100%);
 }
 :root[data-time='dawn'] .time-sky {
   background: linear-gradient(180deg, #04070f 0%, #0a101c 55%, #121b30 100%);
@@ -202,11 +201,12 @@
 }
 :root[data-time='morning'] .sky-sun {
   display: block;
-  left: -6vmax;
-  bottom: -12vmax;
-  width: 44vmax;
-  height: 44vmax;
-  background: radial-gradient(circle, #ffd27a 0%, #ffb067 18%, rgba(255, 150, 90, 0.45) 36%, rgba(255, 170, 120, 0) 64%);
+  right: 14vw;
+  bottom: -7vmax;
+  width: 14vmax;
+  height: 14vmax;
+  background: radial-gradient(circle, #fff3dc 0%, #ffd59a 46%, #ffbf86 62%, rgba(255, 191, 134, 0) 63%);
+  box-shadow: 0 0 9vmax 3vmax rgba(255, 196, 150, 0.45);
   animation: sky-rise 40s ease-in-out infinite alternate;
 }
 :root[data-time='day'] .sky-sun {
@@ -232,11 +232,12 @@
 :root[data-time='evening'] .sky-sun {
   display: block;
   left: 50%;
-  bottom: -26vmax;
-  width: 60vmax;
-  height: 60vmax;
+  bottom: -9vmax;
+  width: 12vmax;
+  height: 12vmax;
   transform: translateX(-50%);
-  background: radial-gradient(circle, #ffb35c 0%, #ff7d45 14%, rgba(240, 86, 90, 0.5) 32%, rgba(200, 60, 80, 0) 62%);
+  background: radial-gradient(circle, #ffd7b0 0%, #f6a383 52%, rgba(240, 150, 120, 0) 62%);
+  box-shadow: 0 0 10vmax 2vmax rgba(232, 121, 94, 0.28);
 }
 /* 별밤: 달 + 반짝이는 별 + 가끔 별똥별 */
 :root[data-time='dawn'] .sky-moon {
@@ -319,6 +320,54 @@
   .sky-star {
     animation: none !important;
   }
+}
+
+/*
+ * 헤더 아래 블러: 헤더와 같은 흐림에서 시작해 아래로 갈수록 점점 옅어지는 '점진적 블러'.
+ * 흐림 세기가 다른 네 겹(24 · 12 · 6 · 2px)을 mask 로 이어 붙여 경계선 없이 자연스럽게 사라진다.
+ * 헤더 색도 같은 비율로 옅어져 헤더와 띠 사이에 선이 보이지 않는다. 누르는 데는 방해하지 않는다
+ */
+.header-fade {
+  position: fixed;
+  top: var(--header-h);
+  inset-inline: 0;
+  height: 32px;
+  z-index: 29;
+  pointer-events: none;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--surface) 85%, transparent), transparent);
+}
+.header-fade > span {
+  position: absolute;
+  inset: 0;
+}
+@media (max-width: 860px) {
+  .header-fade {
+    height: 20px;
+  }
+}
+.header-fade > span:nth-child(1) {
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 12.5%, transparent 37.5%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 12.5%, transparent 37.5%);
+}
+.header-fade > span:nth-child(2) {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12.5%, #000 37.5%, transparent 62.5%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 12.5%, #000 37.5%, transparent 62.5%);
+}
+.header-fade > span:nth-child(3) {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 12.5%, #000 37.5%, #000 62.5%, transparent 87.5%);
+  mask-image: linear-gradient(to bottom, transparent 12.5%, #000 37.5%, #000 62.5%, transparent 87.5%);
+}
+.header-fade > span:nth-child(4) {
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 37.5%, #000 62.5%, #000 87.5%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 37.5%, #000 62.5%, #000 87.5%, transparent 100%);
 }
 
 .theme-fade,
