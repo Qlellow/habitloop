@@ -164,7 +164,12 @@ export function SiteHeader() {
         </div>
       </header>
       {/* 헤더 아래 블러: 헤더의 자식이면 헤더 안쪽만 흐려지므로 형제로 둔다 */}
-      <div className="header-fade" aria-hidden />
+      <div className="header-fade" aria-hidden>
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
     </>
   );
 }

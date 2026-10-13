@@ -1,9 +1,9 @@
 /** 헤더 · 사용자 메뉴 · 페이지 그리드 · 토스트 (Tailwind) */
 const s = {
-  // 85% 불투명 + 뒤를 흐리게. 헤더 바로 아래로는 블러가 서서히 옅어지는 띠(.header-fade)가 이어진다
+  // 85% 불투명 + 뒤를 강하게 흐리게. 경계선 없이 아래 띠(.header-fade)로 블러가 서서히 옅어진다
   header:
-    'sticky top-0 z-30 border-b border-border bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] ' +
-    'backdrop-blur-[14px] backdrop-saturate-[1.8]',
+    'sticky top-0 z-30 bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] ' +
+    'backdrop-blur-[24px] backdrop-saturate-[1.8]',
   headerInner: 'flex items-center gap-5 h-header max-w-page mx-auto px-6 max-[860px]:gap-3 max-[860px]:px-4',
   // 로고·메뉴는 드래그로 글자가 선택되지 않게 (select-none)
   logo: 'flex-none flex items-center gap-2 text-xl font-extrabold tracking-[-0.03em] text-fg-strong select-none',
@@ -30,14 +30,15 @@ const s = {
   menuItem: 'block w-full px-3 py-[9px] rounded-sm text-left text-[15px] text-fg hover:bg-field',
 
   // 페이지 그리드: 창이 좁아지면 왼쪽 → 오른쪽 사이드바 순서로 접는다 (일반 반응형 웹)
-  page: 'grid items-start gap-6 w-full max-w-page mx-auto px-6 pt-7 pb-20 max-[860px]:px-4 max-[860px]:pt-5 max-[860px]:pb-16',
+  // 위 여백은 헤더 아래 블러 띠(.header-fade, 32px · 좁으면 20px)보다 넓게: 처음 화면에서는 아무것도 흐려지지 않게
+  page: 'grid items-start gap-6 w-full max-w-page mx-auto px-6 pt-10 pb-20 max-[860px]:px-4 max-[860px]:pt-5 max-[860px]:pb-16',
   three: 'grid-cols-[220px_minmax(0,1fr)_300px] max-[1100px]:grid-cols-[minmax(0,1fr)_300px] max-[860px]:grid-cols-1',
   twoRight: 'grid-cols-[minmax(0,1fr)_320px] max-[860px]:grid-cols-1',
   withNav: 'grid-cols-[220px_minmax(0,1fr)] max-w-[1080px] max-[860px]:grid-cols-1',
   single: 'grid-cols-1 max-w-[880px]',
   wide: 'grid-cols-1',
   narrow: 'grid-cols-1 max-w-[440px] pt-16',
-  side: 'sticky top-[calc(64px+28px)] flex flex-col gap-4 max-[860px]:static',
+  side: 'sticky top-[calc(64px+40px)] flex flex-col gap-4 max-[860px]:static',
   leftInThree: 'max-[1100px]:hidden',
   // 마이페이지 메뉴: 화면에 붙어 따라오지 않고 페이지와 함께 스크롤된다
   sideStatic: 'static',
