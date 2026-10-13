@@ -5,6 +5,7 @@ import { useAuth } from '@loop/shared';
 import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
 import { MiniWindows } from './components/MiniWindows';
+import { TimeSky } from './components/TimeSky';
 import { loaders } from './lib/preload';
 import { useReturnTo } from './lib/authNav';
 import HomePage from './pages/HomePage';
@@ -73,6 +74,8 @@ function Root() {
   }
   return (
     <>
+      {/* 시간대 테마의 하늘 (일출 · 한낮 · 노을 · 별밤). 시간대 테마가 아니면 숨는다 */}
+      <TimeSky />
       {/* 폰에서는 하단 탭바 높이만큼 아래를 비워 둔다 (--tabbar-h, global.css) */}
       <div className="flex flex-col min-h-dvh pb-[var(--tabbar-h)]">
         <SiteHeader />
