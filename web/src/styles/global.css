@@ -108,39 +108,53 @@
 
 /*
  * 시간대 테마 (설정 → 화면 → 테마 '시간대'). 아침 · 낮은 밝은 화면, 저녁 · 새벽은 어두운 화면을 바탕으로
- * 배경과 포인트 색만 바꾼다. 낮은 기본 색 그대로. 시간대가 넘어가면 .theme-fade 로 천천히 바뀐다
+ * 배경 · 선 · 포인트 색을 바꾸고, 뒤에 하늘(.time-sky: 일출 · 한낮의 해 · 노을 · 별)을 깐다.
+ * 시간대가 넘어가면 .theme-fade 로 천천히 바뀐다
  */
-/* 아침: 햇살 같은 따뜻한 크림 바탕 + 코랄 */
+/* 아침 · 일출: 복숭아빛 하늘 + 코랄 */
 :root[data-time='morning'] {
-  --bg: #fdf7f0;
-  --surface-pressed: #fcf1e6;
-  --line: #f4ebe1;
-  --border: #ece0d3;
-  --field: #f7eee5;
-  --field-hover: #efe3d6;
-  --skeleton: #f4ebe1;
+  --bg: #fff6ee;
+  --surface-pressed: #fff1e4;
+  --line: #f6e8da;
+  --border: #eedccb;
+  --field: #faefe4;
+  --field-hover: #f2e2d3;
+  --skeleton: #f6e8da;
   --primary: #ef6c2f;
   --primary-pressed: #dc5b20;
-  --primary-weak: #fff0e5;
-  --shadow-pop: 0 12px 32px rgba(84, 44, 12, 0.14);
+  --primary-weak: #ffeee2;
+  --shadow-pop: 0 12px 32px rgba(120, 60, 20, 0.14);
 }
-/* 저녁: 노을이 진 보랏빛 어스름 + 보라 */
+/* 낮 · 한낮: 맑은 하늘색 + 선명한 파랑 */
+:root[data-time='day'] {
+  --bg: #f2f8ff;
+  --surface-pressed: #f3f8fe;
+  --line: #e8f0fa;
+  --border: #dae6f4;
+  --field: #edf3fb;
+  --field-hover: #dfe9f6;
+  --skeleton: #e8f0fa;
+  --primary: #2f80ed;
+  --primary-pressed: #1f6fdc;
+  --primary-weak: #e5f0ff;
+}
+/* 저녁 · 노을: 자줏빛 어둠 위 붉은 지평선 + 노을 장밋빛 */
 :root[data-time='evening'] {
-  --bg: #16121c;
-  --surface: #201a28;
-  --surface-pressed: #2a2334;
-  --line: #322a3d;
-  --border: #382e45;
-  --field: #2e2638;
-  --field-hover: #3a3046;
-  --skeleton: #2e2638;
-  --primary: #8b5cf6;
-  --primary-pressed: #7c4ae8;
-  --primary-weak: rgba(139, 92, 246, 0.18);
+  --bg: #1d131d;
+  --surface: #251a26;
+  --surface-pressed: #302230;
+  --line: #3b2a39;
+  --border: #463242;
+  --field: #352634;
+  --field-hover: #413041;
+  --skeleton: #352634;
+  --primary: #f0567a;
+  --primary-pressed: #dd4469;
+  --primary-weak: rgba(240, 86, 122, 0.18);
 }
-/* 새벽: 깊은 남색 + 차분한 파랑 */
+/* 새벽 · 별밤: 깊은 남색 + 차분한 파랑 */
 :root[data-time='dawn'] {
-  --bg: #0b111d;
+  --bg: #0a101c;
   --surface: #121a29;
   --surface-pressed: #182234;
   --line: #1f2b40;
@@ -152,6 +166,161 @@
   --primary-pressed: #4a6aee;
   --primary-weak: rgba(91, 124, 250, 0.18);
 }
+
+/* 하늘: 화면 뒤에 고정. 글 · 카드는 불투명해서 가장자리 · 헤더(반투명) 사이로만 비친다 */
+.time-sky {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 1.2s ease;
+}
+:root[data-time] .time-sky {
+  display: block;
+}
+.time-sky > * {
+  position: absolute;
+  display: none;
+}
+:root[data-time='morning'] .time-sky {
+  background: linear-gradient(180deg, #ffcfae 0%, #ffe0c9 20%, #fff0e3 46%, #fff6ee 100%);
+}
+:root[data-time='day'] .time-sky {
+  background: linear-gradient(180deg, #bfdcff 0%, #d9ebff 24%, #ecf5ff 52%, #f2f8ff 100%);
+}
+:root[data-time='evening'] .time-sky {
+  background: linear-gradient(180deg, #1d131d 0%, #2c1832 26%, #5a2140 50%, #a1393f 74%, #e36f3c 92%, #f59a4a 100%);
+}
+:root[data-time='dawn'] .time-sky {
+  background: linear-gradient(180deg, #04070f 0%, #0a101c 55%, #121b30 100%);
+}
+/* 해: 아침은 왼쪽 아래에서 떠오르고, 낮은 오른쪽 위 높이, 저녁은 가운데 아래로 진다 */
+.time-sky .sky-sun {
+  border-radius: 50%;
+}
+:root[data-time='morning'] .sky-sun {
+  display: block;
+  left: -6vmax;
+  bottom: -12vmax;
+  width: 44vmax;
+  height: 44vmax;
+  background: radial-gradient(circle, #ffd27a 0%, #ffb067 18%, rgba(255, 150, 90, 0.45) 36%, rgba(255, 170, 120, 0) 64%);
+  animation: sky-rise 40s ease-in-out infinite alternate;
+}
+:root[data-time='day'] .sky-sun {
+  display: block;
+  right: 4vw;
+  top: -10vmax;
+  width: 34vmax;
+  height: 34vmax;
+  background: radial-gradient(circle, #fffef6 0%, #fff7cc 12%, rgba(255, 244, 190, 0.55) 26%, rgba(255, 255, 255, 0) 60%);
+}
+/* 한낮의 햇살: 천천히 도는 빛줄기 */
+:root[data-time='day'] .sky-rays {
+  display: block;
+  right: calc(4vw + 17vmax - 40vmax);
+  top: calc(-10vmax + 17vmax - 40vmax);
+  width: 80vmax;
+  height: 80vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 250, 220, 0.22) 0deg 4deg, rgba(255, 250, 220, 0) 4deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.5) 30%, transparent 60%);
+  mask: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.5) 30%, transparent 60%);
+  animation: sky-spin 120s linear infinite;
+}
+:root[data-time='evening'] .sky-sun {
+  display: block;
+  left: 50%;
+  bottom: -26vmax;
+  width: 60vmax;
+  height: 60vmax;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, #ffb35c 0%, #ff7d45 14%, rgba(240, 86, 90, 0.5) 32%, rgba(200, 60, 80, 0) 62%);
+}
+/* 별밤: 달 + 반짝이는 별 + 가끔 별똥별 */
+:root[data-time='dawn'] .sky-moon {
+  display: block;
+  right: 9vw;
+  top: 13vh;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    inset -14px 8px 0 0 #f4f1de,
+    0 0 40px 6px rgba(244, 241, 222, 0.12);
+}
+:root[data-time='dawn'] .sky-stars {
+  display: block;
+  inset: 0;
+}
+.sky-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  animation: sky-twinkle var(--d, 3s) ease-in-out var(--delay, 0s) infinite;
+}
+:root[data-time='dawn'] .sky-shooting {
+  display: block;
+  top: 12vh;
+  left: 62vw;
+  width: 140px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+  transform: rotate(-24deg);
+  opacity: 0;
+  animation: sky-shoot 11s ease-in 4s infinite;
+}
+@keyframes sky-twinkle {
+  0%,
+  100% {
+    opacity: var(--min, 0.25);
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+@keyframes sky-shoot {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  9% {
+    opacity: 0;
+    translate: -280px 125px;
+  }
+  100% {
+    opacity: 0;
+    translate: -280px 125px;
+  }
+}
+@keyframes sky-rise {
+  from {
+    translate: 0 4vmax;
+  }
+  to {
+    translate: 0 -2vmax;
+  }
+}
+@keyframes sky-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .time-sky *,
+  .sky-star {
+    animation: none !important;
+  }
+}
+
 .theme-fade,
 .theme-fade *,
 .theme-fade *::before,
