@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, type PointerEvent as ReactPointerEve
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, timeAgo, usePost } from '@loop/shared';
-import { BAR_H, miniWindows, useMiniEnabled, useMiniWindows, type MiniWindow } from '../lib/miniWindows';
+import { BAR_H, MIN_H, MIN_W, miniWindows, useMiniEnabled, useMiniWindows, type MiniWindow } from '../lib/miniWindows';
 import { CloseIcon, ExpandIcon, MinimizeIcon, RestoreIcon } from './Icons';
 import { Markdown } from './Markdown';
 import { RoleBadge } from './RoleBadge';
@@ -13,6 +13,38 @@ import { cn } from '../lib/cn';
 // 공감 · 댓글은 글 화면의 것을 그대로 쓴다 (작은 창을 처음 열 때 받는다)
 const LikeButton = lazy(() => import('../pages/PostDetailPage').then((m) => ({ default: m.LikeButton })));
 const Comments = lazy(() => import('../pages/PostDetailPage').then((m) => ({ default: m.Comments })));
+
+/** 크기 조절 손잡이: 네 변 + 네 모서리. 방향 글자에 n(위) s(아래) w(왼쪽) e(오른쪽)가 들어 있으면 그쪽 변이 움직인다 */
+const EDGES = [
+  ['n', 'top-0 inset-x-3 h-1.5 cursor-ns-resize'],
+  ['s', 'bottom-0 inset-x-3 h-1.5 cursor-ns-resize'],
+  ['w', 'left-0 inset-y-3 w-1.5 cursor-ew-resize'],
+  ['e', 'right-0 inset-y-3 w-1.5 cursor-ew-resize'],
+  ['nw', 'top-0 left-0 w-3 h-3 cursor-nwse-resize'],
+  ['ne', 'top-0 right-0 w-3 h-3 cursor-nesw-resize'],
+  ['sw', 'bottom-0 left-0 w-3 h-3 cursor-nesw-resize'],
+  ['se', 'bottom-0 right-0 w-3 h-3 cursor-nwse-resize'],
+] as const;
+type Edge = (typeof EDGES)[number][0];
+
+/** 끈 방향만큼 크기를 바꾸고, 왼쪽 · 위쪽을 끌면 반대쪽 변은 제자리에 둔다 */
+function resized(start: MiniWindow, edge: Edge, dx: number, dy: number): Partial<MiniWindow> {
+  const next: Partial<MiniWindow> = {};
+  if (edge.includes('e')) next.w = start.w + dx;
+  if (edge.includes('s')) next.h = start.h + dy;
+  if (edge.includes('w')) {
+    const w = Math.min(Math.max(MIN_W, start.w - dx), window.innerWidth);
+    next.w = w;
+    next.x = start.x + start.w - w;
+  }
+  if (edge.includes('n')) {
+    // 위 변은 브라우저 위 끝까지만 (그 너머로 끌어도 아래 변은 제자리)
+    const h = Math.min(Math.max(MIN_H, start.h - dy), start.y + start.h);
+    next.h = h;
+    next.y = start.y + start.h - h;
+  }
+  return next;
+}
 
 const barButton =
   'grid place-items-center w-7 h-7 rounded-sm text-fg-sub transition-colors hover:bg-field hover:text-fg-strong [&>svg]:w-4 [&>svg]:h-4';
@@ -92,7 +124,8 @@ function Window({ win, title, layer, active }: { win: MiniWindow; title?: string
     return e;
   };
   const drag = useDrag((dx, dy) => miniWindows.update(win.postId, { x: start.current.x + dx, y: start.current.y + dy }));
-  const resize = useDrag((dx, dy) => miniWindows.update(win.postId, { w: start.current.w + dx, h: start.current.h + dy }));
+  const edge = useRef<Edge>('se');
+  const resize = useDrag((dx, dy) => miniWindows.update(win.postId, resized(start.current, edge.current, dx, dy)));
   const height = win.minimized ? BAR_H : win.h;
 
   return (
@@ -144,13 +177,19 @@ function Window({ win, title, layer, active }: { win: MiniWindow; title?: string
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <MiniPost postId={win.postId} />
           </div>
-          {/* 오른쪽 아래 모서리를 끌어서 크기 바꾸기 */}
-          <div
-            aria-hidden
-            className="absolute right-0 bottom-0 w-4 h-4 cursor-nwse-resize touch-none"
-            style={{ background: 'linear-gradient(135deg, transparent 50%, var(--border) 50%, var(--border) 60%, transparent 60%, transparent 70%, var(--border) 70%, var(--border) 80%, transparent 80%)' }}
-            onPointerDown={(e) => resize(begin(e))}
-          />
+          {/* 네 변 · 네 모서리 어디서든 끌어서 크기 바꾸기 */}
+          {EDGES.map(([dir, place]) => (
+            <div
+              key={dir}
+              aria-hidden
+              className={cn('absolute z-10 touch-none', place)}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                edge.current = dir;
+                resize(begin(e));
+              }}
+            />
+          ))}
         </>
       )}
     </section>
