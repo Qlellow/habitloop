@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate, Outlet, RouterProvider, ScrollRestoratio
 import { useAuth } from '@loop/shared';
 import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
+import { MiniWindows } from './components/MiniWindows';
 import { loaders } from './lib/preload';
 import { useReturnTo } from './lib/authNav';
 import HomePage from './pages/HomePage';
@@ -81,6 +82,8 @@ function Root() {
         <SiteFooter />
         <MobileTabBar />
       </div>
+      {/* 게시글 미니 창 (데스크톱): 화면을 옮겨도 떠 있다 */}
+      <MiniWindows />
       <ScrollRestoration />
       <Toaster />
     </>

@@ -23,7 +23,7 @@ import {
   type PostSummary,
 } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
-import { HeartIcon, ImageIcon } from '../components/Icons';
+import { HeartIcon, ImageIcon, PictureInPictureIcon } from '../components/Icons';
 import { prepareUpload } from '../lib/postImage';
 import { Page } from '../components/Layout';
 import { RoleBadge } from '../components/RoleBadge';
@@ -32,6 +32,7 @@ import { Markdown } from '../components/Markdown';
 import { CollapsibleBody } from '../components/CollapsibleBody';
 import { PopularCard } from '../components/Sidebar';
 import { ReportDialog } from '../components/ReportDialog';
+import { miniWindows, useMiniEnabled } from '../lib/miniWindows';
 import { toast } from '../components/Toast';
 import { preload } from '../lib/preload';
 import { ui } from '../components/ui';
@@ -453,6 +454,14 @@ export default function PostDetailPage() {
   const [reporting, setReporting] = useState(false);
   // 내가 차단한 사람의 글은 내용을 접어 두고, 누르면 보여 준다
   const [shownBlocked, setShownBlocked] = useState<number>();
+  const mini = useMiniEnabled();
+  // 이 글을 작은 창으로 띄우고 이전 화면(없으면 채널)으로 돌아가 다른 글을 둘러본다
+  const toMini = () => {
+    if (!post) return;
+    miniWindows.open(post.id);
+    if ((window.history.state as { idx?: number } | null)?.idx) navigate(-1);
+    else navigate(`/c/${post.channel.slug}`);
+  };
   const showBlocked = shownBlocked === id;
 
   if (!Number.isInteger(id) || (error instanceof ApiError && error.status === 404)) {
@@ -530,8 +539,14 @@ export default function PostDetailPage() {
                   · 조회 {compact(post.viewCount)}
                 </div>
               </div>
-              {(post.mine || post.canModerate || isLoggedIn) && !isPlaceholderData && (
+              {(post.mine || post.canModerate || isLoggedIn || mini) && !isPlaceholderData && (
                 <div className={s.bylineActions}>
+                  {mini && (
+                    <button type="button" className={cn(ui.button, ui.text, ui.small, 'gap-1 [&>svg]:w-4 [&>svg]:h-4')} title="작은 창으로 띄우고 다른 글 보기" onClick={toMini}>
+                      <PictureInPictureIcon />
+                      작은 창
+                    </button>
+                  )}
                   {post.mine && (
                     <Link to={`/posts/${id}/edit`} className={cn(ui.button, ui.text, ui.small)}>
                       수정

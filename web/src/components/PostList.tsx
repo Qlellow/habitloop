@@ -6,7 +6,8 @@ import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query
 import { compact, timeAgo, type CursorPage, type PostSummary } from '@loop/shared';
 import { preload } from '../lib/preload';
 import { useSettings } from '../lib/settings';
-import { CommentIcon, HeartIcon } from './Icons';
+import { CommentIcon, HeartIcon, PictureInPictureIcon } from './Icons';
+import { miniWindows, useMiniEnabled } from '../lib/miniWindows';
 import s from './PostList.styles';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
@@ -25,8 +26,10 @@ export const PostItem = memo(function PostItem({
 }) {
   const label = badge === 'channel' ? post.channelName : post.categoryName;
   const navigate = useNavigate();
+  const mini = useMiniEnabled();
   const time = (
-    <time className={s.time} dateTime={post.createdAt}>
+    // 미니 창 버튼이 뜨는 동안(마우스를 올렸을 때)은 시간을 비켜 준다
+    <time className={cn(s.time, mini && 'group-hover/item:invisible')} dateTime={post.createdAt}>
       {timeAgo(post.createdAt)}
     </time>
   );
@@ -48,7 +51,7 @@ export const PostItem = memo(function PostItem({
     </span>
   );
   return (
-    <li className={s.item}>
+    <li className={cn(s.item, 'relative group/item')}>
       <Link
         to={`/posts/${post.id}`}
         state={{ summary: post }}
@@ -88,6 +91,19 @@ export const PostItem = memo(function PostItem({
           </div>
         </div>
       </Link>
+      {/* 데스크톱: 글을 작은 창으로 띄워 두고 목록을 계속 둘러본다 (링크 안에 버튼을 넣지 않고 위에 겹친다) */}
+      {mini && (
+        <button
+          type="button"
+          className={s.miniButton}
+          aria-label={`'${post.title}' 작은 창으로 보기`}
+          title="작은 창으로 보기"
+          onClick={() => miniWindows.open(post.id)}
+        >
+          <PictureInPictureIcon />
+          작은 창
+        </button>
+      )}
     </li>
   );
 });
