@@ -23,6 +23,7 @@ export function ChannelIcon({ channel, size = 32, src }: { channel: IconChannel;
         loading="lazy"
         decoding="async"
         onError={() => setBroken(url)}
+        data-fx="auto"
         style={{ flex: 'none', width: size, height: size, borderRadius: radius, objectFit: 'cover', background: 'var(--field)' }}
       />
     );
@@ -30,6 +31,8 @@ export function ChannelIcon({ channel, size = 32, src }: { channel: IconChannel;
   return (
     <span
       aria-hidden
+      data-fx="auto"
+      data-fx-color={channelColor(channel.slug, channel.color)}
       style={{
         flex: 'none',
         display: 'grid',
