@@ -569,7 +569,7 @@ const FX_DESIGNS: [FxDesign, string, string][] = [
  * 아래 칸에서 바로 시험해 볼 수 있다
  */
 function PixelFxOption() {
-  const { pixelFx, pixelFxSpecialOnly, fxDesign } = useSettings();
+  const { cursorFx, pixelFxSpecialOnly, fxDesign } = useSettings();
   const can = useMediaQuery('(hover: hover) and (pointer: fine)');
   const desc = FX_DESIGNS.find(([v]) => v === fxDesign)?.[2];
   return (
@@ -579,9 +579,9 @@ function PixelFxOption() {
           <div className={s.optionLabel}>인터랙티브 커서</div>
           <div className={s.optionDesc}>마우스를 움직이고 · 버튼에 올리고 · 누르고 · 글을 쓸 때 도트 애니메이션이 나와요. 아주 가끔 숨은 애니메이션도 있어요.</div>
         </div>
-        <button type="button" role="switch" aria-checked={pixelFx} aria-label="인터랙티브 커서" className={s.switch} onClick={() => updateSettings({ pixelFx: !pixelFx })} />
+        <button type="button" role="switch" aria-checked={cursorFx} aria-label="인터랙티브 커서" className={s.switch} onClick={() => updateSettings({ cursorFx: !cursorFx })} />
       </div>
-      {pixelFx && (
+      {cursorFx && (
         <>
           <div className={s.option}>
             <div>
@@ -606,7 +606,7 @@ function PixelFxOption() {
           </div>
         </>
       )}
-      {pixelFx && can && (
+      {cursorFx && can && (
         <CursorZone className="fx-preview" aria-label="인터랙티브 커서 시험하기">
           <span className="fx-preview-hint">여기서 마우스를 움직이고, 버튼에 올리고, 눌러 보고, 글도 써 보세요</span>
           <div className="flex flex-wrap justify-center gap-2">

@@ -8,11 +8,11 @@ const QUERY = '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: n
 
 /** 인터랙티브 커서 (도트 파티클). 설정에서 디자인을 고르고, 끄거나 특별한 화면에서만 나오게 할 수 있다 */
 export function PixelParticles() {
-  const { pixelFx, pixelFxSpecialOnly, fxDesign } = useSettings();
+  const { cursorFx, pixelFxSpecialOnly, fxDesign } = useSettings();
   const can = useMediaQuery(QUERY);
   useEffect(() => {
-    if (!can || !pixelFx) return;
+    if (!can || !cursorFx) return;
     return startPixelFx({ design: fxDesign, specialOnly: pixelFxSpecialOnly });
-  }, [can, pixelFx, pixelFxSpecialOnly, fxDesign]);
+  }, [can, cursorFx, pixelFxSpecialOnly, fxDesign]);
   return null;
 }
