@@ -73,6 +73,10 @@ interface Particle {
   frameMs?: number;
   colors: string[];
   gravity: number;
+  /** 이 시간(ms)이 지나야 떨어지기 시작한다 (원형으로 퍼진 뒤 떨어지게) */
+  gravityAfter?: number;
+  /** 투명도 배수 */
+  alpha?: number;
   drag: number;
   sway: number;
   /** 도트 크기 배수 */
@@ -143,7 +147,9 @@ let hoverTimer = 0;
 let snowPile = false;
 let rainbowUntil = 0;
 /** 글자 커서 위치 (맴도는 파티클이 따라간다) */
-const caret: Point = { x: 0, y: 0 };
+const caret: Point & { h: number } = { x: 0, y: 0, h: 18 };
+/** 맴도는 고리의 가운데: 글자 줄 바로 위 (글자를 가리지 않게) */
+const halo: Point = { x: 0, y: 0 };
 let lastTypeAt = -1e9;
 let idleTimer = 0;
 let gathered = false;
@@ -159,6 +165,17 @@ function burst(x: number, y: number, n: number, opts: Partial<Particle> & { fram
     const a = (i / n) * Math.PI * 2 + rand(-0.2, 0.2);
     const sp = rand(opts.speed[0], opts.speed[1]);
     add({ life: rand(500, 800), drag: 0.92, colors: c(), ...opts, x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp });
+  }
+}
+
+/** 누를 때: 5 ~ 8개가 같은 속도로 고르게 퍼져 원을 그린다 */
+function ring(x: number, y: number, opts: Partial<Particle> & { frames: Sprite[]; speed?: number }) {
+  const n = 5 + Math.floor(Math.random() * 4);
+  const a0 = Math.random() * Math.PI * 2;
+  const sp = opts.speed ?? rand(2.4, 2.8);
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (i / n) * Math.PI * 2;
+    add({ life: 700, drag: 0.9, colors: c(), ...opts, x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp });
   }
 }
 
@@ -186,12 +203,9 @@ const DESIGNS: Record<FxDesign, Design> = {
     hoverRate: 110,
     // 반짝반짝: 버튼 둘레에서 작게 → 크게 → 작게
     hover: (r) => add({ ...onEdge(r, 6), frames: [S.px, S.plus, S.cross, S.plus, S.px], life: rand(500, 750), colors: c() }),
-    click: (x, y) => {
-      burst(x, y, 12, { frames: [S.star, S.plus], speed: [1.8, 3.4] });
-      burst(x, y, 8, { frames: [S.px], speed: [3.5, 4.5], life: 400 });
-    },
+    click: (x, y) => ring(x, y, { frames: [S.star, S.plus], life: 650 }),
     orbit: { n: 3, r: 13, w: 0.006, frames: [S.plus, S.cross, S.plus], frameMs: 220 },
-    key: (x, y) => add({ x: x + rand(-6, 6), y: y + rand(-8, 4), frames: [S.px, S.plus, S.px], vy: -0.3, life: 500, colors: c() }),
+    key: (x, y) => add({ x: x + rand(-6, 6), y, frames: [S.px, S.plus, S.px], vy: -0.4, life: 450, colors: c(), alpha: 0.85 }),
     // 숨은 1: 하늘에서 별똥별이 떨어져 버튼을 쿵! 하고 대신 눌러 준다 (meteorClick)
     hiddenClick: (x, y, el) => meteorClick(x, y, el),
   },
@@ -207,11 +221,12 @@ const DESIGNS: Record<FxDesign, Design> = {
       add({ x: rand(r.left + 6, r.right - 6), y: r.top - 2, frames: [S.heartS, S.heartB], frameMs: 260, vy: rand(-0.8, -0.5), sway: 0.5, life: rand(800, 1200), colors: c() }),
     // 분수처럼 위로 솟았다 떨어진다
     click: (x, y) => {
-      for (let i = 0; i < 12; i++)
+      const n = 5 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < n; i++)
         add({ x, y, frames: [S.heartB, S.heartS], vx: rand(-2.2, 2.2), vy: rand(-4, -2), gravity: 0.12, life: rand(700, 1000), colors: c() });
     },
     orbit: { n: 2, r: 12, w: 0.005, frames: [S.heartS, S.heartB], frameMs: 300 },
-    key: (x, y) => add({ x: x + rand(-4, 4), y: y - 6, frames: [S.heartS], vy: -0.7, sway: 0.4, life: 600, colors: c() }),
+    key: (x, y) => add({ x: x + rand(-4, 4), y, frames: [S.heartS], vy: -0.6, sway: 0.4, life: 500, colors: c(), alpha: 0.85 }),
     // 숨은 1: 누른 곳에 큰 하트가 그려지고 두 번 뛴 뒤 터진다
     hiddenClick: (x, y) => {
       const born = now;
@@ -246,13 +261,10 @@ const DESIGNS: Record<FxDesign, Design> = {
     // 꽃잎이 버튼 위에서 하늘하늘 떨어진다
     hover: (r) =>
       add({ x: rand(r.left, r.right), y: r.top - rand(2, 10), frames: [S.petal, S.petalB], frameMs: 300, vy: rand(0.3, 0.6), vx: rand(-0.2, 0.2), sway: 1.2, life: rand(900, 1300), colors: c() }),
-    // 꽃이 피듯 퍼졌다가 흩날리며 떨어진다
-    click: (x, y) => {
-      add({ x, y, frames: [S.flower], life: 350, colors: c() });
-      burst(x, y, 14, { frames: [S.petal, S.petalB], speed: [1.2, 2.8], gravity: 0.03, sway: 1, life: 1100, drag: 0.95 });
-    },
+    // 꽃잎이 원을 그리며 퍼졌다가 흩날리며 떨어진다
+    click: (x, y) => ring(x, y, { frames: [S.petal, S.petalB], frameMs: 260, gravity: 0.035, gravityAfter: 220, sway: 1.1, life: 1400 }),
     orbit: { n: 4, r: 14, w: 0.004, frames: [S.petal, S.petalB], frameMs: 280 },
-    key: (x, y) => add({ x: x + rand(-4, 4), y: y - 4, frames: [S.petal], vy: 0.4, sway: 1, life: 800, colors: c() }),
+    key: (x, y) => add({ x: x + rand(-4, 4), y, frames: [S.px, S.petal], vy: -0.4, sway: 0.8, life: 500, colors: c(), alpha: 0.85 }),
     // 숨은 1: 꽃바람이 화면을 가로지른다
     hiddenClick: () => {
       for (let i = 0; i < 70; i++) {
@@ -281,13 +293,10 @@ const DESIGNS: Record<FxDesign, Design> = {
         colors: c(),
         tag: snowPile ? 'pile' : undefined,
       }),
-    // 눈 결정이 퍼졌다가 천천히 내려앉는다
-    click: (x, y) => {
-      burst(x, y, 8, { frames: [S.flakeB, S.flakeS], speed: [1.6, 3], gravity: 0.02, sway: 0.6, life: 1200, drag: 0.94 });
-      burst(x, y, 10, { frames: [S.px], speed: [0.8, 1.6], gravity: 0.01, sway: 0.4, life: 1000, drag: 0.95 });
-    },
+    // 눈 결정이 원을 그리며 퍼졌다가 흩날리며 내려앉는다
+    click: (x, y) => ring(x, y, { frames: [S.flakeB, S.flakeS], frameMs: 300, gravity: 0.025, gravityAfter: 220, sway: 0.9, life: 1500 }),
     orbit: { n: 4, r: 15, w: 0.003, frames: [S.flakeS, S.flakeB, S.flakeS], frameMs: 300 },
-    key: (x, y) => add({ x: x + rand(-6, 6), y: y - 10, frames: [S.flakeS], vy: 0.5, sway: 0.5, life: 700, colors: c() }),
+    key: (x, y) => add({ x: x + rand(-6, 6), y, frames: [S.px, S.flakeS], vy: -0.4, sway: 0.5, life: 500, colors: c(), alpha: 0.85 }),
     // 숨은 1: 온 화면에 눈이 펑펑
     hiddenClick: () => {
       for (let i = 0; i < 120; i++) {
@@ -307,13 +316,10 @@ const DESIGNS: Record<FxDesign, Design> = {
       add({ x: rand(r.left + 4, r.right - 4), y: r.top + 1, frames: [S.flame, S.plus, S.px], vy: rand(-1.1, -0.6), vx: rand(-0.2, 0.2), gravity: -0.01, life: rand(450, 700), colors: c() });
       if (Math.random() < 0.3) add({ x: rand(r.left, r.right), y: r.top - 14, frames: [S.smoke], vy: -0.4, sway: 0.4, life: 900, colors: SMOKE });
     },
-    // 펑: 불티가 튀고 연기가 피어오른다
-    click: (x, y) => {
-      burst(x, y, 16, { frames: [S.spark, S.px], speed: [2, 4.5], gravity: 0.08, life: 700 });
-      for (let i = 0; i < 4; i++) add({ x: x + rand(-10, 10), y: y - rand(8, 16), frames: [S.smoke, S.px], vy: rand(-0.7, -0.4), sway: 0.4, life: 900, colors: SMOKE });
-    },
+    // 불티가 원을 그리며 퍼졌다가 반짝이며 떨어진다
+    click: (x, y) => ring(x, y, { frames: [S.spark, S.plus, S.px, S.plus], frameMs: 90, gravity: 0.06, gravityAfter: 200, life: 1000 }),
     orbit: { n: 3, r: 12, w: 0.008, frames: [S.flame, S.plus], frameMs: 160 },
-    key: (x, y) => add({ x: x + rand(-4, 4), y: y - 4, frames: [S.px], vy: -1, vx: rand(-0.4, 0.4), life: 450, colors: [pick(colors)] }),
+    key: (x, y) => add({ x: x + rand(-4, 4), y, frames: [S.px], vy: -0.9, vx: rand(-0.3, 0.3), life: 400, colors: [pick(colors)], alpha: 0.85 }),
     // 숨은 1: 화면 아래에서 폭죽이 솟아 누른 곳에서 터진다
     hiddenClick: (x, y) => {
       const rocket = add({ x, y: innerHeight + 10, frames: [S.plus], life: 1e9, colors: ['#ffffff', '#ffd23f'], tag: 'rocket' });
@@ -440,7 +446,7 @@ const MIRROR_PROPS = [
 ] as const;
 
 /** 입력칸 · 글상자 · 편집기 안의 글자 커서 화면 좌표 */
-function caretPoint(el: HTMLElement): Point {
+function caretPoint(el: HTMLElement): Point & { h: number } {
   const r = el.getBoundingClientRect();
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
     // 같은 모양의 보이지 않는 상자에 커서 앞 글자까지만 넣고 끝 위치를 잰다
@@ -463,16 +469,16 @@ function caretPoint(el: HTMLElement): Point {
     const x = r.left + mark.offsetLeft - el.scrollLeft;
     const y = r.top + mark.offsetTop - el.scrollTop + mark.offsetHeight / 2;
     mirror.remove();
-    return { x: Math.min(Math.max(x, r.left), r.right), y: Math.min(Math.max(y, r.top), r.bottom) };
+    return { x: Math.min(Math.max(x, r.left), r.right), y: Math.min(Math.max(y, r.top), r.bottom), h: mark.offsetHeight || parseFloat(cs.lineHeight) || 18 };
   }
   const sel = window.getSelection();
   if (sel && sel.rangeCount) {
     const range = sel.getRangeAt(0).cloneRange();
     range.collapse(false);
     const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
-    if (rect && (rect.width || rect.height || rect.x)) return { x: rect.left, y: rect.top + rect.height / 2 };
+    if (rect && (rect.width || rect.height || rect.x)) return { x: rect.left, y: rect.top + rect.height / 2, h: rect.height || 18 };
   }
-  return { x: r.left + 12, y: r.top + r.height / 2 };
+  return { x: r.left + 12, y: r.top + r.height / 2, h: 18 };
 }
 
 /* ───────── 그리기 ───────── */
@@ -515,7 +521,7 @@ function frame(t: number) {
       if (!typing) fadeOut(p);
       p.orbit.a += p.orbit.w * dt;
       p.x = p.orbit.c.x + Math.cos(p.orbit.a) * p.orbit.r;
-      p.y = p.orbit.c.y + Math.sin(p.orbit.a) * p.orbit.r * 0.8;
+      p.y = p.orbit.c.y + Math.sin(p.orbit.a) * p.orbit.r * 0.3;
     } else if (p.path) {
       const k = Math.min(1, p.age / p.path.dur);
       const e = k * k * k; // 처음엔 천천히, 땅에 가까울수록 빠르게
@@ -541,9 +547,10 @@ function frame(t: number) {
         done();
       }
     } else if (!p.landed) {
-      p.vy += p.gravity * f;
+      const g = p.gravityAfter && p.age < p.gravityAfter ? 0 : p.gravity;
+      p.vy += g * f;
       p.vx *= p.drag ** f;
-      if (!p.gravity) p.vy *= p.drag ** f;
+      if (!g) p.vy *= p.drag ** f;
       p.x += p.vx * f;
       p.y += p.vy * f;
       if (p.land != null && p.y >= p.land) {
@@ -565,11 +572,12 @@ function frame(t: number) {
     const idx = p.frameMs ? Math.floor((p.age + p.seed) / p.frameMs) % frames.length : Math.min(frames.length - 1, Math.floor((p.age / p.life) * frames.length));
     const shape = frames[idx];
     const size = PX * p.scale;
-    const sway = p.sway && !p.landed ? Math.sin((p.age + p.seed) / 170) * p.sway * 4 : 0;
+    const swayIn = p.gravityAfter ? Math.max(0, Math.min(1, (p.age - p.gravityAfter) / 300)) : 1;
+    const sway = p.sway && !p.landed ? Math.sin((p.age + p.seed) / 170) * p.sway * 4 * swayIn : 0;
     // 도트가 격자에 딱 맞게 (흐릿하지 않게)
     const ox = Math.round((p.x + sway) / PX) * PX;
     const oy = Math.round(p.y / PX) * PX;
-    ctx!.globalAlpha = alpha;
+    ctx!.globalAlpha = alpha * (p.alpha ?? 1);
     for (const [cx, cy, ci] of shape) {
       ctx!.fillStyle = p.colors[ci] ?? p.colors[0];
       ctx!.fillRect(ox + Math.round(cx * size), oy + Math.round(cy * size), size, size);
@@ -673,14 +681,18 @@ function onInput(e: Event) {
     const p = caretPoint(el);
     caret.x = p.x;
     caret.y = p.y;
+    caret.h = p.h;
+    // 글자 줄 위쪽 (줄 높이의 절반 + 여백)
+    halo.x = p.x;
+    halo.y = p.y - p.h / 2 - 7;
     const d = DESIGNS[design];
     lastTypeAt = performance.now();
     if (!particles.some((q) => q.orbit && q.fadeAt == null)) {
       for (let i = 0; i < d.orbit.n; i++) {
-        add({ x: p.x, y: p.y, frames: d.orbit.frames, frameMs: d.orbit.frameMs ?? 250, life: 1e9, colors: c(), orbit: { c: caret, r: d.orbit.r, a: (i / d.orbit.n) * Math.PI * 2, w: d.orbit.w } });
+        add({ x: halo.x, y: halo.y, frames: [d.orbit.frames[0]], life: 1e9, colors: c(), alpha: 0.85, orbit: { c: halo, r: 10, a: (i / d.orbit.n) * Math.PI * 2, w: d.orbit.w } });
       }
     }
-    d.key(p.x, p.y);
+    d.key(halo.x, halo.y);
     wake();
   });
 }
