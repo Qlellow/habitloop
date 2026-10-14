@@ -4,7 +4,7 @@ import type { FxDesign } from './settings';
  * 인터랙티브 커서: 도트(픽셀) 파티클.
  * 고른 디자인(별 · 하트 · 벚꽃 · 눈 · 불꽃) 하나가 상황마다 다른 애니메이션을 낸다.
  *   움직일 때 → 꼬리, 버튼에 올릴 때 → 반짝임 등, 누를 때 → 터짐, 글을 쓸 때 → 글자 커서 주위를 맴돈다
- * 그리고 디자인마다 아주 낮은 확률로 숨은 애니메이션이 나온다 (별똥별 · 별 모으기 · 눈 쌓이기 · 폭죽 · 큰 하트 · 꽃바람 …).
+ * 그리고 디자인마다 아주 낮은 확률로 숨은 애니메이션이 나온다 (소행성 · 눈 쌓이기 · 폭죽 · 큰 하트 · 무지개 하트 · 꽃바람 · 함박눈).
  *
  * 모든 그림은 3px 도트를 격자에 맞춰 찍는다 (흐릿하게 번지지 않는 도트 그래픽).
  * 성능: 화면을 덮는 캔버스 하나에 사각형만 그린다 (DOM 을 만들지 않음). 그릴 게 없으면 멈춘다.
@@ -17,7 +17,7 @@ const TARGET = 'a[href], button:not(:disabled), [role="button"], [role="option"]
 const TYPING = 'textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), [contenteditable="true"], [contenteditable=""]';
 
 /** 숨은 애니메이션 확률 */
-const HIDDEN = { click: 1 / 100, idleGather: 1 / 8, snowPile: 1 / 6, rainbow: 1 / 600 };
+const HIDDEN = { click: 1 / 100, snowPile: 1 / 6, rainbow: 1 / 600 };
 
 /* ───────── 도트 그림 ───────── */
 
@@ -25,6 +25,11 @@ type Sprite = [number, number, number][];
 /** 문자열 도트 그림 → 칸 목록. '.' 는 빈칸, 숫자는 팔레트 번호 */
 const sprite = (...rows: string[]): Sprite =>
   rows.flatMap((row, y) => [...row].flatMap((ch, x) => (ch === '.' ? [] : [[x - (row.length - 1) / 2, y - (rows.length - 1) / 2, Number(ch)] as [number, number, number]])));
+
+/** 90° 돌린 그림 (소행성이 굴러가게) */
+const rot = (sp: Sprite): Sprite => sp.map(([x, y, c]) => [-y, x, c]);
+const ROCK = sprite('..000.', '.01120', '011220', '012202', '.0220.', '..00..');
+const ROCK_FRAMES = [ROCK, rot(ROCK), rot(rot(ROCK)), rot(rot(rot(ROCK)))];
 
 const S = {
   px: sprite('0'),
@@ -53,6 +58,9 @@ const PALETTE: Record<FxDesign, string[]> = {
 };
 const FIREWORK = ['#ff4d6d', '#ffd23f', '#4dd2ff', '#7cff6b', '#c77dff', '#ff9f1c'];
 const SMOKE = ['#9aa0aa', '#c7cbd3'];
+/** 소행성: 0 = 테두리, 1 = 밝은 면, 2 = 바위 */
+const ROCK_COLORS = ['#5f564e', '#c2b6a6', '#8a7f73'];
+const BLAZE = ['#ff7a1a', '#ffd23f', '#ffffff'];
 
 /* ───────── 파티클 ───────── */
 
@@ -86,7 +94,7 @@ interface Particle {
   orbit?: { c: Point; r: number; a: number; w: number };
   /** 어떤 점을 향해 날아간다. 닿으면 onArrive */
   seek?: { to: () => Point; k: number; onArrive?: () => void };
-  /** 정해진 시간(dur) 동안 from → to 로 점점 빨라지며 (별똥별) */
+  /** 정해진 시간(dur) 동안 from → to 로 점점 빨라지며 (소행성) */
   path?: { from: Point; to: () => Point; dur: number; onArrive: () => void };
   /** 이 높이에 닿으면 멈춰 쌓인다 */
   land?: number;
@@ -100,6 +108,9 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
 let particles: Particle[] = [];
+/** 그리는 도중(파티클을 옮기는 중)에 생긴 파티클은 여기 모았다가 끝나고 합친다 (filter 중에 넣으면 사라진다) */
+let updating = false;
+let pending: Particle[] = [];
 function add(p: Partial<Particle> & { x: number; y: number; frames: Sprite[]; colors: string[] }) {
   if (particles.length >= MAX) {
     // 넘치면 꼬리표 없는(평범한) 파티클부터 버린다
@@ -107,7 +118,7 @@ function add(p: Partial<Particle> & { x: number; y: number; frames: Sprite[]; co
     particles.splice(i < 0 ? 0 : i, 1);
   }
   const full: Particle = { vx: 0, vy: 0, age: 0, life: 800, gravity: 0, drag: 0.98, sway: 0, scale: 1, seed: Math.random() * 1000, ...p };
-  particles.push(full);
+  (updating ? pending : particles).push(full);
   return full;
 }
 const fadeOut = (p: Particle) => {
@@ -151,8 +162,6 @@ const caret: Point & { h: number } = { x: 0, y: 0, h: 18 };
 /** 맴도는 고리의 가운데: 글자 줄 바로 위 (글자를 가리지 않게) */
 const halo: Point = { x: 0, y: 0 };
 let lastTypeAt = -1e9;
-let idleTimer = 0;
-let gathered = false;
 /** 개발용: 다음 클릭을 숨은 애니메이션으로 */
 let forceHidden = false;
 
@@ -168,9 +177,9 @@ function burst(x: number, y: number, n: number, opts: Partial<Particle> & { fram
   }
 }
 
-/** 누를 때: 5 ~ 8개가 같은 속도로 고르게 퍼져 원을 그린다 */
+/** 누를 때: 3 ~ 5개가 같은 속도로 고르게 퍼져 원을 그린다 */
 function ring(x: number, y: number, opts: Partial<Particle> & { frames: Sprite[]; speed?: number }) {
-  const n = 5 + Math.floor(Math.random() * 4);
+  const n = 3 + Math.floor(Math.random() * 3);
   const a0 = Math.random() * Math.PI * 2;
   const sp = opts.speed ?? rand(2.4, 2.8);
   for (let i = 0; i < n; i++) {
@@ -206,8 +215,8 @@ const DESIGNS: Record<FxDesign, Design> = {
     click: (x, y) => ring(x, y, { frames: [S.star, S.plus], life: 650 }),
     orbit: { n: 3, r: 13, w: 0.006, frames: [S.plus, S.cross, S.plus], frameMs: 220 },
     key: (x, y) => add({ x: x + rand(-6, 6), y, frames: [S.px, S.plus, S.px], vy: -0.4, life: 450, colors: c(), alpha: 0.85 }),
-    // 숨은 1: 하늘에서 별똥별이 떨어져 버튼을 쿵! 하고 대신 눌러 준다 (meteorClick)
-    hiddenClick: (x, y, el) => meteorClick(x, y, el),
+    // 숨은 1: 하늘에서 소행성이 떨어져 버튼을 쿵! 하고 대신 눌러 준다 (asteroidClick)
+    hiddenClick: (x, y, el) => asteroidClick(x, y, el),
   },
   heart: {
     trailEvery: 34,
@@ -221,7 +230,7 @@ const DESIGNS: Record<FxDesign, Design> = {
       add({ x: rand(r.left + 6, r.right - 6), y: r.top - 2, frames: [S.heartS, S.heartB], frameMs: 260, vy: rand(-0.8, -0.5), sway: 0.5, life: rand(800, 1200), colors: c() }),
     // 분수처럼 위로 솟았다 떨어진다
     click: (x, y) => {
-      const n = 5 + Math.floor(Math.random() * 4);
+      const n = 3 + Math.floor(Math.random() * 3);
       for (let i = 0; i < n; i++)
         add({ x, y, frames: [S.heartB, S.heartS], vx: rand(-2.2, 2.2), vy: rand(-4, -2), gravity: 0.12, life: rand(700, 1000), colors: c() });
     },
@@ -338,9 +347,9 @@ const DESIGNS: Record<FxDesign, Design> = {
   },
 };
 
-/* ───────── 숨은: 별똥별이 버튼을 대신 눌러 준다 (별) ───────── */
+/* ───────── 숨은: 소행성이 떨어져 버튼을 대신 눌러 준다 (별) ───────── */
 
-/** 사용자가 누른 진짜 클릭은 잠깐 붙잡아 두고, 별똥별이 부딪히는 순간 대신 누른다 */
+/** 사용자가 누른 진짜 클릭은 잠깐 붙잡아 두고, 소행성이 부딪히는 순간 대신 누른다 */
 let held: { el: HTMLElement; clicked: boolean } | null = null;
 
 function onClickCapture(e: MouseEvent) {
@@ -352,7 +361,7 @@ function onClickCapture(e: MouseEvent) {
   held.clicked = true;
 }
 
-function meteorClick(x: number, y: number, el?: HTMLElement) {
+function asteroidClick(x: number, y: number, el?: HTMLElement) {
   if (!el) return DESIGNS.star.click(x, y);
   held = { el, clicked: false };
   const hold = held;
@@ -363,7 +372,8 @@ function meteorClick(x: number, y: number, el?: HTMLElement) {
   };
   const dir = Math.random() < 0.5 ? -1 : 1;
   const from = { x: r.left + r.width / 2 + dir * rand(160, 280), y: -24 };
-  const star = add({ ...from, frames: [S.star], life: 1e9, colors: c(), scale: 2, tag: 'meteor' });
+  // 데굴데굴 구르며 불꼬리를 달고 떨어지는 바위
+  const star = add({ ...from, frames: ROCK_FRAMES, frameMs: 70, life: 1e9, colors: ROCK_COLORS, scale: 2, tag: 'asteroid' });
   star.path = {
     from,
     to: hit,
@@ -381,13 +391,22 @@ function meteorClick(x: number, y: number, el?: HTMLElement) {
         ],
         { duration: 480, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)' },
       );
-      // 별이 터지고, 부딪힌 자리에서 파편이 양옆으로 튄다
-      burst(p.x, p.y, 16, { frames: [S.star, S.plus], speed: [2.4, 4.6] });
-      burst(p.x, p.y, 20, { frames: [S.px], speed: [4.5, 6], life: 380, drag: 0.85 });
+      // 쾅: 바위가 부서져 조각이 양옆으로 튀고, 흙먼지가 피어오르고, 불티 · 별가루가 번쩍
       const top = el.getBoundingClientRect().top;
-      for (let i = 0; i < 14; i++) {
+      for (let i = 0; i < 12; i++) {
         const side = i % 2 ? 1 : -1;
-        add({ x: p.x + side * rand(4, 20), y: top, frames: [S.px], vx: side * rand(1.5, 4), vy: rand(-3.5, -1.5), gravity: 0.2, drag: 0.99, life: rand(500, 800), colors: c() });
+        add({ x: p.x + side * rand(2, 14), y: top, frames: [pick([S.smoke, S.px, S.plus])], vx: side * rand(1.2, 3.6), vy: rand(-4, -1.8), gravity: 0.2, drag: 0.99, life: rand(600, 900), colors: ROCK_COLORS });
+      }
+      for (let i = 0; i < 6; i++) add({ x: p.x + rand(-14, 14), y: top - rand(0, 6), frames: [S.smoke], vx: rand(-0.6, 0.6), vy: rand(-0.7, -0.3), sway: 0.3, life: rand(700, 1000), colors: SMOKE, scale: 1 + Math.floor(Math.random() * 2) });
+      burst(p.x, p.y, 8, { frames: [S.spark, S.px], speed: [2.5, 4], colors: BLAZE, life: 420, drag: 0.88 });
+      // 펑! 별이 번쩍 크게 빛나고, 별들이 원을 그리며 터져 나간다
+      add({ x: p.x, y: p.y, frames: [S.star, S.cross, S.star], life: 260, colors: c(), scale: 3 });
+      const n = 10;
+      const a0 = Math.random() * Math.PI;
+      for (let i = 0; i < n; i++) {
+        const a = a0 + (i / n) * Math.PI * 2;
+        const sp = i % 2 ? 3.2 : 4.4;
+        add({ x: p.x, y: p.y, frames: [S.star, S.star, S.plus, S.px], vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, drag: 0.9, gravity: 0.03, gravityAfter: 300, life: rand(800, 1000), colors: c(), scale: i % 2 ? 1 : 2 });
       }
       // 눌린 맨 아래에서 진짜로 누른다
       window.setTimeout(() => {
@@ -396,45 +415,12 @@ function meteorClick(x: number, y: number, el?: HTMLElement) {
       }, 110);
     },
   };
-  // 혹시 별이 못 닿아도 클릭이 사라지지 않게
+  // 혹시 소행성이 못 닿아도 클릭이 사라지지 않게
   window.setTimeout(() => {
     if (held !== hold) return;
     held = null;
     if (hold.clicked && el.isConnected) el.click();
   }, 1500);
-}
-
-/* ───────── 숨은: 새벽 · 저녁 하늘의 별이 쉬고 있는 커서로 모여 원을 만든다 (별) ───────── */
-
-function gatherStars() {
-  const stars = [...document.querySelectorAll<HTMLElement>('.time-sky:not([data-period]) .sky-star')]
-    .map((el) => el.getBoundingClientRect())
-    .filter((r) => r.width > 0 && r.top >= 0 && r.top < innerHeight)
-    .slice(0, 36);
-  if (stars.length < 8) return;
-  gathered = true;
-  const born = now;
-  stars.forEach((r, i) => {
-    const p = add({ x: r.left + r.width / 2, y: r.top + r.height / 2, frames: [S.px, S.plus], frameMs: 400, life: 1e9, colors: c(), tag: 'gather' });
-    const a = (i / stars.length) * Math.PI * 2;
-    p.seek = { to: () => ({ x: pointer.x + Math.cos(a + (now - born) / 1500) * 38, y: pointer.y + Math.sin(a + (now - born) / 1500) * 38 }), k: 0.03 + Math.random() * 0.02 };
-  });
-  wake();
-}
-
-/** 커서가 움직이면 모였던 별이 흩어진다 */
-function scatter() {
-  if (!gathered) return;
-  gathered = false;
-  for (const p of particles) {
-    if (p.tag !== 'gather') continue;
-    p.seek = undefined;
-    const a = Math.atan2(p.y - pointer.y, p.x - pointer.x);
-    p.vx = Math.cos(a) * rand(2, 4);
-    p.vy = Math.sin(a) * rand(2, 4);
-    p.drag = 0.94;
-    fadeOut(p);
-  }
 }
 
 /* ───────── 글자 커서 위치 ───────── */
@@ -515,6 +501,7 @@ function frame(t: number) {
   const typing = now - lastTypeAt < 1400;
 
   ctx.clearRect(0, 0, innerWidth, innerHeight);
+  updating = true;
   particles = particles.filter((p) => {
     p.age += dt;
     if (p.orbit) {
@@ -528,8 +515,9 @@ function frame(t: number) {
       const to = p.path.to();
       p.x = p.path.from.x + (to.x - p.path.from.x) * e;
       p.y = p.path.from.y + (to.y - p.path.from.y) * e;
-      // 꼬리: 빨라질수록 길게
-      for (let i = 0; i < 1 + Math.floor(k * 3); i++) add({ x: p.x + rand(-2, 2), y: p.y + rand(-2, 2), frames: [pick([S.px, S.px, S.plus])], life: rand(250, 450), colors: p.colors, vy: rand(-0.3, 0.1), vx: rand(-0.3, 0.3) });
+      // 불꼬리: 빨라질수록 길고 굵게, 가끔 연기
+      for (let i = 0; i < 1 + Math.floor(k * 3); i++) add({ x: p.x + rand(-3, 3), y: p.y + rand(-3, 3), frames: [pick([S.px, S.px, S.plus])], life: rand(250, 450), colors: [pick(BLAZE)], vy: rand(-0.3, 0.1), vx: rand(-0.3, 0.3) });
+      if (Math.random() < 0.35) add({ x: p.x + rand(-4, 4), y: p.y - 4, frames: [S.smoke], life: rand(400, 650), colors: SMOKE, vy: -0.2, sway: 0.3 });
       if (k >= 1) {
         const done = p.path.onArrive;
         p.path = undefined;
@@ -539,8 +527,8 @@ function frame(t: number) {
       const to = p.seek.to();
       p.x += (to.x - p.x) * Math.min(1, p.seek.k * f);
       p.y += (to.y - p.y) * Math.min(1, p.seek.k * f);
-      // 별똥별 · 폭죽은 지나간 자리에 가루를 남긴다
-      if ((p.tag === 'meteor' || p.tag === 'rocket') && Math.random() < 0.7) add({ x: p.x, y: p.y, frames: [S.px], life: 350, colors: p.colors, vy: 0.2 });
+      // 폭죽은 지나간 자리에 가루를 남긴다
+      if (p.tag === 'rocket' && Math.random() < 0.7) add({ x: p.x, y: p.y, frames: [S.px], life: 350, colors: p.colors, vy: 0.2 });
       if (p.seek.onArrive && Math.hypot(to.x - p.x, to.y - p.y) < 6) {
         const done = p.seek.onArrive;
         p.seek = undefined;
@@ -584,6 +572,11 @@ function frame(t: number) {
     }
     return true;
   });
+  updating = false;
+  if (pending.length) {
+    particles.push(...pending);
+    pending = [];
+  }
   ctx.globalAlpha = 1;
 
   if (!hoverEl && particles.length === 0) {
@@ -641,12 +634,6 @@ function onMove(e: PointerEvent) {
   pointer.x = e.clientX;
   pointer.y = e.clientY;
   pointer.has = true;
-  scatter();
-  // 숨은: 새벽 · 저녁 하늘에서 커서를 가만히 두면 별이 모여든다
-  window.clearTimeout(idleTimer);
-  if (design === 'star' && /dawn|evening/.test(document.documentElement.dataset.time ?? '')) {
-    idleTimer = window.setTimeout(() => Math.random() < HIDDEN.idleGather && gatherStars(), 2500);
-  }
   if (!had || !allowed(e.target as Element)) return;
   const dist = Math.hypot(dx, dy);
   if (dist > 160) return;
@@ -730,10 +717,8 @@ export function startPixelFx(opts: { design: FxDesign; specialOnly: boolean }) {
     lastTime = 0;
     particles = [];
     hoverEl = null;
-    gathered = false;
     pointer.has = false;
     window.clearTimeout(hoverTimer);
-    window.clearTimeout(idleTimer);
     window.removeEventListener('resize', resize);
     document.removeEventListener('pointerover', onOver);
     document.removeEventListener('pointerout', onOut);
@@ -750,10 +735,9 @@ export function startPixelFx(opts: { design: FxDesign; specialOnly: boolean }) {
 }
 
 /** 개발 중 확인용: 숨은 애니메이션을 바로 띄운다 (개발 서버에서만 window.__loopFx) */
-function debugHidden(kind: 'click' | 'next' | 'gather' | 'pile' | 'rainbow', x = pointer.x, y = pointer.y) {
+function debugHidden(kind: 'click' | 'next' | 'pile' | 'rainbow', x = pointer.x, y = pointer.y) {
   if (kind === 'click') DESIGNS[design].hiddenClick(x, y, document.elementFromPoint(x, y)?.closest<HTMLElement>(TARGET) ?? undefined);
   if (kind === 'next') forceHidden = true;
-  if (kind === 'gather') gatherStars();
   if (kind === 'pile') snowPile = true;
   if (kind === 'rainbow') rainbowUntil = now + 5000;
   wake();
