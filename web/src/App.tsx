@@ -26,6 +26,7 @@ const MyChannelsPage = lazy(loaders.myChannels);
 const ProfilePage = lazy(loaders.profile);
 const SettingsPage = lazy(loaders.settings);
 const PointsPage = lazy(loaders.points);
+const PetPage = lazy(loaders.pet);
 const ChannelPage = lazy(loaders.channel);
 const ChannelsPage = lazy(loaders.channels);
 const ChannelFormPage = lazy(loaders.channelForm);
@@ -137,6 +138,7 @@ const router = createBrowserRouter([
           { path: 'channels', element: <MyChannelsPage /> },
           { path: 'profile', element: <ProfilePage /> },
           { path: 'points', element: <PointsPage /> },
+          { path: 'pet', element: <PetPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },

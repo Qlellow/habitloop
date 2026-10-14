@@ -635,6 +635,42 @@ describe('커뮤니티', () => {
     await http().put(`/api/channels/teen/categories/${teenCat}`).set(bearer(minor)).send({ name: '일반', adult: true }).expect(403);
   });
 
+  it('커뮤니티 펫: 데려오기 · 경험치 · 쓰다듬기 · 프로필 전시', async () => {
+    const me = await signup('pet@test.dev', '펫주인');
+    const fan = await signup('pet-fan@test.dev', '펫팬');
+    expect((await http().get('/api/me/pet').set(bearer(me)).expect(200)).body.pet).toBeUndefined(); // null 은 응답에서 빠진다
+    await http().get('/api/me/pet').expect(401);
+    await http().post('/api/me/pet').set(bearer(me)).send({ species: 'dragon', name: '용' }).expect(400);
+    await http().post('/api/me/pet').set(bearer(me)).send({ species: 'cat', name: '' }).expect(400);
+    await http().post('/api/me/pet').set(bearer(me)).send({ species: 'cat', name: '열세글자가넘는아주긴이름이야' }).expect(400);
+    const egg = (await http().post('/api/me/pet').set(bearer(me)).send({ species: 'cat', name: ' 나비 ' }).expect(201)).body;
+    expect(egg).toMatchObject({ species: 'cat', name: '나비', level: 0, stage: 'egg', xp: 0, shown: true, pettedToday: false });
+    await http().post('/api/me/pet').set(bearer(me)).send({ species: 'slime', name: '두번째' }).expect(409);
+
+    // 활동으로 자란다: 글 30 · 댓글 10 · 받은 좋아요 3 · 받은 반응 2
+    await http().post('/api/channels/free/members').set(bearer(me)).expect(200);
+    await http().post('/api/channels/free/members').set(bearer(fan)).expect(200);
+    const postId = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'free', title: '펫 키우기', content: 'c' }).expect(201)).body.id;
+    await http().post(`/api/posts/${postId}/comments`).set(bearer(me)).send({ content: '내 댓글' }).expect(201);
+    await http().post(`/api/posts/${postId}/like`).set(bearer(fan)).expect(200);
+    await http().post(`/api/posts/${postId}/like`).set(bearer(me)).expect(200); // 내가 누른 건 안 친다
+    await http().put(`/api/posts/${postId}/reactions/fire`).set(bearer(fan)).expect(200);
+    const grown = (await http().get('/api/me/pet').set(bearer(me))).body.pet;
+    expect(grown).toMatchObject({ xp: 45, level: 2, stage: 'baby', levelXp: 40, nextXp: 90, stats: { posts: 1, comments: 1, likes: 1, reactions: 1 } });
+
+    // 쓰다듬기: 하루 한 번 +5
+    const pat = (await http().post('/api/me/pet/pat').set(bearer(me)).expect(200)).body;
+    expect(pat).toMatchObject({ gained: true, xp: 5, pet: { xp: 50, pettedToday: true } });
+    expect((await http().post('/api/me/pet/pat').set(bearer(me)).expect(200)).body).toMatchObject({ gained: false, pet: { xp: 50 } });
+
+    // 프로필 전시
+    const myId = (await http().get('/api/me').set(bearer(me)).expect(200)).body.id;
+    expect((await http().get(`/api/users/${myId}`)).body.pet).toEqual({ species: 'cat', name: '나비', level: 2, stage: 'baby', mood: 'happy' });
+    expect((await http().patch('/api/me/pet').set(bearer(me)).send({ shown: false, name: '나비야' }).expect(200)).body).toMatchObject({ shown: false, name: '나비야' });
+    expect((await http().get(`/api/users/${myId}`)).body.pet).toBeUndefined();
+    await http().patch('/api/me/pet').set(bearer(fan)).send({ name: '없음' }).expect(404);
+  });
+
   it('프로필 사진 · 배너 · 포인트', async () => {
     const me = await signup('avatar@test.dev', '사진주인');
     const other = await signup('avatar-other@test.dev', '남의사진');

@@ -208,6 +208,8 @@ export interface UserProfile {
   badges?: Badge[];
   /** 내가 이 사람을 차단했는지 */
   blocked?: boolean;
+  /** 프로필에 전시한 펫 */
+  pet?: PetPublic;
 }
 
 /** 내가 차단한 사용자 (설정) */
@@ -320,6 +322,45 @@ export interface Comment {
   hidden?: boolean;
   /** 내가 차단한 사람의 댓글 (content 가 비어 있다) */
   blocked?: boolean;
+}
+
+/** 커뮤니티 펫 */
+export type PetSpecies = 'slime' | 'cat' | 'chick';
+/** 알 → 아기(Lv1) → 어린이(Lv5) → 어른(Lv10) */
+export type PetStage = 'egg' | 'baby' | 'junior' | 'adult';
+/** 최근 활동에 따라: 신남(하루 안) · 보통(사흘 안) · 졸림 */
+export type PetMood = 'happy' | 'calm' | 'sleepy';
+export const PET_SPECIES: { species: PetSpecies; label: string; desc: string }[] = [
+  { species: 'slime', label: '슬라임', desc: '말랑말랑 통통 튀어요' },
+  { species: 'cat', label: '고양이', desc: '느긋하게 어슬렁거려요' },
+  { species: 'chick', label: '병아리', desc: '종종거리며 바빠요' },
+];
+export const PET_STAGES: Record<PetStage, { label: string; from: number }> = {
+  egg: { label: '알', from: 0 },
+  baby: { label: '아기', from: 1 },
+  junior: { label: '어린이', from: 5 },
+  adult: { label: '어른', from: 10 },
+};
+
+export interface PetPublic {
+  species: PetSpecies;
+  name: string;
+  level: number;
+  stage: PetStage;
+  mood: PetMood;
+  /** 레벨 15 리본, 20 왕관 */
+  accessory?: 'ribbon' | 'crown';
+}
+
+export interface Pet extends PetPublic {
+  xp: number;
+  /** 지금 레벨이 시작된 경험치 · 다음 레벨 경험치 */
+  levelXp: number;
+  nextXp: number;
+  shown: boolean;
+  adoptedAt: string;
+  pettedToday: boolean;
+  stats: { posts: number; comments: number; likes: number; reactions: number };
 }
 
 /** 감정 반응 (좋아요와 따로, 종류마다 한 번씩) */

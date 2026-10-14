@@ -1723,3 +1723,152 @@ input[type='search']::-webkit-search-cancel-button:hover {
     display: none;
   }
 }
+
+/* ───────── 커뮤니티 펫 (components/Pet.tsx · pages/my/PetPage.tsx) ───────── */
+.pet-actor {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  user-select: none;
+}
+.pet-room-actor {
+  position: absolute;
+  bottom: 18px;
+  transform: translateX(-50%);
+  transition: left 1.7s linear;
+}
+.pet-body {
+  position: relative;
+  transform-origin: 50% 100%;
+}
+.pet-body svg {
+  display: block;
+  image-rendering: pixelated;
+  transform: scaleX(var(--pet-dir, 1));
+}
+.pet-idle {
+  animation: pet-breathe 2.2s ease-in-out infinite;
+}
+.pet-sleep {
+  animation: pet-breathe 3.6s ease-in-out infinite;
+}
+.pet-walk {
+  animation: pet-bob 0.44s steps(2, end) infinite;
+}
+.pet-hop {
+  animation: pet-hop 0.9s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+.pet-spin svg {
+  animation: pet-spin 0.7s steps(4, end);
+}
+.pet-wobble {
+  animation: pet-wobble 0.9s ease-in-out;
+}
+@keyframes pet-breathe {
+  50% { transform: scale(1.03, 0.96); }
+}
+@keyframes pet-bob {
+  50% { transform: translateY(-2px); }
+}
+@keyframes pet-hop {
+  0% { transform: scale(1, 1); }
+  15% { transform: scale(1.12, 0.85); }
+  35% { transform: translateY(-22px) scale(0.92, 1.1); }
+  55% { transform: translateY(0) scale(1.1, 0.9); }
+  68% { transform: translateY(-8px) scale(0.97, 1.04); }
+  82% { transform: translateY(0) scale(1.04, 0.96); }
+  100% { transform: scale(1, 1); }
+}
+@keyframes pet-spin {
+  0% { transform: scaleX(var(--pet-dir, 1)); }
+  25% { transform: scaleX(0.4); }
+  50% { transform: scaleX(calc(var(--pet-dir, 1) * -1)); }
+  75% { transform: scaleX(-0.4); }
+  100% { transform: scaleX(var(--pet-dir, 1)); }
+}
+@keyframes pet-wobble {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-9deg); }
+  40% { transform: rotate(8deg); }
+  60% { transform: rotate(-6deg); }
+  80% { transform: rotate(4deg); }
+}
+.pet-zzz {
+  position: absolute;
+  right: -6px;
+  top: 4px;
+  pointer-events: none;
+  font: 700 12px/1 ui-monospace, monospace;
+  color: var(--text-sub);
+}
+.pet-zzz i {
+  position: absolute;
+  font-style: normal;
+  opacity: 0;
+  animation: pet-z 2.4s ease-in-out infinite;
+}
+.pet-zzz i:nth-child(2) {
+  animation-delay: 0.8s;
+}
+.pet-zzz i:nth-child(3) {
+  animation-delay: 1.6s;
+  font-size: 15px;
+}
+@keyframes pet-z {
+  0% { transform: translate(0, 0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate(12px, -26px); opacity: 0; }
+}
+.pet-heart {
+  position: absolute;
+  left: 50%;
+  top: 10%;
+  pointer-events: none;
+  font-size: 15px;
+  line-height: 1;
+  color: #ff4d6d;
+  animation: pet-heart 1.3s ease-out forwards;
+  animation-delay: calc(var(--i) * 0.14s);
+  opacity: 0;
+}
+@keyframes pet-heart {
+  0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(calc(-50% + (var(--i) - 1) * 18px), -46px) scale(1.1); opacity: 0; }
+}
+/* 펫 방: 하늘색 벽 + 도트 바닥 */
+.pet-room {
+  position: relative;
+  height: 210px;
+  overflow: hidden;
+  border-radius: 14px;
+  background:
+    linear-gradient(to top, color-mix(in srgb, var(--primary) 18%, var(--surface)) 0 18px, transparent 18px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--primary) 26%, var(--surface)) 0 6px, transparent 6px 12px) 0 calc(100% - 18px) / 100% 3px no-repeat,
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 0) 0 0 / 14px 14px,
+    var(--field);
+}
+.pet-xp {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--field);
+  overflow: hidden;
+}
+.pet-xp > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: repeating-linear-gradient(90deg, var(--primary) 0 6px, color-mix(in srgb, var(--primary) 80%, #fff) 6px 8px);
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet-body,
+  .pet-body svg,
+  .pet-zzz i,
+  .pet-heart {
+    animation: none !important;
+  }
+  .pet-room-actor {
+    transition: none;
+  }
+}

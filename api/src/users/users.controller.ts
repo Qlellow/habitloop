@@ -6,6 +6,7 @@ import { escapeLike } from '../common/cursor-page';
 import { Database } from '../db/database';
 import { BlocksService } from './blocks.service';
 import { RewardsService } from './rewards.service';
+import { PetsService } from '../pets/pets.service';
 
 /** 작성자 프로필: 닉네임 · 가입일 · 쓴 글 / 댓글 수 · 배지 (이메일 같은 개인 정보는 주지 않는다) */
 @Controller()
@@ -14,6 +15,7 @@ export class UsersController {
     private readonly db: Database,
     private readonly rewards: RewardsService,
     private readonly blocks: BlocksService,
+    private readonly pets: PetsService,
   ) {}
 
   /** 닉네임으로 사용자 찾기 (커맨드 팔레트). 앞부분이 맞는 사람부터, 공개 정보만 */
@@ -56,6 +58,8 @@ export class UsersController {
       badges: await this.rewards.badges(internalId),
       /** 내가 이 사람을 차단했는지 (비로그인 · 내 프로필은 false) */
       blocked: await this.blocks.isBlocked(viewer?.id, internalId),
+      /** 프로필에 전시한 펫 */
+      pet: await this.pets.shownOf(internalId),
     };
   }
 
