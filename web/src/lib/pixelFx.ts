@@ -198,7 +198,7 @@ interface Design {
 
 const DESIGNS: Record<FxDesign, Design> = {
   star: {
-    trailEvery: 14,
+    trailEvery: 30,
     trail: (x, y) => add({ x, y, frames: [S.plus, S.px], vx: rand(-0.2, 0.2), vy: rand(-0.2, 0.2), life: rand(400, 650), colors: c() }),
     hoverRate: 110,
     // 반짝반짝: 버튼 둘레에서 작게 → 크게 → 작게
@@ -210,7 +210,7 @@ const DESIGNS: Record<FxDesign, Design> = {
     hiddenClick: (x, y, el) => meteorClick(x, y, el),
   },
   heart: {
-    trailEvery: 18,
+    trailEvery: 34,
     trail: (x, y) => {
       if (Math.random() < HIDDEN.rainbow) rainbowUntil = now + 5000; // 숨은 2: 잠깐 무지개 하트
       add({ x, y, frames: [S.heartS], vy: rand(-0.6, -0.3), vx: rand(-0.2, 0.2), sway: 0.4, life: rand(500, 750), colors: c() });
@@ -255,7 +255,7 @@ const DESIGNS: Record<FxDesign, Design> = {
     },
   },
   sakura: {
-    trailEvery: 16,
+    trailEvery: 32,
     trail: (x, y) => add({ x, y, frames: [S.petal], vx: rand(-0.3, 0.3), vy: rand(0.2, 0.5), sway: 0.9, life: rand(700, 1000), colors: c() }),
     hoverRate: 150,
     // 꽃잎이 버튼 위에서 하늘하늘 떨어진다
@@ -276,7 +276,7 @@ const DESIGNS: Record<FxDesign, Design> = {
     },
   },
   snow: {
-    trailEvery: 15,
+    trailEvery: 30,
     trail: (x, y) => add({ x, y, frames: [S.flakeS, S.px], vx: rand(-0.2, 0.2), vy: rand(0.2, 0.5), sway: 0.6, life: rand(700, 1000), colors: c() }),
     hoverRate: 130,
     // 버튼 위로 눈이 내린다 (숨은: 오래 올려 두면 버튼 위에 쌓인다)
@@ -308,7 +308,7 @@ const DESIGNS: Record<FxDesign, Design> = {
     },
   },
   fire: {
-    trailEvery: 12,
+    trailEvery: 26,
     trail: (x, y) => add({ x, y, frames: [S.px], vx: rand(-0.4, 0.4), vy: rand(-1, -0.5), life: rand(350, 600), colors: [pick(colors)] }),
     hoverRate: 90,
     // 버튼 위쪽 가장자리에서 불꽃이 너울거린다
