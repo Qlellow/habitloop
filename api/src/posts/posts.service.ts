@@ -44,6 +44,9 @@ export interface PostSearch {
 export const MAX_PAGE_SIZE = 50;
 
 /** 채널 글 목록 정렬 */
+/** 감정 반응 종류 (shared 의 REACTIONS 와 같게) */
+export const REACTION_KINDS = ['clap', 'laugh', 'wow', 'sad', 'fire'];
+
 export const SORTS = {
   latest: 'p.id DESC',
   likes: 'p.like_count DESC, p.id DESC',
@@ -399,6 +402,30 @@ export class PostsService {
     return { liked: true, likeCount };
   }
 
+  /** 감정 반응: 종류마다 한 번씩 누르고 취소한다. 여러 번 보내도 결과가 같다 */
+  async react(userId: number, postId: number, kind: string, on: boolean) {
+    if (!REACTION_KINDS.includes(kind)) throw ApiError.badRequest('없는 반응이에요');
+    await this.ensureExists(postId);
+    if (on) {
+      await this.db.execute('INSERT INTO post_reactions (post_id, user_id, kind) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [postId, userId, kind]);
+    } else {
+      await this.db.execute('DELETE FROM post_reactions WHERE post_id = $1 AND user_id = $2 AND kind = $3', [postId, userId, kind]);
+    }
+    return this.reactions(postId, userId);
+  }
+
+  /** 종류별 수 + 내가 누른 것 */
+  async reactions(postId: number, viewerId?: number) {
+    const rows = await this.db.query<{ kind: string; n: number; mine: boolean }>(
+      `SELECT kind, count(*)::int AS n, bool_or(user_id = $2) AS mine FROM post_reactions WHERE post_id = $1 GROUP BY kind`,
+      [postId, viewerId ?? null],
+    );
+    return {
+      reactions: Object.fromEntries(rows.map((r) => [r.kind, r.n])) as Record<string, number>,
+      myReactions: rows.filter((r) => r.mine).map((r) => r.kind),
+    };
+  }
+
   async unlike(userId: number, postId: number) {
     await this.ensureExists(postId);
     const likeCount = await this.db.transaction(async () => {
@@ -439,10 +466,11 @@ export class PostsService {
 
   /** canModerate: 보는 사람이 작성자보다 높은 채널 운영진이라 이 글을 지울 수 있는지 */
   private async toDetail(post: PostRow, viewerId: number | undefined, liked: boolean) {
-    const [authorRole, viewerRole, blockedAuthor] = await Promise.all([
+    const [authorRole, viewerRole, blockedAuthor, reactions] = await Promise.all([
       this.channels.roleOf(post.channelId, post.authorId),
       this.channels.roleOf(post.channelId, viewerId),
       this.blocks.isBlocked(viewerId, post.authorId),
+      this.reactions(post.id, viewerId),
     ]);
     const mine = viewerId === post.authorId;
     return {
@@ -458,6 +486,7 @@ export class PostsService {
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
       liked,
+      ...reactions,
       mine,
       canModerate: viewerId != null && !mine && canModerate(viewerRole, authorRole),
       /** 운영진이 숨긴 글 (쓴 사람 · 운영진에게만 보인다) */

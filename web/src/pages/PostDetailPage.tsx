@@ -16,10 +16,8 @@ import {
   useDeletePost,
   usePost,
   useToggleCommentLike,
-  useToggleLike,
   plainText,
   type Comment,
-  type PostDetail,
   type PostSummary,
 } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
@@ -32,6 +30,7 @@ import { Markdown } from '../components/Markdown';
 import { CollapsibleBody } from '../components/CollapsibleBody';
 import { PopularCard } from '../components/Sidebar';
 import { ReportDialog } from '../components/ReportDialog';
+import { LikeButton, ReactionBar } from '../components/Reactions';
 import { miniWindows, useMiniEnabled } from '../lib/miniWindows';
 import { toast } from '../components/Toast';
 import { preload } from '../lib/preload';
@@ -45,22 +44,8 @@ function useLoginRedirect(postId: number) {
   return () => navigate('/login', { state: { from: `/posts/${postId}` } });
 }
 
-/** 공감 버튼 (게시글 미니 창에서도 쓴다) */
-export function LikeButton({ post }: { post: PostDetail }) {
-  const { isLoggedIn } = useAuth();
-  const toLogin = useLoginRedirect(post.id);
-  const toggle = useToggleLike(post.id);
-  const onClick = () => {
-    if (!isLoggedIn) return toLogin();
-    toggle.mutate(!post.liked, { onError: (e) => toast(e.message) });
-  };
-  return (
-    <button type="button" className={s.likeButton} aria-pressed={post.liked} onClick={onClick}>
-      <HeartIcon filled={post.liked} />
-      좋아요 {compact(post.likeCount)}
-    </button>
-  );
-}
+/** 좋아요 버튼은 components/Reactions (게시글 미니 창에서도 쓴다) */
+export { LikeButton } from '../components/Reactions';
 
 /** 댓글 하나에 붙일 수 있는 사진 수 */
 const MAX_COMMENT_IMAGES = 4;
@@ -591,6 +576,7 @@ export default function PostDetailPage() {
             {!isPlaceholderData && (
               <div className={s.reactions}>
                 <LikeButton post={post} />
+                <ReactionBar post={post} />
               </div>
             )}
           </>

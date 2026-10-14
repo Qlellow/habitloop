@@ -17,6 +17,8 @@ import type {
   PointLog,
   NotificationItem,
   ReportReason,
+  ReactionKind,
+  ReactionResponse,
   ReportGroup,
   ReportAction,
   BlockedUser,
@@ -705,6 +707,37 @@ export function useToggleLike(postId: number) {
       qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, ...res });
       qc.invalidateQueries({ queryKey: keys.posts, refetchType: 'none' });
     },
+  });
+}
+
+/** 감정 반응 달기 · 취소 (화면은 바로 바꾸고, 실패하면 되돌린다) */
+export function useToggleReaction(postId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kind, on }: { kind: ReactionKind; on: boolean }) =>
+      api<ReactionResponse>(`/api/posts/${postId}/reactions/${kind}`, { method: on ? 'PUT' : 'DELETE' }),
+    onMutate: async ({ kind, on }) => {
+      await qc.cancelQueries({ queryKey: keys.post(postId) });
+      const prev = qc.getQueryData<PostDetail>(keys.post(postId));
+      if (prev) {
+        const mine = new Set(prev.myReactions ?? []);
+        const had = mine.has(kind);
+        if (on) mine.add(kind);
+        else mine.delete(kind);
+        const count = (prev.reactions?.[kind] ?? 0) + (on && !had ? 1 : !on && had ? -1 : 0);
+        qc.setQueryData<PostDetail>(keys.post(postId), {
+          ...prev,
+          reactions: { ...prev.reactions, [kind]: Math.max(0, count) },
+          myReactions: [...mine],
+        });
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(keys.post(postId), ctx.prev);
+      qc.invalidateQueries({ queryKey: keys.post(postId) });
+    },
+    onSuccess: (res) => qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, ...res }),
   });
 }
 

@@ -404,4 +404,18 @@ CREATE TABLE admin_logs (
     name: '021_admin_logs_no_user',
     sql: `ALTER TABLE admin_logs DROP COLUMN admin_id;`,
   },
+  {
+    // 글에 다는 감정 반응 (응원 · 웃겨요 · 놀라워요 · 슬퍼요 · 최고). 좋아요와 따로, 종류마다 한 번씩
+    name: '022_post_reactions',
+    sql: `
+CREATE TABLE post_reactions (
+    post_id     INT           NOT NULL REFERENCES posts (id) ON DELETE CASCADE,
+    user_id     INT           NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    kind        VARCHAR(16)   NOT NULL,
+    created_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    PRIMARY KEY (post_id, user_id, kind)
+);
+CREATE INDEX idx_post_reactions_post ON post_reactions (post_id, kind);
+`,
+  },
 ];

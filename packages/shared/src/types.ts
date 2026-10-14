@@ -275,6 +275,10 @@ export interface PostDetail {
   createdAt: string;
   updatedAt: string;
   liked: boolean;
+  /** 감정 반응 종류별 수 */
+  reactions?: Partial<Record<ReactionKind, number>>;
+  /** 내가 누른 감정 반응 */
+  myReactions?: ReactionKind[];
   mine: boolean;
   /** 보는 사람이 작성자보다 높은 채널 운영진이라 이 글을 지울 수 있는지 */
   canModerate: boolean;
@@ -316,6 +320,21 @@ export interface Comment {
   hidden?: boolean;
   /** 내가 차단한 사람의 댓글 (content 가 비어 있다) */
   blocked?: boolean;
+}
+
+/** 감정 반응 (좋아요와 따로, 종류마다 한 번씩) */
+export type ReactionKind = 'clap' | 'laugh' | 'wow' | 'sad' | 'fire';
+export const REACTIONS: { kind: ReactionKind; emoji: string; label: string }[] = [
+  { kind: 'clap', emoji: '👏', label: '응원해요' },
+  { kind: 'laugh', emoji: '😂', label: '웃겨요' },
+  { kind: 'wow', emoji: '😮', label: '놀라워요' },
+  { kind: 'sad', emoji: '😢', label: '슬퍼요' },
+  { kind: 'fire', emoji: '🔥', label: '최고예요' },
+];
+
+export interface ReactionResponse {
+  reactions: Partial<Record<ReactionKind, number>>;
+  myReactions: ReactionKind[];
 }
 
 /** 신고 사유 */
