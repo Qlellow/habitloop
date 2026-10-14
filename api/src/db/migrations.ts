@@ -418,4 +418,19 @@ CREATE TABLE post_reactions (
 CREATE INDEX idx_post_reactions_post ON post_reactions (post_id, kind);
 `,
   },
+  {
+    // 커뮤니티 펫 (한 사람에 하나). 경험치는 데려온 뒤의 활동으로 계산하고, 쓰다듬기 보너스만 저장한다
+    name: '023_pets',
+    sql: `
+CREATE TABLE pets (
+    user_id     INT           PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    species     VARCHAR(16)   NOT NULL,
+    name        VARCHAR(40)   NOT NULL,
+    shown       BOOLEAN       NOT NULL DEFAULT TRUE,
+    adopted_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    petted_at   TIMESTAMPTZ,
+    bonus_xp    INT           NOT NULL DEFAULT 0
+);
+`,
+  },
 ];

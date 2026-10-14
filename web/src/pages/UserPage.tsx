@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ApiError, compact, isUserId, useAuth, useBlockUser, useFeed, useUserProfile, type Badge, type UserProfile } from '@loop/shared';
+import { ApiError, compact, isUserId, PET_SPECIES, PET_STAGES, useAuth, useBlockUser, useFeed, useUserProfile, type Badge, type UserProfile } from '@loop/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { toast } from '../components/Toast';
 import { Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { ui } from '../components/ui';
 import { ProfileBanner } from '../components/ProfileBanner';
+import { PetActor } from '../components/Pet';
 import { UserAvatar } from '../components/UserAvatar';
 import { cn } from '../lib/cn';
 import NotFoundPage from './NotFoundPage';
@@ -138,6 +139,23 @@ export default function UserPage() {
           </div>
         )}
       </section>
+      {user?.pet && (
+        // 전시한 펫: 제자리에서 놀고 있다
+        <section className={cn(ui.card, 'flex items-center gap-5 px-6 py-4')}>
+          <div className="flex-none grid place-items-end w-[96px] h-[96px]">
+            <PetActor pet={user.pet} size={5} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[13px] text-fg-weak">{user.nickname}의 펫</div>
+            <div className="mt-0.5 text-[17px] font-bold text-fg-strong truncate">
+              {user.pet.name} <span className="text-sm text-primary">Lv.{user.pet.level}</span>
+            </div>
+            <div className="text-sm text-fg-sub">
+              {PET_SPECIES.find((p) => p.species === user.pet!.species)?.label} · {PET_STAGES[user.pet.stage].label}
+            </div>
+          </div>
+        </section>
+      )}
       {user?.badges && <Badges badges={user.badges} />}
       <section className={ui.card}>
         <div className={ui.cardHead}>

@@ -18,6 +18,8 @@ import type {
   NotificationItem,
   ReportReason,
   ReactionKind,
+  Pet,
+  PetSpecies,
   ReactionResponse,
   ReportGroup,
   ReportAction,
@@ -738,6 +740,47 @@ export function useToggleReaction(postId: number) {
       qc.invalidateQueries({ queryKey: keys.post(postId) });
     },
     onSuccess: (res) => qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, ...res }),
+  });
+}
+
+/* ───────── 커뮤니티 펫 ───────── */
+
+const petKey = ['me', 'pet'] as const;
+
+/** 내 펫 (없으면 null) */
+export function useMyPet(enabled = true) {
+  return useQuery({
+    queryKey: petKey,
+    queryFn: async ({ signal }) => (await api<{ pet?: Pet | null }>('/api/me/pet', { signal })).pet ?? null,
+    enabled,
+  });
+}
+
+export function useAdoptPet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { species: PetSpecies; name: string }) => api<Pet>('/api/me/pet', { method: 'POST', body: input }),
+    onSuccess: (pet) => qc.setQueryData(petKey, pet),
+  });
+}
+
+export function useUpdatePet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name?: string; shown?: boolean }) => api<Pet>('/api/me/pet', { method: 'PATCH', body: input }),
+    onSuccess: (pet) => {
+      qc.setQueryData(petKey, pet);
+      qc.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+}
+
+/** 쓰다듬기: 하루 한 번 경험치 +5 */
+export function usePatPet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ gained: boolean; xp: number; pet: Pet }>('/api/me/pet/pat', { method: 'POST' }),
+    onSuccess: (res) => qc.setQueryData(petKey, res.pet),
   });
 }
 
