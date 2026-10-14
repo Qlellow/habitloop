@@ -82,6 +82,8 @@ interface Particle {
   orbit?: { c: Point; r: number; a: number; w: number };
   /** 어떤 점을 향해 날아간다. 닿으면 onArrive */
   seek?: { to: () => Point; k: number; onArrive?: () => void };
+  /** 정해진 시간(dur) 동안 from → to 로 점점 빨라지며 (별똥별) */
+  path?: { from: Point; to: () => Point; dur: number; onArrive: () => void };
   /** 이 높이에 닿으면 멈춰 쌓인다 */
   land?: number;
   landed?: boolean;
@@ -145,6 +147,8 @@ const caret: Point = { x: 0, y: 0 };
 let lastTypeAt = -1e9;
 let idleTimer = 0;
 let gathered = false;
+/** 개발용: 다음 클릭을 숨은 애니메이션으로 */
+let forceHidden = false;
 
 /** 지금 색 (하트의 숨은 무지개 동안에는 색이 돈다) */
 const c = () => (design === 'heart' && now < rainbowUntil ? [`hsl(${(now / 4) % 360} 90% 62%)`, '#fff', `hsl(${(now / 4 + 40) % 360} 90% 45%)`] : colors);
@@ -171,8 +175,8 @@ interface Design {
   /** 글 쓸 때: 글자 커서 주위를 맴도는 파티클 + 글자마다 하나 */
   orbit: { n: number; r: number; w: number; frames: Sprite[]; frameMs?: number };
   key(x: number, y: number): void;
-  /** 숨은 애니메이션 (버튼을 누를 때 아주 낮은 확률) */
-  hiddenClick(x: number, y: number): void;
+  /** 숨은 애니메이션 (버튼을 누를 때 아주 낮은 확률). el: 누른 버튼 */
+  hiddenClick(x: number, y: number, el?: HTMLElement): void;
 }
 
 const DESIGNS: Record<FxDesign, Design> = {
@@ -188,19 +192,8 @@ const DESIGNS: Record<FxDesign, Design> = {
     },
     orbit: { n: 3, r: 13, w: 0.006, frames: [S.plus, S.cross, S.plus], frameMs: 220 },
     key: (x, y) => add({ x: x + rand(-6, 6), y: y + rand(-8, 4), frames: [S.px, S.plus, S.px], vy: -0.3, life: 500, colors: c() }),
-    // 숨은 1: 하늘에서 별똥별이 떨어져 누른 곳을 친다
-    hiddenClick: (x, y) => {
-      const star = add({ x: x + rand(120, 260) * (Math.random() < 0.5 ? -1 : 1), y: -20, frames: [S.star], life: 1e9, colors: c(), tag: 'meteor' });
-      star.seek = {
-        to: () => ({ x, y }),
-        k: 0.09,
-        onArrive: () => {
-          fadeOut(star);
-          burst(x, y, 18, { frames: [S.star, S.plus], speed: [2, 4.2] });
-          burst(x, y, 12, { frames: [S.cross, S.px], speed: [0.6, 1.4], life: 900 });
-        },
-      };
-    },
+    // 숨은 1: 하늘에서 별똥별이 떨어져 버튼을 쿵! 하고 대신 눌러 준다 (meteorClick)
+    hiddenClick: (x, y, el) => meteorClick(x, y, el),
   },
   heart: {
     trailEvery: 18,
@@ -339,6 +332,72 @@ const DESIGNS: Record<FxDesign, Design> = {
   },
 };
 
+/* ───────── 숨은: 별똥별이 버튼을 대신 눌러 준다 (별) ───────── */
+
+/** 사용자가 누른 진짜 클릭은 잠깐 붙잡아 두고, 별똥별이 부딪히는 순간 대신 누른다 */
+let held: { el: HTMLElement; clicked: boolean } | null = null;
+
+function onClickCapture(e: MouseEvent) {
+  if (!held || !e.isTrusted) return;
+  const el = (e.target as Element).closest<HTMLElement>(TARGET);
+  if (el !== held.el) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  held.clicked = true;
+}
+
+function meteorClick(x: number, y: number, el?: HTMLElement) {
+  if (!el) return DESIGNS.star.click(x, y);
+  held = { el, clicked: false };
+  const hold = held;
+  const r = el.getBoundingClientRect();
+  const hit = () => {
+    const b = el.getBoundingClientRect();
+    return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+  };
+  const dir = Math.random() < 0.5 ? -1 : 1;
+  const from = { x: r.left + r.width / 2 + dir * rand(160, 280), y: -24 };
+  const star = add({ ...from, frames: [S.star], life: 1e9, colors: c(), scale: 2, tag: 'meteor' });
+  star.path = {
+    from,
+    to: hit,
+    dur: 620,
+    onArrive: () => {
+      fadeOut(star);
+      const p = hit();
+      // 쿵: 버튼이 납작하게 눌렸다가 튕겨 오른다
+      el.animate(
+        [
+          { translate: '0 0', scale: '1 1' },
+          { translate: '0 5px', scale: '1.08 0.8', offset: 0.22 },
+          { translate: '0 -3px', scale: '0.96 1.06', offset: 0.55 },
+          { translate: '0 0', scale: '1 1' },
+        ],
+        { duration: 480, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)' },
+      );
+      // 별이 터지고, 부딪힌 자리에서 파편이 양옆으로 튄다
+      burst(p.x, p.y, 16, { frames: [S.star, S.plus], speed: [2.4, 4.6] });
+      burst(p.x, p.y, 20, { frames: [S.px], speed: [4.5, 6], life: 380, drag: 0.85 });
+      const top = el.getBoundingClientRect().top;
+      for (let i = 0; i < 14; i++) {
+        const side = i % 2 ? 1 : -1;
+        add({ x: p.x + side * rand(4, 20), y: top, frames: [S.px], vx: side * rand(1.5, 4), vy: rand(-3.5, -1.5), gravity: 0.2, drag: 0.99, life: rand(500, 800), colors: c() });
+      }
+      // 눌린 맨 아래에서 진짜로 누른다
+      window.setTimeout(() => {
+        if (held === hold) held = null;
+        if (hold.clicked && el.isConnected && !(el as HTMLButtonElement).disabled) el.click();
+      }, 110);
+    },
+  };
+  // 혹시 별이 못 닿아도 클릭이 사라지지 않게
+  window.setTimeout(() => {
+    if (held !== hold) return;
+    held = null;
+    if (hold.clicked && el.isConnected) el.click();
+  }, 1500);
+}
+
 /* ───────── 숨은: 새벽 · 저녁 하늘의 별이 쉬고 있는 커서로 모여 원을 만든다 (별) ───────── */
 
 function gatherStars() {
@@ -457,6 +516,19 @@ function frame(t: number) {
       p.orbit.a += p.orbit.w * dt;
       p.x = p.orbit.c.x + Math.cos(p.orbit.a) * p.orbit.r;
       p.y = p.orbit.c.y + Math.sin(p.orbit.a) * p.orbit.r * 0.8;
+    } else if (p.path) {
+      const k = Math.min(1, p.age / p.path.dur);
+      const e = k * k * k; // 처음엔 천천히, 땅에 가까울수록 빠르게
+      const to = p.path.to();
+      p.x = p.path.from.x + (to.x - p.path.from.x) * e;
+      p.y = p.path.from.y + (to.y - p.path.from.y) * e;
+      // 꼬리: 빨라질수록 길게
+      for (let i = 0; i < 1 + Math.floor(k * 3); i++) add({ x: p.x + rand(-2, 2), y: p.y + rand(-2, 2), frames: [pick([S.px, S.px, S.plus])], life: rand(250, 450), colors: p.colors, vy: rand(-0.3, 0.1), vx: rand(-0.3, 0.3) });
+      if (k >= 1) {
+        const done = p.path.onArrive;
+        p.path = undefined;
+        done();
+      }
     } else if (p.seek) {
       const to = p.seek.to();
       p.x += (to.x - p.x) * Math.min(1, p.seek.k * f);
@@ -582,8 +654,12 @@ function onMove(e: PointerEvent) {
 function onDown(e: PointerEvent) {
   if (e.pointerType !== 'mouse' || !allowed(e.target as Element)) return;
   const d = DESIGNS[design];
-  const onButton = !!(e.target as Element).closest(TARGET);
-  if (onButton && Math.random() < HIDDEN.click) d.hiddenClick(e.clientX, e.clientY);
+  const btn = (e.target as Element).closest<HTMLElement>(TARGET);
+  // 새 탭으로 열기(Ctrl · ⌘ · Shift) 나 오른쪽 클릭은 그대로 둔다
+  const plain = e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
+  const roll = forceHidden || Math.random() < HIDDEN.click;
+  forceHidden = false;
+  if (btn && plain && !held && roll) d.hiddenClick(e.clientX, e.clientY, btn);
   else d.click(e.clientX, e.clientY);
   wake();
 }
@@ -632,6 +708,7 @@ export function startPixelFx(opts: { design: FxDesign; specialOnly: boolean }) {
   document.addEventListener('pointerout', onOut, { passive: true });
   document.addEventListener('pointermove', onMove, { passive: true });
   document.addEventListener('pointerdown', onDown, { passive: true });
+  window.addEventListener('click', onClickCapture, true);
   document.addEventListener('input', onInput, true);
   document.addEventListener('visibilitychange', onHide);
   if (import.meta.env.DEV) (window as unknown as { __loopFx?: unknown }).__loopFx = debugHidden;
@@ -650,6 +727,8 @@ export function startPixelFx(opts: { design: FxDesign; specialOnly: boolean }) {
     document.removeEventListener('pointerout', onOut);
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerdown', onDown);
+    window.removeEventListener('click', onClickCapture, true);
+    held = null;
     document.removeEventListener('input', onInput, true);
     document.removeEventListener('visibilitychange', onHide);
     canvas?.remove();
@@ -659,8 +738,9 @@ export function startPixelFx(opts: { design: FxDesign; specialOnly: boolean }) {
 }
 
 /** 개발 중 확인용: 숨은 애니메이션을 바로 띄운다 (개발 서버에서만 window.__loopFx) */
-function debugHidden(kind: 'click' | 'gather' | 'pile' | 'rainbow', x = pointer.x, y = pointer.y) {
-  if (kind === 'click') DESIGNS[design].hiddenClick(x, y);
+function debugHidden(kind: 'click' | 'next' | 'gather' | 'pile' | 'rainbow', x = pointer.x, y = pointer.y) {
+  if (kind === 'click') DESIGNS[design].hiddenClick(x, y, document.elementFromPoint(x, y)?.closest<HTMLElement>(TARGET) ?? undefined);
+  if (kind === 'next') forceHidden = true;
   if (kind === 'gather') gatherStars();
   if (kind === 'pile') snowPile = true;
   if (kind === 'rainbow') rainbowUntil = now + 5000;
