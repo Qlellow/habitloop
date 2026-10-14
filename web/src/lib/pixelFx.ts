@@ -209,9 +209,9 @@ const DESIGNS: Record<FxDesign, Design> = {
   star: {
     trailEvery: 30,
     trail: (x, y) => add({ x, y, frames: [S.plus, S.px], vx: rand(-0.2, 0.2), vy: rand(-0.2, 0.2), life: rand(400, 650), colors: c() }),
-    hoverRate: 110,
+    hoverRate: 220,
     // 반짝반짝: 버튼 둘레에서 작게 → 크게 → 작게
-    hover: (r) => add({ ...onEdge(r, 6), frames: [S.px, S.plus, S.cross, S.plus, S.px], life: rand(500, 750), colors: c() }),
+    hover: (r) => add({ ...onEdge(r, 6), frames: [S.px, S.plus, S.cross, S.plus, S.px], life: rand(1000, 1500), colors: c() }),
     click: (x, y) => ring(x, y, { frames: [S.star, S.plus], life: 650 }),
     orbit: { n: 3, r: 13, w: 0.006, frames: [S.plus, S.cross, S.plus], frameMs: 220 },
     key: (x, y) => add({ x: x + rand(-6, 6), y, frames: [S.px, S.plus, S.px], vy: -0.4, life: 450, colors: c(), alpha: 0.85 }),
