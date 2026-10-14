@@ -277,3 +277,60 @@ export const ExpandIcon = (p: P) => (
     <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+/** 라이트 모드 */
+export const SunIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+/** 다크 모드 */
+export const MoonIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+  </svg>
+);
+
+/** 시스템 설정 따르기 */
+export const MonitorIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="4" width="18" height="12.5" rx="2.5" stroke="currentColor" strokeWidth="2" />
+    <path d="M9 20h6M12 16.5V20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+/** 시간대 테마 */
+export const ClockIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+    <path d="M12 7.5V12l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const PlusIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+  </svg>
+);
+
+export const LogoutIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M14 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M11 12h9M17 8.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** 글 (문서) */
+export const DocIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20V3.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    <path d="M9 12h6M9 16h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);

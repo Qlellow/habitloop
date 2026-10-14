@@ -187,6 +187,14 @@ export interface PostPage {
 }
 
 /** 작성자 프로필 (공개 정보만) */
+/** 사용자 검색 결과 */
+export interface UserSearchResult {
+  /** 사용자 UUID */
+  id: string;
+  nickname: string;
+  avatarUrl?: string | null;
+}
+
 export interface UserProfile {
   /** 사용자 UUID */
   id: string;

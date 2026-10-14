@@ -977,3 +977,381 @@ input[type='search']::-webkit-search-cancel-button:hover {
     animation: none;
   }
 }
+
+/*
+ * Liquid Glass (Apple 의 유리 재질): 뒤 화면을 흐리고 채도를 올려 비추고,
+ * 가장자리에는 빛이 맺히는 테두리(반사광)와 두께감(안쪽 빛 번짐), 위쪽에는 은은한 광택
+ */
+:root {
+  --lg-tint: color-mix(in srgb, var(--surface) 58%, transparent);
+  --lg-rim-hi: rgba(255, 255, 255, 0.95);
+  --lg-rim-lo: rgba(255, 255, 255, 0.35);
+  --lg-inset: rgba(255, 255, 255, 0.7);
+  --lg-sheen: rgba(255, 255, 255, 0.35);
+  --lg-shadow: 0 30px 80px -20px rgba(0, 20, 60, 0.35), 0 10px 30px -10px rgba(0, 20, 60, 0.2);
+  --lg-edge: rgba(0, 20, 60, 0.08);
+  --lg-pill: color-mix(in srgb, var(--surface) 55%, transparent);
+  --lg-pill-rim: rgba(255, 255, 255, 0.9);
+  --lg-veil: rgba(10, 20, 40, 0.12);
+}
+:root[data-theme='dark'] {
+  --lg-tint: color-mix(in srgb, var(--surface) 64%, transparent);
+  --lg-rim-hi: rgba(255, 255, 255, 0.42);
+  --lg-rim-lo: rgba(255, 255, 255, 0.08);
+  --lg-inset: rgba(255, 255, 255, 0.16);
+  --lg-sheen: rgba(255, 255, 255, 0.07);
+  --lg-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7), 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  --lg-edge: rgba(0, 0, 0, 0.4);
+  --lg-pill: rgba(255, 255, 255, 0.1);
+  --lg-pill-rim: rgba(255, 255, 255, 0.28);
+  --lg-veil: rgba(0, 0, 0, 0.3);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --lg-tint: color-mix(in srgb, var(--surface) 64%, transparent);
+    --lg-rim-hi: rgba(255, 255, 255, 0.42);
+    --lg-rim-lo: rgba(255, 255, 255, 0.08);
+    --lg-inset: rgba(255, 255, 255, 0.16);
+    --lg-sheen: rgba(255, 255, 255, 0.07);
+    --lg-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7), 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    --lg-edge: rgba(0, 0, 0, 0.4);
+    --lg-pill: rgba(255, 255, 255, 0.1);
+    --lg-pill-rim: rgba(255, 255, 255, 0.28);
+    --lg-veil: rgba(0, 0, 0, 0.3);
+  }
+}
+
+.liquid-glass {
+  position: relative;
+  isolation: isolate;
+  background: var(--lg-tint);
+  -webkit-backdrop-filter: blur(28px) saturate(1.9) brightness(1.04);
+  backdrop-filter: blur(28px) saturate(1.9) brightness(1.04);
+  box-shadow:
+    0 0 0 0.5px var(--lg-edge),
+    var(--lg-shadow),
+    inset 0 1px 0 var(--lg-inset),
+    inset 0 -1px 1px var(--lg-rim-lo),
+    inset 10px 10px 24px -14px var(--lg-inset),
+    inset -10px -10px 24px -14px var(--lg-rim-lo);
+}
+/* 테두리 반사광: 왼쪽 위 · 오른쪽 아래에 빛이 맺힌다 */
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1.25px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    var(--lg-rim-hi) 0%,
+    var(--lg-rim-lo) 22%,
+    transparent 45%,
+    transparent 60%,
+    var(--lg-rim-lo) 80%,
+    var(--lg-rim-hi) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+/* 위쪽 광택 */
+.liquid-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(140% 70% at 25% -10%, var(--lg-sheen), transparent 60%);
+}
+
+/* ───────── 커맨드 팔레트 (CommandPalette.tsx) ───────── */
+/* 바탕은 투명하게 두고 어둡게 덮는 막은 ::before 로: 바탕에 opacity 를 걸면 그 안에서만 흐려져(backdrop root) 유리가 페이지를 못 비춘다 */
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: max(12vh, 72px) 16px 16px;
+}
+.cmdk-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--lg-veil);
+  animation: cmdk-veil-in 0.25s ease-out both;
+}
+.cmdk {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100%);
+  max-height: min(560px, calc(100dvh - max(12vh, 72px) - 16px));
+  border-radius: 26px;
+  overflow: hidden;
+  color: var(--text);
+  transform-origin: 50% 0;
+  animation: cmdk-in 0.5s cubic-bezier(0.2, 1.25, 0.35, 1) both;
+}
+.cmdk-closing::before {
+  animation: cmdk-veil-out 0.18s ease-in both;
+}
+.cmdk-closing .cmdk {
+  animation: cmdk-out 0.18s ease-in both;
+}
+@keyframes cmdk-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.94);
+  }
+}
+@keyframes cmdk-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+@keyframes cmdk-veil-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes cmdk-veil-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.cmdk-search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 60px;
+  padding: 0 14px 0 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+}
+.cmdk-search-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
+}
+.cmdk-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 17px;
+  color: var(--text-strong);
+}
+.cmdk-input::placeholder {
+  color: var(--text-weak);
+}
+.cmdk-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 30px;
+  padding: 0 10px 0 6px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  box-shadow: inset 0 1px 0 var(--lg-inset);
+}
+.cmdk-chip svg {
+  width: 16px;
+  height: 16px;
+}
+.cmdk-spinner {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--text) 15%, transparent);
+  border-top-color: var(--primary);
+  animation: cmdk-spin 0.7s linear infinite;
+}
+@keyframes cmdk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cmdk-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 7px;
+  font: 600 11px/1 ui-sans-serif, system-ui, sans-serif;
+  color: var(--text-sub);
+  background: var(--lg-pill);
+  box-shadow:
+    inset 0 1px 0 var(--lg-pill-rim),
+    0 0 0 0.5px var(--lg-edge),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.cmdk-list {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 8px 8px;
+  scrollbar-width: thin;
+}
+.cmdk-group {
+  padding: 12px 12px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-weak);
+}
+.cmdk-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 7px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 15px;
+  transition: color 0.2s ease;
+}
+.cmdk-item-active {
+  color: var(--text-strong);
+}
+.cmdk-item-all {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+.cmdk-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+.cmdk-tile {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  color: var(--text-sub);
+  background: var(--lg-pill);
+  box-shadow:
+    inset 0 1px 0 var(--lg-pill-rim),
+    0 0 0 0.5px var(--lg-edge);
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+.cmdk-tile svg {
+  width: 17px;
+  height: 17px;
+}
+.cmdk-item-active .cmdk-tile {
+  color: #fff;
+  background: var(--primary);
+}
+.cmdk-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.cmdk-item-active .cmdk-label {
+  font-weight: 600;
+}
+.cmdk-hint {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-weak);
+}
+.cmdk-hint-current {
+  font-weight: 600;
+  color: var(--primary);
+}
+/* 고른 항목 아래에 떠 있는 유리 알약. 항목 사이를 물방울처럼 출렁이며 옮겨 다닌다 */
+.cmdk-pill {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  z-index: 0;
+  border-radius: 14px;
+  background: var(--lg-pill);
+  box-shadow:
+    inset 0 1px 0 var(--lg-pill-rim),
+    inset 0 -1px 0 color-mix(in srgb, var(--lg-pill-rim) 35%, transparent),
+    0 0 0 0.5px var(--lg-edge),
+    0 6px 16px -6px rgba(0, 20, 60, 0.25);
+  transition:
+    transform 0.42s cubic-bezier(0.25, 1.35, 0.4, 1),
+    height 0.3s ease;
+  will-change: transform;
+}
+.cmdk-pill-instant {
+  transition: none;
+}
+.cmdk-empty {
+  margin: 0;
+  padding: 28px 12px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-weak);
+}
+.cmdk-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 18px;
+  font-size: 12px;
+  color: var(--text-weak);
+  border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+}
+.cmdk-foot > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+@media (max-width: 520px) {
+  .cmdk-foot {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmdk-backdrop::before,
+  .cmdk,
+  .cmdk-pill {
+    animation: none !important;
+    transition: none !important;
+  }
+}

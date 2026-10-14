@@ -5,6 +5,9 @@ const s = {
   // 밑줄형 검색칸: 왼쪽 돋보기, 포커스되면 돋보기도 브랜드 색
   icon: 'absolute left-0.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-weak pointer-events-none z-[1] peer-focus:text-primary',
   input: 'peer h-10 pl-7',
+  // 오른쪽 끝 단축키 안내 (Ctrl K). 좁은 헤더에서는 숨긴다
+  shortcut:
+    'absolute right-0.5 top-1/2 -translate-y-1/2 z-[1] flex gap-1 opacity-70 transition-opacity hover:opacity-100 max-[860px]:hidden',
   // 좁은 화면에서는 드롭다운을 화면 폭에 맞춘다
   menu:
     'absolute z-40 top-[calc(100%+6px)] inset-x-0 overflow-hidden rounded-md border border-border bg-surface shadow-pop ' +

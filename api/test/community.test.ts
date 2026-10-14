@@ -517,6 +517,13 @@ describe('커뮤니티', () => {
     await http().get('/api/users/999999').expect(404);
     await http().get('/api/users/00000000-0000-0000-0000-000000000000').expect(404);
     await http().get('/api/users/abc').expect(404);
+
+    // 닉네임으로 사용자 찾기: 공개 정보만, 빈 검색어는 빈 목록
+    const found = (await http().get('/api/users').query({ q: '페이지' }).expect(200)).body;
+    expect(found.map((u: { nickname: string }) => u.nickname)).toContain('페이지주인');
+    expect(Object.keys(found[0]).every((k) => ['avatarUrl', 'id', 'nickname'].includes(k))).toBe(true);
+    expect((await http().get('/api/users').query({ q: ' ' }).expect(200)).body).toEqual([]);
+    expect((await http().get('/api/users').query({ q: '%' }).expect(200)).body).toEqual([]);
   });
 
   it('비공개 채널: 초대 코드로만 팔로우, 팔로워만 보기', async () => {

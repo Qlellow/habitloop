@@ -5,6 +5,7 @@ import { useAuth } from '@loop/shared';
 import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
 import { MiniWindows } from './components/MiniWindows';
+import { CommandPalette } from './components/CommandPalette';
 import { TimeSky } from './components/TimeSky';
 import { loaders } from './lib/preload';
 import { useReturnTo } from './lib/authNav';
@@ -87,6 +88,8 @@ function Root() {
       </div>
       {/* 게시글 미니 창 (데스크톱): 화면을 옮겨도 떠 있다 */}
       <MiniWindows />
+      {/* Ctrl/⌘ + K: 키보드로 이동 · 글쓰기 · 테마 · 찾기 */}
+      <CommandPalette />
       <ScrollRestoration />
       <Toaster />
     </>
