@@ -14,10 +14,14 @@ export interface Settings {
   pixelFx: boolean;
   /** 특별한 화면(로그인 · 회원가입 · 초대 · 404)에서만 (느린 기기용) */
   pixelFxSpecialOnly: boolean;
+  /** 인터랙티브 커서 디자인 */
+  fxDesign: FxDesign;
 }
 
+export type FxDesign = 'star' | 'heart' | 'sakura' | 'snow' | 'fire';
+
 const KEY = 'loop.settings';
-const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true, pixelFx: true, pixelFxSpecialOnly: false };
+const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true, pixelFx: true, pixelFxSpecialOnly: false, fxDesign: 'star' };
 
 /** 시간대. 새벽 · 저녁은 어두운 화면, 아침 · 낮은 밝은 화면 */
 export type Period = 'morning' | 'day' | 'evening' | 'dawn';

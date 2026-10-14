@@ -24,7 +24,7 @@ import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
 import { toast } from '../../components/Toast';
 import { useMediaQuery, usePhone } from '../../lib/media';
 import { CursorZone } from '../../components/CursorZone';
-import { PERIODS, periodAt, updateSettings, useSettings, type Settings } from '../../lib/settings';
+import { PERIODS, periodAt, updateSettings, useSettings, type FxDesign, type Settings } from '../../lib/settings';
 import { ui } from '../../components/ui';
 import s from './my.styles';
 import { cn } from '../../lib/cn';
@@ -554,71 +554,73 @@ function BlockedUsers() {
 }
 
 /** 시간대 테마: 자동(지금 시각) 또는 한 시간대로 고정 */
-/** 미리보기 칸의 아이템: 이름 → 그 아이템이 뿜는 파티클 (lib/pixelFx 의 FAMILIES) */
-const FX_SAMPLES: { label: string; fx: string; color?: string }[] = [
-  { label: '좋아요', fx: 'heart' },
-  { label: '댓글', fx: 'bubble' },
-  { label: '인기 1위', fx: 'gold' },
-  { label: '즐겨찾기', fx: 'star' },
-  { label: '알림', fx: 'note' },
-  { label: '글쓰기', fx: 'graphite' },
-  { label: '팔로우', fx: 'xp' },
-  { label: '홈', fx: 'chimney' },
-  { label: '설정', fx: 'smoke' },
-  { label: '삭제', fx: 'flame' },
-  { label: '검색', fx: 'glint' },
-  { label: '채널 색 (자동)', fx: 'auto', color: '#8b5cf6' },
+/** 인터랙티브 커서 디자인: 이름 · 설명 */
+const FX_DESIGNS: [FxDesign, string, string][] = [
+  ['star', '별', '작은 별이 따라오고, 버튼에서 반짝반짝, 누르면 별이 터져요.'],
+  ['heart', '하트', '하트가 떠오르고, 버튼 위에서 두근두근, 누르면 분수처럼 솟아요.'],
+  ['sakura', '벚꽃', '꽃잎이 흩날리고, 버튼 위로 떨어지고, 누르면 꽃이 피어요.'],
+  ['snow', '눈', '눈송이가 내리고, 버튼 위로 소복이, 누르면 눈 결정이 퍼져요.'],
+  ['fire', '불꽃', '불티가 튀고, 버튼 위에서 불꽃이 일렁이고, 누르면 펑 터져요.'],
 ];
 
 /**
- * 인터랙티브 커서 (마인크래프트 Inventory Particles 처럼 도트 파티클). 아래 칸에서 아이템마다 다른 파티클을 바로 시험해 볼 수 있다.
- * 느린 기기에서는 끄거나, 특별한 화면(로그인 · 회원가입 · 초대 · 404)에서만 나오게 할 수 있다
+ * 인터랙티브 커서 (도트 파티클). 디자인 하나가 움직이기 · 올리기 · 누르기 · 글쓰기마다 다른 애니메이션을 내고,
+ * 아주 가끔 숨은 애니메이션이 나온다. 느린 기기에서는 끄거나 특별한 화면에서만 나오게 할 수 있다.
+ * 아래 칸에서 바로 시험해 볼 수 있다
  */
 function PixelFxOption() {
-  const { pixelFx, pixelFxSpecialOnly } = useSettings();
+  const { pixelFx, pixelFxSpecialOnly, fxDesign } = useSettings();
   const can = useMediaQuery('(hover: hover) and (pointer: fine)');
+  const desc = FX_DESIGNS.find(([v]) => v === fxDesign)?.[2];
   return (
     <>
       <div className={s.option}>
         <div>
           <div className={s.optionLabel}>인터랙티브 커서</div>
-          <div className={s.optionDesc}>버튼 · 아이콘에 마우스를 올리면 그 아이템에 어울리는 도트 파티클이 나와요. 누르면 터지고, 움직이면 가루가 흩날려요.</div>
+          <div className={s.optionDesc}>마우스를 움직이고 · 버튼에 올리고 · 누르고 · 글을 쓸 때 도트 애니메이션이 나와요. 아주 가끔 숨은 애니메이션도 있어요.</div>
         </div>
         <button type="button" role="switch" aria-checked={pixelFx} aria-label="인터랙티브 커서" className={s.switch} onClick={() => updateSettings({ pixelFx: !pixelFx })} />
       </div>
       {pixelFx && (
-        <div className={s.option}>
-          <div>
-            <div className={s.optionLabel}>특별한 화면에서만</div>
-            <div className={s.optionDesc}>화면이 버벅이면 켜 주세요. 로그인 · 회원가입 · 초대 · 404 화면에서만 파티클이 나와요.</div>
+        <>
+          <div className={s.option}>
+            <div>
+              <div className={s.optionLabel}>디자인</div>
+              <div className={s.optionDesc}>{desc}</div>
+            </div>
+            <Segment name="fxDesign" value={fxDesign} options={FX_DESIGNS.map(([v, label]) => [v, label])} />
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={pixelFxSpecialOnly}
-            aria-label="특별한 화면에서만"
-            className={s.switch}
-            onClick={() => updateSettings({ pixelFxSpecialOnly: !pixelFxSpecialOnly })}
-          />
-        </div>
+          <div className={s.option}>
+            <div>
+              <div className={s.optionLabel}>특별한 화면에서만</div>
+              <div className={s.optionDesc}>화면이 버벅이면 켜 주세요. 로그인 · 회원가입 · 초대 · 404 화면에서만 애니메이션이 나와요.</div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={pixelFxSpecialOnly}
+              aria-label="특별한 화면에서만"
+              className={s.switch}
+              onClick={() => updateSettings({ pixelFxSpecialOnly: !pixelFxSpecialOnly })}
+            />
+          </div>
+        </>
       )}
       {pixelFx && can && (
-        <CursorZone className="fx-preview" aria-label="파티클 미리보기">
-          <span className="fx-preview-hint">여기서 마우스를 올리고, 움직이고, 눌러 보세요</span>
+        <CursorZone className="fx-preview" aria-label="인터랙티브 커서 시험하기">
+          <span className="fx-preview-hint">여기서 마우스를 움직이고, 버튼에 올리고, 눌러 보고, 글도 써 보세요</span>
           <div className="flex flex-wrap justify-center gap-2">
-            {FX_SAMPLES.map((it) => (
-              <button
-                key={it.label}
-                type="button"
-                className={cn(ui.button, ui.small, it.fx === 'auto' ? 'text-white' : ui.secondary)}
-                style={it.color ? { background: it.color } : undefined}
-                data-fx={it.fx}
-                data-fx-color={it.color}
-              >
-                {it.label}
-              </button>
-            ))}
+            <button type="button" className={cn(ui.button, ui.primary)}>
+              버튼
+            </button>
+            <button type="button" className={cn(ui.button, ui.secondary)}>
+              보조 버튼
+            </button>
+            <button type="button" className={cn(ui.button, ui.text)}>
+              글자 버튼
+            </button>
           </div>
+          <textarea className={cn(ui.textarea, 'max-w-[420px] min-h-[72px]')} placeholder="여기에 글을 써 보세요" aria-label="글쓰기 시험" />
         </CursorZone>
       )}
     </>
