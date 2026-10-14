@@ -31,6 +31,8 @@ const rot = (sp: Sprite): Sprite => sp.map(([x, y, c]) => [-y, x, c]);
 const ROCK = sprite('..000.', '.01120', '011220', '012202', '.0220.', '..00..');
 const ROCK_FRAMES = [ROCK, rot(ROCK), rot(rot(ROCK)), rot(rot(rot(ROCK)))];
 
+const S_ICICLE = [sprite('0', '1'), sprite('0', '0', '1'), sprite('0', '0', '0', '1')];
+
 const S = {
   px: sprite('0'),
   plus: sprite('.0.', '010', '.0.'),
@@ -61,6 +63,9 @@ const SMOKE = ['#9aa0aa', '#c7cbd3'];
 /** 소행성: 0 = 테두리, 1 = 밝은 면, 2 = 바위 */
 const ROCK_COLORS = ['#5f564e', '#c2b6a6', '#8a7f73'];
 const BLAZE = ['#ff7a1a', '#ffd23f', '#ffffff'];
+/** 서리 · 고드름 (밝은 화면에서도 보이게 진한 파랑 섞기) */
+const FROST = [['#8fcbff'], ['#cfeaff'], ['#5aa8f0'], ['#ffffff']];
+const ICICLE = ['#8fcbff', '#ffffff'];
 
 /* ───────── 파티클 ───────── */
 
@@ -96,6 +101,8 @@ interface Particle {
   seek?: { to: () => Point; k: number; onArrive?: () => void };
   /** 정해진 시간(dur) 동안 from → to 로 점점 빨라지며 (소행성) */
   path?: { from: Point; to: () => Point; dur: number; onArrive: () => void };
+  /** 버튼 테두리에 붙은 서리: 버튼 왼쪽 위에서 (dx, dy) 자리에 붙어 있는다 */
+  anchor?: { dx: number; dy: number };
   /** 이 높이에 닿으면 멈춰 쌓인다 */
   land?: number;
   landed?: boolean;
@@ -156,6 +163,9 @@ let hoverEl: HTMLElement | null = null;
 let hoverClock = 0;
 let hoverTimer = 0;
 let snowPile = false;
+/** 눈: 버튼 테두리가 점점 얼어붙는다 */
+let frostClock = 0;
+let frostAge = 0;
 let rainbowUntil = 0;
 /** 글자 커서 위치 (맴도는 파티클이 따라간다) */
 const caret: Point & { h: number } = { x: 0, y: 0, h: 18 };
@@ -266,7 +276,7 @@ const DESIGNS: Record<FxDesign, Design> = {
   sakura: {
     trailEvery: 32,
     trail: (x, y) => add({ x, y, frames: [S.petal], vx: rand(-0.3, 0.3), vy: rand(0.2, 0.5), sway: 0.9, life: rand(700, 1000), colors: c() }),
-    hoverRate: 150,
+    hoverRate: 360,
     // 꽃잎이 버튼 위에서 하늘하늘 떨어진다
     hover: (r) =>
       add({ x: rand(r.left, r.right), y: r.top - rand(2, 10), frames: [S.petal, S.petalB], frameMs: 300, vy: rand(0.3, 0.6), vx: rand(-0.2, 0.2), sway: 1.2, life: rand(900, 1300), colors: c() }),
@@ -287,7 +297,7 @@ const DESIGNS: Record<FxDesign, Design> = {
   snow: {
     trailEvery: 30,
     trail: (x, y) => add({ x, y, frames: [S.flakeS, S.px], vx: rand(-0.2, 0.2), vy: rand(0.2, 0.5), sway: 0.6, life: rand(700, 1000), colors: c() }),
-    hoverRate: 130,
+    hoverRate: 300,
     // 버튼 위로 눈이 내린다 (숨은: 오래 올려 두면 버튼 위에 쌓인다)
     hover: (r) =>
       add({
@@ -319,11 +329,11 @@ const DESIGNS: Record<FxDesign, Design> = {
   fire: {
     trailEvery: 26,
     trail: (x, y) => add({ x, y, frames: [S.px], vx: rand(-0.4, 0.4), vy: rand(-1, -0.5), life: rand(350, 600), colors: [pick(colors)] }),
-    hoverRate: 90,
+    hoverRate: 220,
     // 버튼 위쪽 가장자리에서 불꽃이 너울거린다
     hover: (r) => {
       add({ x: rand(r.left + 4, r.right - 4), y: r.top + 1, frames: [S.flame, S.plus, S.px], vy: rand(-1.1, -0.6), vx: rand(-0.2, 0.2), gravity: -0.01, life: rand(450, 700), colors: c() });
-      if (Math.random() < 0.3) add({ x: rand(r.left, r.right), y: r.top - 14, frames: [S.smoke], vy: -0.4, sway: 0.4, life: 900, colors: SMOKE });
+      if (Math.random() < 0.15) add({ x: rand(r.left, r.right), y: r.top - 14, frames: [S.smoke], vy: -0.4, sway: 0.4, life: 900, colors: SMOKE });
     },
     // 불티가 원을 그리며 퍼졌다가 반짝이며 떨어진다
     click: (x, y) => ring(x, y, { frames: [S.spark, S.plus, S.px, S.plus], frameMs: 90, gravity: 0.06, gravityAfter: 200, life: 1000 }),
@@ -346,6 +356,58 @@ const DESIGNS: Record<FxDesign, Design> = {
     },
   },
 };
+
+/* ───────── 눈: 버튼 테두리가 점점 얼어붙는다 ───────── */
+
+/** 올려 둔 동안 테두리에 서리가 하나씩 맺히고(처음엔 성기게 → 점점 빽빽하게), 1초쯤 지나면 아래에 고드름이 달린다 */
+function growFrost(r: DOMRect, dt: number) {
+  frostAge += dt;
+  frostClock += dt;
+  const perimeter = (r.width + r.height) * 2;
+  const cap = Math.min(110, Math.round(perimeter / 4));
+  let frost = 0;
+  let icicles = 0;
+  for (const p of particles) {
+    if (p.tag === 'frost') frost++;
+    else if (p.tag === 'icicle') icicles++;
+  }
+  // 점점 빨리 언다
+  const every = Math.max(28, 90 - frostAge / 40);
+  while (frostClock >= every) {
+    frostClock -= every;
+    if (frost < cap) {
+      const e = onEdge(r, rand(-1, 2));
+      add({ x: e.x, y: e.y, frames: [Math.random() < 0.18 ? S.plus : S.px], life: 1e9, colors: pick(FROST), tag: 'frost', anchor: { dx: e.x - r.left, dy: e.y - r.top } });
+      frost++;
+    }
+    // 고드름: 아래쪽 가장자리에 길이 제각각으로
+    if (frostAge > 1000 && icicles < Math.round(r.width / 14) && Math.random() < 0.25) {
+      const len = Math.floor(Math.random() * 3);
+      const dx = rand(6, r.width - 6);
+      add({ x: r.left + dx, y: r.bottom, frames: [S_ICICLE[len]], life: 1e9, colors: ICICLE, tag: 'icicle', anchor: { dx, dy: r.height + 2 + len * PX * 0.5 } });
+      icicles++;
+    }
+  }
+}
+
+/** 마우스를 떼면 서리는 녹아 사라지고 고드름은 똑 떨어진다 */
+function meltFrost() {
+  frostAge = 0;
+  frostClock = 0;
+  for (const p of particles) {
+    if (p.tag !== 'frost' && p.tag !== 'icicle') continue;
+    p.anchor = undefined;
+    if (p.tag === 'icicle') {
+      p.gravity = 0.15;
+      p.life = p.age + 700;
+    } else {
+      p.vy = rand(0, 0.4);
+      p.gravity = Math.random() < 0.3 ? 0.04 : 0;
+      fadeOut(p);
+    }
+    p.tag = undefined;
+  }
+}
 
 /* ───────── 숨은: 소행성이 떨어져 버튼을 대신 눌러 준다 (별) ───────── */
 
@@ -489,12 +551,14 @@ function frame(t: number) {
 
   // 버튼에 올려 둔 동안
   if (hoverEl && !hoverEl.isConnected) setHover(null);
-  if (hoverEl) {
+  const hoverRect = hoverEl?.getBoundingClientRect();
+  if (hoverEl && hoverRect) {
     hoverClock += dt;
     while (hoverClock >= d.hoverRate) {
       hoverClock -= d.hoverRate;
-      d.hover(hoverEl.getBoundingClientRect());
+      d.hover(hoverRect);
     }
+    if (design === 'snow') growFrost(hoverRect, dt);
   }
 
   // 글 쓰기를 멈추면 맴돌던 파티클이 사라진다
@@ -504,7 +568,10 @@ function frame(t: number) {
   updating = true;
   particles = particles.filter((p) => {
     p.age += dt;
-    if (p.orbit) {
+    if (p.anchor && hoverRect) {
+      p.x = hoverRect.left + p.anchor.dx;
+      p.y = hoverRect.top + p.anchor.dy;
+    } else if (p.orbit) {
       if (!typing) fadeOut(p);
       p.orbit.a += p.orbit.w * dt;
       p.x = p.orbit.c.x + Math.cos(p.orbit.a) * p.orbit.r;
@@ -596,6 +663,7 @@ const allowed = (el: Element | null) => !!el && (!specialOnly || !!el.closest('[
 
 function setHover(el: HTMLElement | null) {
   if (el === hoverEl) return;
+  meltFrost();
   // 쌓였던 눈은 녹아내린다
   for (const p of particles) {
     if (p.tag === 'pile') {
