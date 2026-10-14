@@ -993,6 +993,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
   --lg-pill: color-mix(in srgb, var(--surface) 55%, transparent);
   --lg-pill-rim: rgba(255, 255, 255, 0.9);
   --lg-veil: rgba(10, 20, 40, 0.12);
+  --lg-lens: color-mix(in srgb, var(--surface) 92%, #fff);
 }
 :root[data-theme='dark'] {
   --lg-tint: color-mix(in srgb, var(--surface) 64%, transparent);
@@ -1005,6 +1006,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
   --lg-pill: rgba(255, 255, 255, 0.1);
   --lg-pill-rim: rgba(255, 255, 255, 0.28);
   --lg-veil: rgba(0, 0, 0, 0.3);
+  --lg-lens: color-mix(in srgb, var(--surface) 86%, #fff);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
@@ -1018,6 +1020,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
     --lg-pill: rgba(255, 255, 255, 0.1);
     --lg-pill-rim: rgba(255, 255, 255, 0.28);
     --lg-veil: rgba(0, 0, 0, 0.3);
+    --lg-lens: color-mix(in srgb, var(--surface) 86%, #fff);
   }
 }
 
@@ -1212,7 +1215,8 @@ input[type='search']::-webkit-search-cancel-button:hover {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 6px 8px 8px;
+  /* 위 · 아래 16px 는 굴절 띠 (CommandPalette LIST_PAD_Y). 스크롤할 때 줄이 여기서 유리 가장자리처럼 휜다 */
+  padding: 16px 8px;
   scrollbar-width: thin;
 }
 .cmdk-group {
@@ -1298,26 +1302,60 @@ input[type='search']::-webkit-search-cancel-button:hover {
   font-weight: 600;
   color: var(--primary);
 }
-/* 고른 항목 아래에 떠 있는 유리 알약. 항목 사이를 물방울처럼 출렁이며 옮겨 다닌다 */
+/*
+ * 고른 항목 위에 떠 있는 유리 렌즈. 안에 같은 줄들을 복제해 두고(.cmdk-lens-rows) 가장자리에서 휘게 비춘다.
+ * 렌즈는 아래로(+top), 복제한 줄은 위로(-top) 같은 곡선으로 움직여서 출렁이는 동안에도 글자가 제자리에 맞는다
+ */
 .cmdk-pill {
   position: absolute;
   top: 0;
   left: 8px;
   right: 8px;
-  z-index: 0;
+  z-index: 2;
+  pointer-events: none;
   border-radius: 14px;
-  background: var(--lg-pill);
   box-shadow:
-    inset 0 1px 0 var(--lg-pill-rim),
-    inset 0 -1px 0 color-mix(in srgb, var(--lg-pill-rim) 35%, transparent),
     0 0 0 0.5px var(--lg-edge),
-    0 6px 16px -6px rgba(0, 20, 60, 0.25);
+    0 8px 20px -8px rgba(0, 20, 60, 0.3);
   transition:
     transform 0.42s cubic-bezier(0.25, 1.35, 0.4, 1),
     height 0.3s ease;
   will-change: transform;
 }
-.cmdk-pill-instant {
+/* 렌즈 테두리 반사광 (복제한 줄 위에) */
+.cmdk-pill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 var(--lg-pill-rim),
+    inset 0 -1px 0 color-mix(in srgb, var(--lg-pill-rim) 35%, transparent),
+    inset 8px 0 14px -12px var(--lg-pill-rim),
+    inset -8px 0 14px -12px var(--lg-pill-rim);
+}
+.cmdk-lens {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--lg-lens);
+}
+.cmdk-lens-bend {
+  position: absolute;
+  inset: 0;
+}
+.cmdk-lens-rows {
+  position: absolute;
+  top: 0;
+  left: -8px;
+  box-sizing: border-box;
+  padding: 16px 8px;
+  transition: transform 0.42s cubic-bezier(0.25, 1.35, 0.4, 1);
+  will-change: transform;
+}
+.cmdk-pill-instant,
+.cmdk-pill-instant .cmdk-lens-rows {
   transition: none;
 }
 .cmdk-empty {
@@ -1350,7 +1388,8 @@ input[type='search']::-webkit-search-cancel-button:hover {
 @media (prefers-reduced-motion: reduce) {
   .cmdk-backdrop::before,
   .cmdk,
-  .cmdk-pill {
+  .cmdk-pill,
+  .cmdk-lens-rows {
     animation: none !important;
     transition: none !important;
   }

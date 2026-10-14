@@ -25,6 +25,7 @@ import {
   UserIcon,
 } from './Icons';
 import { PERIODS, updateSettings, useSettings, type Period, type Settings } from '../lib/settings';
+import { GlassFilter, glassFilterId, useClientSize } from '../lib/glass';
 import { cn } from '../lib/cn';
 
 /* ───────── 열기 ───────── */
@@ -86,6 +87,9 @@ const THEMES: { theme: Settings['theme']; label: string; keywords: string; icon:
 ];
 
 const DEBOUNCE_MS = 150;
+/** 목록 안쪽 여백 (global.css .cmdk-list 와 같게). 위 · 아래 여백이 곧 굴절 띠라 가만히 있을 때는 아무것도 휘지 않는다 */
+const LIST_PAD_X = 8;
+const LIST_PAD_Y = 16;
 const RESULT_SIZE = 5;
 
 /**
@@ -337,8 +341,44 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
     }
   };
 
-  // 묶음 제목은 묶음이 바뀌는 곳에만
-  let lastGroup: string | undefined;
+  // 굴절 유리 (lib/glass): 목록 위 · 아래 가장자리, 고른 항목 위의 렌즈
+  const list = useClientSize(listRef);
+  const edgeId = glassFilterId('cmdk-edge', list.w, list.h);
+  const lensW = Math.max(0, list.w - LIST_PAD_X * 2);
+  const lensH = pill?.height ?? 0;
+  const lensId = glassFilterId('cmdk-lens', lensW, lensH);
+
+  /** 결과 줄들. 렌즈 안에도 같은 줄을 한 벌 더 그려 굴절시킨다 (clone: 보이기만 하고 누를 수 없는 복제본) */
+  const rows = (clone: boolean) => {
+    let lastGroup: string | undefined; // 묶음 제목은 묶음이 바뀌는 곳에만
+    return items.map((it, i) => {
+      const heading = it.group && it.group !== lastGroup ? it.group : undefined;
+      lastGroup = it.group;
+      return (
+        <div key={it.id} role={clone ? undefined : 'presentation'}>
+          {heading && <div className="cmdk-group">{heading}</div>}
+          <div
+            {...(clone
+              ? {}
+              : {
+                  id: `${listId}-${i}`,
+                  'data-index': i,
+                  role: 'option',
+                  'aria-selected': i === current,
+                  onPointerMove: () => i !== current && setActive(i),
+                  onPointerDown: (e: React.PointerEvent) => e.preventDefault(), // 입력칸 포커스 유지
+                  onClick: it.run,
+                })}
+            className={cn('cmdk-item', i === current && 'cmdk-item-active', !it.group && 'cmdk-item-all')}
+          >
+            <span className="cmdk-icon">{it.icon}</span>
+            <span className="cmdk-label">{it.label}</span>
+            {it.hint && <span className={cn('cmdk-hint', it.current && 'cmdk-hint-current')}>{it.hint}</span>}
+          </div>
+        </div>
+      );
+    });
+  };
 
   return createPortal(
     <div
@@ -381,31 +421,32 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
           {loading && <span className="cmdk-spinner" aria-hidden />}
           <kbd className="cmdk-kbd">esc</kbd>
         </div>
-        <div className="cmdk-list" id={listId} role="listbox" aria-label="결과" ref={listRef}>
-          {pill && <div aria-hidden className={cn('cmdk-pill', pill.instant && 'cmdk-pill-instant')} style={{ transform: `translateY(${pill.top}px)`, height: pill.height }} />}
-          {items.map((it, i) => {
-            const heading = it.group && it.group !== lastGroup ? it.group : undefined;
-            lastGroup = it.group;
-            return (
-              <div key={it.id} role="presentation">
-                {heading && <div className="cmdk-group">{heading}</div>}
-                <div
-                  id={`${listId}-${i}`}
-                  data-index={i}
-                  role="option"
-                  aria-selected={i === current}
-                  className={cn('cmdk-item', i === current && 'cmdk-item-active', !it.group && 'cmdk-item-all')}
-                  onPointerMove={() => i !== current && setActive(i)}
-                  onPointerDown={(e) => e.preventDefault()} // 입력칸 포커스 유지
-                  onClick={it.run}
-                >
-                  <span className="cmdk-icon">{it.icon}</span>
-                  <span className="cmdk-label">{it.label}</span>
-                  {it.hint && <span className={cn('cmdk-hint', it.current && 'cmdk-hint-current')}>{it.hint}</span>}
+        <svg width="0" height="0" aria-hidden style={{ position: 'absolute' }}>
+          <GlassFilter id={edgeId} w={list.w} h={list.h} bezel={LIST_PAD_Y} axis="y" scale={18} />
+          <GlassFilter id={lensId} w={lensW} h={lensH} radius={14} bezel={8} scale={14} />
+        </svg>
+        <div
+          className="cmdk-list"
+          id={listId}
+          role="listbox"
+          aria-label="결과"
+          ref={listRef}
+          style={list.w ? { filter: `url(#${edgeId})` } : undefined}
+        >
+          {rows(false)}
+          {/* 고른 항목 위의 유리 렌즈: 아래 줄들을 복제해 가장자리에서 휘게 비춘다. 항목 사이를 출렁이며 옮겨 다닌다 */}
+          {pill && (
+            <div aria-hidden className={cn('cmdk-pill', pill.instant && 'cmdk-pill-instant')} style={{ transform: `translateY(${pill.top}px)`, height: pill.height }}>
+              <div className="cmdk-lens">
+                {/* 휘는 건 줄들만, 둥근 모서리 자르기는 바깥(.cmdk-lens)에서: 모서리가 굴절돼 각지지 않게 */}
+                <div className="cmdk-lens-bend" style={lensW && lensH ? { filter: `url(#${lensId})` } : undefined}>
+                  <div className="cmdk-lens-rows" style={{ transform: `translateY(${-pill.top}px)`, width: list.w || undefined }}>
+                    {rows(true)}
+                  </div>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          )}
           {items.length === 0 && (
             <p className="cmdk-empty">
               {mode === 'write'
