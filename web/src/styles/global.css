@@ -1394,3 +1394,161 @@ input[type='search']::-webkit-search-cancel-button:hover {
     transition: none !important;
   }
 }
+
+/* ───────── 인터랙티브 커서 (lib/cursor.ts · CursorZone) ───────── */
+.cursor-zone,
+.cursor-zone * {
+  cursor: none !important;
+}
+.cursor-zone :is(input, textarea, select, [contenteditable='true']) {
+  cursor: text !important;
+}
+.cursor-zone :is(a[href], button, [role='button'], [data-cursor]) {
+  transition:
+    translate 0.35s cubic-bezier(0.2, 1.4, 0.4, 1),
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.cursor-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.cursor-fx.is-visible {
+  opacity: 1;
+}
+.cursor-fx > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+/* 1) 링: 점 + 따라오는 고리. 버튼 위에서는 고리가 버튼 모양으로 감싼다 */
+.cursor-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  transition: transform 0.08s linear;
+}
+.cursor-ring {
+  border: 1.5px solid color-mix(in srgb, var(--primary) 70%, transparent);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+.is-hover > .cursor-ring {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-color: var(--primary);
+}
+
+/* 2) 물방울: 색을 뒤집는 말랑한 방울. 빠르게 움직이면 늘어나고 버튼 위에서는 부풀어 글자를 뒤집어 보여 준다 */
+.cursor-blob {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  mix-blend-mode: difference;
+}
+
+/* 3) 유리: Liquid Glass 방울. 버튼 위에서는 버튼을 덮는 유리판이 된다 */
+.cursor-glass {
+  background: rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(1.5px) saturate(1.8) brightness(1.08);
+  backdrop-filter: blur(1.5px) saturate(1.8) brightness(1.08);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+    inset 6px 6px 12px -8px rgba(255, 255, 255, 0.9),
+    inset -6px -6px 12px -8px rgba(0, 0, 0, 0.18),
+    0 0 0 0.5px rgba(0, 20, 60, 0.18),
+    0 6px 18px -6px rgba(0, 20, 60, 0.3);
+}
+
+/* 4) 스포트라이트: 커서 주변만 은은하게 밝히는 빛. 버튼 위에서는 버튼을 감싸 비춘다 */
+.cursor-light {
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--primary) 22%, transparent), color-mix(in srgb, var(--primary) 8%, transparent) 55%, transparent);
+  mix-blend-mode: multiply;
+}
+/* 어두운 화면에서는 더해서 밝힌다 */
+:root[data-theme='dark'] .cursor-light {
+  mix-blend-mode: plus-lighter;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .cursor-light {
+    mix-blend-mode: plus-lighter;
+  }
+}
+.cursor-style-spotlight .cursor-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-strong);
+}
+
+/* 5) 꼬리: 줄줄이 따라오는 점들 (혜성). 버튼 위에서는 머리가 고리로 커진다 */
+.cursor-trail-dot {
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--primary);
+  transition:
+    width 0.25s ease,
+    height 0.25s ease,
+    background-color 0.25s ease;
+}
+.is-hover > .cursor-trail-dot:first-child {
+  width: 34px !important;
+  height: 34px !important;
+  border: 1.5px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+/* 파티클 (움직일 때 · 누를 때) */
+.cursor-particle {
+  border-radius: 50%;
+}
+.fx-spark {
+  background: var(--primary);
+  box-shadow: 0 0 6px var(--primary);
+}
+.fx-drop {
+  background: #fff;
+  mix-blend-mode: difference;
+}
+.fx-bubble {
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.95) 0 18%, rgba(255, 255, 255, 0.15) 40%, transparent 70%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.75),
+    0 0 0 0.5px rgba(0, 20, 60, 0.15);
+}
+.fx-mote {
+  background: color-mix(in srgb, var(--primary) 60%, #fff);
+  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+.fx-star {
+  border-radius: 0;
+  background: var(--primary);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+}
+/* 설정 › 인터랙티브 커서 미리보기 칸 */
+.cursor-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  margin: 4px 0 8px;
+  padding: 28px 16px 24px;
+  border-radius: 16px;
+  border: 1px dashed var(--border);
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 10%, transparent) 1px, transparent 0) 0 0 / 18px 18px,
+    var(--field);
+}
+.cursor-preview-hint {
+  font-size: 13px;
+  color: var(--text-weak);
+}

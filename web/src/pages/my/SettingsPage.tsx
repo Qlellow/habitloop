@@ -22,7 +22,8 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PROVIDERS } from '../../components/SocialLogin';
 import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
 import { toast } from '../../components/Toast';
-import { usePhone } from '../../lib/media';
+import { useMediaQuery, usePhone } from '../../lib/media';
+import { CursorZone } from '../../components/CursorZone';
 import { PERIODS, periodAt, updateSettings, useSettings, type Settings } from '../../lib/settings';
 import { ui } from '../../components/ui';
 import s from './my.styles';
@@ -553,6 +554,56 @@ function BlockedUsers() {
 }
 
 /** 시간대 테마: 자동(지금 시각) 또는 한 시간대로 고정 */
+const CURSORS: [Settings['cursor'], string, string][] = [
+  ['ring', '링', '점을 따라오는 고리가 버튼 모양으로 감싸요. 움직이면 작은 불꽃이 튀어요.'],
+  ['blob', '물방울', '색을 뒤집는 말랑한 방울. 빠르게 움직이면 늘어나고 방울이 똑똑 떨어져요.'],
+  ['glass', '유리', 'Liquid Glass 방울이 버튼을 덮는 유리판이 돼요. 움직이면 기포가 떠올라요.'],
+  ['spotlight', '스포트라이트', '커서 주변만 은은하게 비추고, 빛 속에 먼지가 반짝여요.'],
+  ['trail', '꼬리', '혜성처럼 꼬리가 따라오고, 지나간 자리에 별이 반짝여요.'],
+  ['off', '끄기', '특별한 화면에서도 기본 커서를 써요.'],
+];
+
+/**
+ * 인터랙티브 커서: 로그인 · 회원가입 · 초대 · 404 같은 특별한 화면에서만 쓰는 커서 디자인.
+ * 아래 미리보기 칸에서 바로 움직여 볼 수 있다 (마우스가 있는 기기에서만)
+ */
+function CursorOption() {
+  const { cursor } = useSettings();
+  const can = useMediaQuery('(hover: hover) and (pointer: fine)');
+  const desc = CURSORS.find(([v]) => v === cursor)?.[2];
+  return (
+    <>
+      <div className={s.option}>
+        <div>
+          <div className={s.optionLabel}>인터랙티브 커서</div>
+          <div className={s.optionDesc}>로그인 · 회원가입 · 초대 · 404 화면에서만 바뀌어요. {desc}</div>
+        </div>
+        <Segment name="cursor" value={cursor} options={CURSORS.map(([v, label]) => [v, label])} />
+      </div>
+      {can && cursor !== 'off' && (
+        <CursorZone className="cursor-preview" aria-label="커서 미리보기">
+          <span className="cursor-preview-hint">여기서 마우스를 움직이고 눌러 보세요</span>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button type="button" className={cn(ui.button, ui.primary)}>
+              버튼
+            </button>
+            <button type="button" className={cn(ui.button, ui.secondary)}>
+              보조 버튼
+            </button>
+            <span data-cursor className="px-3 py-1.5 rounded-full bg-primary-weak text-primary text-sm font-semibold">
+              # 칩
+            </span>
+            <span data-cursor className="grid place-items-center w-10 h-10 rounded-full bg-field text-lg" aria-hidden>
+              ♥
+            </span>
+          </div>
+          <input className={cn(ui.input, 'max-w-[260px] text-center')} placeholder="입력칸에서는 기본 커서" aria-label="미리보기 입력칸" />
+        </CursorZone>
+      )}
+    </>
+  );
+}
+
 function TimeThemeOption() {
   const settings = useSettings();
   const now = periodAt();
@@ -620,6 +671,7 @@ export default function SettingsPage() {
           />
         </div>
         {settings.theme === 'time' && <TimeThemeOption />}
+        <CursorOption />
         <div className={s.option}>
           <div>
             <div className={s.optionLabel}>글 목록 미리보기</div>

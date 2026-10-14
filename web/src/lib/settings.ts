@@ -10,10 +10,14 @@ export interface Settings {
   editorMode: 'write' | 'split' | 'preview';
   /** 글 목록에 본문 미리보기 두 줄을 보여 줄지 */
   showExcerpt: boolean;
+  /** 특별한 화면(로그인 · 초대 · 404 등)에서 쓰는 인터랙티브 커서 디자인 */
+  cursor: CursorStyle | 'off';
 }
 
+export type CursorStyle = 'ring' | 'blob' | 'glass' | 'spotlight' | 'trail';
+
 const KEY = 'loop.settings';
-const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true };
+const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true, cursor: 'ring' };
 
 /** 시간대. 새벽 · 저녁은 어두운 화면, 아침 · 낮은 밝은 화면 */
 export type Period = 'morning' | 'day' | 'evening' | 'dawn';

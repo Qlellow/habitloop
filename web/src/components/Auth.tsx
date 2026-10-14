@@ -8,6 +8,7 @@ import { useAuthState } from '../lib/authNav';
 import { loaders } from '../lib/preload';
 import { cn } from '../lib/cn';
 import { SocialLogin } from './SocialLogin';
+import { CursorZone } from './CursorZone';
 import s from './Auth.styles';
 
 /**
@@ -58,7 +59,8 @@ export function AuthShell({
   const brand = variant === 'login' ? <LoginBrand /> : <SignupBrand />;
   return (
     <main className={s.page}>
-      <div className={cn(s.card, 'auth-card')}>
+      {/* 특별한 화면: 인터랙티브 커서 (설정 › 화면에서 디자인을 고른다) */}
+      <CursorZone className={cn(s.card, 'auth-card')}>
         {variant === 'login' && brand}
         <form className={s.formPane} onSubmit={onSubmit} noValidate>
           {step && (
@@ -92,7 +94,7 @@ export function AuthShell({
           </div>
         </form>
         {variant === 'signup' && brand}
-      </div>
+      </CursorZone>
     </main>
   );
 }
@@ -124,7 +126,7 @@ function LoginBrand() {
         <span className={s.floatLabel}>지금 인기 있는 글</span>
         {popular
           ? popular.slice(0, 3).map((p, i) => (
-              <span key={p.id} className={s.rankRow}>
+              <span key={p.id} className={s.rankRow} data-cursor>
                 <b className={s.rankNo}>{i + 1}</b>
                 <span className="truncate">{p.title}</span>
               </span>
@@ -136,7 +138,7 @@ function LoginBrand() {
         <span className={s.chips}>
           {channels
             ? channels.slice(0, 3).map((c) => (
-                <span key={c.slug} className={s.chip}>
+                <span key={c.slug} className={s.chip} data-cursor>
                   <ChannelIcon channel={c} size={24} />
                   {c.name}
                   <span className={s.chipMeta}>{compact(c.memberCount)}</span>
@@ -168,7 +170,7 @@ function SignupBrand() {
       <div className={cn(s.floatCard, s.benefitCard)}>
         <span className={cn(s.floatLabel, 'text-[#6b5cf6]')}>가입하면 할 수 있어요</span>
         {['관심 있는 채널 팔로우', '글과 댓글로 함께 이야기', '나만의 채널 만들기'].map((t) => (
-          <span key={t} className={s.benefitRow}>
+          <span key={t} className={s.benefitRow} data-cursor>
             <span className={s.benefitCheck}>✓</span>
             {t}
           </span>

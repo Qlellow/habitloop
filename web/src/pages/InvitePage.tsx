@@ -4,6 +4,7 @@ import { ChannelIcon } from '../components/ChannelIcon';
 import { Page } from '../components/Layout';
 import { toast } from '../components/Toast';
 import { ui } from '../components/ui';
+import { CursorZone } from '../components/CursorZone';
 import { cn } from '../lib/cn';
 
 /** 초대 링크 · QR 로 들어온 화면: 비공개 채널을 확인하고 팔로우한다 */
@@ -28,7 +29,7 @@ export default function InvitePage() {
 
   return (
     <Page variant="narrow">
-      <section className={cn(ui.card, 'flex flex-col items-center px-6 py-10 text-center')}>
+      <CursorZone className={cn(ui.card, 'flex flex-col items-center px-6 py-10 text-center')}>
         {invite.isPending ? (
           <div className={ui.spinner} />
         ) : !c ? (
@@ -63,7 +64,7 @@ export default function InvitePage() {
             )}
           </>
         )}
-      </section>
+      </CursorZone>
     </Page>
   );
 }
