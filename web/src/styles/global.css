@@ -1406,64 +1406,21 @@ input[type='search']::-webkit-search-cancel-button:hover {
   image-rendering: pixelated;
 }
 
-/* 설정 미리보기: 마인크래프트 인벤토리 */
-.mc-inventory {
+/* 설정 › 인터랙티브 커서 미리보기 칸 */
+.fx-preview {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   margin: 4px 0 10px;
-  padding: 14px 14px 16px;
-  width: fit-content;
-  max-width: 100%;
-  background: #c6c6c6;
-  box-shadow:
-    inset 3px 3px 0 #fff,
-    inset -3px -3px 0 #555,
-    0 0 0 2px #000;
-  border-radius: 4px;
-  image-rendering: pixelated;
+  padding: 26px 16px 24px;
+  border-radius: 16px;
+  border: 1px dashed var(--border);
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 10%, transparent) 1px, transparent 0) 0 0 / 18px 18px,
+    var(--field);
 }
-.mc-inventory-title {
-  align-self: flex-start;
-  font: 600 13px/1 ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  color: #3f3f3f;
-}
-.mc-inventory-slots {
-  display: grid;
-  grid-template-columns: repeat(9, 40px);
-  max-width: 100%;
-}
-.mc-slot {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  background: #8b8b8b;
-  box-shadow:
-    inset 2px 2px 0 #373737,
-    inset -2px -2px 0 #fff;
-  color: #2b2b2b;
-}
-.mc-slot:hover {
-  background: #a5a5a5;
-}
-.mc-slot svg {
-  width: 22px;
-  height: 22px;
-}
-.mc-slot [data-icon='heart'] {
-  color: #e8264b;
-}
-.mc-slot [data-icon='trophy'],
-.mc-slot [data-icon='star'] {
-  color: #d9a400;
-}
-.mc-slot [data-icon='plus'] {
-  color: #3f9b0b;
-}
-@media (max-width: 520px) {
-  .mc-inventory-slots {
-    grid-template-columns: repeat(5, 40px);
-  }
+.fx-preview-hint {
+  font-size: 13px;
+  color: var(--text-weak);
 }

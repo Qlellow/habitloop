@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent } from 'react';
 import {
   useBlockUser,
   useMyBlocks,
@@ -24,7 +24,6 @@ import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
 import { toast } from '../../components/Toast';
 import { useMediaQuery, usePhone } from '../../lib/media';
 import { CursorZone } from '../../components/CursorZone';
-import { BellIcon, CommentIcon, HeartIcon, HomeIcon, PencilIcon, PlusIcon, StarIcon, TrophyIcon } from '../../components/Icons';
 import { PERIODS, periodAt, updateSettings, useSettings, type Settings } from '../../lib/settings';
 import { ui } from '../../components/ui';
 import s from './my.styles';
@@ -555,21 +554,24 @@ function BlockedUsers() {
 }
 
 /** 시간대 테마: 자동(지금 시각) 또는 한 시간대로 고정 */
-/** 미리보기 인벤토리 칸: 아이템마다 다른 파티클 */
-const INVENTORY: { label: string; icon: ReactNode; fx?: string; className?: string }[] = [
-  { label: '하트', icon: <HeartIcon filled /> },
-  { label: '댓글', icon: <CommentIcon /> },
-  { label: '트로피', icon: <TrophyIcon /> },
-  { label: '별', icon: <StarIcon /> },
-  { label: '알림', icon: <BellIcon /> },
-  { label: '연필', icon: <PencilIcon /> },
-  { label: '경험치', icon: <PlusIcon /> },
-  { label: '집', icon: <HomeIcon /> },
-  { label: '불', icon: <span className="text-[22px] leading-none">🔥</span>, fx: 'flame' },
+/** 미리보기 칸의 아이템: 이름 → 그 아이템이 뿜는 파티클 (lib/pixelFx 의 FAMILIES) */
+const FX_SAMPLES: { label: string; fx: string; color?: string }[] = [
+  { label: '좋아요', fx: 'heart' },
+  { label: '댓글', fx: 'bubble' },
+  { label: '인기 1위', fx: 'gold' },
+  { label: '즐겨찾기', fx: 'star' },
+  { label: '알림', fx: 'note' },
+  { label: '글쓰기', fx: 'graphite' },
+  { label: '팔로우', fx: 'xp' },
+  { label: '홈', fx: 'chimney' },
+  { label: '설정', fx: 'smoke' },
+  { label: '삭제', fx: 'flame' },
+  { label: '검색', fx: 'glint' },
+  { label: '채널 색 (자동)', fx: 'auto', color: '#8b5cf6' },
 ];
 
 /**
- * 인터랙티브 커서 (마인크래프트 Inventory Particles 처럼 도트 파티클).
+ * 인터랙티브 커서 (마인크래프트 Inventory Particles 처럼 도트 파티클). 아래 칸에서 아이템마다 다른 파티클을 바로 시험해 볼 수 있다.
  * 느린 기기에서는 끄거나, 특별한 화면(로그인 · 회원가입 · 초대 · 404)에서만 나오게 할 수 있다
  */
 function PixelFxOption() {
@@ -601,12 +603,19 @@ function PixelFxOption() {
         </div>
       )}
       {pixelFx && can && (
-        <CursorZone className="mc-inventory" aria-label="파티클 미리보기">
-          <div className="mc-inventory-title">인벤토리 — 아이템에 마우스를 올려 보세요</div>
-          <div className="mc-inventory-slots">
-            {INVENTORY.map((it) => (
-              <button key={it.label} type="button" className="mc-slot" data-fx={it.fx} title={it.label} aria-label={it.label}>
-                {it.icon}
+        <CursorZone className="fx-preview" aria-label="파티클 미리보기">
+          <span className="fx-preview-hint">여기서 마우스를 올리고, 움직이고, 눌러 보세요</span>
+          <div className="flex flex-wrap justify-center gap-2">
+            {FX_SAMPLES.map((it) => (
+              <button
+                key={it.label}
+                type="button"
+                className={cn(ui.button, ui.small, it.fx === 'auto' ? 'text-white' : ui.secondary)}
+                style={it.color ? { background: it.color } : undefined}
+                data-fx={it.fx}
+                data-fx-color={it.color}
+              >
+                {it.label}
               </button>
             ))}
           </div>
