@@ -145,6 +145,22 @@ describe('커뮤니티', () => {
     like = await http().delete(`/api/posts/${lastId}/like`).set(bearer(bob));
     expect(like.body).toEqual({ liked: false, likeCount: 0 });
 
+    // 감정 반응: 종류마다 한 번씩, 여러 번 눌러도 같다, 없는 종류는 400
+    const react = (kind: string, who: string) => http().put(`/api/posts/${lastId}/reactions/${kind}`).set(bearer(who));
+    expect((await react('clap', bob).expect(200)).body).toEqual({ reactions: { clap: 1 }, myReactions: ['clap'] });
+    await react('clap', bob).expect(200);
+    await react('fire', bob).expect(200);
+    const both = (await react('clap', alice).expect(200)).body;
+    expect(both.reactions).toEqual({ clap: 2, fire: 1 });
+    expect(both.myReactions).toEqual(['clap']);
+    await react('angry', bob).expect(400);
+    await http().put(`/api/posts/${lastId}/reactions/clap`).expect(401);
+    const undone = (await http().delete(`/api/posts/${lastId}/reactions/clap`).set(bearer(bob)).expect(200)).body;
+    expect(undone).toEqual({ reactions: { clap: 1, fire: 1 }, myReactions: ['fire'] });
+    const viewed = (await http().get(`/api/posts/${lastId}`).set(bearer(bob))).body;
+    expect(viewed.reactions).toEqual({ clap: 1, fire: 1 });
+    expect(viewed.myReactions).toEqual(['fire']);
+
     // 댓글
     const comment = (await http().post(`/api/posts/${lastId}/comments`).set(bearer(bob)).send({ content: '좋은 글이네요' }).expect(201)).body;
     const comments = (await http().get(`/api/posts/${lastId}/comments`)).body;

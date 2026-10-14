@@ -27,11 +27,8 @@ const s = {
   bylineMeta: 'text-[13px] text-fg-weak',
   bylineActions: 'ml-auto flex gap-1',
   content: 'mt-6 mb-8 min-h-20',
-  reactions: 'flex justify-center',
-  likeButton:
-    'inline-flex items-center gap-2 h-11 px-5 rounded-md border border-border bg-surface font-semibold text-fg-sub transition-colors ' +
-    'hover:border-danger hover:text-danger aria-pressed:border-danger aria-pressed:bg-danger-weak aria-pressed:text-danger ' +
-    '[&>svg]:w-5 [&>svg]:h-5',
+  // 좋아요 + 감정 반응 (components/Reactions)
+  reactions: 'flex flex-col items-center',
 
   // 댓글
   composer: 'px-5 pb-4 [&_textarea]:min-h-[84px]',

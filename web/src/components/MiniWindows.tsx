@@ -12,6 +12,7 @@ import { cn } from '../lib/cn';
 
 // 공감 · 댓글은 글 화면의 것을 그대로 쓴다 (작은 창을 처음 열 때 받는다)
 const LikeButton = lazy(() => import('../pages/PostDetailPage').then((m) => ({ default: m.LikeButton })));
+const ReactionBar = lazy(() => import('./Reactions').then((m) => ({ default: m.ReactionBar })));
 const Comments = lazy(() => import('../pages/PostDetailPage').then((m) => ({ default: m.Comments })));
 
 /** 크기 조절 손잡이: 네 변 + 네 모서리. 방향 글자에 n(위) s(아래) w(왼쪽) e(오른쪽)가 들어 있으면 그쪽 변이 움직인다 */
@@ -103,8 +104,9 @@ function MiniPost({ postId }: { postId: number }) {
       </div>
       {!isPlaceholderData && (
         <Suspense fallback={<div className={ui.spinner} />}>
-          <div className="flex justify-center mt-6">
+          <div className="flex flex-col items-center mt-6">
             <LikeButton post={post} />
+            <ReactionBar post={post} />
           </div>
           <div className="-mx-5 mt-5">
             <Comments postId={post.id} count={post.commentCount} embedded />

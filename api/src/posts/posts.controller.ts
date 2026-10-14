@@ -125,6 +125,18 @@ export class PostsController {
     return this.posts.unlike(user.id, id(postId));
   }
 
+  /** 감정 반응 달기 · 취소 */
+  @Put('posts/:id/reactions/:kind')
+  async react(@LoginUser() user: AuthUser, @Param('id') postId: string, @Param('kind') kind: string) {
+    await this.posts.requirePostAccess(id(postId), user.id);
+    return this.posts.react(user.id, id(postId), kind, true);
+  }
+
+  @Delete('posts/:id/reactions/:kind')
+  unreact(@LoginUser() user: AuthUser, @Param('id') postId: string, @Param('kind') kind: string) {
+    return this.posts.react(user.id, id(postId), kind, false);
+  }
+
   /* ───── 댓글 ───── */
 
   @Public()
