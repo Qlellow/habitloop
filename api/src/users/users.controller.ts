@@ -1,7 +1,8 @@
-import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
 import { CurrentUser, LoginUser, Public } from '../auth/auth.guard';
 import type { AuthUser } from '../auth/jwt.service';
 import { ApiError } from '../common/api-error';
+import { escapeLike } from '../common/cursor-page';
 import { Database } from '../db/database';
 import { BlocksService } from './blocks.service';
 import { RewardsService } from './rewards.service';
@@ -14,6 +15,23 @@ export class UsersController {
     private readonly rewards: RewardsService,
     private readonly blocks: BlocksService,
   ) {}
+
+  /** 닉네임으로 사용자 찾기 (커맨드 팔레트). 앞부분이 맞는 사람부터, 공개 정보만 */
+  @Public()
+  @Get('users')
+  search(@Query('q') q: string | undefined) {
+    const keyword = (q ?? '').trim().toLowerCase().slice(0, 30);
+    if (!keyword) return [];
+    return this.db.query(
+      `SELECT u.uid::text AS id, u.nickname,
+              CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "avatarUrl"
+       FROM users u
+       WHERE u.withdrawn_at IS NULL AND u.suspended_at IS NULL AND lower(u.nickname) LIKE $1 ESCAPE '\\'
+       ORDER BY (lower(u.nickname) LIKE $2 ESCAPE '\\') DESC, length(u.nickname), u.id
+       LIMIT 8`,
+      [`%${escapeLike(keyword)}%`, `${escapeLike(keyword)}%`],
+    );
+  }
 
   @Public()
   @Get('users/:id')

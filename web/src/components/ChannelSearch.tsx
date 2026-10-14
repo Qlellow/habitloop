@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { compact, useChannels, type ChannelSummary } from '@loop/shared';
 import { ChannelIcon } from './ChannelIcon';
 import { SearchIcon } from './Icons';
+import { isMac, openCommandPalette } from './CommandPalette';
 import { preload } from '../lib/preload';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
@@ -141,6 +142,13 @@ export function ChannelSearch() {
       />
       {/* 입력칸 뒤에 두어야 포커스될 때(peer-focus) 돋보기 색을 바꿀 수 있다 */}
       <SearchIcon className={s.icon} />
+      {/* 비어 있을 때만: 누르면 커맨드 팔레트 */}
+      {!input && (
+        <button type="button" className={s.shortcut} onClick={openCommandPalette} title="커맨드 팔레트 열기" aria-label="커맨드 팔레트 열기">
+          <kbd className="cmdk-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+          <kbd className="cmdk-kbd">K</kbd>
+        </button>
+      )}
       {showMenu && (
         <div className={s.menu}>
           <ul className={s.list} id={listId} role="listbox" aria-label="채널 검색 결과" ref={listRef}>

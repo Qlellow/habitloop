@@ -22,6 +22,7 @@ import type {
   BlockedUser,
   PostPage,
   UserProfile,
+  UserSearchResult,
   ChannelCategory,
   ChannelDetail,
   ChannelInput,
@@ -75,6 +76,7 @@ export const keys = {
   channel: (slug: string) => ['channel', slug] as const,
   staff: (slug: string) => ['channel', slug, 'staff'] as const,
   memberSearch: (slug: string, q: string) => ['channel', slug, 'members', q] as const,
+  userSearch: (q: string) => ['users', 'search', q] as const,
 };
 
 const PAGE_SIZE = 20;
@@ -138,6 +140,18 @@ export function useUserProfile(id: string) {
     queryKey: ['user', id] as const,
     queryFn: ({ signal }) => api<UserProfile>(`/api/users/${encodeURIComponent(id)}`, { signal }),
     enabled: isUserId(id),
+  });
+}
+
+/** 닉네임으로 사용자 찾기 (공개 정보만, 최대 8명) */
+export function useUserSearch(q: string) {
+  const keyword = q.trim();
+  return useQuery({
+    queryKey: keys.userSearch(keyword),
+    queryFn: ({ signal }) => api<UserSearchResult[]>('/api/users', { query: { q: keyword }, signal }),
+    enabled: keyword.length > 0,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 
