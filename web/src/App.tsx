@@ -6,6 +6,7 @@ import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
 import { MiniWindows } from './components/MiniWindows';
 import { CommandPalette } from './components/CommandPalette';
+import { PixelParticles } from './components/PixelParticles';
 import { TimeSky } from './components/TimeSky';
 import { loaders } from './lib/preload';
 import { useReturnTo } from './lib/authNav';
@@ -90,6 +91,8 @@ function Root() {
       <MiniWindows />
       {/* Ctrl/⌘ + K: 키보드로 이동 · 글쓰기 · 테마 · 찾기 */}
       <CommandPalette />
+      {/* 인터랙티브 커서: 마우스를 올린 버튼 · 아이콘이 도트 파티클을 뿜는다 */}
+      <PixelParticles />
       <ScrollRestoration />
       <Toaster />
     </>
