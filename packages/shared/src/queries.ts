@@ -20,6 +20,9 @@ import type {
   ReactionKind,
   PostPreview,
   HomeLayout,
+  ChannelVoice,
+  VoiceJoin,
+  VoiceRoom,
   Pet,
   PetSpecies,
   ReactionResponse,
@@ -780,6 +783,39 @@ export function useSaveHomeLayout() {
     onSuccess: (layout) => qc.setQueryData(homeKey, layout),
   });
 }
+
+/* ───────── 채널 음성채팅 ───────── */
+
+export const voiceKey = (slug: string) => ['channel', slug, 'voice'] as const;
+
+/** 채널 음성방과 지금 들어와 있는 사람. 보고 있는 동안 10초마다 새로 받는다 */
+export function useChannelVoice(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: voiceKey(slug),
+    queryFn: ({ signal }) => api<ChannelVoice>(`/api/channels/${encodeURIComponent(slug)}/voice`, { signal }),
+    enabled: enabled && !!slug,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/** 음성방 만들기 · 바꾸기 · 지우기 (운영진) */
+export function useVoiceRoomMutation(slug: string) {
+  const qc = useQueryClient();
+  const base = `/api/channels/${encodeURIComponent(slug)}/voice`;
+  return useMutation({
+    mutationFn: (op: { kind: 'create'; name: string; maxParticipants?: number } | { kind: 'update'; id: number; name?: string; maxParticipants?: number } | { kind: 'delete'; id: number }): Promise<VoiceRoom | void> =>
+      op.kind === 'create'
+        ? api<VoiceRoom>(base, { method: 'POST', body: { name: op.name, maxParticipants: op.maxParticipants } })
+        : op.kind === 'update'
+          ? api<VoiceRoom>(`${base}/${op.id}`, { method: 'PUT', body: { name: op.name, maxParticipants: op.maxParticipants } })
+          : api<void>(`${base}/${op.id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: voiceKey(slug) }),
+  });
+}
+
+/** 음성방 입장 토큰 받기 */
+export const fetchVoiceToken = (roomId: number) => api<VoiceJoin>(`/api/voice/rooms/${roomId}/token`, { method: 'POST' });
 
 /* ───────── 커뮤니티 펫 ───────── */
 

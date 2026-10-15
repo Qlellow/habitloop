@@ -340,3 +340,57 @@ export const DocIcon = (p: P) => (
     <path d="M9 12h6M9 16h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
+
+/* 음성채팅 */
+export const MicIcon = (p: P) => (
+  <svg {...base} data-icon="mic" {...p}>
+    <rect x="9" y="3.5" width="6" height="11" rx="3" {...line} />
+    <path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21" {...line} />
+  </svg>
+);
+
+export const MicOffIcon = (p: P) => (
+  <svg {...base} data-icon="mic-off" {...p}>
+    <path d="M15 10V6.5a3 3 0 00-5.6-1.5M9 9v2.5a3 3 0 004.6 2.5" {...line} />
+    <path d="M5.5 11a6.5 6.5 0 0010.4 5.2M18.5 11c0 .8-.1 1.5-.4 2.2M12 17.5V21M4 4l16 16" {...line} />
+  </svg>
+);
+
+export const HeadphonesIcon = (p: P) => (
+  <svg {...base} data-icon="headphones" {...p}>
+    <path d="M4 15v-3a8 8 0 0116 0v3" {...line} />
+    <rect x="3.5" y="14" width="4.5" height="6.5" rx="1.8" {...line} />
+    <rect x="16" y="14" width="4.5" height="6.5" rx="1.8" {...line} />
+  </svg>
+);
+
+export const HeadphonesOffIcon = (p: P) => (
+  <svg {...base} data-icon="headphones-off" {...p}>
+    <path d="M4 15v-3a8 8 0 0113.7-5.6M20 12v3" {...line} />
+    <rect x="3.5" y="14" width="4.5" height="6.5" rx="1.8" {...line} />
+    <path d="M16 16v2.7c0 1 .8 1.8 1.8 1.8h.9c1 0 1.8-.8 1.8-1.8V16M4 4l16 16" {...line} />
+  </svg>
+);
+
+export const ScreenShareIcon = (p: P) => (
+  <svg {...base} data-icon="screen-share" {...p}>
+    <rect x="3" y="4.5" width="18" height="12.5" rx="2" {...line} />
+    <path d="M8.5 20.5h7M12 13.5V8M9.5 10.3L12 7.8l2.5 2.5" {...line} />
+  </svg>
+);
+
+export const LeaveCallIcon = (p: P) => (
+  <svg {...base} data-icon="leave-call" {...p}>
+    <path
+      d="M3.6 14.2c-.6-.6-.6-1.6.1-2.2C6 10 9 9 12 9s6 1 8.3 3c.7.6.7 1.6.1 2.2l-1.3 1.3c-.5.5-1.3.6-1.9.2l-1.9-1.2c-.4-.3-.7-.8-.6-1.3l.2-1.3c-1.9-.6-3.9-.6-5.8 0l.2 1.3c.1.5-.2 1-.6 1.3l-1.9 1.2c-.6.4-1.4.3-1.9-.2z"
+      {...line}
+    />
+  </svg>
+);
+
+export const SpeakerIcon = (p: P) => (
+  <svg {...base} data-icon="speaker" {...p}>
+    <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" {...line} />
+    <path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" {...line} />
+  </svg>
+);

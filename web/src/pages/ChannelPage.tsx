@@ -22,6 +22,7 @@ import { scrollToElement } from '../lib/scroll';
 import { useSettings } from '../lib/settings';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { ChannelIntro } from '../components/ChannelIntro';
+import { VoiceRooms } from '../components/VoiceRooms';
 import { BookmarkButton, JoinButton } from '../components/JoinButton';
 import { Page } from '../components/Layout';
 import { PostItem, PostListSkeleton } from '../components/PostList';
@@ -234,7 +235,15 @@ export default function ChannelPage() {
   const writeTo = `/write?${writeParams}`;
 
   return (
-    <Page variant="twoRight" right={<>{open && <PopularCard channel={slug} title="이 채널 인기글" />}</>}>
+    <Page
+      variant="twoRight"
+      right={
+        <>
+          {open && <VoiceRooms slug={slug} />}
+          {open && <PopularCard channel={slug} title="이 채널 인기글" />}
+        </>
+      }
+    >
       <section className={ui.card} ref={headerRef}>
         <div className={cn(s.banner, categories.length === 0 && 'pb-6')}>
           {channel ? (

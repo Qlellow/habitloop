@@ -461,3 +461,38 @@ export interface HomeLayout {
   compact: boolean;
   widgets: HomeWidget[];
 }
+
+/* ───────── 채널 음성채팅 ───────── */
+
+/** 음성방에 들어와 있는 사람 */
+export interface VoiceMember {
+  /** 사용자 UUID */
+  id: string;
+  nickname: string;
+  avatarUrl?: string;
+  muted: boolean;
+  /** 화면 공유 중 */
+  sharing: boolean;
+}
+
+export interface VoiceRoom {
+  id: number;
+  name: string;
+  maxParticipants: number;
+  members: VoiceMember[];
+}
+
+export interface ChannelVoice {
+  /** 서버에 음성채팅(LiveKit)이 설정돼 있는지 */
+  enabled: boolean;
+  /** 운영진: 방 만들기 · 바꾸기 · 지우기 */
+  canManage: boolean;
+  rooms: VoiceRoom[];
+}
+
+export interface VoiceJoin {
+  url: string;
+  token: string;
+  room: { id: number; name: string; maxParticipants: number };
+  channel: { slug: string; name: string; iconVersion: number; color?: number | null };
+}

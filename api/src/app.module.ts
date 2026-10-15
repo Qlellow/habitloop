@@ -35,6 +35,8 @@ import { RewardsService } from './users/rewards.service';
 import { UsersController } from './users/users.controller';
 import { PetsController } from './pets/pets.controller';
 import { PetsService } from './pets/pets.service';
+import { VoiceController } from './voice/voice.controller';
+import { VoiceService } from './voice/voice.service';
 
 @Controller()
 class HealthController {
@@ -47,10 +49,11 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController],
   providers: [
     Database,
     PetsService,
+    VoiceService,
     ImagesService,
     Seeder,
     JwtService,

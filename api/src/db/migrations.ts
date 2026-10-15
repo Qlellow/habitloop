@@ -438,4 +438,19 @@ CREATE TABLE pets (
     name: '024_home_layout',
     sql: `ALTER TABLE users ADD COLUMN home_layout JSONB;`,
   },
+  {
+    // 채널 음성채팅: 운영진이 만든 고정 음성방 (실제 음성은 LiveKit 이 나른다, voice/voice.service.ts)
+    name: '025_voice_rooms',
+    sql: `
+CREATE TABLE voice_rooms (
+    id                SERIAL        PRIMARY KEY,
+    channel_id        INT           NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
+    name              VARCHAR(30)   NOT NULL,
+    max_participants  INT           NOT NULL DEFAULT 25,
+    position          INT           NOT NULL DEFAULT 0,
+    created_at        TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_voice_rooms_channel ON voice_rooms (channel_id, position, id);
+`,
+  },
 ];
