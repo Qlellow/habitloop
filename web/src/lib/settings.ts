@@ -16,12 +16,14 @@ export interface Settings {
   pixelFxSpecialOnly: boolean;
   /** 인터랙티브 커서 디자인 */
   fxDesign: FxDesign;
+  /** 내 펫이 화면을 돌아다니게 (데스크톱 펫) */
+  petRoam: boolean;
 }
 
 export type FxDesign = 'star' | 'heart' | 'sakura' | 'snow' | 'fire';
 
 const KEY = 'loop.settings';
-const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true, cursorFx: false, pixelFxSpecialOnly: false, fxDesign: 'star' };
+const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true, cursorFx: false, pixelFxSpecialOnly: false, fxDesign: 'star', petRoam: true };
 
 /** 시간대. 새벽 · 저녁은 어두운 화면, 아침 · 낮은 밝은 화면 */
 export type Period = 'morning' | 'day' | 'evening' | 'dawn';

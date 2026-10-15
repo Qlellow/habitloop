@@ -93,6 +93,8 @@ function AnimatedButton({
       aria-label={label}
       title={label}
       className={cn(className, 'rx-button')}
+      // 반응 버튼은 자체 애니메이션이 있으니 인터랙티브 커서 파티클은 끈다 (lib/pixelFx)
+      data-fx-off=""
       onClick={() => {
         const turnedOn = !active;
         if (onPress()) replay(turnedOn);

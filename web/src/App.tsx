@@ -7,6 +7,7 @@ import { Toaster } from './components/Toast';
 import { MiniWindows } from './components/MiniWindows';
 import { CommandPalette } from './components/CommandPalette';
 import { PixelParticles } from './components/PixelParticles';
+import { DesktopPet } from './components/DesktopPet';
 import { TimeSky } from './components/TimeSky';
 import { loaders } from './lib/preload';
 import { useReturnTo } from './lib/authNav';
@@ -94,6 +95,8 @@ function Root() {
       <CommandPalette />
       {/* 인터랙티브 커서: 마우스를 올린 버튼 · 아이콘이 도트 파티클을 뿜는다 */}
       <PixelParticles />
+      {/* 내 펫이 화면을 돌아다닌다 */}
+      <DesktopPet />
       <ScrollRestoration />
       <Toaster />
     </>
