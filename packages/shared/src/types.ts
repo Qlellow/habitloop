@@ -378,6 +378,17 @@ export interface ReactionResponse {
   myReactions: ReactionKind[];
 }
 
+/** 게시글 카드에 마우스를 올렸을 때 보여 줄 미리보기 (조회수는 오르지 않는다) */
+export interface PostPreview extends ReactionResponse {
+  excerpt: string;
+  likeCount: number;
+  commentCount: number;
+  liked: boolean;
+  /** 최근 댓글 (최대 2개, 최신 먼저) */
+  comments: { id: number; nickname: string; avatarUrl?: string; content: string; createdAt: string }[];
+  blockedAuthor: boolean;
+}
+
 /** 신고 사유 */
 export type ReportReason = 'spam' | 'abuse' | 'adult' | 'illegal' | 'privacy' | 'other';
 export const REPORT_REASONS: { value: ReportReason; label: string }[] = [

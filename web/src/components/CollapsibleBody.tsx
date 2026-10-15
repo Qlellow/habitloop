@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronDownIcon, ChevronUpIcon } from './Icons';
 import { scrollToElement } from '../lib/scroll';
 
@@ -17,6 +17,27 @@ const s = {
     '[&>svg]:w-4 [&>svg]:h-4',
   collapseRow: 'flex justify-center pt-2',
 };
+
+const EXPAND = 'loop:expand';
+
+/**
+ * 접힌 본문을 펼친다 (이어 읽기). 다 펼쳐질 때까지(높이 애니메이션) 기다린다.
+ * 이미 펼쳐져 있거나 접을 만큼 길지 않으면 바로 끝난다.
+ */
+export function expandPostBody(): Promise<void> {
+  const el = document.getElementById('post-body');
+  if (!el || !el.style.maxHeight || el.scrollHeight <= el.clientHeight + 1) return Promise.resolve();
+  el.dispatchEvent(new Event(EXPAND));
+  return new Promise((resolve) => {
+    const done = () => {
+      el.removeEventListener('transitionend', done);
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = window.setTimeout(done, 600);
+    el.addEventListener('transitionend', done);
+  });
+}
 
 /**
  * 긴 본문 접기: 너무 길면 아래쪽을 그라데이션으로 가리고 '더 보기'를 띄운다.
@@ -37,6 +58,13 @@ export function CollapsibleBody({ children }: { children: ReactNode }) {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = wrap.current;
+    const expand = () => setOpen(true);
+    el?.addEventListener(EXPAND, expand);
+    return () => el?.removeEventListener(EXPAND, expand);
   }, []);
 
   const collapsible = full > LIMIT;

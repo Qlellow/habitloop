@@ -709,6 +709,20 @@ export default function SettingsPage() {
             onClick={() => updateSettings({ showExcerpt: !settings.showExcerpt })}
           />
         </div>
+        <div className={s.option}>
+          <div>
+            <div className={s.optionLabel}>글 카드 펼쳐 보기</div>
+            <div className={s.optionDesc}>글 카드에 마우스를 잠시 올리면 펼쳐지면서 더 긴 미리보기, 반응, 최근 댓글을 보여 줘요. (마우스가 있는 기기)</div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings.livePreview}
+            aria-label="글 카드 펼쳐 보기"
+            className={s.switch}
+            onClick={() => updateSettings({ livePreview: !settings.livePreview })}
+          />
+        </div>
       </section>
       <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>글쓰기</h2>
