@@ -645,6 +645,44 @@ describe('커뮤니티', () => {
     await http().put(`/api/channels/teen/categories/${teenCat}`).set(bearer(minor)).send({ name: '일반', adult: true }).expect(403);
   });
 
+  it('나만의 홈: 위젯 배치 저장 · 검사 · 되돌리기', async () => {
+    const me = await signup('home@test.dev', '홈꾸미기');
+    const home = '/api/me/home';
+    await http().get(home).expect(401);
+    expect((await http().get(home).set(bearer(me)).expect(200)).body.layout).toBeUndefined(); // 처음엔 기본 홈
+    const layout = {
+      v: 1,
+      compact: false,
+      widgets: [
+        { id: 'a1', type: 'feed', x: 0, y: 0, w: 8, h: 10, o: { title: '내 피드', fixed: true } },
+        { id: 'b2', type: 'memo', x: 8, y: 0, w: 4, h: 4, o: { text: '오늘 할 일' } },
+        { id: 'c3', type: 'channel', x: 8, y: 4, w: 4, h: 6, o: { channel: 'free', count: 5 }, extra: 'drop' },
+      ],
+      junk: true,
+    };
+    const saved = (await http().put(home).set(bearer(me)).send({ layout }).expect(200)).body.layout;
+    expect(saved.junk).toBeUndefined();
+    expect(saved.widgets[2]).toEqual({ id: 'c3', type: 'channel', x: 8, y: 4, w: 4, h: 6, o: { channel: 'free', count: 5 } });
+    expect((await http().get(home).set(bearer(me))).body.layout).toEqual(saved);
+
+    const put = (widgets: unknown[], extra = {}) => http().put(home).set(bearer(me)).send({ layout: { v: 1, compact: true, widgets, ...extra } });
+    const w = { id: 'x', type: 'feed', x: 0, y: 0, w: 6, h: 4 };
+    await put([{ ...w, type: 'unknown' }]).expect(400);
+    await put([{ ...w, x: 8 }]).expect(400); // 12칸을 넘는다
+    await put([{ ...w, w: 0 }]).expect(400);
+    await put([{ ...w, h: 99 }]).expect(400);
+    await put([w, w]).expect(400); // 같은 id
+    await put([{ ...w, id: 'BAD ID' }]).expect(400);
+    await put([{ ...w, o: { text: 'x'.repeat(501) } }]).expect(400);
+    await put([{ ...w, o: { nested: { a: 1 } } }]).expect(400);
+    await put(Array.from({ length: 25 }, (_, i) => ({ ...w, id: `w${i}` }))).expect(400);
+    await put([w], { v: 2 }).expect(400);
+    await http().put(home).set(bearer(me)).send({}).expect(400);
+
+    await http().delete(home).set(bearer(me)).expect(204);
+    expect((await http().get(home).set(bearer(me))).body.layout).toBeUndefined();
+  });
+
   it('커뮤니티 펫: 데려오기 · 경험치 · 쓰다듬기 · 프로필 전시', async () => {
     const me = await signup('pet@test.dev', '펫주인');
     const fan = await signup('pet-fan@test.dev', '펫팬');

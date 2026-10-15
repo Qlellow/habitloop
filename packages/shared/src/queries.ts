@@ -19,6 +19,7 @@ import type {
   ReportReason,
   ReactionKind,
   PostPreview,
+  HomeLayout,
   Pet,
   PetSpecies,
   ReactionResponse,
@@ -752,6 +753,31 @@ export function usePostPreview(id: number, enabled: boolean) {
     queryFn: ({ signal }) => api<PostPreview>(`/api/posts/${id}/preview`, { signal }),
     enabled,
     staleTime: 60_000,
+  });
+}
+
+/* ───────── 나만의 홈 ───────── */
+
+const homeKey = ['me', 'home'] as const;
+
+/** 저장한 홈 배치 (없으면 null → 기본 홈) */
+export function useHomeLayout(enabled = true) {
+  return useQuery({
+    queryKey: homeKey,
+    queryFn: async ({ signal }) => (await api<{ layout?: HomeLayout | null }>('/api/me/home', { signal })).layout ?? null,
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSaveHomeLayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (layout: HomeLayout | null) =>
+      layout
+        ? (await api<{ layout: HomeLayout }>('/api/me/home', { method: 'PUT', body: { layout } })).layout
+        : (await api<void>('/api/me/home', { method: 'DELETE' }), null),
+    onSuccess: (layout) => qc.setQueryData(homeKey, layout),
   });
 }
 

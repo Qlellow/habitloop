@@ -433,4 +433,9 @@ CREATE TABLE pets (
 );
 `,
   },
+  {
+    // 나만의 홈: 홈 화면 위젯 배치 (사용자마다 하나, 형식은 users/home-layout.ts 에서 검사)
+    name: '024_home_layout',
+    sql: `ALTER TABLE users ADD COLUMN home_layout JSONB;`,
+  },
 ];

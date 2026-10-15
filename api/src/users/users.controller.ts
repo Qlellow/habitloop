@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
 import { CurrentUser, LoginUser, Public } from '../auth/auth.guard';
 import type { AuthUser } from '../auth/jwt.service';
 import { ApiError } from '../common/api-error';
@@ -7,6 +7,7 @@ import { Database } from '../db/database';
 import { BlocksService } from './blocks.service';
 import { RewardsService } from './rewards.service';
 import { PetsService } from '../pets/pets.service';
+import { parseHomeLayout, type HomeLayout } from './home-layout';
 
 /** 작성자 프로필: 닉네임 · 가입일 · 쓴 글 / 댓글 수 · 배지 (이메일 같은 개인 정보는 주지 않는다) */
 @Controller()
@@ -74,6 +75,27 @@ export class UsersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   unblock(@LoginUser() user: AuthUser, @Param('id') id: string) {
     return this.blocks.unblock(user.id, id);
+  }
+
+  /** 나만의 홈: 저장한 위젯 배치 (없으면 기본 홈) */
+  @Get('me/home')
+  async home(@LoginUser() user: AuthUser) {
+    const row = await this.db.one<{ layout: HomeLayout | null }>('SELECT home_layout AS layout FROM users WHERE id = $1', [user.id]);
+    return { layout: row?.layout ?? null };
+  }
+
+  @Put('me/home')
+  async saveHome(@LoginUser() user: AuthUser, @Body() body: { layout?: unknown }) {
+    const layout = parseHomeLayout(body?.layout);
+    await this.db.execute('UPDATE users SET home_layout = $2 WHERE id = $1', [user.id, JSON.stringify(layout)]);
+    return { layout };
+  }
+
+  /** 기본 홈으로 되돌리기 */
+  @Delete('me/home')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resetHome(@LoginUser() user: AuthUser) {
+    await this.db.execute('UPDATE users SET home_layout = NULL WHERE id = $1', [user.id]);
   }
 
   /** 내가 차단한 사용자 (설정) */

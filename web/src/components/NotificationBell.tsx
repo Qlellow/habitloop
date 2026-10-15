@@ -9,7 +9,7 @@ import { cn } from '../lib/cn';
 const name = (n: NotificationItem) => n.actor?.nickname ?? '알 수 없는 사용자';
 
 /** 알림 한 줄의 문장 */
-function message(n: NotificationItem) {
+export function notificationMessage(n: NotificationItem) {
   const who = <b className="font-semibold text-fg-strong">{name(n)}</b>;
   switch (n.type) {
     case 'comment':
@@ -137,7 +137,7 @@ export function NotificationBell() {
                     >
                       <UserAvatar nickname={n.type === 'notice' ? n.post.channelName : name(n)} avatarUrl={n.actor?.avatarUrl} size={36} className="mt-0.5" />
                       <span className="flex-1 min-w-0">
-                        <span className="block text-[14px] leading-[1.45] text-fg">{message(n)}</span>
+                        <span className="block text-[14px] leading-[1.45] text-fg">{notificationMessage(n)}</span>
                         {n.comment && <span className="block mt-0.5 text-[13px] text-fg-sub truncate">“{n.comment.excerpt}”</span>}
                         <span className="block mt-0.5 text-[12px] text-fg-weak truncate">
                           {n.post.title} · {timeAgo(n.createdAt)}

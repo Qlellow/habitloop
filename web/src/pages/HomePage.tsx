@@ -1,11 +1,18 @@
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth, useFeed } from '@loop/shared';
+import { useAuth, useChannels, useMyChannels, type HomeLayout } from '@loop/shared';
 import { Page } from '../components/Layout';
-import { PostList } from '../components/PostList';
-import { ChannelSidebar, ChannelStrip, PopularCard } from '../components/Sidebar';
+import { HomeGrid } from '../components/home/HomeGrid';
+import { compactOptions, optionsOf } from '../components/home/widgets';
+import { GridIcon } from '../components/Icons';
+import { toast } from '../components/Toast';
+import { TEMPLATES, fromTemplate, normalize, useSavedHome, type TemplateCtx } from '../lib/homeLayout';
 import { preload } from '../lib/preload';
 import { ui } from '../components/ui';
 import { cn } from '../lib/cn';
+
+// 편집기는 꾸밀 때만 불러온다
+const HomeEditor = lazy(() => import('../components/home/HomeEditor').then((m) => ({ default: m.HomeEditor })));
 
 export function MakeChannelCard() {
   const { isLoggedIn } = useAuth();
@@ -25,25 +32,81 @@ export function MakeChannelCard() {
   );
 }
 
+/** 넓은 화면(860px 이상)에서만 꾸밀 수 있다 */
+const wide = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 860px)').matches;
+
+/**
+ * 홈: 나만의 홈 (위젯 배치). 저장한 배치가 없으면 기본 템플릿(왼쪽 채널 · 가운데 글 · 오른쪽 인기글).
+ * '홈 꾸미기'로 위젯을 더하고 옮기고 크기 · 설정을 바꾼다 (components/home).
+ */
 export default function HomePage() {
-  const feed = useFeed({});
+  const { isLoggedIn } = useAuth();
+  const { layout: saved, loading, saving, save } = useSavedHome();
+  const mine = useMyChannels(isLoggedIn).data;
+  const popular = useChannels().data;
+  const [editing, setEditing] = useState(false);
+
+  const ctx: TemplateCtx = useMemo(() => {
+    const followed = mine?.filter((c) => !c.owner).map((c) => c.slug) ?? [];
+    const rest = popular?.map((c) => c.slug).filter((s) => !followed.includes(s)) ?? [];
+    return { loggedIn: isLoggedIn, channels: [...followed, ...rest] };
+  }, [isLoggedIn, mine, popular]);
+
+  // 기본 홈은 로그인 여부에 따라 달라지지만 id 가 바뀌지 않게 한 번만 만든다
+  const fallback = useMemo(() => fromTemplate(TEMPLATES[0], { loggedIn: isLoggedIn, channels: [] }), [isLoggedIn]);
+  const layout = saved ?? fallback;
+
+  // 메모처럼 위젯 안에서 바로 바꾸는 설정은 바로 저장한다
+  const onOption = useCallback(
+    (id: string, key: string, value: string | number | boolean) => {
+      const next: HomeLayout = {
+        ...layout,
+        widgets: layout.widgets.map((w) => (w.id === id ? { ...w, o: compactOptions(w, { ...optionsOf(w), [key]: value }) } : w)),
+      };
+      save(next).catch((e: Error) => toast(e.message));
+    },
+    [layout, save],
+  );
+
+  const startEdit = () => {
+    if (!wide()) return toast('홈 꾸미기는 넓은 화면(태블릿 가로 · 컴퓨터)에서 할 수 있어요');
+    preload.homeEditor();
+    setEditing(true);
+    window.scrollTo({ top: 0 });
+  };
+
+  if (editing) {
+    return (
+      <Page variant="wide">
+        <Suspense fallback={<div className={ui.spinner} />}>
+          <HomeEditor
+            initial={layout}
+            ctx={ctx}
+            saving={saving}
+            onCancel={() => setEditing(false)}
+            onSave={(next, reset) => {
+              save(reset ? null : normalize(next))
+                .then(() => {
+                  setEditing(false);
+                  toast(reset ? '기본 홈으로 되돌렸어요' : '홈을 저장했어요');
+                })
+                .catch((e: Error) => toast(e.message));
+            }}
+          />
+        </Suspense>
+      </Page>
+    );
+  }
+
   return (
-    <Page
-      left={<ChannelSidebar />}
-      right={
-        <>
-          <PopularCard />
-          <MakeChannelCard />
-        </>
-      }
-    >
-      <ChannelStrip />
-      <section className={ui.card}>
-        <div className={ui.cardHead}>
-          <h1 className={ui.sectionTitle}>전체 글</h1>
-        </div>
-        <PostList query={feed} empty="아직 글이 없어요. 첫 글을 남겨 보세요!" />
-      </section>
+    <Page variant="wide">
+      <div className="home-top">
+        <button type="button" className={cn(ui.button, ui.text, ui.small, 'gap-1.5 [&>svg]:w-4 [&>svg]:h-4')} onClick={startEdit} onPointerEnter={preload.homeEditor}>
+          <GridIcon />
+          홈 꾸미기
+        </button>
+      </div>
+      {loading ? <div className={ui.spinner} /> : <HomeGrid layout={layout} onOption={onOption} />}
     </Page>
   );
 }

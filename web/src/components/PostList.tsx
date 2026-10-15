@@ -227,10 +227,12 @@ export function PostListSkeleton({ count = 5 }: { count?: number }) {
 type FeedQuery = UseInfiniteQueryResult<InfiniteData<CursorPage<PostSummary>>>;
 
 /** 무한 스크롤 목록. 끝에 닿기 전에(rootMargin) 다음 페이지를 미리 불러온다. */
-export function PostList({ query, empty, badge }: { query: FeedQuery; empty: string; badge?: Badge }) {
+export function PostList({ query, empty, badge, excerpt }: { query: FeedQuery; empty: string; badge?: Badge; excerpt?: boolean }) {
   const { data, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query;
   const sentinel = useRef<HTMLDivElement>(null);
-  const { showExcerpt } = useSettings();
+  const settings = useSettings();
+  // excerpt: 본문 미리보기를 이 목록만 따로 정할 때 (나만의 홈 위젯)
+  const showExcerpt = excerpt ?? settings.showExcerpt;
 
   useEffect(() => {
     const el = sentinel.current;
