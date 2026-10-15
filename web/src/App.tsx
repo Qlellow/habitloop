@@ -5,6 +5,7 @@ import { useAuth } from '@loop/shared';
 import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
 import { MiniWindows } from './components/MiniWindows';
+import { VoiceDock } from './components/VoiceDock';
 import { CommandPalette } from './components/CommandPalette';
 import { PixelParticles } from './components/PixelParticles';
 import { DesktopPet } from './components/DesktopPet';
@@ -91,6 +92,8 @@ function Root() {
       </div>
       {/* 게시글 미니 창 (데스크톱): 화면을 옮겨도 떠 있다 */}
       <MiniWindows />
+      {/* 채널 음성채팅: 들어가 있는 동안 화면을 옮겨도 이어진다 */}
+      <VoiceDock />
       {/* Ctrl/⌘ + K: 키보드로 이동 · 글쓰기 · 테마 · 찾기 */}
       <CommandPalette />
       {/* 인터랙티브 커서: 마우스를 올린 버튼 · 아이콘이 도트 파티클을 뿜는다 */}

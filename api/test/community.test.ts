@@ -5,6 +5,7 @@ import { JwtService } from '../src/auth/jwt.service';
 import { Mailer } from '../src/mail/mailer';
 import { Database } from '../src/db/database';
 import { makeExcerpt, EXCERPT_LENGTH } from '../src/posts/excerpt';
+import jwtLib from 'jsonwebtoken';
 
 /**
  * 통합 테스트: 메모리 Postgres(PGlite) 위에서 실제 HTTP 요청으로 전체 흐름을 확인한다.
@@ -643,6 +644,59 @@ describe('커뮤니티', () => {
     await http().post('/api/channels/teen/categories').set(bearer(minor)).send({ name: '성인', adult: true }).expect(403);
     const teenCat = (await http().post('/api/channels/teen/categories').set(bearer(minor)).send({ name: '일반' }).expect(200)).body[0].id;
     await http().put(`/api/channels/teen/categories/${teenCat}`).set(bearer(minor)).send({ name: '일반', adult: true }).expect(403);
+  });
+
+  it('채널 음성채팅: 운영진만 방 관리 · 입장 토큰은 채널을 볼 수 있는 사람만', async () => {
+    const owner = await signup('voice-owner@test.dev', '음성방장');
+    const fan = await signup('voice-fan@test.dev', '음성팬');
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'talk', name: '수다방' }).expect(201);
+    const voice = '/api/channels/talk/voice';
+
+    // LiveKit 을 설정하기 전: 목록은 보이지만 꺼져 있고, 들어갈 수 없다
+    expect((await http().get(voice).expect(200)).body).toEqual({ enabled: false, canManage: false, rooms: [] });
+    await http().post(voice).set(bearer(fan)).send({ name: '잡담' }).expect(403);
+    await http().post(voice).send({ name: '잡담' }).expect(401);
+    await http().post(voice).set(bearer(owner)).send({ name: '' }).expect(400);
+    await http().post(voice).set(bearer(owner)).send({ name: '잡담', maxParticipants: 1 }).expect(400);
+    const room = (await http().post(voice).set(bearer(owner)).send({ name: ' 잡담   방 ', maxParticipants: 8 }).expect(201)).body;
+    expect(room).toMatchObject({ name: '잡담 방', maxParticipants: 8, members: [] });
+    expect((await http().get(voice).set(bearer(owner))).body).toMatchObject({ canManage: true, rooms: [{ id: room.id, name: '잡담 방' }] });
+    await http().post(`/api/voice/rooms/${room.id}/token`).set(bearer(fan)).expect(400);
+
+    // 바꾸기 · 지우기는 운영진만
+    await http().put(`${voice}/${room.id}`).set(bearer(fan)).send({ name: '바꿈' }).expect(403);
+    expect((await http().put(`${voice}/${room.id}`).set(bearer(owner)).send({ name: '수다' }).expect(200)).body).toMatchObject({ name: '수다', maxParticipants: 8 });
+
+    // LiveKit 설정 후: 토큰에 이 방 · 음성과 화면 공유만 · 내 닉네임 (LiveKit 서버는 없어도 토큰은 나온다)
+    Object.assign(process.env, { LIVEKIT_URL: 'ws://127.0.0.1:9', LIVEKIT_API_KEY: 'testkey', LIVEKIT_API_SECRET: 'testsecret-testsecret-testsecret' });
+    try {
+      expect((await http().get(voice)).body.enabled).toBe(true);
+      await http().post(`/api/voice/rooms/${room.id}/token`).expect(401);
+      const res = (await http().post(`/api/voice/rooms/${room.id}/token`).set(bearer(fan)).expect(200)).body;
+      expect(res).toMatchObject({ url: 'ws://127.0.0.1:9', room: { id: room.id, name: '수다' }, channel: { slug: 'talk', name: '수다방' } });
+      const claims = jwtLib.verify(res.token, 'testsecret-testsecret-testsecret') as Record<string, any>;
+      expect(claims).toMatchObject({ iss: 'testkey', name: '음성팬' });
+      expect(claims.sub).toMatch(/^[0-9a-f-]{36}$/);
+      expect(claims.video).toMatchObject({ roomJoin: true, canPublish: true, canSubscribe: true });
+      expect(claims.video.room).toMatch(new RegExp(`^loop-c\\d+-r${room.id}$`));
+      expect(claims.video.canPublishSources).toEqual(['microphone', 'screen_share', 'screen_share_audio']);
+      await http().post('/api/voice/rooms/99999/token').set(bearer(fan)).expect(404);
+
+      // 비공개 채널의 방은 팔로워만
+      await http().post('/api/channels').set(bearer(owner)).send({ slug: 'hush', name: '비밀수다', visibility: 'private' }).expect(201);
+      const hidden = (await http().post('/api/channels/hush/voice').set(bearer(owner)).send({ name: '속닥' }).expect(201)).body;
+      await http().get('/api/channels/hush/voice').set(bearer(fan)).expect(403);
+      await http().post(`/api/voice/rooms/${hidden.id}/token`).set(bearer(fan)).expect(403);
+      await http().post(`/api/voice/rooms/${hidden.id}/token`).set(bearer(owner)).expect(200);
+    } finally {
+      delete process.env.LIVEKIT_URL;
+      delete process.env.LIVEKIT_API_KEY;
+      delete process.env.LIVEKIT_API_SECRET;
+    }
+
+    await http().delete(`${voice}/${room.id}`).set(bearer(fan)).expect(403);
+    await http().delete(`${voice}/${room.id}`).set(bearer(owner)).expect(204);
+    expect((await http().get(voice)).body.rooms).toEqual([]);
   });
 
   it('나만의 홈: 위젯 배치 저장 · 검사 · 되돌리기', async () => {
