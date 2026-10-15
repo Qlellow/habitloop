@@ -28,6 +28,7 @@ import { RoleBadge } from '../components/RoleBadge';
 import { UserAvatar } from '../components/UserAvatar';
 import { Markdown } from '../components/Markdown';
 import { CollapsibleBody } from '../components/CollapsibleBody';
+import { ReadingProgress } from '../components/ReadingProgress';
 import { PopularCard } from '../components/Sidebar';
 import { ReportDialog } from '../components/ReportDialog';
 import { LikeButton, ReactionBar } from '../components/Reactions';
@@ -568,9 +569,12 @@ export default function PostDetailPage() {
                   </button>
                 </div>
               ) : (
-                <CollapsibleBody key={post.id}>
-                  <Markdown source={post.content} />
-                </CollapsibleBody>
+                <>
+                  <CollapsibleBody key={post.id}>
+                    <Markdown source={post.content} />
+                  </CollapsibleBody>
+                  <ReadingProgress key={`read${post.id}`} postId={post.id} />
+                </>
               )}
             </div>
             {!isPlaceholderData && (

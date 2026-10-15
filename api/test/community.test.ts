@@ -168,6 +168,16 @@ describe('커뮤니티', () => {
     expect(comments.items[0].authorNickname).toBe('바비');
     expect((await http().get(`/api/posts/${lastId}`)).body.commentCount).toBe(1);
 
+    // 카드 미리보기: 조회수는 그대로, 최근 댓글 · 반응 함께
+    const viewsBefore = (await http().get(`/api/posts/${lastId}`)).body.viewCount;
+    const preview = (await http().get(`/api/posts/${lastId}/preview`).set(bearer(bob)).expect(200)).body;
+    expect(preview).toMatchObject({ commentCount: 1, reactions: { clap: 1, fire: 1 }, myReactions: ['fire'], blockedAuthor: false });
+    expect(preview.comments).toHaveLength(1);
+    expect(preview.comments[0]).toMatchObject({ id: comment.id, nickname: '바비', content: '좋은 글이네요' });
+    await http().get(`/api/posts/${lastId}/preview`).expect(200);
+    expect((await http().get(`/api/posts/${lastId}`)).body.viewCount).toBe(viewsBefore);
+    await http().get('/api/posts/999999/preview').expect(404);
+
     // 댓글 좋아요 & 베스트 댓글 (좋아요 2개 이상)
     const commentLike = `/api/posts/${lastId}/comments/${comment.id}/like`;
     expect((await http().post(commentLike).set(bearer(alice))).body).toEqual({ liked: true, likeCount: 1 });

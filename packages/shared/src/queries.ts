@@ -18,6 +18,7 @@ import type {
   NotificationItem,
   ReportReason,
   ReactionKind,
+  PostPreview,
   Pet,
   PetSpecies,
   ReactionResponse,
@@ -71,6 +72,7 @@ export const keys = {
   feed: (f: FeedFilter) => ['posts', 'feed', f] as const,
   popular: (channel?: string) => ['posts', 'popular', channel ?? '*'] as const,
   post: (id: number) => ['post', id] as const,
+  postPreview: (id: number) => ['post', id, 'preview'] as const,
   comments: (postId: number) => ['comments', postId] as const,
   bestComments: (postId: number) => ['comments', postId, 'best'] as const,
   channels: (q = '') => ['channels', q] as const,
@@ -740,6 +742,16 @@ export function useToggleReaction(postId: number) {
       qc.invalidateQueries({ queryKey: keys.post(postId) });
     },
     onSuccess: (res) => qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, ...res }),
+  });
+}
+
+/** 게시글 카드 미리보기 (마우스를 올렸을 때만 받아 온다) */
+export function usePostPreview(id: number, enabled: boolean) {
+  return useQuery<PostPreview>({
+    queryKey: keys.postPreview(id),
+    queryFn: ({ signal }) => api<PostPreview>(`/api/posts/${id}/preview`, { signal }),
+    enabled,
+    staleTime: 60_000,
   });
 }
 

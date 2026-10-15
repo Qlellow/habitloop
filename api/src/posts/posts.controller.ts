@@ -125,6 +125,13 @@ export class PostsController {
     return this.posts.unlike(user.id, id(postId));
   }
 
+  /** 글 카드 미리보기 (조회수를 올리지 않는다) */
+  @Public()
+  @Get('posts/:id/preview')
+  preview(@Param('id') postId: string, @CurrentUser() user?: AuthUser) {
+    return this.posts.preview(id(postId), user?.id);
+  }
+
   /** 감정 반응 달기 · 취소 */
   @Put('posts/:id/reactions/:kind')
   async react(@LoginUser() user: AuthUser, @Param('id') postId: string, @Param('kind') kind: string) {

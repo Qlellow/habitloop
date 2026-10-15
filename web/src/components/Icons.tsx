@@ -200,6 +200,12 @@ export const EyeOffIcon = (p: P) => (
   </svg>
 );
 
+export const CheckIcon = (p: P) => (
+  <svg {...base} data-icon="check" {...p}>
+    <path d="M5.5 12.5l4.2 4.2 8.8-9.2" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const CheckCircleIcon = (p: P) => (
   <svg {...base} data-icon="check-circle" {...p}>
     <circle cx="12" cy="12" r="8.5" {...line} />

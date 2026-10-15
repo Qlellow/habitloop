@@ -44,6 +44,9 @@ export interface PostSearch {
 export const MAX_PAGE_SIZE = 50;
 
 /** 채널 글 목록 정렬 */
+/** 글 카드 미리보기 본문 길이 */
+const PREVIEW_LENGTH = 260;
+
 /** 감정 반응 종류 (shared 의 REACTIONS 와 같게) */
 export const REACTION_KINDS = ['clap', 'laugh', 'wow', 'sad', 'fire'];
 
@@ -400,6 +403,42 @@ export class PostsService {
     // 이 사람이 처음 공감했을 때만 글쓴이에게 알린다 (눌렀다 취소했다 반복해도 한 번)
     if (await this.rewards.postLiked(postId, userId)) await this.notifications.liked(postId, userId);
     return { liked: true, likeCount };
+  }
+
+  /**
+   * 글 카드 미리보기 (목록에서 마우스를 올렸을 때): 본문 앞부분 · 반응 · 최근 댓글 2개.
+   * 조회수를 올리지 않는다. 숨긴 댓글 · 내가 차단한 사람의 댓글은 빼고, 차단한 사람의 글이면 본문을 비운다
+   */
+  async preview(postId: number, viewerId?: number) {
+    await this.requirePostAccess(postId, viewerId);
+    const post = await this.db.one<{ content: string; likeCount: number; commentCount: number; authorId: number }>(
+      'SELECT content, like_count AS "likeCount", comment_count AS "commentCount", author_id AS "authorId" FROM posts WHERE id = $1',
+      [postId],
+    );
+    if (!post) throw notFound();
+    const [blockedAuthor, reactions, comments, liked] = await Promise.all([
+      this.blocks.isBlocked(viewerId, post.authorId),
+      this.reactions(postId, viewerId),
+      this.db.query<{ id: number; nickname: string; avatarUrl: string | null; content: string; createdAt: Date }>(
+        `SELECT c.id, u.nickname, CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "avatarUrl",
+                c.content, c.created_at AS "createdAt"
+         FROM comments c JOIN users u ON u.id = c.author_id
+         WHERE c.post_id = $1 AND c.hidden_at IS NULL
+           AND ($2::int IS NULL OR NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $2 AND b.blocked_id = c.author_id))
+         ORDER BY c.id DESC LIMIT 2`,
+        [postId, viewerId ?? null],
+      ),
+      viewerId == null ? false : this.db.one('SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2', [postId, viewerId]).then(Boolean),
+    ]);
+    return {
+      excerpt: blockedAuthor ? '' : makeExcerpt(post.content, PREVIEW_LENGTH),
+      likeCount: post.likeCount,
+      commentCount: post.commentCount,
+      liked,
+      ...reactions,
+      comments: comments.map((c) => ({ ...c, avatarUrl: c.avatarUrl ?? undefined, content: makeExcerpt(c.content, 80) })),
+      blockedAuthor,
+    };
   }
 
   /** 감정 반응: 종류마다 한 번씩 누르고 취소한다. 여러 번 보내도 결과가 같다 */
