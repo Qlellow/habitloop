@@ -2162,6 +2162,40 @@ input[type='search']::-webkit-search-cancel-button:hover {
 }
 
 /* ───────── 읽기 진행도 (components/ReadingProgress) ───────── */
+/* 헤더 바로 아래 얇은 막대 (헤더 블러 띠보다 위) */
+.read-bar {
+  position: fixed;
+  top: var(--header-h);
+  inset-inline: 0;
+  height: 3px;
+  z-index: 31;
+  pointer-events: none;
+  animation: read-fade-in 0.4s ease;
+}
+.read-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: 0 3px 3px 0;
+  transform-origin: left;
+  transition: transform 0.15s linear;
+}
+.read-bar.is-done > i {
+  animation: read-bar-done 1.2s ease forwards;
+}
+@keyframes read-bar-done {
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+@keyframes read-fade-in {
+  from {
+    opacity: 0;
+  }
+}
 .read-progress {
   position: fixed;
   right: 24px;
@@ -2170,19 +2204,13 @@ input[type='search']::-webkit-search-cancel-button:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(10px) scale(0.92);
-  transition:
-    opacity 0.3s ease,
-    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: read-pop-in 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) 0.2s backwards;
 }
-.read-progress.is-visible {
-  opacity: 1;
-  transform: none;
-}
-.read-progress.is-visible > * {
-  pointer-events: auto;
+@keyframes read-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.6);
+  }
 }
 @media (max-width: 520px) {
   .read-progress {
@@ -2190,23 +2218,60 @@ input[type='search']::-webkit-search-cancel-button:hover {
     bottom: calc(var(--tabbar-h) + 16px);
   }
 }
+/* 처음 한 번 띄우는 안내 말풍선 (원 왼쪽) */
+.read-intro {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
+  width: 236px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: var(--text-strong);
+  color: var(--surface);
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  animation: read-intro-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.read-intro b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 13px;
+  color: var(--surface);
+}
+/* 꼬리: 원을 가리킨다 */
+.read-intro::after {
+  content: '';
+  position: absolute;
+  right: 19px;
+  top: 100%;
+  border: 7px solid transparent;
+  border-top-color: var(--text-strong);
+}
+@keyframes read-intro-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
 .read-ring {
   position: relative;
-  width: 46px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow:
     0 0 0 1px var(--border),
-    0 6px 18px rgba(0, 0, 0, 0.1);
+    0 8px 22px rgba(0, 0, 0, 0.12);
 }
 .read-ring > svg {
   position: absolute;
-  inset: 1px;
-  width: 44px;
-  height: 44px;
+  inset: 2px;
+  width: 48px;
+  height: 48px;
   transform: rotate(-90deg);
 }
 .read-ring > svg circle {
@@ -2226,14 +2291,19 @@ input[type='search']::-webkit-search-cancel-button:hover {
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-sub);
   font-variant-numeric: tabular-nums;
 }
+.read-ring-label small {
+  font-size: 9px;
+  font-weight: 600;
+  margin-left: 1px;
+}
 .read-ring-label svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   color: var(--primary);
   animation: read-check 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
@@ -2249,19 +2319,19 @@ input[type='search']::-webkit-search-cancel-button:hover {
 @keyframes read-done {
   40% {
     box-shadow:
-      0 0 0 6px color-mix(in srgb, var(--primary) 22%, transparent),
-      0 6px 18px rgba(0, 0, 0, 0.1);
+      0 0 0 7px color-mix(in srgb, var(--primary) 22%, transparent),
+      0 8px 22px rgba(0, 0, 0, 0.12);
   }
 }
 .read-resume {
   display: flex;
   align-items: center;
-  height: 38px;
+  height: 40px;
   border-radius: 999px;
   background: var(--primary);
   color: #fff;
   box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 35%, transparent);
-  animation: read-resume-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: read-resume-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s backwards;
 }
 .read-resume-go {
   height: 100%;
@@ -2295,10 +2365,14 @@ input[type='search']::-webkit-search-cancel-button:hover {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .read-progress,
+  .read-bar > i,
   .read-ring-fill {
     transition: none;
   }
+  .read-bar,
+  .read-bar.is-done > i,
+  .read-progress,
+  .read-intro,
   .read-resume,
   .read-ring-label svg,
   .read-progress.is-done .read-ring {
