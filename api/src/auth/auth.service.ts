@@ -373,7 +373,7 @@ export class AuthService {
       const tag = randomBytes(2).toString('hex');
       await this.db.execute(
         `UPDATE users SET email = $2, password = $3, has_password = FALSE, nickname = $4, two_factor_enabled = FALSE,
-                avatar_id = NULL, banner = NULL, custom_banner = FALSE, birth_date = NULL, points = 0,
+                avatar_id = NULL, banner = NULL, custom_banner = FALSE, birth_date = NULL, points = 0, home_layout = NULL,
                 invite_code = upper(substr(md5(random()::text), 1, 8)), withdrawn_at = now()
          WHERE id = $1`,
         [userId, `withdrawn+${userId}@deleted.loop`, await bcrypt.hash(randomBytes(24).toString('base64url'), 10), `탈퇴한 사용자 ${tag}`],

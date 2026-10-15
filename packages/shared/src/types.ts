@@ -426,3 +426,38 @@ export interface LikeResponse {
   liked: boolean;
   likeCount: number;
 }
+
+/* ───────── 나만의 홈 (홈 화면 위젯 배치) ───────── */
+
+export type HomeWidgetType =
+  | 'feed'
+  | 'popular'
+  | 'followed'
+  | 'hotChannels'
+  | 'notifications'
+  | 'activity'
+  | 'channel'
+  | 'pet'
+  | 'makeChannel'
+  | 'greeting'
+  | 'memo'
+  | 'shortcuts';
+
+/** 12칸 격자 위의 위젯 하나. x · w 는 칸(0~12), y · h 는 줄 */
+export interface HomeWidget {
+  id: string;
+  type: HomeWidgetType;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** 위젯 설정 (제목 · 높이 맞춤 · 채널 · 개수 · 메모 글 …) */
+  o?: Record<string, string | number | boolean>;
+}
+
+export interface HomeLayout {
+  v: 1;
+  /** 위로 붙이기: 빈 줄 없이 위젯을 위로 모은다 (끄면 빈칸을 두고 자유롭게) */
+  compact: boolean;
+  widgets: HomeWidget[];
+}
