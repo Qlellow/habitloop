@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { PET_SPECIES, PET_STAGES, useAdoptPet, useMyPet, usePatPet, useUpdatePet, type Pet, type PetSpecies } from '@loop/shared';
 import { PetActor } from '../../components/Pet';
 import { toast } from '../../components/Toast';
+import { updateSettings, useSettings } from '../../lib/settings';
 import { ui } from '../../components/ui';
 import s from './my.styles';
 import { cn } from '../../lib/cn';
@@ -78,6 +79,7 @@ function Adopt() {
 function PetHome({ pet }: { pet: Pet }) {
   const pat = usePatPet();
   const update = useUpdatePet();
+  const { petRoam } = useSettings();
   const [pats, setPats] = useState(0);
   const [name, setName] = useState(pet.name);
   const prevLevel = useRef(pet.level);
@@ -182,6 +184,22 @@ function PetHome({ pet }: { pet: Pet }) {
           </button>
         </form>
         <div className={cn(s.option, 'mt-2')}>
+          <div>
+            <div className={s.optionLabel}>화면에 데리고 다니기</div>
+            <div className={s.optionDesc}>
+              {pet.name}이(가) 다른 화면에서도 돌아다녀요. 끌어서 옮기거나 던질 수 있고, 눌러서 쓰다듬어요. (이 브라우저에만 저장 · 마우스가 있는 기기)
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={petRoam}
+            aria-label="화면에 데리고 다니기"
+            className={s.switch}
+            onClick={() => updateSettings({ petRoam: !petRoam })}
+          />
+        </div>
+        <div className={s.option}>
           <div>
             <div className={s.optionLabel}>프로필에 전시하기</div>
             <div className={s.optionDesc}>다른 사람이 내 프로필에서 {pet.name}을(를) 볼 수 있어요.</div>
