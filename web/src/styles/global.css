@@ -2974,6 +2974,7 @@ body.home-dragging {
 /* 통화 중인 채널의 음성 카드: 연두색 테두리 + 반투명 초록 배경 */
 .voice-card {
   --voice-live: #7ad94f;
+  --voice-line: #03b26c;
   --voice-live-text: #2f9e1f;
   transition:
     border-color 0.3s ease,
@@ -2988,10 +2989,11 @@ body.home-dragging {
     --voice-live-text: #8ee86a;
   }
 }
+/* 외곽선은 초록 (통화 버튼 테두리와 같은 색), 배경은 반투명 연두 */
 .voice-card.is-live {
-  border-color: var(--voice-live);
+  border-color: var(--voice-line);
   background: color-mix(in srgb, var(--voice-live) 12%, var(--surface));
-  box-shadow: 0 0 0 1px var(--voice-live);
+  box-shadow: 0 0 0 1px var(--voice-line);
 }
 /* 참여자 더보기 / 접기 (통화 조작 바로 위) */
 .voice-more {
@@ -3237,6 +3239,7 @@ body.home-dragging {
 }
 .voice-ctl {
   flex: 1;
+  min-width: 0;
   display: grid;
   place-items: center;
   height: 36px;
