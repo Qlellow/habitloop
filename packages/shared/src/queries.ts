@@ -23,6 +23,7 @@ import type {
   ChannelVoice,
   VoiceJoin,
   VoiceRoom,
+  VoiceRoomResult,
   Pet,
   PetSpecies,
   ReactionResponse,
@@ -811,6 +812,18 @@ export function useVoiceRoomMutation(slug: string) {
           ? api<VoiceRoom>(`${base}/${op.id}`, { method: 'PUT', body: { name: op.name, maxParticipants: op.maxParticipants } })
           : api<void>(`${base}/${op.id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: voiceKey(slug) }),
+  });
+}
+
+/** 음성방 찾기: 방 · 채널 이름 (비우면 사람이 있는 방부터) */
+export function useVoiceRoomSearch(q: string, enabled = true) {
+  const keyword = q.trim();
+  return useQuery({
+    queryKey: ['voice', 'search', keyword] as const,
+    queryFn: ({ signal }) => api<{ enabled: boolean; rooms: VoiceRoomResult[] }>('/api/voice/rooms', { query: { q: keyword }, signal }),
+    enabled,
+    staleTime: 5_000,
+    placeholderData: (prev) => prev,
   });
 }
 

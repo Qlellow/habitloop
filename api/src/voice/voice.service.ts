@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ApiError } from '../common/api-error';
 import { Database } from '../db/database';
+import { escapeLike } from '../common/cursor-page';
 import { ChannelsService, type ChannelRow } from '../channels/channels.service';
 import { isStaff } from '../channels/roles';
 import { accessToken, liveKit, liveKitConfig, type LkParticipant } from './livekit';
@@ -95,6 +96,38 @@ export class VoiceService {
 
   private async requireStaff(channel: ChannelRow, userId: number) {
     if (!isStaff(await this.channels.roleOf(channel.id, userId))) throw ApiError.forbidden('음성방은 운영진만 만들고 바꿀 수 있어요');
+  }
+
+  /**
+   * 음성방 찾기 (커맨드 팔레트의 voice:). 방 이름이나 채널 이름에 검색어가 들어간 방,
+   * 볼 수 있는 채널만 (비공개는 팔로워만, 19세 이상은 확인한 사람만). 사람이 많은 방부터
+   */
+  async search(q: string | undefined, viewerId?: number) {
+    const keyword = (q ?? '').trim().toLowerCase().slice(0, 30);
+    const adult = await this.channels.isAdult(viewerId);
+    const rows = await this.db.query<RoomRow & { slug: string; channelName: string; iconVersion: number; color: number | null }>(
+      `SELECT r.id, r.channel_id AS "channelId", r.name, r.max_participants AS "maxParticipants", r.position,
+              c.slug, c.name AS "channelName", c.icon_version AS "iconVersion", c.color
+       FROM voice_rooms r JOIN channels c ON c.id = r.channel_id
+       WHERE ($1 = '' OR lower(r.name) LIKE $2 ESCAPE '\\' OR lower(c.name) LIKE $2 ESCAPE '\\')
+         AND ($3 OR NOT c.adult)
+         AND (c.visibility = 'public' OR EXISTS (SELECT 1 FROM channel_members m WHERE m.channel_id = c.id AND m.user_id = $4))
+       ORDER BY (lower(r.name) LIKE $5 ESCAPE '\\') DESC, c.member_count DESC, r.position, r.id
+       LIMIT 30`,
+      [keyword, `%${escapeLike(keyword)}%`, adult, viewerId ?? null, `${escapeLike(keyword)}%`],
+    );
+    const rooms = await Promise.all(
+      rows.map(async (r) => ({
+        id: r.id,
+        name: r.name,
+        maxParticipants: r.maxParticipants,
+        members: await this.membersOf(r),
+        channel: { slug: r.slug, name: r.channelName, iconVersion: r.iconVersion, color: r.color },
+      })),
+    );
+    // 지금 사람이 있는 방을 먼저 (같으면 검색 순서 그대로)
+    rooms.sort((a, b) => Number(b.members.length > 0) - Number(a.members.length > 0) || b.members.length - a.members.length);
+    return { enabled: !!liveKitConfig(), rooms: rooms.slice(0, 10) };
   }
 
   /** 채널의 음성방 목록 + 방마다 지금 있는 사람 */

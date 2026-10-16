@@ -3398,3 +3398,9 @@ body.home-dragging {
     animation: none;
   }
 }
+
+/* 커맨드 팔레트: 음성방 이름 옆 채널 이름 */
+.cmdk-sub {
+  font-weight: 400;
+  color: var(--text-weak);
+}
