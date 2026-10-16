@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
 import { CurrentUser, LoginUser, Public } from '../auth/auth.guard';
 import type { AuthUser } from '../auth/jwt.service';
 import { ApiError } from '../common/api-error';
@@ -17,6 +17,13 @@ type RoomBody = { name?: unknown; maxParticipants?: unknown };
 @Controller()
 export class VoiceController {
   constructor(private readonly voice: VoiceService) {}
+
+  /** 음성방 찾기 (커맨드 팔레트 voice:) */
+  @Public()
+  @Get('voice/rooms')
+  search(@Query('q') q: string | undefined, @CurrentUser() user?: AuthUser) {
+    return this.voice.search(q, user?.id);
+  }
 
   @Public()
   @Get('channels/:slug/voice')

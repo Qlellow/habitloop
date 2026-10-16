@@ -490,6 +490,11 @@ export interface ChannelVoice {
   rooms: VoiceRoom[];
 }
 
+/** 음성방 찾기 결과 (커맨드 팔레트 voice:) */
+export interface VoiceRoomResult extends VoiceRoom {
+  channel: { slug: string; name: string; iconVersion: number; color?: number | null };
+}
+
 export interface VoiceJoin {
   url: string;
   token: string;

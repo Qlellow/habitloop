@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { compact, useAuth, useChannels, useFeed, useMyChannels, useUserSearch } from '@loop/shared';
+import { compact, useAuth, useChannels, useFeed, useMyChannels, useUserSearch, useVoiceRoomSearch } from '@loop/shared';
 import { ChannelIcon } from './ChannelIcon';
 import { UserAvatar } from './UserAvatar';
 import { useConfirmSignOut } from './ConfirmDialog';
@@ -19,12 +19,15 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
+  SpeakerIcon,
   StarIcon,
   SunIcon,
   TrophyIcon,
   UserIcon,
 } from './Icons';
 import { PERIODS, updateSettings, useSettings, type Period, type Settings } from '../lib/settings';
+import { voice } from '../lib/voice';
+import { toast } from './Toast';
 import { GlassFilter, glassFilterId, useClientSize } from '../lib/glass';
 import { cn } from '../lib/cn';
 
@@ -49,6 +52,18 @@ function matches(query: string, ...texts: (string | undefined)[]) {
   if (!q) return true;
   const text = squash(texts.filter(Boolean).join(' '));
   return text.includes(q) || (/^[ㄱ-ㅎ]+$/.test(q) && chosung(text).includes(q));
+}
+
+/* ───────── 찾는 범위: @닉네임 → 사용자만, voice:이름 → 음성방만 ───────── */
+
+type Scope = { kind: 'all' | 'user' | 'voice'; term: string };
+const VOICE_PREFIX = /^voice:\s*/i;
+function scopeOf(raw: string): Scope {
+  const t = raw.trimStart();
+  if (t.startsWith('@')) return { kind: 'user', term: t.slice(1).trim() };
+  const m = VOICE_PREFIX.exec(t);
+  if (m) return { kind: 'voice', term: t.slice(m[0].length).trim() };
+  return { kind: 'all', term: raw.trim() };
 }
 
 /* ───────── 항목 ───────── */
@@ -161,11 +176,15 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
   };
   const go = (to: string) => run(() => navigate(to));
 
-  const searching = mode === 'root' && keyword.length > 0;
+  // 입력한 그대로(input)와 잠깐 기다린 뒤의 검색어(keyword) 모두 범위를 나눈다
+  const typed = scopeOf(input);
+  const scope = scopeOf(keyword);
+  const searching = mode === 'root' && scope.kind === 'all' && scope.term.length > 0;
   const mine = useMyChannels(isLoggedIn);
-  const channels = useChannels(searching ? keyword : '');
-  const users = useUserSearch(searching ? keyword : '');
-  const posts = useFeed({ q: keyword }, searching);
+  const channels = useChannels(searching ? scope.term : '');
+  const users = useUserSearch(mode === 'root' && scope.kind !== 'voice' ? scope.term : '');
+  const posts = useFeed({ q: scope.term }, searching);
+  const rooms = useVoiceRoomSearch(scope.term, mode === 'root' && scope.kind === 'voice');
   const here = pathname.match(/^\/c\/([^/]+)/)?.[1];
 
   const commands = useMemo<Command[]>(() => {
@@ -248,6 +267,44 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
           run: () => go(`/write?channel=${encodeURIComponent(c.slug)}`),
         }));
     }
+    // @닉네임: 사용자만
+    if (typed.kind === 'user') {
+      if (!typed.term) return [{ id: 'user-tip', group: '사용자 찾기', label: '@ 뒤에 닉네임을 적어 보세요', icon: tile(<UserIcon />), run: () => inputRef.current?.focus() }];
+      if (scope.kind !== 'user' || scope.term !== typed.term) return [];
+      return (users.data ?? []).slice(0, 8).map((u) => ({
+        id: `u-${u.id}`,
+        group: '사용자',
+        label: u.nickname,
+        hint: '프로필',
+        icon: <UserAvatar nickname={u.nickname} avatarUrl={u.avatarUrl} size={28} />,
+        run: () => go(`/u/${u.id}`),
+      }));
+    }
+    // voice:이름: 음성방만 (비우면 사람이 있는 방부터)
+    if (typed.kind === 'voice') {
+      if (scope.kind !== 'voice' || scope.term !== typed.term || !rooms.data) return [];
+      if (!rooms.data.enabled) return [{ id: 'voice-off', group: '음성방', label: '음성채팅이 아직 준비되지 않았어요', icon: tile(<SpeakerIcon />), run: () => undefined }];
+      return rooms.data.rooms.map((r) => ({
+        id: `voice-${r.id}`,
+        group: typed.term ? '음성방' : '음성방 · 사람이 있는 방부터',
+        label: (
+          <>
+            {r.name}
+            <span className="cmdk-sub"> · {r.channel.name}</span>
+          </>
+        ),
+        hint: r.members.length ? `${r.members.length}명 참여 중` : `0/${r.maxParticipants}`,
+        icon: tile(<SpeakerIcon />),
+        run: () => {
+          if (!isLoggedIn) return go('/login');
+          go(`/c/${r.channel.slug}`);
+          voice.join(r.id).then(
+            () => toast(`'${r.name}' 음성방에 들어왔어요`),
+            (e: Error) => toast(e.message),
+          );
+        },
+      }));
+    }
     const out: Item[] = [];
     const cmd = commands.filter((c) => (q ? matches(q, c.label, c.keywords) : !c.searchOnly));
     if (!q && isLoggedIn) {
@@ -262,9 +319,20 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
         });
       }
     }
+    // 아무것도 안 적었을 때: 범위를 좁혀 찾는 법 (누르면 앞말을 채워 준다)
+    if (!q) {
+      const prefill = (text: string) => () => {
+        setInput(text);
+        inputRef.current?.focus();
+      };
+      out.push(
+        { id: 'tip-user', group: '좁혀 찾기', label: '사용자 찾기', hint: '@닉네임', icon: tile(<UserIcon />), run: prefill('@') },
+        { id: 'tip-voice', group: '좁혀 찾기', label: '음성방 찾기', hint: 'voice:이름', icon: tile(<SpeakerIcon />), run: prefill('voice:') },
+      );
+    }
     // 검색할 때는 명령을 맨 위 한 묶음으로
     for (const c of cmd) out.push({ ...c, group: q ? '명령' : c.group, icon: tile(c.icon), hint: c.current ? '사용 중' : c.hint });
-    if (searching && keyword === q) {
+    if (searching && scope.term === q) {
       for (const c of (channels.data ?? []).slice(0, RESULT_SIZE)) {
         out.push({
           id: `ch-${c.slug}`,
@@ -290,9 +358,13 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
       });
     }
     return out;
-  }, [mode, input, keyword, searching, commands, isLoggedIn, mine.data, channels.data, users.data, posts.data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, input, keyword, searching, commands, isLoggedIn, mine.data, channels.data, users.data, posts.data, rooms.data]);
 
-  const loading = searching && (keyword !== input.trim() || channels.isFetching || users.isFetching || posts.isFetching);
+  const loading =
+    mode === 'root' &&
+    ((typed.kind !== 'all' && (keyword !== input.trim() || users.isFetching || rooms.isFetching)) ||
+      (searching && (keyword !== input.trim() || channels.isFetching || users.isFetching || posts.isFetching)));
 
   // 목록이 바뀌면 첫 항목부터
   useEffect(() => setActive(0), [input, mode]);
@@ -411,7 +483,7 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
             aria-controls={listId}
             aria-activedescendant={items[current] ? `${listId}-${current}` : undefined}
             aria-autocomplete="list"
-            placeholder={mode === 'write' ? '채널 이름으로 찾기' : '무엇을 할까요? 채널 · 사용자 · 글 · 명령 찾기'}
+            placeholder={mode === 'write' ? '채널 이름으로 찾기' : '무엇을 할까요? 채널 · 글 · 명령 · @사용자 · voice:음성방'}
             value={input}
             autoComplete="off"
             spellCheck={false}
@@ -455,7 +527,13 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
                   : (mine.data?.length ?? 0) === 0
                     ? '팔로우한 채널이 없어요. 채널을 팔로우하면 글을 쓸 수 있어요'
                     : `'${input.trim()}'이(가) 들어간 채널이 없어요`
-                : '찾는 중…'}
+                : typed.kind === 'user' && !loading
+                  ? `'${typed.term}' 닉네임의 사용자가 없어요`
+                  : typed.kind === 'voice' && !loading && rooms.data
+                    ? typed.term
+                      ? `'${typed.term}'이(가) 들어간 음성방이 없어요`
+                      : '볼 수 있는 음성방이 아직 없어요'
+                    : '찾는 중…'}
             </p>
           )}
         </div>

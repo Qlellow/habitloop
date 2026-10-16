@@ -688,6 +688,16 @@ describe('커뮤니티', () => {
       await http().get('/api/channels/hush/voice').set(bearer(fan)).expect(403);
       await http().post(`/api/voice/rooms/${hidden.id}/token`).set(bearer(fan)).expect(403);
       await http().post(`/api/voice/rooms/${hidden.id}/token`).set(bearer(owner)).expect(200);
+
+      // 음성방 찾기 (커맨드 팔레트 voice:): 방 이름 · 채널 이름으로, 볼 수 없는 채널의 방은 빼고
+      const find = async (q: string, who?: string) =>
+        (await (who ? http().get('/api/voice/rooms').query({ q }).set(bearer(who)) : http().get('/api/voice/rooms').query({ q })).expect(200)).body;
+      expect((await find('수다')).rooms.map((r: { name: string }) => r.name)).toContain('수다');
+      expect((await find('수다방')).rooms[0]).toMatchObject({ name: '수다', channel: { slug: 'talk', name: '수다방' }, maxParticipants: 8 });
+      expect((await find('속닥', fan)).rooms).toEqual([]);
+      expect((await find('속닥')).rooms).toEqual([]);
+      expect((await find('속닥', owner)).rooms).toMatchObject([{ name: '속닥', channel: { slug: 'hush' } }]);
+      expect((await find('100%_')).rooms).toEqual([]);
     } finally {
       delete process.env.LIVEKIT_URL;
       delete process.env.LIVEKIT_API_KEY;
