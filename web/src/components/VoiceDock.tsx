@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useMyBlocks, voiceKey } from '@loop/shared';
+import { useAuth, useMyBlocks, voiceKey } from '@loop/shared';
+import { toast } from './Toast';
 import { ExpandIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, MinimizeIcon } from './Icons';
 import { VoiceAvatar, VoiceControlBar, runVoice } from './VoiceControls';
-import { useVoice, voice, type VoiceScreen } from '../lib/voice';
+import { rememberRoom, useVoice, voice, type VoiceScreen } from '../lib/voice';
 import { cn } from '../lib/cn';
 
 /**
@@ -194,6 +195,28 @@ export function VoiceDock() {
     if (slug) void qc.invalidateQueries({ queryKey: voiceKey(slug) });
   }, [slug, count, v.status, qc]);
 
+  // 새로고침 전에 들어가 있던 방으로 다시 들어간다 (로그인 확인이 끝난 뒤 한 번)
+  const { isLoggedIn, ready } = useAuth();
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (!ready || resumed.current) return;
+    resumed.current = true;
+    if (!isLoggedIn) return rememberRoom(undefined);
+    void voice.resume().then((ok) => ok && toast('음성방에 다시 들어왔어요'));
+  }, [ready, isLoggedIn]);
+
+  // 브라우저가 소리를 막았으면 화면을 아무 곳이나 한 번 누르는 순간 푼다
+  useEffect(() => {
+    if (!v.audioBlocked) return;
+    const unlock = () => void voice.startAudio();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, [v.audioBlocked]);
+
   // 방에서 나오면 창도 접는다
   useEffect(() => {
     if (v.status === 'idle') setOpen(false);
@@ -228,7 +251,8 @@ export function VoiceDock() {
   // 창을 닫으면 방에서 나간다 (다른 사람 목록에 남지 않게)
   useEffect(() => {
     if (v.status === 'idle') return;
-    const bye = () => void voice.leave();
+    // 새로고침 · 창 닫기: 연결은 끊되 이 탭에 방을 기억해 다시 열면 그 방으로 들어간다
+    const bye = () => void voice.leave({ keepResume: true });
     window.addEventListener('pagehide', bye);
     return () => window.removeEventListener('pagehide', bye);
   }, [v.status]);
@@ -300,6 +324,11 @@ export function VoiceDock() {
         {v.sharing && (
           <span className="voice-fab-live" aria-hidden>
             LIVE
+          </span>
+        )}
+        {v.audioBlocked && (
+          <span className="voice-fab-hint" aria-hidden>
+            눌러서 소리 켜기
           </span>
         )}
       </button>
