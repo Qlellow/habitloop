@@ -1,3 +1,4 @@
+import { isMac, openCommandPalette } from '../../components/CommandPalette';
 import { useState, type FormEvent } from 'react';
 import {
   useBlockUser,
@@ -569,7 +570,7 @@ const FX_DESIGNS: [FxDesign, string, string][] = [
  * 아래 칸에서 바로 시험해 볼 수 있다
  */
 function PixelFxOption() {
-  const { cursorFx, pixelFxSpecialOnly, fxDesign } = useSettings();
+  const { cursorFx, pixelFxSpecialOnly, fxDesign, cmdkFx } = useSettings();
   const can = useMediaQuery('(hover: hover) and (pointer: fine)');
   const desc = FX_DESIGNS.find(([v]) => v === fxDesign)?.[2];
   return (
@@ -589,6 +590,18 @@ function PixelFxOption() {
               <div className={s.optionDesc}>{desc}</div>
             </div>
             <Segment name="fxDesign" value={fxDesign} options={FX_DESIGNS.map(([v, label]) => [v, label])} />
+          </div>
+          <div className={s.option}>
+            <div>
+              <div className={s.optionLabel}>커맨드 팔레트도 커서 디자인으로</div>
+              <div className={s.optionDesc}>
+                {isMac ? '⌘' : 'Ctrl'}+K 창의 색 · 빛 · 도트 장식이 고른 디자인({FX_DESIGNS.find(([v]) => v === fxDesign)?.[1]})을 따라가요.{' '}
+                <button type="button" className="font-semibold text-primary hover:underline underline-offset-2" onClick={openCommandPalette}>
+                  열어 보기
+                </button>
+              </div>
+            </div>
+            <button type="button" role="switch" aria-checked={cmdkFx} aria-label="커맨드 팔레트도 커서 디자인으로" className={s.switch} onClick={() => updateSettings({ cmdkFx: !cmdkFx })} />
           </div>
           <div className={s.option}>
             <div>
