@@ -71,8 +71,10 @@ export function savePrefs(patch: Partial<VoicePrefs>) {
   }
 }
 
+// join 도 꼭 비운다: 상태는 합쳐서 바뀌므로 키가 없으면 이전 방 정보가 남아 다시 들어갈 수 없게 된다
 export const idleState = (): VoiceState => ({
   status: 'idle',
+  join: undefined,
   people: [],
   micOn: false,
   deafened: false,
