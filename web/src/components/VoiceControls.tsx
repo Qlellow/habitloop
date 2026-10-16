@@ -113,6 +113,11 @@ export function VoiceControlBar() {
           <LeaveCallIcon />
         </Ctl>
       </div>
+      {v.audioBlocked && (
+        <button type="button" className="voice-unblock" onClick={() => void runVoice(voice.startAudio())}>
+          🔈 브라우저가 소리를 막았어요 · 눌러서 소리 켜기
+        </button>
+      )}
       {v.listenOnly && <p className="m-0 text-[11px] text-fg-weak">마이크를 쓸 수 없어 듣기만 하는 중이에요</p>}
       {v.sharing && <p className="m-0 text-[11px] font-semibold text-danger">내 화면을 공유하고 있어요</p>}
     </div>

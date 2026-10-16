@@ -1,5 +1,6 @@
 import {
   ConnectionState,
+  DisconnectReason,
   Room,
   RoomEvent,
   Track,
@@ -10,7 +11,7 @@ import {
   type VideoTrack,
 } from 'livekit-client';
 import { fetchVoiceToken, type VoiceJoin } from '@loop/shared';
-import { getBlocked, getPrefs, idleState, savePrefs, setVoiceState, voice, type VoicePerson, type VoiceScreen } from './voice';
+import { getBlocked, getPrefs, idleState, rememberRoom, savePrefs, setVoiceState, voice, type VoicePerson, type VoiceScreen } from './voice';
 
 /**
  * 음성채팅 엔진 (LiveKit). lib/voice.ts 가 처음 방에 들어갈 때 불러온다.
@@ -46,7 +47,8 @@ export const applyBlocked = () => room?.remoteParticipants.forEach(applyVolume);
 function sync() {
   if (!room) return;
   const local = room.localParticipant;
-  const all: Participant[] = [local, ...room.remoteParticipants.values()];
+  // 새로고침 직후엔 끊기 전의 내 연결이 잠깐 남아 있을 수 있다: 내 것과 같은 계정은 빼고 보여 준다
+  const all: Participant[] = [local, ...[...room.remoteParticipants.values()].filter((p) => p.identity !== local.identity)];
   const people = all.map((p): VoicePerson => {
     const mic = p.getTrackPublication(Track.Source.Microphone);
     return {
@@ -142,8 +144,14 @@ export async function join(roomId: number) {
       if (s === ConnectionState.Reconnecting) setVoiceState({ status: 'reconnecting' });
       if (s === ConnectionState.Connected) setVoiceState({ status: 'connected' });
     })
-    .on(RoomEvent.Disconnected, () => {
+    .on(RoomEvent.AudioPlaybackStatusChanged, () => {
+      if (room === r) setVoiceState({ audioBlocked: !r.canPlaybackAudio });
+    })
+    .on(RoomEvent.Disconnected, (reason) => {
       if (room !== r) return;
+      // 서버가 끊었으면 (방이 지워짐 · 내보내짐 · 다른 창에서 같은 계정으로 들어옴) 새로고침해도 다시 들어가지 않게.
+      // 페이지를 떠나며 스스로 끊은 건(CLIENT_INITIATED) 기억해 둔다 → 새로고침하면 다시 들어간다
+      if (reason !== DisconnectReason.CLIENT_INITIATED) rememberRoom(undefined);
       cleanup();
       setVoiceState(idleState());
     });
@@ -163,8 +171,15 @@ export async function join(roomId: number) {
     listenOnly = true;
   }
   await r.startAudio().catch(() => undefined);
-  setVoiceState({ listenOnly });
+  // 새로고침 뒤 자동으로 다시 들어오면 (누르지 않았으니) 브라우저가 소리를 막을 수 있다
+  setVoiceState({ listenOnly, audioBlocked: !r.canPlaybackAudio });
   sync();
+}
+
+export async function startAudio() {
+  if (!room) return;
+  await room.startAudio().catch(() => undefined);
+  setVoiceState({ audioBlocked: !room.canPlaybackAudio });
 }
 
 export async function leave() {

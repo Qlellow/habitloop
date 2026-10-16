@@ -99,7 +99,7 @@ function HereMembers({ members }: { members: VoicePerson[] }) {
 }
 
 export function VoiceRooms({ slug }: { slug: string }) {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const navigate = useNavigate();
   const { data } = useChannelVoice(slug);
   const mutate = useVoiceRoomMutation(slug);
@@ -164,8 +164,9 @@ export function VoiceRooms({ slug }: { slug: string }) {
             <ul className="list-none m-0 p-0">
               {data.rooms.map((room) => {
                 const here = hereRoom === room.id;
-                // 내가 있는 방은 실시간 상태로, 아니면 서버가 알려 준 사람들
-                const members: (VoiceMember | VoicePerson)[] = here ? live.people : room.members;
+                // 내가 있는 방은 실시간 상태로, 아니면 서버가 알려 준 사람들.
+                // 이 화면이 연결돼 있지 않은데 서버 목록에 내가 있으면 (새로고침 직후 남은 이전 연결) 빼고 보여 준다
+                const members: (VoiceMember | VoicePerson)[] = here ? live.people : room.members.filter((m) => !(user && m.id === user.id && !inCall));
                 const full = members.length >= room.maxParticipants && !here;
                 if (editing === room.id)
                   return (

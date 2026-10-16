@@ -3155,6 +3155,32 @@ body.home-dragging {
   font-weight: 800;
   letter-spacing: 0.04em;
 }
+/* 브라우저가 소리를 막았을 때 (새로고침 뒤 자동으로 다시 들어온 경우) */
+.voice-fab-hint {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f5a700;
+  color: #1a1300;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.voice-unblock {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #f5a700 20%, transparent);
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
 /* 통화 창 */
 .voice-panel {
   position: fixed;

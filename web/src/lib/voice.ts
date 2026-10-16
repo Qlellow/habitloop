@@ -40,6 +40,8 @@ export interface VoiceState {
   /** 마이크를 쓸 수 없어 듣기만 하는 중 */
   listenOnly: boolean;
   noiseSuppression: boolean;
+  /** 브라우저가 소리 자동 재생을 막았다 (화면을 한 번 누르면 풀린다) */
+  audioBlocked: boolean;
 }
 
 export interface VoicePrefs {
@@ -82,7 +84,30 @@ export const idleState = (): VoiceState => ({
   screens: [],
   listenOnly: false,
   noiseSuppression: prefs.noiseSuppression,
+  audioBlocked: false,
 });
+
+/**
+ * 새로고침해도 들어가 있던 방으로 다시 들어가도록 이 탭에 기억한다 (sessionStorage: 새 탭 · 브라우저를 닫으면 사라짐).
+ * 통화 끊기를 누르거나 방에서 내보내지면 지운다.
+ */
+const RESUME = 'loop.voice.resume';
+export function rememberRoom(roomId: number | undefined) {
+  try {
+    if (roomId == null) sessionStorage.removeItem(RESUME);
+    else sessionStorage.setItem(RESUME, String(roomId));
+  } catch {
+    // 저장소를 못 쓰면 새로고침 때 다시 들어가지 않는다
+  }
+}
+function rememberedRoom() {
+  try {
+    const n = Number(sessionStorage.getItem(RESUME));
+    return Number.isInteger(n) && n > 0 ? n : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 let state: VoiceState = idleState();
 const listeners = new Set<() => void>();
@@ -105,11 +130,30 @@ export const voice = {
     return () => listeners.delete(l);
   },
   /** 음성방 들어가기 (다른 방에 있었으면 나와서) */
-  join: async (roomId: number) => (await engine()).join(roomId),
-  leave: async () => {
+  join: async (roomId: number) => {
+    await (await engine()).join(roomId);
+    rememberRoom(roomId);
+  },
+  /** 나가기. keepResume: 새로고침 · 창 닫기로 끊길 때 (다시 열면 그 방으로) */
+  leave: async (opts: { keepResume?: boolean } = {}) => {
+    if (!opts.keepResume) rememberRoom(undefined);
     if (state.status === 'idle') return;
     (await engine()).leave();
   },
+  /** 새로고침 전에 들어가 있던 방으로 다시 들어간다. 못 들어가면 잊는다 */
+  async resume() {
+    const roomId = rememberedRoom();
+    if (roomId == null || state.status !== 'idle') return false;
+    try {
+      await voice.join(roomId);
+      return true;
+    } catch {
+      rememberRoom(undefined);
+      return false;
+    }
+  },
+  /** 막힌 소리 재생 풀기 (사용자가 화면을 누를 때) */
+  startAudio: async () => (await engine()).startAudio(),
   toggleMic: async () => (await engine()).toggleMic(),
   setDeafened: async (on: boolean) => (await engine()).setDeafened(on),
   toggleScreen: async () => (await engine()).toggleScreen(),
