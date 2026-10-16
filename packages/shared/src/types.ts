@@ -473,6 +473,8 @@ export interface VoiceMember {
   muted: boolean;
   /** 화면 공유 중 */
   sharing: boolean;
+  /** 들어온 시각 (ms) */
+  joinedAt?: number;
 }
 
 export interface VoiceRoom {
@@ -480,6 +482,8 @@ export interface VoiceRoom {
   name: string;
   maxParticipants: number;
   members: VoiceMember[];
+  /** 통화 시작 (지금 있는 사람 중 가장 먼저 들어온 시각, ms). 아무도 없으면 없음 */
+  since?: number;
 }
 
 export interface ChannelVoice {

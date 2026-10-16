@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth, useChannelVoice, useVoiceRoomMutation, type VoiceMember, type VoiceRoom } from '@loop/shared';
 import { ChevronDownIcon, ChevronUpIcon, MicOffIcon, PlusIcon, ScreenShareIcon, SpeakerIcon } from './Icons';
 import { VoiceControlBar } from './VoiceControls';
+import { CallTimer } from './VoiceStage';
+import { openVoiceWindow } from '../lib/voiceWindow';
 import { UserAvatar } from './UserAvatar';
 import { toast } from './Toast';
-import { voice, useVoice, type VoicePerson } from '../lib/voice';
+import { callSince, voice, useVoice, type VoicePerson } from '../lib/voice';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 
@@ -27,7 +29,7 @@ function MemberRow({ m }: { m: VoiceMember | VoicePerson }) {
   const speaking = 'speaking' in m && m.speaking;
   return (
     // 왼쪽에 붙여서 (방 이름의 스피커 아이콘과 같은 줄). 말할 때 테두리가 위아래 줄을 침범하지 않게 위아래 여백
-    <li className="flex items-center gap-2 min-w-0 py-[3px] pl-2 pr-1">
+    <li className="flex items-center gap-2 min-w-0 py-[3px] px-2">
       <span className={cn('voice-avatar', speaking && 'is-speaking')}>
         <UserAvatar nickname={m.nickname} avatarUrl={m.avatarUrl} size={22} />
       </span>
@@ -117,6 +119,8 @@ export function VoiceRooms({ slug }: { slug: string }) {
 
   const join = async (room: VoiceRoom) => {
     if (!isLoggedIn) return navigate('/login', { state: { from: `/c/${slug}` } });
+    // 방 화면(새 창)은 더블 클릭한 그 순간에 열어야 브라우저가 막지 않는다 → 들어가기 전에 먼저 연다
+    openVoiceWindow();
     if (inCall && live.join?.room.id === room.id) return;
     setJoining(room.id);
     try {
@@ -181,7 +185,7 @@ export function VoiceRooms({ slug }: { slug: string }) {
                   );
                 return (
                   <li key={room.id} className="group/room">
-                    <div className={cn('voice-room', here && 'is-here')}>
+                    <div className={cn('voice-room', here && 'is-here', data.canManage && 'has-tools')}>
                       <button
                         type="button"
                         className="voice-room-join flex-1 min-w-0 flex items-center gap-2 h-9 px-2 text-left disabled:opacity-60"
@@ -193,8 +197,11 @@ export function VoiceRooms({ slug }: { slug: string }) {
                         title={here ? '참여 중' : '더블 클릭해서 들어가기'}
                       >
                         <SpeakerIcon width={18} height={18} className="flex-none voice-room-icon" />
-                        <span className="voice-room-name flex-1 min-w-0 truncate text-[14px] font-semibold">{room.name}</span>
-                        <span className="flex-none text-[12px] text-fg-weak tabular-nums">
+                        <span className="voice-room-name min-w-0 truncate text-[14px] font-semibold">{room.name}</span>
+                        {/* 통화 시간: 지금 있는 사람 중 가장 먼저 들어온 때부터 */}
+                        {members.length > 0 && <CallTimer since={here ? callSince(live.people) : room.since} />}
+                        {/* 정원: 왼쪽 스피커 아이콘과 마주 보게 오른쪽 끝에 (운영진은 마우스를 올리면 그 자리에 고치기 · 지우기) */}
+                        <span className="voice-room-count ml-auto flex-none text-[12px] text-fg-weak tabular-nums">
                           {joining === room.id ? '연결 중…' : full ? '가득 참' : `${members.length}/${room.maxParticipants}`}
                         </span>
                       </button>

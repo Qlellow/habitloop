@@ -18,7 +18,15 @@ export interface VoicePerson {
   sharing: boolean;
   /** 내가 듣는 이 사람의 볼륨 (0~1.5) */
   volume: number;
+  /** 들어온 시각 (ms) */
+  joinedAt?: number;
 }
+
+/** 통화 시작: 지금 있는 사람 중 가장 먼저 들어온 시각 */
+export const callSince = (people: { joinedAt?: number }[]) => {
+  const t = people.map((p) => p.joinedAt).filter((x): x is number => !!x);
+  return t.length ? Math.min(...t) : undefined;
+};
 
 export interface VoiceScreen {
   /** 화면을 공유하는 사람 */
