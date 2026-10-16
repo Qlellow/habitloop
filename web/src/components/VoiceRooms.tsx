@@ -26,7 +26,8 @@ const AUTO_FOLD = 6;
 function MemberRow({ m }: { m: VoiceMember | VoicePerson }) {
   const speaking = 'speaking' in m && m.speaking;
   return (
-    <li className="flex items-center gap-2 min-w-0 py-1 pl-7 pr-1">
+    // 왼쪽에 붙여서 (방 이름의 스피커 아이콘과 같은 줄). 말할 때 테두리가 위아래 줄을 침범하지 않게 위아래 여백
+    <li className="flex items-center gap-2 min-w-0 py-[3px] pl-2 pr-1">
       <span className={cn('voice-avatar', speaking && 'is-speaking')}>
         <UserAvatar nickname={m.nickname} avatarUrl={m.avatarUrl} size={22} />
       </span>
@@ -225,7 +226,7 @@ export function VoiceRooms({ slug }: { slug: string }) {
                           {members.slice(0, PEEK).map((m) => (
                             <MemberRow key={m.id} m={m} />
                           ))}
-                          {members.length > PEEK && <li className="pl-7 py-1 text-[12px] text-fg-weak">외 {members.length - PEEK}명</li>}
+                          {members.length > PEEK && <li className="pl-2 py-1 text-[12px] text-fg-weak">외 {members.length - PEEK}명</li>}
                         </ul>
                       )
                     )}
