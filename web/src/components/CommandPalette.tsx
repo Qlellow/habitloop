@@ -27,6 +27,7 @@ import {
 } from './Icons';
 import { PERIODS, updateSettings, useSettings, type Period, type Settings } from '../lib/settings';
 import { voice } from '../lib/voice';
+import { CommandPaletteFx, CommandPaletteFxBadge } from './CommandPaletteFx';
 import { toast } from './Toast';
 import { GlassFilter, glassFilterId, useClientSize } from '../lib/glass';
 import { cn } from '../lib/cn';
@@ -452,8 +453,12 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
     });
   };
 
+  // 인터랙티브 커서를 켜고 '커맨드 팔레트도 커서 디자인으로'를 켰으면 그 디자인의 색 · 도트 장식으로
+  const fx = settings.cursorFx && settings.cmdkFx ? settings.fxDesign : undefined;
+
   return createPortal(
     <div
+      data-fx={fx}
       className={cn('cmdk-backdrop', closing && 'cmdk-closing')}
       onPointerDown={(e) => e.target === e.currentTarget && close()}
       onAnimationEnd={(e) => closing && e.target === panelRef.current && onClose()}
@@ -464,7 +469,10 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
         aria-modal="true"
         aria-label="커맨드 팔레트"
         className="cmdk liquid-glass"
+        data-fx={fx}
       >
+        {/* 느린 기기용 '특별한 화면에서만'을 켰으면 떠다니는 입자는 멈춰 둔다 */}
+        {fx && <CommandPaletteFx design={fx} still={settings.pixelFxSpecialOnly} />}
         <div className="cmdk-search">
           {mode === 'write' ? (
             <button type="button" className="cmdk-chip" onClick={back} aria-label="뒤로">
@@ -491,6 +499,7 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
             onKeyDown={onKeyDown}
           />
           {loading && <span className="cmdk-spinner" aria-hidden />}
+          {fx && !loading && <CommandPaletteFxBadge design={fx} />}
           <kbd className="cmdk-kbd">esc</kbd>
         </div>
         <svg width="0" height="0" aria-hidden style={{ position: 'absolute' }}>
