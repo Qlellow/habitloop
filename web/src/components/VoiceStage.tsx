@@ -220,10 +220,7 @@ function InlineWindow() {
 export function VoiceWindowHost() {
   const v = useVoice();
   const { mode, pip } = useVoiceWindow();
-  // 통화가 끝나면 창도 닫는다
-  useEffect(() => {
-    if (v.status === 'idle' && mode !== 'closed') closeVoiceWindow();
-  }, [v.status, mode]);
+  // 통화가 끝나면 창은 lib/voiceWindow 가 닫는다
   if (v.status === 'idle' || mode === 'closed') return null;
   if (mode === 'pip' && pip) return createPortal(<VoiceStage popped onClose={closeVoiceWindow} />, pip.document.body);
   return <InlineWindow />;

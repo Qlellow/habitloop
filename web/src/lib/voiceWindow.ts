@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { voice } from './voice';
 
 /**
  * 음성방 창 (방 화면: 참여자 · 화면 공유를 크게).
@@ -99,6 +100,15 @@ export function closeVoiceWindow() {
   emit();
   win?.close();
 }
+
+// 통화가 끝나면(통화 끊기 · 내보내짐 · 들어가기 실패) 방 화면도 닫는다.
+// 화면 쪽(React)에서 하면 통화가 끝나는 순간 그 부분이 먼저 사라져 닫지 못하므로 여기서 상태를 직접 지켜본다
+let lastStatus = voice.get().status;
+voice.subscribe(() => {
+  const status = voice.get().status;
+  if (status === 'idle' && lastStatus !== 'idle' && mode !== 'closed') closeVoiceWindow();
+  lastStatus = status;
+});
 
 const snapshot = () => mode;
 
