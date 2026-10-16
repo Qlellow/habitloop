@@ -42,10 +42,17 @@ const CORE: Partial<Record<FxDesign, [number, number]>> = { star: [2, 2], sakura
 
 function sprite(design: FxDesign, px: number, color: string, core = '#fff'): CSSProperties {
   const c = CORE[design];
+  const colorOf = (x: number, y: number) => (c && c[0] === x && c[1] === y ? core : color);
+  // 그림자는 요소 자기 칸(0,0)에는 그려지지 않는다 (요소 밑에 가려진다) → 그 칸은 배경색으로 칠한다
+  const origin = SPRITES[design].some(([x, y]) => x === 0 && y === 0);
   return {
     width: px,
     height: px,
-    boxShadow: SPRITES[design].map(([x, y]) => `${x * px}px ${y * px}px 0 0 ${c && c[0] === x && c[1] === y ? core : color}`).join(','),
+    background: origin ? colorOf(0, 0) : undefined,
+    boxShadow: SPRITES[design]
+      .filter(([x, y]) => x !== 0 || y !== 0)
+      .map(([x, y]) => `${x * px}px ${y * px}px 0 0 ${colorOf(x, y)}`)
+      .join(','),
   };
 }
 
