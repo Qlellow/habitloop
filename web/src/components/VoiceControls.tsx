@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { GearIcon, HeadphonesIcon, HeadphonesOffIcon, LeaveCallIcon, MicIcon, MicOffIcon, ScreenShareIcon } from './Icons';
+import { ExpandIcon, GearIcon, HeadphonesIcon, HeadphonesOffIcon, LeaveCallIcon, MicIcon, MicOffIcon, ScreenShareIcon } from './Icons';
+import { openVoiceWindow, useVoiceWindow } from '../lib/voiceWindow';
 import { UserAvatar } from './UserAvatar';
 import { toast } from './Toast';
 import { canShareScreen, getPrefs, useVoice, voice, type VoicePerson } from '../lib/voice';
@@ -87,8 +88,9 @@ function VoiceSettings() {
 }
 
 /** 마이크 · 듣기 끄기 · 화면 공유 · 설정 · 나가기 (+ 설정 칸, 상태 안내) */
-export function VoiceControlBar() {
+export function VoiceControlBar({ inStage = false }: { inStage?: boolean }) {
   const v = useVoice();
+  const win = useVoiceWindow();
   const [settings, setSettings] = useState(false);
   return (
     // 좁은 카드에서도 넘치지 않게: 칸은 부모 폭을 넘지 않고(min-w-0), 긴 장치 이름은 말줄임
@@ -109,6 +111,11 @@ export function VoiceControlBar() {
         <Ctl pressed={settings} label="음성 설정" onClick={() => setSettings((s) => !s)}>
           <GearIcon />
         </Ctl>
+        {!inStage && (
+          <Ctl pressed={win.mode !== 'closed'} label="방 화면 열기 (참여자 · 화면 공유 크게 보기)" onClick={() => openVoiceWindow()}>
+            <ExpandIcon />
+          </Ctl>
+        )}
         <Ctl danger label="통화 끊기" onClick={() => void runVoice(voice.leave())}>
           <LeaveCallIcon />
         </Ctl>

@@ -28,7 +28,15 @@ export interface VoiceMember {
   avatarUrl?: string;
   muted: boolean;
   sharing: boolean;
+  /** 들어온 시각 (ms) */
+  joinedAt?: number;
 }
+
+/** 통화 시작: 지금 있는 사람 중 가장 먼저 들어온 시각 (ms). 아무도 없으면 없음 */
+const sinceOf = (members: VoiceMember[]) => {
+  const times = members.map((m) => m.joinedAt).filter((t): t is number => !!t);
+  return times.length ? Math.min(...times) : undefined;
+};
 
 /** LiveKit 안 방 이름 */
 const lkRoom = (r: Pick<RoomRow, 'id' | 'channelId'>) => `loop-c${r.channelId}-r${r.id}`;
@@ -44,7 +52,9 @@ function member(p: LkParticipant): VoiceMember {
     // 메타데이터가 이상하면 사진 없이
   }
   const mic = p.tracks?.find((t) => isSource(t.source, 'MICROPHONE'));
+  const joined = Number(p.joined_at ?? p.joinedAt);
   return {
+    joinedAt: Number.isFinite(joined) && joined > 0 ? joined * 1000 : undefined,
     id: p.identity,
     nickname: p.name || '알 수 없음',
     avatarUrl,
@@ -117,13 +127,11 @@ export class VoiceService {
       [keyword, `%${escapeLike(keyword)}%`, adult, viewerId ?? null, `${escapeLike(keyword)}%`],
     );
     const rooms = await Promise.all(
-      rows.map(async (r) => ({
-        id: r.id,
-        name: r.name,
-        maxParticipants: r.maxParticipants,
-        members: await this.membersOf(r),
-        channel: { slug: r.slug, name: r.channelName, iconVersion: r.iconVersion, color: r.color },
-      })),
+      rows.map(async (r) => {
+        const members = await this.membersOf(r);
+        const channel = { slug: r.slug, name: r.channelName, iconVersion: r.iconVersion, color: r.color };
+        return { id: r.id, name: r.name, maxParticipants: r.maxParticipants, members, since: sinceOf(members), channel };
+      }),
     );
     // 지금 사람이 있는 방을 먼저 (같으면 검색 순서 그대로)
     rooms.sort((a, b) => Number(b.members.length > 0) - Number(a.members.length > 0) || b.members.length - a.members.length);
@@ -136,7 +144,10 @@ export class VoiceService {
     await this.channels.requireAccess(channel, viewerId);
     const [rows, role] = await Promise.all([this.rooms(channel.id), this.channels.roleOf(channel.id, viewerId)]);
     const rooms = await Promise.all(
-      rows.map(async (r) => ({ id: r.id, name: r.name, maxParticipants: r.maxParticipants, members: await this.membersOf(r) })),
+      rows.map(async (r) => {
+        const members = await this.membersOf(r);
+        return { id: r.id, name: r.name, maxParticipants: r.maxParticipants, members, since: sinceOf(members) };
+      }),
     );
     return { enabled: !!liveKitConfig(), canManage: isStaff(role), rooms };
   }

@@ -6,6 +6,8 @@ import { toast } from './Toast';
 import { ExpandIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, MinimizeIcon } from './Icons';
 import { VoiceAvatar, VoiceControlBar, runVoice } from './VoiceControls';
 import { rememberRoom, useVoice, voice, type VoiceScreen } from '../lib/voice';
+import { useVoiceWindow } from '../lib/voiceWindow';
+import { VoiceWindowHost } from './VoiceStage';
 import { cn } from '../lib/cn';
 
 /**
@@ -181,6 +183,7 @@ function VoicePanel({ pos, onClose }: { pos: Pos; onClose: () => void }) {
 
 export function VoiceDock() {
   const v = useVoice();
+  const win = useVoiceWindow();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<Pos>(loadPos);
@@ -295,7 +298,9 @@ export function VoiceDock() {
   return (
     <>
       <BlockSync />
-      <ScreenViewer screens={v.screens} />
+      {/* 방 화면을 열었으면 화면 공유는 거기서 크게 본다 */}
+      {win.mode === 'closed' && <ScreenViewer screens={v.screens} />}
+      <VoiceWindowHost />
       {open && <VoicePanel pos={pos} onClose={() => setOpen(false)} />}
       <button
         type="button"

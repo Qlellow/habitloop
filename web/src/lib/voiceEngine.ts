@@ -60,6 +60,7 @@ function sync() {
       muted: !mic || mic.isMuted,
       sharing: !!p.getTrackPublication(Track.Source.ScreenShare)?.track,
       volume: getPrefs().volumes[p.identity] ?? 1,
+      joinedAt: p.joinedAt?.getTime(),
     };
   });
   const screens: VoiceScreen[] = [];

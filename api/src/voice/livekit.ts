@@ -51,6 +51,9 @@ export interface LkParticipant {
   identity: string;
   name?: string;
   metadata?: string;
+  /** 들어온 시각 (초). JSON 에서는 문자열로 올 수 있다 */
+  joined_at?: string | number;
+  joinedAt?: string | number;
   tracks?: { source?: string | number; muted?: boolean; type?: string | number }[];
 }
 
