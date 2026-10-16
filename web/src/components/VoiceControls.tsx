@@ -43,10 +43,10 @@ function DeviceSelect({ kind, label }: { kind: 'audioinput' | 'audiooutput'; lab
   // 스피커 고르기는 지원하지 않는 브라우저가 있다 (사파리 · 파이어폭스 일부)
   if (kind === 'audiooutput' && list.length === 0) return null;
   return (
-    <label className="grid gap-1 text-[12px] font-semibold text-fg-sub">
+    <label className="grid gap-1 min-w-0 text-[12px] font-semibold text-fg-sub">
       {label}
       <select
-        className="h-8 px-2 rounded-sm border border-border bg-surface text-[13px] font-normal text-fg"
+        className="w-full min-w-0 h-8 px-2 rounded-sm border border-border bg-surface text-[13px] font-normal text-fg truncate"
         value={value}
         onChange={(e) => {
           setValue(e.target.value);
@@ -67,7 +67,7 @@ function DeviceSelect({ kind, label }: { kind: 'audioinput' | 'audiooutput'; lab
 function VoiceSettings() {
   const v = useVoice();
   return (
-    <div className="grid gap-2.5 p-2.5 rounded-md bg-field">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-2.5 min-w-0 p-2.5 rounded-md bg-field">
       <DeviceSelect kind="audioinput" label="마이크" />
       <DeviceSelect kind="audiooutput" label="스피커" />
       <label className="flex items-center justify-between gap-2 text-[12px] font-semibold text-fg-sub">
@@ -91,9 +91,10 @@ export function VoiceControlBar() {
   const v = useVoice();
   const [settings, setSettings] = useState(false);
   return (
-    <div className="grid gap-2">
+    // 좁은 카드에서도 넘치지 않게: 칸은 부모 폭을 넘지 않고(min-w-0), 긴 장치 이름은 말줄임
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-2 min-w-0">
       {settings && <VoiceSettings />}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 min-w-0">
         <Ctl on={v.micOn} pressed={!v.micOn} label={v.micOn ? '마이크 끄기 (Ctrl+Shift+M)' : '마이크 켜기 (Ctrl+Shift+M)'} onClick={() => void runVoice(voice.toggleMic())}>
           {v.micOn ? <MicIcon /> : <MicOffIcon />}
         </Ctl>
