@@ -7,7 +7,7 @@ const s = {
   meText: 'min-w-0',
   nickname: 'font-bold text-fg-strong truncate',
   email: 'text-[13px] text-fg-weak truncate',
-  menu: 'list-none m-0 p-0 max-[860px]:flex max-[860px]:gap-1 max-[860px]:overflow-x-auto',
+  menu: 'my-tabs list-none m-0 p-0 max-[860px]:flex max-[860px]:gap-1 max-[860px]:overflow-x-auto',
   link:
     'block w-full px-2.5 py-[9px] rounded-sm text-[15px] font-medium text-fg-sub text-left transition-colors ' +
     // hover 배경은 SlideHover 가 그린다 (항목 사이를 미끄러져 움직임)

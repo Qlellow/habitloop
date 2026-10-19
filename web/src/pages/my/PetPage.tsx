@@ -44,7 +44,7 @@ function Adopt() {
     <form className={cn(ui.card, s.section)} onSubmit={submit}>
       <h2 className={s.sectionTitle}>함께할 펫을 골라 주세요</h2>
       <p className={s.sectionDesc}>글과 댓글을 쓰면 경험치를 얻어 알에서 깨어나고, 자라면서 모습과 행동이 바뀌어요.</p>
-      <div role="radiogroup" aria-label="펫 종류" className="grid grid-cols-3 gap-3 max-[520px]:grid-cols-1">
+      <div role="radiogroup" aria-label="펫 종류" className="grid grid-cols-3 gap-3 max-[520px]:gap-2">
         {PET_SPECIES.map((p) => (
           <button
             key={p.species}
@@ -53,13 +53,13 @@ function Adopt() {
             aria-checked={species === p.species}
             onClick={() => setSpecies(p.species)}
             className={cn(
-              'flex flex-col items-center gap-1 pt-4 pb-3 rounded-lg border-2 transition-colors',
+              'flex flex-col items-center gap-1 pt-4 pb-3 px-1 rounded-lg border-2 text-center transition-colors max-[520px]:pt-3 max-[520px]:pb-2.5',
               species === p.species ? 'border-primary bg-primary-weak' : 'border-border hover:border-fg-weak',
             )}
           >
             <PetActor pet={{ species: p.species, name: p.label, level: 3, stage: 'baby', mood: 'happy' }} size={5} />
             <span className="mt-1 font-bold text-fg-strong">{p.label}</span>
-            <span className="text-[13px] text-fg-sub">{p.desc}</span>
+            <span className="text-[13px] text-fg-sub max-[520px]:text-[12px] max-[520px]:leading-snug">{p.desc}</span>
           </button>
         ))}
       </div>

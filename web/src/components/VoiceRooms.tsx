@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useChannelVoice, useVoiceRoomMutation, type VoiceMember, type VoiceRoom } from '@loop/shared';
 import { ChevronDownIcon, ChevronUpIcon, MicOffIcon, PlusIcon, ScreenShareIcon, SpeakerIcon } from './Icons';
 import { VoiceControlBar } from './VoiceControls';
 import { CallTimer } from './VoiceStage';
 import { openVoiceWindow } from '../lib/voiceWindow';
+import { useMediaQuery } from '../lib/media';
 import { UserAvatar } from './UserAvatar';
 import { toast } from './Toast';
 import { callSince, voice, useVoice, type VoicePerson } from '../lib/voice';
@@ -109,6 +110,8 @@ export function VoiceRooms({ slug }: { slug: string }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<number>();
   const [joining, setJoining] = useState<number>();
+  const lastTap = useRef<{ id: number; at: number }>(undefined);
+  const touch = useMediaQuery('(pointer: coarse)');
 
   if (!data) return null;
   // 방이 없고 운영진도 아니면 카드를 띄우지 않는다
@@ -148,7 +151,7 @@ export function VoiceRooms({ slug }: { slug: string }) {
       <div className={ui.cardHead}>
         <div className="min-w-0">
           <h2 className={cn(ui.sectionTitle, 'text-base')}>음성 채팅</h2>
-          {data.enabled && data.rooms.length > 0 && hereRoom == null && <p className="m-0 mt-0.5 text-[12px] text-fg-weak">방을 더블 클릭하면 들어가요</p>}
+          {data.enabled && data.rooms.length > 0 && hereRoom == null && <p className="m-0 mt-0.5 text-[12px] text-fg-weak">방을 {touch ? '두 번 탭' : '더블 클릭'}하면 들어가요</p>}
         </div>
         {data.canManage && data.enabled && !adding && data.rooms.length < 10 && (
           <button type="button" className={cn(ui.button, ui.text, ui.small, 'px-2 gap-1 [&>svg]:w-4 [&>svg]:h-4')} onClick={() => setAdding(true)}>
@@ -190,9 +193,17 @@ export function VoiceRooms({ slug }: { slug: string }) {
                         type="button"
                         className="voice-room-join flex-1 min-w-0 flex items-center gap-2 h-9 px-2 text-left disabled:opacity-60"
                         disabled={full || joining != null}
-                        // 마우스 · 터치는 더블 클릭(두 번 탭)으로 들어간다. 키보드(Enter · Space)는 한 번에 (detail 0)
-                        onClick={(e) => e.detail === 0 && void join(room)}
-                        onDoubleClick={() => void join(room)}
+                        // 마우스 · 터치는 더블 클릭(두 번 탭)으로 들어간다. 키보드(Enter · Space)는 한 번에 (detail 0).
+                        // 폰 브라우저는 두 번 탭에 dblclick 을 안 주기도 해서 눌린 간격을 직접 잰다
+                        onClick={(e) => {
+                          if (e.detail === 0) return void join(room);
+                          const prev = lastTap.current;
+                          lastTap.current = { id: room.id, at: e.timeStamp };
+                          if (prev?.id === room.id && e.timeStamp - prev.at < 450) {
+                            lastTap.current = undefined;
+                            void join(room);
+                          }
+                        }}
                         aria-label={`${room.name} 음성방 ${here ? '(참여 중)' : '들어가기'}`}
                         title={here ? '참여 중' : '더블 클릭해서 들어가기'}
                       >
