@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@loop/shared';
 import { useConfirmSignOut } from '../../components/ConfirmDialog';
 import { SlideHover } from '../../components/SlideHover';
@@ -18,10 +19,44 @@ const MENU = [
   { to: '/me/settings', label: '설정', preload: preload.settings },
 ];
 
+/**
+ * 좁은 화면에서 메뉴는 가로로 넘기는 탭: 지금 탭을 보이는 곳으로 옮기고,
+ * 더 넘길 쪽 가장자리를 흐리게 해서 탭이 더 있다는 걸 알린다 (data-more-left · data-more-right)
+ */
+function useTabStrip() {
+  const ref = useRef<HTMLUListElement>(null);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const mark = () => {
+      const scrolls = el.scrollWidth > el.clientWidth + 1;
+      el.toggleAttribute('data-more-left', scrolls && el.scrollLeft > 1);
+      el.toggleAttribute('data-more-right', scrolls && el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+    };
+    mark();
+    el.addEventListener('scroll', mark, { passive: true });
+    window.addEventListener('resize', mark);
+    return () => {
+      el.removeEventListener('scroll', mark);
+      window.removeEventListener('resize', mark);
+    };
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    const cur = el?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!el || !cur || el.scrollWidth <= el.clientWidth) return;
+    const x = cur.getBoundingClientRect().left - el.getBoundingClientRect().left + el.scrollLeft;
+    el.scrollTo({ left: x - (el.clientWidth - cur.offsetWidth) / 2, behavior: 'smooth' });
+  }, [pathname]);
+  return ref;
+}
+
 /** 마이페이지: 왼쪽 메뉴 + 오른쪽 내용(중첩 라우트) */
 export default function MyLayout() {
   const { user } = useAuth();
   const logout = useConfirmSignOut();
+  const menu = useTabStrip();
   if (!user) return null;
 
   return (
@@ -38,7 +73,7 @@ export default function MyLayout() {
           </div>
           {/* 메뉴를 옮겨 다니면 hover 상자가 이전 항목에서 미끄러져 온다 */}
           <SlideHover>
-            <ul className={s.menu}>
+            <ul ref={menu} className={s.menu}>
               {MENU.map((m) => (
                 <li key={m.to}>
                   <NavLink to={m.to} className={s.link} onPointerEnter={m.preload}>

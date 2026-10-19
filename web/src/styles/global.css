@@ -4040,3 +4040,25 @@ html.focus-mode main article h1 {
     animation: none;
   }
 }
+
+/* ── 좁은 화면: 가로로 넘기는 탭 (마이페이지 메뉴) ──
+ * 스크롤바는 숨기고, 더 넘길 쪽 가장자리를 흐리게 (data-more-* 는 MyLayout 이 단다) */
+@media (max-width: 860px) {
+  .my-tabs {
+    scrollbar-width: none;
+    scroll-padding-inline: 24px;
+    --fade-l: 0px;
+    --fade-r: 0px;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+  }
+  .my-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .my-tabs[data-more-left] {
+    --fade-l: 28px;
+  }
+  .my-tabs[data-more-right] {
+    --fade-r: 28px;
+  }
+}

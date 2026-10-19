@@ -20,6 +20,7 @@ import { ChevronDownIcon, ChevronUpIcon, PinIcon, SearchIcon } from '../componen
 import { Pagination } from '../components/Pagination';
 import { scrollToElement } from '../lib/scroll';
 import { useSettings } from '../lib/settings';
+import { useMediaQuery } from '../lib/media';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { ChannelIntro } from '../components/ChannelIntro';
 import { VoiceRooms } from '../components/VoiceRooms';
@@ -179,6 +180,7 @@ export default function ChannelPage() {
   const pinNotices = !active && !q;
   // 잠긴 채널(비공개 · 19세 이상)은 글을 받지 않는다 (서버도 403)
   const open = !!channel && !channel.locked && !isPlaceholderData;
+  const stacked = useMediaQuery('(max-width: 860px)');
   const notices = useNotices(slug, pinNotices && open);
   const list = useChannelPosts(
     {
@@ -239,7 +241,7 @@ export default function ChannelPage() {
       variant="twoRight"
       right={
         <>
-          {open && <VoiceRooms slug={slug} />}
+          {open && !stacked && <VoiceRooms slug={slug} />}
           {open && <PopularCard channel={slug} title="이 채널 인기글" />}
         </>
       }
@@ -316,6 +318,8 @@ export default function ChannelPage() {
         )}
       </section>
       {channel?.locked && !isPlaceholderData && <LockedGate channel={channel} />}
+      {/* 한 줄로 쌓이는 화면에서는 음성방을 글 목록 위로 (아래에 두면 글을 다 지나야 보인다) */}
+      {open && stacked && <VoiceRooms slug={slug} />}
       {open && (
         <section className={ui.card} ref={listRef}>
           {/* 목록 위: 카테고리 · 정렬 · 검색(제목·본문) · 검색 버튼 (공지는 정렬과 상관없이 위에 고정) */}

@@ -10,12 +10,13 @@ const s = {
   pageDesc: 'mt-1 mb-0 text-fg-sub',
 
   // 채널 배너
-  banner: 'px-6 pt-6 pb-3',
+  banner: 'px-6 pt-6 pb-3 max-[520px]:px-4 max-[520px]:pt-5',
   bannerTop: 'flex flex-wrap items-center gap-x-4 gap-y-3',
   bannerInfo: 'flex-1 min-w-[120px]',
   bannerName: 'm-0 text-2xl font-bold text-fg-strong',
   bannerSlug: 'text-sm text-fg-weak whitespace-nowrap',
-  bannerActions: 'flex gap-2',
+  // 폰에서는 버튼 줄이 아래로 내려와 화면 폭을 나눠 쓴다 (넘치면 다음 줄로)
+  bannerActions: 'flex gap-2 max-[520px]:w-full max-[520px]:flex-wrap max-[520px]:[&>*]:flex-[1_0_auto] max-[520px]:[&>*]:justify-center',
 
   // 글 본문
   article: 'px-8 py-7 max-[860px]:px-[18px] max-[860px]:py-[22px]',

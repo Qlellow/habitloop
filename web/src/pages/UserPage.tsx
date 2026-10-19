@@ -47,13 +47,13 @@ function Badges({ badges }: { badges: Badge[] }) {
       {badges.length === 0 ? (
         <p className="m-0 px-5 pb-5 text-sm text-fg-weak">아직 받은 배지가 없어요</p>
       ) : (
-        <ul className="list-none m-0 px-5 pb-5 grid grid-cols-3 gap-2.5 max-[720px]:grid-cols-2 max-[420px]:grid-cols-1">
+        <ul className="list-none m-0 px-5 pb-5 grid grid-cols-3 gap-2.5 max-[720px]:grid-cols-2 max-[520px]:px-4 max-[520px]:gap-2">
           {badges.map((b) => (
-            <li key={b.code} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5" title={`${b.description} · ${earnedOn(b.earnedAt)}`}>
+            <li key={b.code} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 max-[420px]:flex-col max-[420px]:gap-1.5 max-[420px]:text-center" title={`${b.description} · ${earnedOn(b.earnedAt)}`}>
               <span className="flex-none grid place-items-center w-10 h-10 rounded-full bg-primary-weak text-[20px]" aria-hidden>
                 {badgeIcon(b.code)}
               </span>
-              <div className="min-w-0">
+              <div className="min-w-0 max-[420px]:w-full">
                 <div className="text-sm font-bold text-fg-strong truncate">{b.name}</div>
                 <div className="text-[12px] text-fg-weak truncate">{b.description}</div>
               </div>
