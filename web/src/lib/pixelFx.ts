@@ -16,8 +16,14 @@ const MAX = 260;
 const TARGET = 'a[href], button:not(:disabled), [role="button"], [role="option"], [role="radio"], [role="switch"], [role="menuitem"], [role="tab"], summary, [data-fx]';
 const TYPING = 'textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), [contenteditable="true"], [contenteditable=""]';
 
-/** 숨은 애니메이션 확률 */
-const HIDDEN = { click: 1 / 100, snowPile: 1 / 6, rainbow: 1 / 600 };
+/**
+ * 숨은 애니메이션 확률 ('아주 가끔' 보이게)
+ *  - click: 버튼 · 링크를 누를 때마다 (약 300번에 1번)
+ *  - snowPile: 눈 디자인으로 버튼에 2.5초 머무를 때마다 (30번에 1번)
+ *  - rainbow: 하트 디자인으로 마우스를 움직이는 동안 1분에 한 번만 굴린다 (평균 20분에 1번)
+ */
+const HIDDEN = { click: 0.003, snowPile: 1 / 30, rainbow: 0.05 };
+const RAINBOW_EVERY = 60_000;
 
 /* ───────── 도트 그림 ───────── */
 
@@ -167,6 +173,8 @@ let snowPile = false;
 let frostClock = 0;
 let frostAge = 0;
 let rainbowUntil = 0;
+/** 무지개 하트를 마지막으로 굴린 때 (하트가 생길 때마다 굴리면 너무 자주 나와서 1분에 한 번만) */
+let rainbowRolled = 0;
 /** 글자 커서 위치 (맴도는 파티클이 따라간다) */
 const caret: Point & { h: number } = { x: 0, y: 0, h: 18 };
 /** 맴도는 고리의 가운데: 글자 줄 바로 위 (글자를 가리지 않게) */
@@ -231,7 +239,11 @@ const DESIGNS: Record<FxDesign, Design> = {
   heart: {
     trailEvery: 34,
     trail: (x, y) => {
-      if (Math.random() < HIDDEN.rainbow) rainbowUntil = now + 5000; // 숨은 2: 잠깐 무지개 하트
+      // 숨은 2: 잠깐 무지개 하트 (움직이는 동안 1분에 한 번 굴림)
+      if (now - rainbowRolled >= RAINBOW_EVERY) {
+        rainbowRolled = now;
+        if (Math.random() < HIDDEN.rainbow) rainbowUntil = now + 5000;
+      }
       add({ x, y, frames: [S.heartS], vy: rand(-0.6, -0.3), vx: rand(-0.2, 0.2), sway: 0.4, life: rand(500, 750), colors: c() });
     },
     hoverRate: 170,
