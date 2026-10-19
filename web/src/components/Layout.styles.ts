@@ -36,6 +36,8 @@ const s = {
   twoRight: 'grid-cols-[minmax(0,1fr)_320px] max-[860px]:grid-cols-1',
   withNav: 'grid-cols-[220px_minmax(0,1fr)] max-w-[1080px] max-[860px]:grid-cols-1',
   single: 'grid-cols-1 max-w-[880px]',
+  // 몰입 모드: 본문 너비는 사용자가 고른 값 (--focus-w)
+  focus: 'grid-cols-1 max-w-[var(--focus-w,740px)] transition-[max-width] duration-300',
   wide: 'grid-cols-1',
   narrow: 'grid-cols-1 max-w-[440px] pt-16',
   side: 'sticky top-[calc(64px+40px)] flex flex-col gap-4 max-[860px]:static',

@@ -20,6 +20,12 @@ export interface Settings {
   fxDesign: FxDesign;
   /** 커맨드 팔레트(Ctrl+K)도 인터랙티브 커서 디자인에 맞춘다 (색 · 빛 · 도트 장식) */
   cmdkFx: boolean;
+  /** 몰입 모드: 글 화면에서 사이드바 · 인기글 · 장식을 숨기고 글과 댓글만 */
+  focusMode: boolean;
+  /** 몰입 모드 본문 글자 크기 (px) */
+  focusFont: number;
+  /** 몰입 모드 본문 너비 */
+  focusWidth: 'narrow' | 'normal' | 'wide';
   /** 내 펫이 화면을 돌아다니게 (데스크톱 펫) */
   petRoam: boolean;
 }
@@ -27,7 +33,7 @@ export interface Settings {
 export type FxDesign = 'star' | 'heart' | 'sakura' | 'snow' | 'fire';
 
 const KEY = 'loop.settings';
-const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true, livePreview: true, cursorFx: false, pixelFxSpecialOnly: false, fxDesign: 'star', cmdkFx: true, petRoam: true };
+const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true, livePreview: true, cursorFx: false, pixelFxSpecialOnly: false, fxDesign: 'star', cmdkFx: true, focusMode: false, focusFont: 18, focusWidth: 'normal', petRoam: true };
 
 /** 시간대. 새벽 · 저녁은 어두운 화면, 아침 · 낮은 밝은 화면 */
 export type Period = 'morning' | 'day' | 'evening' | 'dawn';

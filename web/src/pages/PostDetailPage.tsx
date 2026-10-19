@@ -21,7 +21,7 @@ import {
   type PostSummary,
 } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
-import { HeartIcon, ImageIcon, PictureInPictureIcon } from '../components/Icons';
+import { ExpandIcon, HeartIcon, ImageIcon, MinimizeIcon, PictureInPictureIcon } from '../components/Icons';
 import { prepareUpload } from '../lib/postImage';
 import { Page } from '../components/Layout';
 import { RoleBadge } from '../components/RoleBadge';
@@ -29,6 +29,7 @@ import { UserAvatar } from '../components/UserAvatar';
 import { Markdown } from '../components/Markdown';
 import { CollapsibleBody } from '../components/CollapsibleBody';
 import { ReadingProgress } from '../components/ReadingProgress';
+import { FocusBar, toggleFocusMode, useFocusMode } from '../components/FocusMode';
 import { PopularCard } from '../components/Sidebar';
 import { ReportDialog } from '../components/ReportDialog';
 import { LikeButton, ReactionBar } from '../components/Reactions';
@@ -451,6 +452,8 @@ export default function PostDetailPage() {
     else navigate(`/c/${post.channel.slug}`);
   };
   const showBlocked = shownBlocked === id;
+  // 몰입 모드: 사이드바 · 인기글 · 장식을 숨기고 글과 댓글만 (F 로 켜고 끄기, Esc 로 나가기)
+  const focus = useFocusMode();
 
   if (!Number.isInteger(id) || (error instanceof ApiError && error.status === 404)) {
     return <NotFoundPage message="삭제되었거나 없는 글이에요" />;
@@ -475,8 +478,9 @@ export default function PostDetailPage() {
 
   return (
     <Page
-      variant="twoRight"
+      variant={focus ? 'focus' : 'twoRight'}
       right={
+        !focus &&
         slug && (
           <>
             <ChannelCard slug={slug} />
@@ -485,6 +489,7 @@ export default function PostDetailPage() {
         )
       }
     >
+      {focus && <FocusBar />}
       <article className={cn(ui.card, s.article)}>
         {!post ? (
           <>
@@ -527,8 +532,18 @@ export default function PostDetailPage() {
                   · 조회 {compact(post.viewCount)}
                 </div>
               </div>
-              {(post.mine || post.canModerate || isLoggedIn || mini) && !isPlaceholderData && (
+              {!isPlaceholderData && (
                 <div className={s.bylineActions}>
+                  <button
+                    type="button"
+                    className={cn(ui.button, ui.text, ui.small, 'gap-1 [&>svg]:w-4 [&>svg]:h-4', focus && 'text-primary')}
+                    title={focus ? '몰입 모드 끄기 (F · Esc)' : '몰입 모드: 글과 댓글에만 집중 (F)'}
+                    aria-pressed={focus}
+                    onClick={() => toggleFocusMode()}
+                  >
+                    {focus ? <MinimizeIcon /> : <ExpandIcon />}
+                    {focus ? '몰입 끄기' : '몰입 모드'}
+                  </button>
                   {mini && (
                     <button type="button" className={cn(ui.button, ui.text, ui.small, 'gap-1 [&>svg]:w-4 [&>svg]:h-4')} title="작은 창으로 띄우고 다른 글 보기" onClick={toMini}>
                       <PictureInPictureIcon />
