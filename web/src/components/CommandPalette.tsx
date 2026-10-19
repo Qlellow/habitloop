@@ -28,6 +28,7 @@ import {
 import { PERIODS, updateSettings, useSettings, type Period, type Settings } from '../lib/settings';
 import { voice } from '../lib/voice';
 import { CommandPaletteFx, CommandPaletteFxBadge } from './CommandPaletteFx';
+import { toggleFocusMode } from './FocusMode';
 import { toast } from './Toast';
 import { GlassFilter, glassFilterId, useClientSize } from '../lib/glass';
 import { cn } from '../lib/cn';
@@ -218,6 +219,19 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
         { id: 'new-channel', group: '만들기', label: '채널 만들기', keywords: 'new channel create 채널 개설', icon: <PlusIcon />, run: () => go('/channels/new') },
       );
     }
+    // 글 화면에서만: 몰입 모드 (사이드바 · 장식을 숨기고 글과 댓글만)
+    if (/^\/posts\/\d+$/.test(pathname)) {
+      list.push({
+        id: 'focus-mode',
+        group: '보기',
+        label: settings.focusMode ? '몰입 모드 끄기' : '몰입 모드 켜기',
+        keywords: 'focus reading zen 몰입 집중 읽기 모드 글자 크기 너비',
+        hint: 'F',
+        icon: <GridIcon />,
+        current: settings.focusMode,
+        run: () => run(() => toggleFocusMode()),
+      });
+    }
     for (const t of THEMES) {
       list.push({
         id: `theme-${t.theme}`,
@@ -252,7 +266,7 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
     }
     return list;
     // go · run 은 매번 새로 만들어지지만 navigate · onClose 에만 기대므로 의존 목록에서 뺀다
-  }, [isLoggedIn, settings.theme, settings.timeTheme, here, onSignOut]);
+  }, [isLoggedIn, settings.theme, settings.timeTheme, settings.focusMode, here, pathname, onSignOut]);
 
   const items = useMemo<Item[]>(() => {
     const q = input.trim();

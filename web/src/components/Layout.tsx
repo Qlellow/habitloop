@@ -128,7 +128,7 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className={s.header}>
+      <header className={cn(s.header, 'site-header')}>
         <div className={s.headerInner}>
           <Link to="/" className={s.logo} aria-label="루프 홈" draggable={false}>
             <LogoMark className={s.logoMark} />
@@ -196,7 +196,7 @@ export function MobileTabBar() {
     },
   ];
   return (
-    <nav className={s.tabBar} aria-label="하단 메뉴">
+    <nav className={cn(s.tabBar, 'site-tabbar')} aria-label="하단 메뉴">
       {tabs.map((t) => (
         <Link key={t.label} to={t.to} state={t.state} className={s.tab} aria-current={t.active ? 'page' : undefined}>
           {t.icon}
@@ -207,7 +207,7 @@ export function MobileTabBar() {
   );
 }
 
-type Variant = 'three' | 'twoRight' | 'nav' | 'single' | 'wide' | 'narrow';
+type Variant = 'three' | 'twoRight' | 'nav' | 'single' | 'wide' | 'narrow' | 'focus';
 
 /**
  * 화면에 붙어 있는(sticky) 사이드바가 스크롤을 '천천히 따라오는' 느낌: 스크롤하면 본문과 함께 밀려났다가
@@ -326,7 +326,7 @@ export function SiteFooter() {
   const { pathname } = useLocation();
   if (NO_FOOTER.includes(pathname)) return null;
   return (
-    <footer className={s.footer}>
+    <footer className={cn(s.footer, 'site-footer')}>
       <div className={s.footerInner}>
         <Link to="/" className={s.footerLogo} aria-label="루프 홈">
           <LogoMark className="w-5 h-5" />
