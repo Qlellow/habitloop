@@ -4062,3 +4062,19 @@ html.focus-mode main article h1 {
     --fade-r: 28px;
   }
 }
+
+/* 커맨드 팔레트 '닫기' (터치 화면: Esc 대신) */
+.cmdk-close {
+  flex: none;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  background: color-mix(in srgb, var(--text-weak) 14%, transparent);
+  touch-action: manipulation;
+}
+.cmdk-close:active {
+  background: color-mix(in srgb, var(--text-weak) 24%, transparent);
+}

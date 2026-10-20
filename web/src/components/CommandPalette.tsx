@@ -31,6 +31,7 @@ import { CommandPaletteFx, CommandPaletteFxBadge } from './CommandPaletteFx';
 import { toggleFocusMode } from './FocusMode';
 import { toast } from './Toast';
 import { GlassFilter, glassFilterId, useClientSize } from '../lib/glass';
+import { useMediaQuery, usePhone } from '../lib/media';
 import { cn } from '../lib/cn';
 
 /* ───────── 열기 ───────── */
@@ -166,6 +167,9 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
     const t = setTimeout(() => setKeyword(input.trim()), DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [input]);
+
+  const touch = useMediaQuery('(pointer: coarse)');
+  const phone = usePhone();
 
   // 닫는 애니메이션이 끝나면 없앤다
   const close = useCallback(() => {
@@ -505,7 +509,7 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
             aria-controls={listId}
             aria-activedescendant={items[current] ? `${listId}-${current}` : undefined}
             aria-autocomplete="list"
-            placeholder={mode === 'write' ? '채널 이름으로 찾기' : '무엇을 할까요? 채널 · 글 · 명령 · @사용자 · voice:음성방'}
+            placeholder={mode === 'write' ? '채널 이름으로 찾기' : phone ? '채널 · 글 · @사용자 · voice:음성방' : '무엇을 할까요? 채널 · 글 · 명령 · @사용자 · voice:음성방'}
             value={input}
             autoComplete="off"
             spellCheck={false}
@@ -514,7 +518,14 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
           />
           {loading && <span className="cmdk-spinner" aria-hidden />}
           {fx && !loading && <CommandPaletteFxBadge design={fx} />}
-          <kbd className="cmdk-kbd">esc</kbd>
+          {/* 터치 화면에는 Esc 키가 없으니 눌러 닫는 버튼으로 */}
+          {touch ? (
+            <button type="button" className="cmdk-close" onClick={close}>
+              닫기
+            </button>
+          ) : (
+            <kbd className="cmdk-kbd">esc</kbd>
+          )}
         </div>
         <svg width="0" height="0" aria-hidden style={{ position: 'absolute' }}>
           <GlassFilter id={edgeId} w={list.w} h={list.h} bezel={LIST_PAD_Y} axis="y" scale={18} />

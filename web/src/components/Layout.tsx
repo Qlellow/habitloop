@@ -7,7 +7,8 @@ import { toast } from './Toast';
 import { ChannelSearch } from './ChannelSearch';
 import { NotificationBell } from './NotificationBell';
 import { preload } from '../lib/preload';
-import { GridIcon, HomeIcon, PencilIcon, UserIcon } from './Icons';
+import { GridIcon, HomeIcon, SearchIcon, UserIcon } from './Icons';
+import { openCommandPalette } from './CommandPalette';
 import { useAuthState } from '../lib/authNav';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
@@ -176,7 +177,8 @@ export function SiteHeader() {
 
 /**
  * 폰 하단 탭바 (520px 이하). 헤더의 '홈·채널' 메뉴가 숨는 대신 여기서 바로 갈 수 있다.
- * 글쓰기는 채널 안에서 하므로, 채널을 보고 있으면 그 채널 글쓰기로, 아니면 채널을 고르러 간다.
+ * 폰 헤더에는 검색창이 없으므로 가운데 '검색' 탭이 커맨드 팔레트를 연다 (채널 · 글 · @유저 · voice: 음성방).
+ * 글쓰기는 채널 안에서만 하므로 탭바에 두지 않고 각 채널 화면의 버튼으로.
  */
 export function MobileTabBar() {
   const { isLoggedIn } = useAuth();
@@ -186,7 +188,6 @@ export function MobileTabBar() {
   const tabs = [
     { to: '/', label: '홈', icon: <HomeIcon />, active: pathname === '/' },
     { to: '/channels', label: '채널', icon: <GridIcon />, active: pathname.startsWith('/channels') || !!slug },
-    { to: slug ? `/write?channel=${slug}` : '/write', label: '글쓰기', icon: <PencilIcon />, active: pathname.startsWith('/write') },
     {
       to: isLoggedIn ? '/me' : '/login',
       state: isLoggedIn ? undefined : authState,
@@ -195,14 +196,20 @@ export function MobileTabBar() {
       active: pathname.startsWith('/me') || pathname === '/login',
     },
   ];
+  const link = (t: (typeof tabs)[number]) => (
+    <Link key={t.label} to={t.to} state={t.state} className={s.tab} aria-current={t.active ? 'page' : undefined}>
+      {t.icon}
+      {t.label}
+    </Link>
+  );
   return (
     <nav className={cn(s.tabBar, 'site-tabbar')} aria-label="하단 메뉴">
-      {tabs.map((t) => (
-        <Link key={t.label} to={t.to} state={t.state} className={s.tab} aria-current={t.active ? 'page' : undefined}>
-          {t.icon}
-          {t.label}
-        </Link>
-      ))}
+      {tabs.slice(0, 2).map(link)}
+      <button type="button" className={s.tab} onClick={openCommandPalette} aria-haspopup="dialog">
+        <SearchIcon />
+        검색
+      </button>
+      {tabs.slice(2).map(link)}
     </nav>
   );
 }
