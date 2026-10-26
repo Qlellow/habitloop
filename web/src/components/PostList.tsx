@@ -15,8 +15,8 @@ import { cn } from '../lib/cn';
 /** 마우스가 있는 기기에서만 카드를 펼친다 (터치는 누르면 바로 글로 가니까) */
 const canHover = typeof window !== 'undefined' && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 /** 이만큼 머물러야 펼친다 (지나가기만 하면 그대로). 받아 오기는 조금 먼저 시작한다 */
-const OPEN_DELAY = 340;
-const FETCH_DELAY = 140;
+const OPEN_DELAY = 700;
+const FETCH_DELAY = 300;
 
 /** 살아있는 카드: 마우스를 잠시 올리면 펼친다. 펼칠 내용은 그때 받아 온다 */
 function useLiveCard(postId: number) {
