@@ -2,7 +2,8 @@ import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type Re
 import { Link } from 'react-router-dom';
 import type { HomeLayout, HomeWidget } from '@loop/shared';
 import { WIDGET, optionsOf, type Options } from './widgets';
-import { GAP, ROW, rowsPx, shrinkLayout, stackOrder } from '../../lib/homeGrid';
+import { GAP, ROW, followGroups, rowsPx, shrinkLayout, stackOrder } from '../../lib/homeGrid';
+import { useFollowScroll } from '../Layout';
 import { ui } from '../ui';
 import { cn } from '../../lib/cn';
 
@@ -176,6 +177,7 @@ export const HomeGrid = memo(function HomeGrid({
   onOption: (id: string, key: string, value: string | number | boolean) => void;
 }) {
   const order = new Map(stackOrder(layout.widgets).map((w, i) => [w.id, i]));
+  const byId = new Map(layout.widgets.map((w) => [w.id, w]));
   // 미리보기 위젯은 정한 높이가 '최대'일 뿐: 내용이 적으면 그만큼 줄어들고, 줄어든 만큼 아래 위젯을 끌어올린다
   const isPreview = (w: HomeWidget) => !optionsOf(w).fit && !!WIDGET[w.type].preview;
   const need = usePreviewRows();
@@ -185,34 +187,81 @@ export const HomeGrid = memo(function HomeGrid({
     const placed = new Map(shrinkLayout(fine, need.rows).map((w) => [w.id, w]));
     return fine.map((w) => placed.get(w.id) ?? w);
   }, [layout.widgets, need.rows]);
+  // 긴 글 목록 옆의 단은 묶어서 스크롤을 따라 내려온다 (다른 페이지의 사이드바처럼)
+  const groups = useMemo(() => followGroups(shown, (w) => !!optionsOf(w).fit, GAP / SUB), [shown]);
+  const grouped = new Set(groups.flatMap((g) => g.ids));
+  const gridRef = useRef<HTMLDivElement>(null);
+  useFollowScroll(() => gridRef.current?.querySelectorAll<HTMLElement>('.home-follow-inner') ?? []);
+  // 격자 맨 아래 줄 (따라오는 위젯은 여기까지 칸을 늘려야 그 안에서 움직일 수 있다)
+  const end = shown.reduce((n, w) => Math.max(n, w.y + w.h), 0) + 1;
+
+  /** 위젯 하나. 묶음 안이면 묶음의 왼쪽 위를 (0, 0) 으로 */
+  const widget = (w: (typeof shown)[number], at?: { x: number; y: number }) => {
+    const o = optionsOf(w);
+    const sticky = !at && o.sticky && !o.fit && nothingBelow(w, shown);
+    const saved = byId.get(w.id)!;
+    const preview = isPreview(saved);
+    return (
+      <WidgetFrame
+        key={w.id}
+        ref={preview ? need.observe(w.id) : undefined}
+        widget={w}
+        o={o}
+        scroll={!o.fit}
+        setOption={(k, v) => onOption(w.id, k, v)}
+        className={cn(!!o.hideMobile && 'home-hide-mobile', !!sticky && 'home-sticky')}
+        style={{
+          gridColumn: `${w.x - (at?.x ?? 0) + 1} / span ${w.w}`,
+          // position: sticky 는 자기 칸(grid area) 안에서만 따라오므로, 따라오는 위젯은 칸을 격자 끝까지 (높이는 그대로)
+          gridRow: sticky ? `${w.y + 1} / ${end}` : `${w.y - (at?.y ?? 0) + 1} / span ${w.h}`,
+          // 정한 높이 (미리보기 위젯은 최대 높이)
+          minHeight: preview ? undefined : rowsPx(saved.h),
+          height: o.fit || preview ? undefined : rowsPx(saved.h),
+          maxHeight: preview ? rowsPx(saved.h) : undefined,
+          order: order.get(w.id),
+        }}
+      />
+    );
+  };
+
   return (
-    <div className="home-grid">
-      {shown.map((w, i) => {
-        const o = optionsOf(w);
-        const sticky = o.sticky && !o.fit && nothingBelow(w, shown);
-        const preview = isPreview(layout.widgets[i]);
-        // 정한 높이 (미리보기 위젯은 최대 높이)
-        const maxRows = layout.widgets[i].h;
-        return (
-          <WidgetFrame
-            key={w.id}
-            ref={preview ? need.observe(w.id) : undefined}
-            widget={w}
-            o={o}
-            scroll={!o.fit}
-            setOption={(k, v) => onOption(w.id, k, v)}
-            className={cn(!!o.hideMobile && 'home-hide-mobile', !!sticky && 'home-sticky')}
-            style={{
-              gridColumn: `${w.x + 1} / span ${w.w}`,
-              gridRow: `${w.y + 1} / span ${w.h}`,
-              minHeight: preview ? undefined : rowsPx(maxRows),
-              height: o.fit || preview ? undefined : rowsPx(maxRows),
-              maxHeight: preview ? rowsPx(maxRows) : undefined,
-              order: order.get(w.id),
-            }}
-          />
-        );
-      })}
+    <div className="home-grid" ref={gridRef}>
+      {shown.filter((w) => !grouped.has(w.id)).map((w) => widget(w))}
+      {groups.map((g) => (
+        <div key={g.ids[0]} className="home-follow" style={{ gridColumn: `${g.x + 1} / span ${g.w}`, gridRow: `${g.y + 1} / ${g.stop + 1}` }}>
+          <FollowStack cols={g.w}>{shown.filter((w) => g.ids.includes(w.id)).map((w) => widget(w, g))}</FollowStack>
+        </div>
+      ))}
     </div>
   );
 });
+
+/**
+ * 따라오는 묶음: 화면 위쪽(헤더 아래)에 붙는다. 묶음이 화면보다 길면 아래 끝이 보일 때까지 올라간 뒤 붙는다
+ */
+function FollowStack({ cols, children }: { cols: number; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState<number>();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const fit = () => {
+      const header = el.ownerDocument.documentElement;
+      const base = parseFloat(getComputedStyle(header).getPropertyValue('--header-h')) || 64;
+      setTop(Math.min(base + 40, window.innerHeight - el.offsetHeight - 16));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    window.addEventListener('resize', fit);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', fit);
+    };
+  }, []);
+  return (
+    <div ref={ref} className="home-follow-inner" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, top }}>
+      {children}
+    </div>
+  );
+}

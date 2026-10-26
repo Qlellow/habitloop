@@ -109,6 +109,46 @@ export function shrinkLayout<T extends Box & { id: string }>(widgets: T[], need:
   return sorted.map((w) => done.get(w.id)!);
 }
 
+export interface FollowGroup {
+  ids: string[];
+  x: number;
+  w: number;
+  /** 묶음의 위 끝 */
+  y: number;
+  /** 묶음이 따라 내려갈 수 있는 아래 끝 (그 아래 다른 위젯이 있으면 거기 앞까지, 없으면 격자 끝) */
+  stop: number;
+}
+
+/**
+ * 보기 화면에서 스크롤을 따라 내려오는 옆 단 묶음 (다른 페이지의 사이드바처럼).
+ * 내용만큼 늘어나는 긴 위젯(글 목록 등) 옆에 있으면서 그 세로줄과 겹치지 않는 위젯들을, 세로줄이 겹치는 것끼리 한 묶음으로.
+ * 묶음은 칸을 아래 끝까지 넓혀 그 안에서 화면에 붙어(sticky) 따라온다.
+ */
+export function followGroups<T extends Box & { id: string }>(widgets: T[], isLong: (w: T) => boolean, gap: number): FollowGroup[] {
+  const longs = widgets.filter(isLong);
+  const cols = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w;
+  const side = widgets.filter((w) => !isLong(w) && !longs.some((l) => cols(l, w)) && longs.some((l) => l.y < w.y + w.h && w.y < l.y + l.h));
+  // 세로줄이 겹치는 것끼리 묶기
+  const groups: T[][] = [];
+  for (const w of [...side].sort(byPosition)) {
+    const hit = groups.filter((g) => g.some((o) => cols(o, w)));
+    const merged = hit.flat().concat(w);
+    for (const g of hit) groups.splice(groups.indexOf(g), 1);
+    groups.push(merged);
+  }
+  const end = widgets.reduce((n, w) => Math.max(n, w.y + w.h), 0);
+  return groups.map((g) => {
+    const x = Math.min(...g.map((w) => w.x));
+    const right = Math.max(...g.map((w) => w.x + w.w));
+    const y = Math.min(...g.map((w) => w.y));
+    const bottom = Math.max(...g.map((w) => w.y + w.h));
+    const box = { x, w: right - x, y, h: bottom - y };
+    // 아래에 묶음 밖 위젯이 같은 세로줄에 있으면 그 위젯 바로 위(간격 남기고)까지만
+    const below = widgets.filter((o) => !g.includes(o) && o.y >= bottom && cols(o, box)).map((o) => o.y - gap);
+    return { ids: g.map((w) => w.id), x, w: box.w, y, stop: Math.max(bottom, Math.min(end, ...below)) };
+  });
+}
+
 /** 격자에 쓰인 줄 수 */
 export const rowsOf = (widgets: Box[]) => widgets.reduce((n, w) => Math.max(n, w.y + w.h), 0);
 

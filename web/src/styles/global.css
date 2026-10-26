@@ -2394,8 +2394,26 @@ input[type='search']::-webkit-search-cancel-button:hover {
   position: sticky;
   top: calc(var(--header-h) + 40px);
 }
+/* 긴 글 목록 옆의 단: 칸은 아래 끝까지, 안쪽 묶음이 화면에 붙어 따라온다 (HomeGrid 의 FollowStack) */
+.home-follow {
+  align-self: stretch;
+  min-width: 0;
+}
+.home-follow-inner {
+  position: sticky;
+  display: grid;
+  grid-auto-rows: minmax(8px, auto);
+  column-gap: 16px;
+  align-items: start;
+  will-change: transform;
+}
 /* 좁은 화면: 위 → 아래 순서로 한 줄로 쌓는다 */
 @media (max-width: 859px) {
+  /* 묶음은 풀어서 위젯들이 바깥 순서(order)대로 쌓이게 */
+  .home-follow,
+  .home-follow-inner {
+    display: contents;
+  }
   .home-grid {
     display: flex;
     flex-direction: column;
