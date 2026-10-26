@@ -1,4 +1,4 @@
-import { memo, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { HomeLayout, HomeWidget } from '@loop/shared';
 import { WIDGET, optionsOf, type Options } from './widgets';
@@ -14,7 +14,42 @@ const STYLE: Record<string, string> = {
   glass: 'home-glass rounded-lg',
 };
 
-/** 위젯 하나의 틀: 제목 줄(+ 더 보기) · 내용. 정한 높이에 맞출 때는 내용이 안에서 스크롤된다 */
+/**
+ * 미리보기 위젯은 안에서 스크롤하지 않고 넘치는 부분을 자른다.
+ * 이때 반쯤 잘린 항목이 남지 않게, 칸 아래로 삐져나가는 목록 항목(li)은 통째로 숨긴다
+ */
+function useClipPartial(on: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = ref.current;
+    if (!on || !box) return;
+    let frame = 0;
+    const clip = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const bottom = box.getBoundingClientRect().bottom + 1;
+        for (const li of box.querySelectorAll('li')) {
+          li.style.visibility = '';
+          if (li.getBoundingClientRect().bottom > bottom) li.style.visibility = 'hidden';
+        }
+      });
+    };
+    clip();
+    const ro = new ResizeObserver(clip);
+    ro.observe(box);
+    const mo = new MutationObserver(clip);
+    mo.observe(box, { childList: true, subtree: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      mo.disconnect();
+      for (const li of box.querySelectorAll('li')) li.style.visibility = '';
+    };
+  }, [on]);
+  return ref;
+}
+
+/** 위젯 하나의 틀: 제목 줄(+ 더 보기) · 내용. 정한 높이에 맞출 때는 내용이 안에서 스크롤된다 (미리보기 위젯은 잘린다) */
 export function WidgetFrame({
   widget,
   o,
@@ -39,6 +74,9 @@ export function WidgetFrame({
   const title = (o.title as string) || def.title(o);
   const more = def.more?.(o);
   const Body = def.Body;
+  // 정한 높이에 맞추는 위젯: 보통은 안에서 스크롤, 미리보기 위젯은 들어가는 만큼만
+  const clipped = scroll && !!def.preview;
+  const bodyRef = useClipPartial(clipped);
   return (
     <section
       className={cn('home-widget flex flex-col min-w-0 overflow-hidden', STYLE[o.style as string] ?? STYLE.card, className)}
@@ -56,7 +94,10 @@ export function WidgetFrame({
           )}
         </div>
       )}
-      <div className={cn('flex-1 min-h-0', scroll && 'overflow-y-auto overscroll-contain', !title || o.hideTitle ? 'pt-3' : '')}>
+      <div
+        ref={bodyRef}
+        className={cn('flex-1 min-h-0', clipped ? 'overflow-hidden' : scroll && 'overflow-y-auto overscroll-contain', !title || o.hideTitle ? 'pt-3' : '')}
+      >
         <Body widget={widget} o={o} setOption={setOption} editing={editing} />
       </div>
       {children}
