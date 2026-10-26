@@ -220,14 +220,15 @@ type Variant = 'three' | 'twoRight' | 'nav' | 'single' | 'wide' | 'narrow' | 'fo
  * 화면에 붙어 있는(sticky) 사이드바가 스크롤을 '천천히 따라오는' 느낌: 스크롤하면 본문과 함께 밀려났다가
  * (화면 밖으로 나가도 된다) 1~2초에 걸쳐 부드럽게 제자리로 돌아온다. 넓은 화면(사이드바가 붙는 폭)에서만, 움직임 줄이기 설정이면 끈다.
  */
-function useFollowScroll(refs: React.RefObject<HTMLElement | null>[]) {
+export function useFollowScroll(refs: { current: HTMLElement | null }[] | (() => Iterable<HTMLElement | null>)) {
   useEffect(() => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let last = window.scrollY;
     let offset = 0;
     let frame = 0;
     const apply = (v: number) => {
-      for (const r of refs) if (r.current) r.current.style.transform = v ? `translate3d(0, ${v.toFixed(2)}px, 0)` : '';
+      const els = typeof refs === 'function' ? refs() : refs.map((r) => r.current);
+      for (const el of els) if (el) el.style.transform = v ? `translate3d(0, ${v.toFixed(2)}px, 0)` : '';
     };
     const tick = () => {
       offset *= 0.955; // 천천히 제자리로 (화면 밖으로 나갔다가 1~2초에 걸쳐 따라온다)
