@@ -5,6 +5,7 @@ import { UserAvatar } from './UserAvatar';
 import { toast } from './Toast';
 import { canShareScreen, getPrefs, useVoice, voice, type VoicePerson } from '../lib/voice';
 import { cn } from '../lib/cn';
+import '../styles/voice.css';
 
 /**
  * 음성채팅 조작 (음성 떠 있는 버튼의 창 · 채널 화면의 음성 채팅 카드가 함께 쓴다):

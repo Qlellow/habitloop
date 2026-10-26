@@ -8,7 +8,7 @@ import { ChannelSearch } from './ChannelSearch';
 import { NotificationBell } from './NotificationBell';
 import { preload } from '../lib/preload';
 import { GridIcon, HomeIcon, SearchIcon, UserIcon } from './Icons';
-import { openCommandPalette } from './CommandPalette';
+import { openCommandPalette } from '../lib/commandPalette';
 import { useAuthState } from '../lib/authNav';
 import { ui } from './ui';
 import { cn } from '../lib/cn';

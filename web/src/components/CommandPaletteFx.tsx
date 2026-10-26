@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { FxDesign } from '../lib/settings';
+import '../styles/cmdk.css';
 
 /**
  * 커맨드 팔레트를 인터랙티브 커서 디자인에 맞춘 장식 (설정 › 커맨드 팔레트도 커서 디자인으로).

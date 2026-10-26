@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { compact, useChannels, type ChannelSummary } from '@loop/shared';
 import { ChannelIcon } from './ChannelIcon';
 import { SearchIcon } from './Icons';
-import { isMac, openCommandPalette } from './CommandPalette';
+import { isMac, openCommandPalette } from '../lib/commandPalette';
 import { preload } from '../lib/preload';
 import { ui } from './ui';
 import { cn } from '../lib/cn';

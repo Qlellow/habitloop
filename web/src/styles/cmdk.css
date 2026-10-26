@@ -1,0 +1,568 @@
+/* 커맨드 팔레트 (components/CommandPalette · CommandPaletteFx): 처음 열 때 화면과 함께 받는다 */
+
+/* ───────── 커맨드 팔레트 (CommandPalette.tsx) ───────── */
+/* 바탕은 투명하게 두고 어둡게 덮는 막은 ::before 로: 바탕에 opacity 를 걸면 그 안에서만 흐려져(backdrop root) 유리가 페이지를 못 비춘다 */
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: max(12vh, 72px) 16px 16px;
+}
+.cmdk-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--lg-veil);
+  animation: cmdk-veil-in 0.25s ease-out both;
+}
+.cmdk {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100%);
+  max-height: min(560px, calc(100dvh - max(12vh, 72px) - 16px));
+  border-radius: 26px;
+  overflow: hidden;
+  color: var(--text);
+  transform-origin: 50% 0;
+  animation: cmdk-in 0.5s cubic-bezier(0.2, 1.25, 0.35, 1) both;
+}
+.cmdk-closing::before {
+  animation: cmdk-veil-out 0.18s ease-in both;
+}
+.cmdk-closing .cmdk {
+  animation: cmdk-out 0.18s ease-in both;
+}
+@keyframes cmdk-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.94);
+  }
+}
+@keyframes cmdk-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+@keyframes cmdk-veil-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes cmdk-veil-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.cmdk-search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 60px;
+  padding: 0 14px 0 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+}
+.cmdk-search-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
+}
+.cmdk-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 17px;
+  color: var(--text-strong);
+}
+.cmdk-input::placeholder {
+  color: var(--text-weak);
+}
+.cmdk-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 30px;
+  padding: 0 10px 0 6px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  box-shadow: inset 0 1px 0 var(--lg-inset);
+}
+.cmdk-chip svg {
+  width: 16px;
+  height: 16px;
+}
+.cmdk-spinner {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--text) 15%, transparent);
+  border-top-color: var(--primary);
+  animation: cmdk-spin 0.7s linear infinite;
+}
+@keyframes cmdk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cmdk-list {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 위 · 아래 16px 는 굴절 띠 (CommandPalette LIST_PAD_Y). 스크롤할 때 줄이 여기서 유리 가장자리처럼 휜다 */
+  padding: 16px 8px;
+  scrollbar-width: thin;
+}
+.cmdk-group {
+  padding: 12px 12px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-weak);
+}
+.cmdk-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 7px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 15px;
+  transition: color 0.2s ease;
+}
+.cmdk-item-active {
+  color: var(--text-strong);
+}
+.cmdk-item-all {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+.cmdk-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+.cmdk-tile {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  color: var(--text-sub);
+  background: var(--lg-pill);
+  box-shadow:
+    inset 0 1px 0 var(--lg-pill-rim),
+    0 0 0 0.5px var(--lg-edge);
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+.cmdk-tile svg {
+  width: 17px;
+  height: 17px;
+}
+.cmdk-item-active .cmdk-tile {
+  color: #fff;
+  background: var(--primary);
+}
+.cmdk-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.cmdk-item-active .cmdk-label {
+  font-weight: 600;
+}
+.cmdk-hint {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-weak);
+}
+.cmdk-hint-current {
+  font-weight: 600;
+  color: var(--primary);
+}
+/*
+ * 고른 항목 위에 떠 있는 유리 렌즈. 안에 같은 줄들을 복제해 두고(.cmdk-lens-rows) 가장자리에서 휘게 비춘다.
+ * 렌즈는 아래로(+top), 복제한 줄은 위로(-top) 같은 곡선으로 움직여서 출렁이는 동안에도 글자가 제자리에 맞는다
+ */
+.cmdk-pill {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 0.5px var(--lg-edge),
+    0 8px 20px -8px rgba(0, 20, 60, 0.3);
+  transition:
+    transform 0.42s cubic-bezier(0.25, 1.35, 0.4, 1),
+    height 0.3s ease;
+  will-change: transform;
+}
+/* 렌즈 테두리 반사광 (복제한 줄 위에) */
+.cmdk-pill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 var(--lg-pill-rim),
+    inset 0 -1px 0 color-mix(in srgb, var(--lg-pill-rim) 35%, transparent),
+    inset 8px 0 14px -12px var(--lg-pill-rim),
+    inset -8px 0 14px -12px var(--lg-pill-rim);
+}
+.cmdk-lens {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--lg-lens);
+}
+.cmdk-lens-bend {
+  position: absolute;
+  inset: 0;
+}
+.cmdk-lens-rows {
+  position: absolute;
+  top: 0;
+  left: -8px;
+  box-sizing: border-box;
+  padding: 16px 8px;
+  transition: transform 0.42s cubic-bezier(0.25, 1.35, 0.4, 1);
+  will-change: transform;
+}
+.cmdk-pill-instant,
+.cmdk-pill-instant .cmdk-lens-rows {
+  transition: none;
+}
+.cmdk-empty {
+  margin: 0;
+  padding: 28px 12px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-weak);
+}
+.cmdk-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 18px;
+  font-size: 12px;
+  color: var(--text-weak);
+  border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+}
+.cmdk-foot > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+@media (max-width: 520px) {
+  .cmdk-foot {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmdk-backdrop::before,
+  .cmdk,
+  .cmdk-pill,
+  .cmdk-lens-rows {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* 커맨드 팔레트: 음성방 이름 옆 채널 이름 */
+.cmdk-sub {
+  font-weight: 400;
+  color: var(--text-weak);
+}
+
+/* ───────── 커맨드 팔레트 × 인터랙티브 커서 디자인 (CommandPaletteFx) ─────────
+   포인트 색(--primary)을 디자인 색으로 바꾸면 검색 아이콘 · 고른 항목 · 칩 · 사용 중 표시가 함께 바뀐다 */
+.cmdk[data-fx='star'],
+.cmdk-backdrop[data-fx='star'] {
+  --fx-a: #f5b400;
+  --fx-b: #8fb4ff;
+  --fx-on: #2a1d00;
+}
+.cmdk[data-fx='heart'],
+.cmdk-backdrop[data-fx='heart'] {
+  --fx-a: #ff4d7d;
+  --fx-b: #ffa3bd;
+  --fx-on: #fff;
+}
+.cmdk[data-fx='sakura'],
+.cmdk-backdrop[data-fx='sakura'] {
+  --fx-a: #f27aa8;
+  --fx-b: #ffcfe2;
+  --fx-on: #fff;
+}
+.cmdk[data-fx='snow'],
+.cmdk-backdrop[data-fx='snow'] {
+  --fx-a: #3ba7f0;
+  --fx-b: #cdeeff;
+  --fx-on: #fff;
+}
+.cmdk[data-fx='fire'],
+.cmdk-backdrop[data-fx='fire'] {
+  --fx-a: #ff6a1a;
+  --fx-b: #ffc23d;
+  --fx-on: #fff;
+}
+.cmdk[data-fx] {
+  --primary: var(--fx-a);
+}
+/* 뒤를 덮는 막에 디자인 색이 은은하게 번진다 */
+.cmdk-backdrop[data-fx]::before {
+  background:
+    radial-gradient(60% 45% at 50% 18%, color-mix(in srgb, var(--fx-a) 22%, transparent), transparent 70%),
+    var(--lg-veil);
+}
+.cmdk[data-fx] .cmdk-item-active .cmdk-tile {
+  color: var(--fx-on);
+}
+.cmdk[data-fx] .cmdk-lens {
+  background: color-mix(in srgb, var(--fx-a) 13%, var(--lg-lens));
+}
+.cmdk[data-fx] .cmdk-group {
+  color: color-mix(in srgb, var(--fx-a) 65%, var(--text-weak));
+}
+.cmdk[data-fx] .cmdk-search,
+.cmdk[data-fx] .cmdk-foot {
+  position: relative;
+  z-index: 1;
+  border-color: color-mix(in srgb, var(--fx-a) 22%, transparent);
+}
+.cmdk[data-fx] .cmdk-list {
+  z-index: 1;
+}
+/* 장식 층: 안쪽 테두리 빛 + 위쪽 색 번짐 + 떠다니는 도트 */
+.cmdk-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(90% 55% at 50% -12%, color-mix(in srgb, var(--fx-a) 20%, transparent), transparent 70%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--fx-a) 45%, transparent),
+    inset 0 0 36px -14px color-mix(in srgb, var(--fx-a) 70%, transparent);
+}
+.cmdk-fx-p {
+  position: absolute;
+  opacity: 0;
+  image-rendering: pixelated;
+}
+.cmdk-fx-p > i {
+  display: block;
+}
+/* 별: 제자리에서 반짝 */
+.cmdk[data-fx='star'] .cmdk-fx-p {
+  animation: cmdk-fx-twinkle ease-in-out infinite;
+}
+@keyframes cmdk-fx-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  45%,
+  55% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+}
+/* 하트: 아래에서 둥실 떠오른다 */
+.cmdk[data-fx='heart'] .cmdk-fx-p {
+  animation: cmdk-fx-rise ease-out infinite;
+}
+@keyframes cmdk-fx-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 60px) scale(0.7);
+  }
+  20% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--sway), -90px) scale(1);
+  }
+}
+/* 벚꽃 · 눈: 흩날리며 내린다 */
+.cmdk[data-fx='sakura'] .cmdk-fx-p,
+.cmdk[data-fx='snow'] .cmdk-fx-p {
+  animation: cmdk-fx-fall linear infinite;
+}
+@keyframes cmdk-fx-fall {
+  0% {
+    opacity: 0;
+    transform: translate(0, -80px) rotate(0deg);
+  }
+  15% {
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate(var(--sway), 0) rotate(120deg);
+  }
+  85% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 80px) rotate(240deg);
+  }
+}
+/* 불꽃: 불티가 빠르게 튀어 오르며 깜빡인다 */
+.cmdk[data-fx='fire'] .cmdk-fx-p {
+  animation: cmdk-fx-ember ease-out infinite;
+  animation-duration: 3.2s !important;
+}
+@keyframes cmdk-fx-ember {
+  0% {
+    opacity: 0;
+    transform: translate(0, 50px);
+  }
+  15% {
+    opacity: 0.75;
+  }
+  30% {
+    opacity: 0.35;
+  }
+  45% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--sway), -80px);
+  }
+}
+/* 느린 기기 설정 · 움직임 줄이기: 입자는 가만히 흐리게만 */
+.cmdk-fx.is-still .cmdk-fx-p {
+  animation: none !important;
+  opacity: 0.35;
+}
+/* 검색줄 오른쪽 도트 배지 */
+.cmdk-fx-badge {
+  flex: none;
+  position: relative;
+  display: inline-block;
+  image-rendering: pixelated;
+}
+.cmdk-fx-badge > i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+}
+.cmdk[data-fx='star'] .cmdk-fx-badge {
+  animation: cmdk-fx-badge-twinkle 1.6s ease-in-out infinite;
+}
+.cmdk[data-fx='heart'] .cmdk-fx-badge {
+  animation: cmdk-fx-badge-beat 1.1s ease-in-out infinite;
+}
+.cmdk[data-fx='sakura'] .cmdk-fx-badge {
+  animation: cmdk-fx-badge-sway 2.4s ease-in-out infinite;
+}
+.cmdk[data-fx='snow'] .cmdk-fx-badge {
+  animation: cmdk-fx-badge-spin 6s linear infinite;
+}
+.cmdk[data-fx='fire'] .cmdk-fx-badge {
+  animation: cmdk-fx-badge-flicker 0.9s steps(3) infinite;
+}
+@keyframes cmdk-fx-badge-twinkle {
+  50% {
+    transform: scale(0.75);
+    opacity: 0.6;
+  }
+}
+@keyframes cmdk-fx-badge-beat {
+  0%,
+  60%,
+  100% {
+    transform: scale(1);
+  }
+  15%,
+  40% {
+    transform: scale(1.22);
+  }
+}
+@keyframes cmdk-fx-badge-sway {
+  50% {
+    transform: rotate(18deg) translateY(1px);
+  }
+}
+@keyframes cmdk-fx-badge-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes cmdk-fx-badge-flicker {
+  33% {
+    transform: translateY(-1px) scaleY(1.12);
+  }
+  66% {
+    transform: translateY(1px) scaleY(0.92);
+    opacity: 0.8;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmdk-fx-p {
+    animation: none !important;
+    opacity: 0.35;
+  }
+  .cmdk-fx-badge {
+    animation: none !important;
+  }
+}
+
+/* 커맨드 팔레트 '닫기' (터치 화면: Esc 대신) */
+.cmdk-close {
+  flex: none;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  background: color-mix(in srgb, var(--text-weak) 14%, transparent);
+  touch-action: manipulation;
+}
+.cmdk-close:active {
+  background: color-mix(in srgb, var(--text-weak) 24%, transparent);
+}

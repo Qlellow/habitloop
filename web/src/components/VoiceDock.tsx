@@ -9,6 +9,7 @@ import { rememberRoom, useVoice, voice, type VoiceScreen } from '../lib/voice';
 import { useVoiceWindow } from '../lib/voiceWindow';
 import { VoiceWindowHost } from './VoiceStage';
 import { cn } from '../lib/cn';
+import '../styles/voice.css';
 
 /**
  * 음성채팅 떠 있는 버튼 (FAB): 음성방에 들어가 있는 동안 화면 위에 떠 있고, 끌어서 원하는 곳에 둔다 (이 브라우저에 기억).
