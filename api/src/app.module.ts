@@ -29,6 +29,7 @@ import { CommentsService } from './posts/comments.service';
 import { PostsController } from './posts/posts.controller';
 import { CommunityController } from './community/community.controller';
 import { WeatherService } from './community/weather.service';
+import { DnaService } from './users/dna.service';
 import { DiscoveryService } from './posts/discovery.service';
 import { PostsService } from './posts/posts.service';
 import { ReportsController } from './reports/reports.controller';
@@ -70,6 +71,7 @@ class HealthController {
     CategoriesService,
     PostsService,
     WeatherService,
+    DnaService,
     DiscoveryService,
     CommentsService,
     PreviewsService,

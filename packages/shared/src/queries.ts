@@ -49,6 +49,7 @@ import type {
   PostSummary,
   Discovery,
   WeatherReport,
+  ActivityDna,
   User,
 } from './types';
 import { authStore } from './auth';
@@ -155,6 +156,16 @@ export function useUserProfile(id: string) {
     queryKey: ['user', id] as const,
     queryFn: ({ signal }) => api<UserProfile>(`/api/users/${encodeURIComponent(id)}`, { signal }),
     enabled: isUserId(id),
+  });
+}
+
+/** 활동 DNA (공개 채널 활동만, 서버가 10분 캐시) */
+export function useActivityDna(id: string) {
+  return useQuery({
+    queryKey: ['user', id, 'dna'] as const,
+    queryFn: ({ signal }) => api<ActivityDna>(`/api/users/${encodeURIComponent(id)}/dna`, { signal }),
+    enabled: isUserId(id),
+    staleTime: 5 * 60_000,
   });
 }
 

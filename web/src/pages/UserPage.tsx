@@ -7,6 +7,7 @@ import { Page } from '../components/Layout';
 import { PostList } from '../components/PostList';
 import { ui } from '../components/ui';
 import { ProfileBanner } from '../components/ProfileBanner';
+import { ActivityDnaCard } from '../components/ActivityDna';
 import { PetActor } from '../components/Pet';
 import { UserAvatar } from '../components/UserAvatar';
 import { cn } from '../lib/cn';
@@ -156,6 +157,7 @@ export default function UserPage() {
           </div>
         </section>
       )}
+      {user && !user.blocked && <ActivityDnaCard userId={user.id} nickname={user.nickname} />}
       {user?.badges && <Badges badges={user.badges} />}
       <section className={ui.card}>
         <div className={ui.cardHead}>
