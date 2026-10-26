@@ -48,6 +48,7 @@ import type {
   PostInput,
   PostSummary,
   Discovery,
+  WeatherReport,
   User,
 } from './types';
 import { authStore } from './auth';
@@ -78,6 +79,7 @@ export const keys = {
   feed: (f: FeedFilter) => ['posts', 'feed', f] as const,
   popular: (channel?: string) => ['posts', 'popular', channel ?? '*'] as const,
   discovery: ['posts', 'discovery'] as const,
+  weather: ['community', 'weather'] as const,
   post: (id: number) => ['post', id] as const,
   postPreview: (id: number) => ['post', id, 'preview'] as const,
   comments: (postId: number) => ['comments', postId] as const,
@@ -182,6 +184,17 @@ export function useDiscovery() {
     queryKey: keys.discovery,
     queryFn: ({ signal }) => api<Discovery>('/api/posts/discovery', { signal }),
     staleTime: 5 * 60_000,
+  });
+}
+
+/** 커뮤니티 감정 날씨 (서버가 5분마다 새로 잰다) */
+export function useCommunityWeather(enabled = true) {
+  return useQuery({
+    queryKey: keys.weather,
+    queryFn: ({ signal }) => api<WeatherReport>('/api/community/weather', { signal }),
+    staleTime: 5 * 60_000,
+    refetchInterval: 10 * 60_000,
+    enabled,
   });
 }
 

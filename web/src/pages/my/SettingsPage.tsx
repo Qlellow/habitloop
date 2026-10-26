@@ -707,6 +707,20 @@ export default function SettingsPage() {
           />
         </div>
         {settings.theme === 'time' && <TimeThemeOption />}
+        <div className={s.option}>
+          <div>
+            <div className={s.optionLabel}>커뮤니티 날씨 효과</div>
+            <div className={s.optionDesc}>최근 24시간의 반응으로 정한 커뮤니티 분위기(맑음 · 흐림 · 비 …)를 홈 화면 뒤에 날씨로 보여 줘요.</div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings.weatherFx}
+            aria-label="커뮤니티 날씨 효과"
+            className={s.switch}
+            onClick={() => updateSettings({ weatherFx: !settings.weatherFx })}
+          />
+        </div>
         <PixelFxOption />
         <div className={s.option}>
           <div>

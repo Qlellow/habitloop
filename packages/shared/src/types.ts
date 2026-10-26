@@ -250,6 +250,18 @@ export interface PointLog {
 /** 알림 종류: 내 글에 댓글 · 내 댓글에 답글 · 내 글에 공감 · 팔로우한 채널의 새 공지 */
 export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery';
 
+/** 커뮤니티 감정 날씨 (최근 24시간의 반응으로) */
+export type CommunityWeather = 'calm' | 'sunny' | 'hot' | 'partly' | 'windy' | 'cloudy' | 'rain';
+
+export interface WeatherReport {
+  weather: CommunityWeather;
+  /** 체감 온도 8 ~ 35 (활동이 많을수록 높다) */
+  temperature: number;
+  activity: number;
+  stats: { posts: number; comments: number; likes: number; clap: number; laugh: number; wow: number; sad: number; fire: number };
+  updatedAt: string;
+}
+
 /** 오늘의 발견: 왜 골랐는지 */
 export type DiscoveryReason = 'talk' | 'warm' | 'long' | 'hidden';
 
@@ -447,6 +459,7 @@ export type HomeWidgetType =
   | 'feed'
   | 'popular'
   | 'discovery'
+  | 'weather'
   | 'followed'
   | 'hotChannels'
   | 'notifications'

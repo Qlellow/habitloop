@@ -27,6 +27,8 @@ import { NotificationsService } from './notifications/notifications.service';
 import { VerificationService } from './mail/verification.service';
 import { CommentsService } from './posts/comments.service';
 import { PostsController } from './posts/posts.controller';
+import { CommunityController } from './community/community.controller';
+import { WeatherService } from './community/weather.service';
 import { DiscoveryService } from './posts/discovery.service';
 import { PostsService } from './posts/posts.service';
 import { ReportsController } from './reports/reports.controller';
@@ -50,7 +52,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController, CommunityController],
   providers: [
     Database,
     PetsService,
@@ -67,6 +69,7 @@ class HealthController {
     IconsService,
     CategoriesService,
     PostsService,
+    WeatherService,
     DiscoveryService,
     CommentsService,
     PreviewsService,

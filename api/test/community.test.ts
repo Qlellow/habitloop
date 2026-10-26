@@ -5,6 +5,7 @@ import { JwtService } from '../src/auth/jwt.service';
 import { Mailer } from '../src/mail/mailer';
 import { Database } from '../src/db/database';
 import { makeExcerpt, EXCERPT_LENGTH } from '../src/posts/excerpt';
+import { weatherOf } from '../src/community/weather.service';
 import jwtLib from 'jsonwebtoken';
 
 /**
@@ -77,6 +78,21 @@ describe('excerpt', () => {
 
   it('표는 칸 내용만 남긴다', () => {
     expect(makeExcerpt('| 은행 | 금리 |\n| --- | :-: |\n| A | 3.1% |')).toBe('은행 금리 A 3.1%');
+  });
+});
+
+describe('커뮤니티 감정 날씨', () => {
+  const zero = { posts: 0, comments: 0, likes: 0, clap: 0, laugh: 0, wow: 0, sad: 0, fire: 0 };
+  it('활동이 적으면 잔잔함, 슬픔이 많으면 비 · 흐림, 놀람은 바람, 웃음 · 최고가 많고 활발하면 쨍쨍', () => {
+    expect(weatherOf(zero)).toMatchObject({ weather: 'calm', temperature: 8, activity: 0 });
+    expect(weatherOf({ ...zero, posts: 2, likes: 3, sad: 4 }).weather).toBe('rain');
+    expect(weatherOf({ ...zero, posts: 2, likes: 6, sad: 2 }).weather).toBe('cloudy');
+    expect(weatherOf({ ...zero, posts: 2, likes: 4, wow: 3 }).weather).toBe('windy');
+    expect(weatherOf({ ...zero, posts: 6, comments: 6, likes: 5, laugh: 6, fire: 6 }).weather).toBe('hot');
+    expect(weatherOf({ ...zero, posts: 2, likes: 5, clap: 3 }).weather).toBe('sunny');
+    expect(weatherOf({ ...zero, posts: 4, comments: 4 }).weather).toBe('partly');
+    // 체감 온도는 35도까지
+    expect(weatherOf({ ...zero, posts: 100 }).temperature).toBe(35);
   });
 });
 
@@ -1308,6 +1324,13 @@ describe('커뮤니티', () => {
     const writerId = (await http().get('/api/me').set(bearer(writer))).body.id;
     await http().put(`/api/users/${writerId}/block`).set(bearer(reader)).expect(204);
     expect((await http().get('/api/posts/discovery').set(bearer(reader)).expect(200)).body.post).toBeUndefined();
+  });
+
+  it('커뮤니티 감정 날씨 API: 최근 24시간 통계와 날씨', async () => {
+    const res = (await http().get('/api/community/weather').expect(200)).body;
+    expect(['calm', 'sunny', 'hot', 'partly', 'windy', 'cloudy', 'rain']).toContain(res.weather);
+    expect(res.stats).toMatchObject({ posts: expect.any(Number), comments: expect.any(Number), likes: expect.any(Number), sad: expect.any(Number) });
+    expect(res.temperature).toBeGreaterThanOrEqual(8);
   });
 
   it('신고: 운영진 신고함에서 숨기기 · 숨김 풀기 · 문제 없음 · 지우기', async () => {

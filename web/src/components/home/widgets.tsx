@@ -13,6 +13,7 @@ import {
   usePatPet,
   usePopular,
   useDiscovery,
+  useCommunityWeather,
   useReadNotifications,
   useUserProfile,
   PET_STAGES,
@@ -27,6 +28,7 @@ import { RankMark } from '../Sidebar';
 import { SlideHover } from '../SlideHover';
 import { PetActor } from '../Pet';
 import { NotificationAvatar, notificationMessage } from '../NotificationBell';
+import { WeatherSummary } from '../Weather';
 import { toast } from '../Toast';
 import { preload } from '../../lib/preload';
 import { useSettings, periodAt } from '../../lib/settings';
@@ -210,6 +212,14 @@ function DiscoveryBody({ o }: WidgetProps) {
       )}
     </div>
   );
+}
+
+/** 커뮤니티 감정 날씨: 날씨 그림 · 체감 온도 · 한 줄 · 감정 막대 */
+function WeatherBody({ o }: WidgetProps) {
+  const { data, isPending } = useCommunityWeather();
+  if (isPending) return <ListSkeleton rows={2} />;
+  if (!data) return <Empty>날씨를 아직 못 쟀어요</Empty>;
+  return <WeatherSummary report={data} bars={!!o.bars} />;
 }
 
 function ChannelGrid({ channels }: { channels: { slug: string; name: string; iconVersion?: number }[] }) {
@@ -578,6 +588,18 @@ export const WIDGETS: WidgetDef[] = [
     title: () => '오늘의 발견',
     options: [{ key: 'past', label: '지난 발견도 보기', kind: 'switch', def: true }, AUTO_H],
     Body: DiscoveryBody,
+  },
+  {
+    type: 'weather',
+    label: '커뮤니티 날씨',
+    desc: '최근 24시간의 반응으로 정한 커뮤니티 분위기',
+    glyph: '☀',
+    size: { w: 3, h: 4 },
+    min: { w: 3, h: 3 },
+    preview: true,
+    title: () => '커뮤니티 날씨',
+    options: [{ key: 'bars', label: '감정 비율 보기', kind: 'switch', def: true }, AUTO_H],
+    Body: WeatherBody,
   },
   {
     type: 'followed',

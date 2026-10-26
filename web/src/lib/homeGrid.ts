@@ -88,7 +88,7 @@ export function setCompact(layout: HomeLayout, compact: boolean): HomeLayout {
 /**
  * 보기 화면에서 실제 높이로 다시 놓기. 높이가 내용으로 정해지는 위젯(높이 반응형)은 정한 줄 수와 실제 높이가 달라서,
  * 그대로 두면 아래 위젯과 사이가 벌어지거나 겹친다. 그래서 같은 세로줄의 아래 위젯을 실제 높이에 맞춰 올리거나 내린다.
- * 사용자가 일부러 띄운 간격은 그대로 둔다: 위젯마다, 같은 세로줄에서 위에 있는 위젯들의 '새 아래 끝 + 원래 간격' 중 가장 아래로.
+ * 사용자가 일부러 띄운 간격은 그대로 둔다: 위젯마다, 같은 세로줄에서 위에 있던 위젯들의 새 아래 끝(가장 아래) + 바로 위와의 원래 간격.
  * need: 위젯 id → 실제 필요한 줄 수 (없으면 정한 높이 그대로)
  */
 export function reflowLayout<T extends Box & { id: string }>(widgets: T[], need: Record<string, number>): T[] {
@@ -96,14 +96,17 @@ export function reflowLayout<T extends Box & { id: string }>(widgets: T[], need:
   const done = new Map<string, T>();
   for (const w of sorted) {
     const h = Math.max(1, need[w.id] ?? w.h);
-    // 위에 아무것도 없으면 제자리
-    let y: number | undefined;
+    // 같은 세로줄에서 위에 있던 위젯들의 (원래 · 새) 아래 끝 중 가장 아래. 위에 아무것도 없으면 제자리
+    let oldBottom: number | undefined;
+    let newBottom = 0;
     for (const a of sorted) {
       const moved = done.get(a.id);
       if (!moved || a.y + a.h > w.y || a.x >= w.x + w.w || w.x >= a.x + a.w) continue;
-      y = Math.max(y ?? 0, moved.y + moved.h + (w.y - a.y - a.h));
+      oldBottom = Math.max(oldBottom ?? 0, a.y + a.h);
+      newBottom = Math.max(newBottom, moved.y + moved.h);
     }
-    done.set(w.id, { ...w, y: y ?? w.y, h });
+    // 바로 위와의 원래 간격은 그대로
+    done.set(w.id, { ...w, y: oldBottom == null ? w.y : newBottom + (w.y - oldBottom), h });
   }
   return sorted.map((w) => done.get(w.id)!);
 }

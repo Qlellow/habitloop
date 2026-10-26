@@ -29,11 +29,12 @@ export const TEMPLATES: Template[] = [
   {
     key: 'basic',
     label: '기본',
-    desc: '왼쪽 채널 · 가운데 글 · 오른쪽 오늘의 발견 · 인기글',
+    desc: '왼쪽 채널 · 날씨, 가운데 글, 오른쪽 오늘의 발견 · 인기글',
     compact: true,
     specs: ({ loggedIn }) => [
       ...(loggedIn ? ([['followed', 0, 0, 3, 4]] as Spec[]) : []),
       ['hotChannels', 0, loggedIn ? 4 : 0, 3, 6],
+      ['weather', 0, loggedIn ? 10 : 6, 3, 4],
       ['feed', 3, 0, 6, 12],
       ['discovery', 9, 0, 3, 5],
       ['popular', 9, 5, 3, 6],
