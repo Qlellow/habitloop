@@ -28,12 +28,14 @@ export interface Settings {
   focusWidth: 'narrow' | 'normal' | 'wide';
   /** 내 펫이 화면을 돌아다니게 (데스크톱 펫) */
   petRoam: boolean;
+  /** 홈 화면 뒤에 커뮤니티 감정 날씨(해 · 구름 · 비 · 바람)를 깐다 */
+  weatherFx: boolean;
 }
 
 export type FxDesign = 'star' | 'heart' | 'sakura' | 'snow' | 'fire';
 
 const KEY = 'loop.settings';
-const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true, livePreview: true, cursorFx: false, pixelFxSpecialOnly: false, fxDesign: 'star', cmdkFx: true, focusMode: false, focusFont: 18, focusWidth: 'normal', petRoam: true };
+const DEFAULTS: Settings = { theme: 'system', timeTheme: 'auto', editorMode: 'split', showExcerpt: true, livePreview: true, cursorFx: false, pixelFxSpecialOnly: false, fxDesign: 'star', cmdkFx: true, focusMode: false, focusFont: 18, focusWidth: 'normal', petRoam: true, weatherFx: true };
 
 /** 시간대. 새벽 · 저녁은 어두운 화면, 아침 · 낮은 밝은 화면 */
 export type Period = 'morning' | 'day' | 'evening' | 'dawn';

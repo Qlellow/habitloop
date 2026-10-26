@@ -9,6 +9,7 @@ export const WIDGET_TYPES = [
   'feed',
   'popular',
   'discovery',
+  'weather',
   'followed',
   'hotChannels',
   'notifications',

@@ -178,6 +178,15 @@ export class Seeder implements OnApplicationBootstrap {
     // 운영진 배지 예시: 창작 채널의 관리자(민트초코) · 매니저(하늘색)
     await db.execute("UPDATE channel_members SET role = 'ADMIN' WHERE channel_id = $1 AND user_id = $2", [creative, users[1]]);
     await db.execute("UPDATE channel_members SET role = 'MANAGER' WHERE channel_id = $1 AND user_id = $2", [creative, users[2]]);
+    // 감정 반응 몇 개 (커뮤니티 감정 날씨 예시): 사람마다 다른 글에
+    const recent = (await db.query<{ id: number }>('SELECT id FROM posts ORDER BY id DESC LIMIT 12')).map((r) => r.id);
+    const kinds = ['clap', 'laugh', 'fire', 'clap', 'sad', 'laugh', 'wow', 'clap', 'fire', 'laugh', 'clap', 'sad'];
+    for (let i = 0; i < recent.length; i++) {
+      for (const u of users) {
+        await db.execute('INSERT INTO post_reactions (post_id, user_id, kind) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [recent[i], u, kinds[(i + u) % kinds.length]]);
+      }
+    }
+
     // 글 · 댓글 시간을 최근 며칠에 흩어 둔다 (방금 쓴 글만 있으면 '오늘의 발견' · 활동 시간대 같은 기능을 볼 수 없다)
     await db.execute(
       `UPDATE posts SET created_at = now() - interval '20 minutes' - ((SELECT max(id) FROM posts) - id) * interval '97 minutes'`,

@@ -5,6 +5,7 @@ import { Page } from '../components/Layout';
 import { HomeGrid } from '../components/home/HomeGrid';
 import { compactOptions, optionsOf } from '../components/home/widgets';
 import { GridIcon } from '../components/Icons';
+import { WeatherSky } from '../components/Weather';
 import { toast } from '../components/Toast';
 import { TEMPLATES, fromTemplate, normalize, useSavedHome, type TemplateCtx } from '../lib/homeLayout';
 import { preload } from '../lib/preload';
@@ -100,6 +101,8 @@ export default function HomePage() {
 
   return (
     <Page variant="wide">
+      {/* 커뮤니티 감정 날씨: 홈 화면 뒤에 깔린다 (설정에서 끌 수 있다) */}
+      <WeatherSky />
       <div className="home-top">
         <button type="button" className={cn(ui.button, ui.text, ui.small, 'gap-1.5 [&>svg]:w-4 [&>svg]:h-4')} onClick={startEdit} onPointerEnter={preload.homeEditor}>
           <GridIcon />
