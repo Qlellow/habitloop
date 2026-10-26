@@ -50,6 +50,8 @@ import type {
   Discovery,
   WeatherReport,
   ActivityDna,
+  SeaState,
+  MyBottle,
   User,
 } from './types';
 import { authStore } from './auth';
@@ -903,6 +905,43 @@ export function usePatPet() {
   return useMutation({
     mutationFn: () => api<{ gained: boolean; xp: number; pet: Pet }>('/api/me/pet/pat', { method: 'POST' }),
     onSuccess: (res) => qc.setQueryData(petKey, res.pet),
+  });
+}
+
+/* ───────── 메시지 표류병 ───────── */
+
+const seaKey = ['bottles', 'sea'] as const;
+const myBottlesKey = ['bottles', 'mine'] as const;
+
+/** 바다 보기: 손에 든 병이 없으면 하나 건네받는다 */
+export function useSea(enabled = true) {
+  return useQuery({ queryKey: seaKey, queryFn: ({ signal }) => api<SeaState>('/api/bottles/sea', { signal }), enabled });
+}
+
+/** 내가 띄운 병들 (보면 답장은 읽음이 된다) */
+export function useMyBottles(enabled = true) {
+  return useQuery({ queryKey: myBottlesKey, queryFn: ({ signal }) => api<MyBottle[]>('/api/bottles/mine', { signal }), enabled });
+}
+
+export function useThrowBottle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (content: string) => api<{ id: number }>('/api/bottles', { method: 'POST', body: { content } }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: seaKey });
+      void qc.invalidateQueries({ queryKey: myBottlesKey });
+    },
+  });
+}
+
+/** 손에 든 병: 답장하고 다시 띄우기 · 그냥 다시 띄우기 · 신고 */
+export function useBottleAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action, content }: { id: number; action: 'reply' | 'release' | 'report'; content?: string }) =>
+      api<void>(`/api/bottles/${id}/${action}`, { method: 'POST', body: action === 'reply' ? { content } : undefined }),
+    // 손이 비었으니 다음 바다 보기에서 새 병을 건네받지 않게, 지금은 빈손으로만 바꿔 둔다
+    onSuccess: () => qc.setQueryData<SeaState>(seaKey, (s) => (s ? { ...s, held: undefined } : s)),
   });
 }
 

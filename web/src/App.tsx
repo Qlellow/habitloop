@@ -30,6 +30,7 @@ const SettingsPage = lazy(loaders.settings);
 const PointsPage = lazy(loaders.points);
 const PetPage = lazy(loaders.pet);
 const ChannelPage = lazy(loaders.channel);
+const SeaPage = lazy(loaders.sea);
 const ChannelsPage = lazy(loaders.channels);
 const ChannelFormPage = lazy(loaders.channelForm);
 const ChannelManagePage = lazy(loaders.channelManage);
@@ -124,6 +125,8 @@ const router = createBrowserRouter([
       { path: '/posts/:id/edit', element: auth(<WritePage />) },
       { path: '/write', element: auth(<WritePage />) },
       { path: '/channels', element: <ChannelsPage /> },
+      // 메시지 표류병
+      { path: '/sea', element: auth(<SeaPage />) },
       { path: '/channels/new', element: auth(<ChannelFormPage />) },
       { path: '/c/:slug', element: <ChannelPage /> },
       { path: '/c/:slug/edit', element: auth(<ChannelFormPage />) },

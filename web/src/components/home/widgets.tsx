@@ -14,6 +14,7 @@ import {
   usePopular,
   useDiscovery,
   useCommunityWeather,
+  useSea,
   useReadNotifications,
   useUserProfile,
   PET_STAGES,
@@ -220,6 +221,26 @@ function WeatherBody({ o }: WidgetProps) {
   if (isPending) return <ListSkeleton rows={2} />;
   if (!data) return <Empty>날씨를 아직 못 쟀어요</Empty>;
   return <WeatherSummary report={data} bars={!!o.bars} />;
+}
+
+/** 메시지 표류병: 물결 위 병 · 떠다니는 병 수 · 주운 병 · 새 답장 → 바다로 */
+function BottleBody() {
+  const { isLoggedIn } = useAuth();
+  const { data } = useSea(isLoggedIn);
+  if (!isLoggedIn) return <NeedLogin what="메시지 표류병" />;
+  return (
+    <Link to="/sea" className="bottle-widget" onPointerEnter={preload.sea}>
+      <span className="bottle-widget-sea" aria-hidden>
+        <span className="bottle-widget-bottle">🍾</span>
+      </span>
+      <span className="block text-[14px] font-semibold text-fg-strong">
+        {data?.held ? '떠내려온 병을 주웠어요!' : '병에 말을 담아 띄워 보세요'}
+      </span>
+      <span className="block mt-0.5 text-[12px] text-fg-weak tabular-nums">
+        떠다니는 병 {data?.drifting ?? 0}개{data?.unreadReplies ? ` · 새 답장 ${data.unreadReplies}` : ''}
+      </span>
+    </Link>
+  );
 }
 
 function ChannelGrid({ channels }: { channels: { slug: string; name: string; iconVersion?: number }[] }) {
@@ -600,6 +621,20 @@ export const WIDGETS: WidgetDef[] = [
     title: () => '커뮤니티 날씨',
     options: [{ key: 'bars', label: '감정 비율 보기', kind: 'switch', def: true }, AUTO_H],
     Body: WeatherBody,
+  },
+  {
+    type: 'bottle',
+    label: '메시지 표류병',
+    desc: '병에 담은 말이 낯선 누군가에게 닿아요',
+    glyph: '⌇',
+    size: { w: 3, h: 3 },
+    min: { w: 2, h: 3 },
+    login: true,
+    preview: true,
+    title: () => '메시지 표류병',
+    more: () => '/sea',
+    options: [AUTO_H],
+    Body: BottleBody,
   },
   {
     type: 'followed',

@@ -1377,6 +1377,59 @@ describe('커뮤니티', () => {
     expect(['dawn', 'morning', 'day', 'evening', 'night']).toContain(dna.type.period);
   });
 
+  it('메시지 표류병: 띄우기 · 줍기 · 답장 · 다시 띄우기 · 신고 · 하루 제한 · 손에 오래 든 병은 바다로', async () => {
+    const a = await signup('bottle-a@test.dev', '병띄우미');
+    const b = await signup('bottle-b@test.dev', '병줍기1');
+    const c = await signup('bottle-c@test.dev', '병줍기2');
+    const sea = async (token: string) => (await http().get('/api/bottles/sea').set(bearer(token)).expect(200)).body;
+    const mine = async (token: string) => (await http().get('/api/bottles/mine').set(bearer(token)).expect(200)).body;
+    await http().get('/api/bottles/sea').expect(401);
+
+    // 띄우기: 너무 짧으면 안 되고, 내 병은 내가 줍지 않는다
+    await http().post('/api/bottles').set(bearer(a)).send({ content: '안녕' }).expect(400);
+    const first = (await http().post('/api/bottles').set(bearer(a)).send({ content: '오늘 하루 어땠나요? 아무에게나 닿기를' }).expect(201)).body;
+    expect((await sea(a)).held).toBeUndefined();
+
+    // 줍기: 떠다니던 병이 손에 들어온다 (몇 번째로 주웠는지)
+    const bSea = await sea(b);
+    expect(bSea.held).toMatchObject({ id: first.id, content: '오늘 하루 어땠나요? 아무에게나 닿기를', hops: 1 });
+    expect(bSea.catchesLeft).toBe(2);
+    // 다시 봐도 같은 병 (하나씩만)
+    expect((await sea(b)).held.id).toBe(first.id);
+    // 남의 손에 든 병은 답장 · 놓기를 못 한다
+    await http().post(`/api/bottles/${first.id}/release`).set(bearer(c)).expect(404);
+
+    // 답장하고 다시 띄우기 → 띄운 사람에게 답장 (누가 했는지는 없이)
+    await http().post(`/api/bottles/${first.id}/reply`).set(bearer(b)).send({ content: '덕분에 좋은 하루였어요' }).expect(204);
+    expect((await sea(a)).unreadReplies).toBe(1);
+    let list = await mine(a);
+    expect(list[0]).toMatchObject({ id: first.id, status: 'drifting', hops: 1, journey: [{ action: 'reply' }] });
+    expect(list[0].replies[0]).toMatchObject({ content: '덕분에 좋은 하루였어요', read: false });
+    expect(list[0].replies[0].author).toBeUndefined();
+    expect((await mine(a))[0].replies[0].read).toBe(true);
+    // 같은 사람은 같은 병을 다시 받지 않는다
+    expect((await sea(b)).held).toBeUndefined();
+
+    // 다음 사람이 줍고 신고 → 그 사람의 병은 다시 받지 않는다
+    expect((await sea(c)).held).toMatchObject({ id: first.id, hops: 2 });
+    await http().post(`/api/bottles/${first.id}/report`).set(bearer(c)).expect(204);
+    const second = (await http().post('/api/bottles').set(bearer(a)).send({ content: '두 번째 병이에요. 잘 지내요' }).expect(201)).body;
+    expect((await sea(c)).held).toBeUndefined();
+    // 신고 사실은 띄운 사람에게 알리지 않는다
+    expect((await mine(a)).find((x: { id: number }) => x.id === first.id).journey[1].action).toBe('release');
+
+    // 하루 넘게 들고 있으면 저절로 바다로 돌아간다
+    expect((await sea(b)).held).toMatchObject({ id: second.id });
+    await app.get(Database).execute("UPDATE bottles SET held_at = now() - interval '25 hours' WHERE id = $1", [second.id]);
+    list = await mine(a);
+    expect(list.find((x: { id: number }) => x.id === second.id)).toMatchObject({ status: 'drifting', journey: [{ action: 'timeout' }] });
+
+    // 하루 3개까지 띄운다
+    await http().post('/api/bottles').set(bearer(a)).send({ content: '세 번째 병이에요. 안녕' }).expect(201);
+    await http().post('/api/bottles').set(bearer(a)).send({ content: '네 번째는 안 돼요' }).expect(429);
+    expect((await sea(a)).throwsLeft).toBe(0);
+  });
+
   it('커뮤니티 감정 날씨 API: 최근 24시간 통계와 날씨', async () => {
     const res = (await http().get('/api/community/weather').expect(200)).body;
     expect(['calm', 'sunny', 'hot', 'partly', 'windy', 'cloudy', 'rain']).toContain(res.weather);

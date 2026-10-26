@@ -10,6 +10,7 @@ export const WIDGET_TYPES = [
   'popular',
   'discovery',
   'weather',
+  'bottle',
   'followed',
   'hotChannels',
   'notifications',

@@ -8,6 +8,7 @@ import { useConfirmSignOut } from './ConfirmDialog';
 import {
   ArrowRightIcon,
   BackIcon,
+  BottleIcon,
   ClockIcon,
   DocIcon,
   GearIcon,
@@ -205,6 +206,7 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
         { id: 'my-posts', group: '이동', label: '내가 쓴 글', keywords: 'my posts 내 글', icon: <DocIcon />, run: () => go('/me/posts'), searchOnly: true },
         { id: 'points', group: '이동', label: '포인트', keywords: 'points 포인트 배지 출석', icon: <TrophyIcon />, run: () => go('/me/points'), searchOnly: true },
         { id: 'settings', group: '이동', label: '설정', keywords: 'settings 설정 환경', icon: <GearIcon />, run: () => go('/me/settings') },
+        { id: 'sea', group: '이동', label: '메시지 표류병', keywords: 'sea bottle 바다 병 편지 표류', icon: <BottleIcon />, run: () => go('/sea') },
         {
           id: 'write',
           group: '만들기',
