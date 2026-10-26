@@ -70,6 +70,8 @@ export interface WidgetDef {
   more?: (o: Options) => string | undefined;
   /** 기본으로 내용 높이에 맞춰 늘어나는지 */
   fit?: boolean;
+  /** 미리보기 위젯: 안에서 스크롤하지 않고 칸에 들어가는 만큼만 보인다 (나머지는 '더 보기'로) */
+  preview?: boolean;
   options?: OptionDef[];
   Body: (p: WidgetProps) => ReactNode;
 }
@@ -475,6 +477,7 @@ export const WIDGETS: WidgetDef[] = [
     size: { w: 3, h: 6 },
     min: { w: 3, h: 3 },
     multi: true,
+    preview: true,
     title: () => '지금 인기 있는 글',
     options: [
       { key: 'channel', label: '범위', kind: 'channel', def: '', allowAll: true },
@@ -490,6 +493,7 @@ export const WIDGETS: WidgetDef[] = [
     size: { w: 3, h: 4 },
     min: { w: 2, h: 2 },
     login: true,
+    preview: true,
     title: () => '팔로우한 채널',
     more: () => '/me/channels',
     options: [VIEW, { key: 'owned', label: '내가 만든 채널도', kind: 'switch', def: false }],
@@ -502,6 +506,7 @@ export const WIDGETS: WidgetDef[] = [
     glyph: '▲',
     size: { w: 3, h: 6 },
     min: { w: 2, h: 3 },
+    preview: true,
     title: () => '인기 채널 · 최근 7일',
     more: () => '/channels',
     options: [VIEW, { key: 'count', label: '개수', kind: 'select', def: 5, choices: COUNT([3, 5, 8, 10]) }],
@@ -651,7 +656,7 @@ export const COMMON: OptionDef[] = [
       { value: 'glass', label: '유리' },
     ],
   },
-  { key: 'fit', label: '내용만큼 늘리기', kind: 'switch', def: false, help: '끄면 정한 높이에 맞추고 넘치는 내용은 안에서 스크롤해요' },
+  { key: 'fit', label: '내용만큼 늘리기', kind: 'switch', def: false, help: '끄면 정한 높이에 맞춰요. 넘치는 내용은 안에서 스크롤해요 (인기 글 · 채널 같은 미리보기는 들어가는 만큼만 보여요)' },
   { key: 'sticky', label: '스크롤해도 따라오기', kind: 'switch', def: false, help: '아래에 다른 위젯이 없을 때만 화면에 붙어 따라와요' },
   { key: 'hideMobile', label: '좁은 화면에서 숨기기', kind: 'switch', def: false },
 ];
