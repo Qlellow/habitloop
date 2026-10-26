@@ -304,9 +304,11 @@ export class PostsService {
         [postId, viewer],
       );
     }
-    const post = await this.find(postId);
-    const liked = viewerId != null && !!(await this.db.one('SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2', [postId, viewerId]));
-    return this.toDetail(post, viewerId, liked);
+    const [post, liked] = await Promise.all([
+      this.find(postId),
+      viewerId != null && this.db.one('SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2', [postId, viewerId]).then(Boolean),
+    ]);
+    return this.toDetail(post, viewerId, !!liked);
   }
 
   async create(userId: number, input: CreatePostInput) {
