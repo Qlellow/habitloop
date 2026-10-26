@@ -187,6 +187,15 @@ export class Seeder implements OnApplicationBootstrap {
       }
     }
 
+    // 바다를 떠다니는 병 몇 개 (메시지 표류병 예시)
+    for (const [author, content] of [
+      [users[1], '오늘 처음으로 혼자 영화를 봤어요. 생각보다 괜찮더라고요. 당신의 작은 도전은 뭐였나요?'],
+      [users[2], '요즘 잠이 잘 안 와요. 잠들기 전에 하는 나만의 루틴이 있다면 알려 주세요 🌙'],
+      [users[1], '이 병을 주운 당신, 오늘 하루도 정말 수고했어요.'],
+    ] as const) {
+      await db.execute('INSERT INTO bottles (author_id, content) VALUES ($1, $2)', [author, content]);
+    }
+
     // 글 · 댓글 시간을 최근 며칠에 흩어 둔다 (방금 쓴 글만 있으면 '오늘의 발견' · 활동 시간대 같은 기능을 볼 수 없다)
     await db.execute(
       `UPDATE posts SET created_at = now() - interval '20 minutes' - ((SELECT max(id) FROM posts) - id) * interval '97 minutes'`,

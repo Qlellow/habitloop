@@ -39,6 +39,7 @@ export const TEMPLATES: Template[] = [
       ['discovery', 9, 0, 3, 5],
       ['popular', 9, 5, 3, 6],
       ['makeChannel', 9, 11, 3, 3],
+      ...(loggedIn ? ([['bottle', 9, 14, 3, 3]] as Spec[]) : []),
     ],
   },
   {

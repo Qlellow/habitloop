@@ -394,3 +394,11 @@ export const SpeakerIcon = (p: P) => (
     <path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" {...line} />
   </svg>
 );
+
+/** 메시지 표류병 */
+export const BottleIcon = (p: P) => (
+  <svg {...base} data-icon="bottle" {...p}>
+    <path d="M10 3h4M10.5 3v4.2L8 10.5V19a2 2 0 002 2h4a2 2 0 002-2v-8.5l-2.5-3.3V3" {...line} />
+    <path d="M10.5 13.5h3M10.5 16h3" {...line} />
+  </svg>
+);

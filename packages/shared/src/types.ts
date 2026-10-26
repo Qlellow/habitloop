@@ -250,6 +250,42 @@ export interface PointLog {
 /** 알림 종류: 내 글에 댓글 · 내 댓글에 답글 · 내 글에 공감 · 팔로우한 채널의 새 공지 */
 export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery';
 
+/** 메시지 표류병 */
+export type BottleStatus = 'drifting' | 'held' | 'ashore';
+export type BottleHopAction = 'reply' | 'release' | 'timeout';
+
+/** 지금 손에 든 병 (누가 띄웠는지는 모른다) */
+export interface HeldBottle {
+  id: number;
+  content: string;
+  /** 나는 이 병을 주운 몇 번째 사람인지 */
+  hops: number;
+  createdAt: string;
+  heldAt: string;
+  /** 그대로 두면 이때 바다로 돌아간다 */
+  releaseAt: string;
+}
+
+export interface SeaState {
+  held?: HeldBottle;
+  throwsLeft: number;
+  catchesLeft: number;
+  /** 지금 떠다니는 (남의) 병 수 */
+  drifting: number;
+  unreadReplies: number;
+}
+
+/** 내가 띄운 병: 상태 · 여정 · 답장 (답장한 사람은 모른다) */
+export interface MyBottle {
+  id: number;
+  content: string;
+  status: BottleStatus;
+  hops: number;
+  createdAt: string;
+  journey: { at: string; action: BottleHopAction | null }[];
+  replies: { id: number; content: string; createdAt: string; read: boolean }[];
+}
+
 /** 활동 DNA: 다섯 성향 · 시간대 · 최근 활동 순서 */
 export type DnaTrait = 'create' | 'talk' | 'explore' | 'cheer' | 'depth';
 export type DnaPeriod = 'dawn' | 'morning' | 'day' | 'evening' | 'night';
@@ -479,6 +515,7 @@ export type HomeWidgetType =
   | 'popular'
   | 'discovery'
   | 'weather'
+  | 'bottle'
   | 'followed'
   | 'hotChannels'
   | 'notifications'

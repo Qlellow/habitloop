@@ -101,6 +101,9 @@ function UserMenu() {
           <Link to="/me/channels" className={s.menuItem} role="menuitem">
             내 채널
           </Link>
+          <Link to="/sea" className={s.menuItem} role="menuitem" onPointerEnter={preload.sea}>
+            메시지 표류병
+          </Link>
           <Link to="/me/settings" className={s.menuItem} role="menuitem" onPointerEnter={preload.settings}>
             설정
           </Link>
