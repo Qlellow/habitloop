@@ -126,6 +126,8 @@ export const HomeGrid = memo(function HomeGrid({
       {layout.widgets.map((w) => {
         const o = optionsOf(w);
         const sticky = o.sticky && !o.fit && nothingBelow(w, layout.widgets);
+        // 미리보기 위젯은 정한 높이가 '최대'일 뿐: 내용이 적으면 그만큼 줄어든다 (빈 칸을 남기지 않게)
+        const preview = !o.fit && !!WIDGET[w.type].preview;
         return (
           <WidgetFrame
             key={w.id}
@@ -137,8 +139,9 @@ export const HomeGrid = memo(function HomeGrid({
             style={{
               gridColumn: `${w.x + 1} / span ${w.w}`,
               gridRow: `${w.y + 1} / span ${w.h}`,
-              minHeight: rowsPx(w.h),
-              height: o.fit ? undefined : rowsPx(w.h),
+              minHeight: preview ? undefined : rowsPx(w.h),
+              height: o.fit || preview ? undefined : rowsPx(w.h),
+              maxHeight: preview ? rowsPx(w.h) : undefined,
               order: order.get(w.id),
             }}
           />
