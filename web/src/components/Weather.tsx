@@ -84,22 +84,27 @@ export function WeatherSky() {
         </div>
       )}
       {w === 'rain' && (
+        // 빗방울마다 애니메이션을 두지 않고, 빗방울을 깐 긴 판 두 장(가까운 비 · 먼 비)만 아래로 흘린다 (판 위아래가 같은 무늬라 이어진다)
         <div className="wsky-rain">
-          {DROPS.map((d, i) => (
-            <span key={i} style={{ left: `${d.left}%`, height: d.len, animationDelay: `${d.delay}s`, animationDuration: `${d.duration}s` }} />
+          {[DROPS.slice(0, 30), DROPS.slice(30)].map((list, layer) => (
+            <div key={layer} className={cn('wsky-rain-sheet', layer === 1 && 'is-far')}>
+              {list.flatMap((d, i) =>
+                [0, 50].map((off) => <span key={`${i}-${off}`} style={{ left: `${d.left}%`, top: `${off + d.top / 2}%`, height: layer ? d.len * 0.6 : d.len }} />),
+              )}
+            </div>
           ))}
         </div>
       )}
       {w === 'windy' && (
         <div className="wsky-wind">
-          {DROPS.slice(0, 14).map((d, i) => (
+          {DROPS.slice(0, 8).map((d, i) => (
             <span key={i} style={{ top: `${d.top}%`, width: d.len * 2, animationDelay: `${d.delay * 3}s`, animationDuration: `${d.duration * 3}s` }} />
           ))}
         </div>
       )}
       {w === 'calm' && (
         <div className="wsky-motes">
-          {DROPS.slice(0, 24).map((d, i) => (
+          {DROPS.slice(0, 12).map((d, i) => (
             <span key={i} style={{ left: `${d.left}%`, top: `${d.top}%`, animationDelay: `${d.delay * 5}s`, animationDuration: `${d.duration * 9}s` }} />
           ))}
         </div>

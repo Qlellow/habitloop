@@ -1,6 +1,7 @@
 import { memo } from 'react';
 
-/** 별 자리 · 크기 · 반짝이는 박자 (그릴 때마다 바뀌지 않게 고정된 씨앗으로 만든다) */
+/** 별 자리 · 크기 · 밝기 (그릴 때마다 바뀌지 않게 고정된 씨앗으로 만든다) */
+const GROUPS = 6;
 const STARS = (() => {
   let seed = 7;
   const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -8,8 +9,6 @@ const STARS = (() => {
     left: rand() * 100,
     top: rand() * 92,
     size: rand() < 0.12 ? 3 : rand() < 0.5 ? 2 : 1.4,
-    duration: 2 + rand() * 4,
-    delay: -rand() * 6,
     min: 0.15 + rand() * 0.35,
   }));
 })();
@@ -25,23 +24,20 @@ export const TimeSky = memo(function TimeSky() {
       <div className="sky-sun" />
       <div className="sky-moon" />
       <div className="sky-stars">
-        {STARS.map((s, i) => (
-          <span
-            key={i}
-            // 저녁에는 하늘 위쪽(노을이 닿지 않는 곳)의 몇 개만 먼저 뜬다
-            className={s.top < 50 && i % 3 === 0 ? 'sky-star sky-star-early' : 'sky-star'}
-            style={
-              {
-                left: `${s.left}%`,
-                top: `${s.top}%`,
-                width: s.size,
-                height: s.size,
-                '--d': `${s.duration}s`,
-                '--delay': `${s.delay}s`,
-                '--min': s.min,
-              } as React.CSSProperties
-            }
-          />
+        {/* 별을 여섯 무리로 나눠 무리째 반짝인다 (별 90개가 저마다 움직이면 매 프레임 스타일을 다시 계산한다) */}
+        {Array.from({ length: GROUPS }, (_, g) => (
+          <div key={g} className="sky-star-group" style={{ '--d': `${2.6 + g * 0.7}s`, '--delay': `${-g * 0.9}s` } as React.CSSProperties}>
+            {STARS.map((s, i) =>
+              i % GROUPS !== g ? null : (
+                <span
+                  key={i}
+                  // 저녁에는 하늘 위쪽(노을이 닿지 않는 곳)의 몇 개만 먼저 뜬다
+                  className={s.top < 50 && i % 3 === 0 ? 'sky-star sky-star-early' : 'sky-star'}
+                  style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.size, height: s.size, opacity: 0.55 + s.min }}
+                />
+              ),
+            )}
+          </div>
         ))}
       </div>
       <div className="sky-shooting" />
