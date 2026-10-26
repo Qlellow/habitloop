@@ -62,21 +62,20 @@ export class WeatherService {
   now(): Promise<WeatherResponse> {
     return this.cache.getOrLoad('now', async () => {
       // 공개 채널 · 숨기지 않은 글만 (비공개 채널의 분위기는 밖으로 새지 않게)
+      // 최근 24시간 것만 created_at 인덱스로 먼저 고르고, 그 글이 공개 채널 · 숨기지 않은 글인지 확인한다
+      // (전체 글을 훑지 않게 글 목록을 먼저 만들지 않는다)
+      const open = (alias: string) =>
+        `EXISTS (SELECT 1 FROM posts p JOIN channels c ON c.id = p.channel_id
+                 WHERE p.id = ${alias}.post_id AND c.visibility = 'public' AND p.hidden_at IS NULL)`;
+      const since = "now() - interval '24 hours'";
       const row = await this.db.one<Record<keyof MoodStats, string>>(
-        `WITH open_posts AS (
-           SELECT p.id, p.created_at FROM posts p JOIN channels c ON c.id = p.channel_id
-           WHERE c.visibility = 'public' AND p.hidden_at IS NULL)
-         SELECT
-           (SELECT count(*) FROM open_posts WHERE created_at >= now() - interval '24 hours') AS posts,
-           (SELECT count(*) FROM comments m JOIN open_posts o ON o.id = m.post_id
-             WHERE m.created_at >= now() - interval '24 hours' AND m.hidden_at IS NULL) AS comments,
-           (SELECT count(*) FROM post_likes l JOIN open_posts o ON o.id = l.post_id WHERE l.created_at >= now() - interval '24 hours') AS likes,
+        `SELECT
+           (SELECT count(*) FROM posts p JOIN channels c ON c.id = p.channel_id
+             WHERE p.created_at >= ${since} AND c.visibility = 'public' AND p.hidden_at IS NULL) AS posts,
+           (SELECT count(*) FROM comments m WHERE m.created_at >= ${since} AND m.hidden_at IS NULL AND ${open('m')}) AS comments,
+           (SELECT count(*) FROM post_likes l WHERE l.created_at >= ${since} AND ${open('l')}) AS likes,
            ${(['clap', 'laugh', 'wow', 'sad', 'fire'] as const)
-             .map(
-               (k) =>
-                 `(SELECT count(*) FROM post_reactions r JOIN open_posts o ON o.id = r.post_id
-                    WHERE r.kind = '${k}' AND r.created_at >= now() - interval '24 hours') AS ${k}`,
-             )
+             .map((k) => `(SELECT count(*) FROM post_reactions r WHERE r.created_at >= ${since} AND r.kind = '${k}' AND ${open('r')}) AS ${k}`)
              .join(',\n           ')}`,
       );
       const stats = Object.fromEntries(Object.entries(row ?? {}).map(([k, v]) => [k, Number(v)])) as unknown as MoodStats;

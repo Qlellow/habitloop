@@ -31,7 +31,7 @@ export async function createApp(): Promise<INestApplication> {
     .filter(Boolean);
   app.enableCors({
     origin: origins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type', 'X-Viewer'],
     maxAge: 3600, // preflight 결과 캐시
   });

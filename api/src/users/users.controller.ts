@@ -54,15 +54,20 @@ export class UsersController {
           );
     if (!user) throw ApiError.notFound('없는 사용자예요');
     const { internalId, ...rest } = user;
+    const [badges, blocked, pet] = await Promise.all([
+      this.rewards.badges(internalId),
+      this.blocks.isBlocked(viewer?.id, internalId),
+      this.pets.shownOf(internalId),
+    ]);
     return {
       ...rest,
       postCount: Number(user.postCount),
       commentCount: Number(user.commentCount),
-      badges: await this.rewards.badges(internalId),
+      badges,
       /** 내가 이 사람을 차단했는지 (비로그인 · 내 프로필은 false) */
-      blocked: await this.blocks.isBlocked(viewer?.id, internalId),
+      blocked,
       /** 프로필에 전시한 펫 */
-      pet: await this.pets.shownOf(internalId),
+      pet,
     };
   }
 

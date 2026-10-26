@@ -512,4 +512,17 @@ CREATE TABLE bottle_mutes (
 );
 `,
   },
+  {
+    // 성능: 사람 기준 · 시간 기준으로 찾는 쿼리에 맞는 인덱스
+    //  - comments.author_id: 프로필의 댓글 수 · 활동 DNA · 탈퇴 정리 (없으면 댓글 전체를 훑는다)
+    //  - post_likes.user_id · post_reactions.user_id: 활동 DNA (남긴 공감 · 반응)
+    //  - post_reactions.created_at: 커뮤니티 감정 날씨 (최근 24시간)
+    name: '028_perf_indexes',
+    sql: `
+CREATE INDEX idx_comments_author ON comments (author_id, id);
+CREATE INDEX idx_post_likes_user ON post_likes (user_id);
+CREATE INDEX idx_post_reactions_user ON post_reactions (user_id);
+CREATE INDEX idx_post_reactions_created_at ON post_reactions (created_at);
+`,
+  },
 ];
