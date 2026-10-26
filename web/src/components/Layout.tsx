@@ -13,6 +13,7 @@ import { useAuthState } from '../lib/authNav';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 import s from './Layout.styles';
+import { useSmartSticky } from '../lib/smartSticky';
 
 /** 한국 시간 기준 오늘 (YYYY-MM-DD) */
 const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
@@ -231,7 +232,8 @@ export function useFollowScroll(refs: { current: HTMLElement | null }[] | (() =>
     let frame = 0;
     const apply = (v: number) => {
       const els = typeof refs === 'function' ? refs() : refs.map((r) => r.current);
-      for (const el of els) if (el) el.style.transform = v ? `translate3d(0, ${v.toFixed(2)}px, 0)` : '';
+      // 화면보다 긴 사이드바(data-tall, lib/smartSticky)는 페이지와 함께 움직이므로 흔들지 않는다
+      for (const el of els) if (el) el.style.transform = v && !el.dataset.tall ? `translate3d(0, ${v.toFixed(2)}px, 0)` : '';
     };
     const tick = () => {
       offset *= 0.955; // 천천히 제자리로 (화면 밖으로 나갔다가 1~2초에 걸쳐 따라온다)
@@ -280,6 +282,8 @@ export function Page({
   const rightRef = useRef<HTMLElement>(null);
   // 마이페이지 메뉴(nav)는 붙어 있지 않으므로 따라오지 않는다
   useFollowScroll(variant === 'nav' ? [rightRef] : [leftRef, rightRef]);
+  // 화면보다 긴 사이드바도 끝까지 보이게 (마이페이지 메뉴는 붙지 않는다)
+  useSmartSticky(variant === 'nav' ? [rightRef] : [leftRef, rightRef]);
   return (
     <div className={cn(s.page, variant === 'nav' ? s.withNav : s[variant])}>
       {(variant === 'three' || variant === 'nav') && (

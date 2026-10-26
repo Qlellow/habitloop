@@ -4,6 +4,7 @@ import type { HomeLayout, HomeWidget } from '@loop/shared';
 import { WIDGET, isAutoHeight, optionsOf, type Options } from './widgets';
 import { GAP, ROW, followGroups, reflowLayout, rowsPx, stackOrder } from '../../lib/homeGrid';
 import { useFollowScroll } from '../Layout';
+import { useSmartSticky } from '../../lib/smartSticky';
 import { ui } from '../ui';
 import { cn } from '../../lib/cn';
 
@@ -236,30 +237,14 @@ export const HomeGrid = memo(function HomeGrid({
 });
 
 /**
- * 따라오는 묶음: 화면 위쪽(헤더 아래)에 붙는다. 묶음이 화면보다 길면 아래 끝이 보일 때까지 올라간 뒤 붙는다
+ * 따라오는 묶음: 화면 위쪽(헤더 아래)에 붙는다. 묶음이 화면보다 길면 페이지와 함께 스크롤되다가
+ * 내려갈 때는 아래 끝, 올라갈 때는 위 끝이 보이는 곳에서 붙는다 (lib/smartSticky)
  */
 function FollowStack({ cols, children }: { cols: number; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [top, setTop] = useState<number>();
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const fit = () => {
-      const header = el.ownerDocument.documentElement;
-      const base = parseFloat(getComputedStyle(header).getPropertyValue('--header-h')) || 64;
-      setTop(Math.min(base + 40, window.innerHeight - el.offsetHeight - 16));
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(el);
-    window.addEventListener('resize', fit);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', fit);
-    };
-  }, []);
+  useSmartSticky([ref]);
   return (
-    <div ref={ref} className="home-follow-inner" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, top }}>
+    <div ref={ref} className="home-follow-inner" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
       {children}
     </div>
   );
