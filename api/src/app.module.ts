@@ -27,6 +27,7 @@ import { NotificationsService } from './notifications/notifications.service';
 import { VerificationService } from './mail/verification.service';
 import { CommentsService } from './posts/comments.service';
 import { PostsController } from './posts/posts.controller';
+import { DiscoveryService } from './posts/discovery.service';
 import { PostsService } from './posts/posts.service';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
@@ -66,6 +67,7 @@ class HealthController {
     IconsService,
     CategoriesService,
     PostsService,
+    DiscoveryService,
     CommentsService,
     PreviewsService,
     RewardsService,

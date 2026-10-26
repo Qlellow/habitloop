@@ -8,6 +8,7 @@ import { ApiError } from '../common/api-error';
 export const WIDGET_TYPES = [
   'feed',
   'popular',
+  'discovery',
   'followed',
   'hotChannels',
   'notifications',

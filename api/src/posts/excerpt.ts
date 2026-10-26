@@ -10,6 +10,9 @@ export function makeExcerpt(content: string, length = EXCERPT_LENGTH): string {
     .replace(/\[([^\]]*)]\([^)]*\)/g, '$1')
     .replace(/^\s*([-*_]\s*){3,}$/gm, '')
     .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+\[[ xX]]\s+|[-*+]\s+|\d+[.)]\s+)/gm, '')
+    // 표: 구분줄(| --- | :-: |)은 지우고 칸 사이 | 는 띄어쓰기로
+    .replace(/^\s*\|?(\s*:?-+:?\s*\|)+\s*(:?-+:?)?\s*$/gm, '')
+    .replace(/\s*\|\s*/g, ' ')
     .replace(/(\*\*|__|~~|`|\*)/g, '')
     .replace(/<[^>]+>/g, '');
   const flat = text.trim().replace(/\s+/g, ' ');

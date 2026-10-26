@@ -453,4 +453,17 @@ CREATE TABLE voice_rooms (
 CREATE INDEX idx_voice_rooms_channel ON voice_rooms (channel_id, position, id);
 `,
   },
+  {
+    // 오늘의 발견: 반응은 적어도 흥미로운 글을 하루에 하나 고른다 (posts/discovery.service.ts). 그날 처음 볼 때 고르고 기록한다
+    name: '026_daily_discoveries',
+    sql: `
+CREATE TABLE daily_discoveries (
+    day         DATE          PRIMARY KEY,
+    post_id     INTEGER       NOT NULL REFERENCES posts (id) ON DELETE CASCADE,
+    reason      VARCHAR(20)   NOT NULL,
+    created_at  TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_daily_discoveries_post ON daily_discoveries (post_id);
+`,
+  },
 ];

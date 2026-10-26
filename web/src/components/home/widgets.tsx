@@ -12,9 +12,11 @@ import {
   useNotifications,
   usePatPet,
   usePopular,
+  useDiscovery,
   useReadNotifications,
   useUserProfile,
   PET_STAGES,
+  type DiscoveryReason,
   type HomeWidget,
   type HomeWidgetType,
 } from '@loop/shared';
@@ -24,7 +26,7 @@ import { PostList } from '../PostList';
 import { RankMark } from '../Sidebar';
 import { SlideHover } from '../SlideHover';
 import { PetActor } from '../Pet';
-import { notificationMessage } from '../NotificationBell';
+import { NotificationAvatar, notificationMessage } from '../NotificationBell';
 import { toast } from '../Toast';
 import { preload } from '../../lib/preload';
 import { useSettings, periodAt } from '../../lib/settings';
@@ -139,6 +141,77 @@ function PopularBody({ o }: WidgetProps) {
   );
 }
 
+/** 오늘의 발견을 고른 이유 */
+export const DISCOVERY_REASON: Record<DiscoveryReason, { icon: string; label: string }> = {
+  talk: { icon: '💬', label: '대화가 오가는 글' },
+  warm: { icon: '💛', label: '조용히 공감받는 글' },
+  long: { icon: '📜', label: '정성 가득한 긴 글' },
+  hidden: { icon: '🔍', label: '아직 덜 알려진 글' },
+};
+
+const monthDay = (day: string) => {
+  const [, m, d] = day.split('-').map(Number);
+  return `${m}월 ${d}일`;
+};
+
+/** 오늘의 발견: 반응은 적어도 흥미로운 글 하나를 크게, 아래에 지난 발견 */
+function DiscoveryBody({ o }: WidgetProps) {
+  const { data, isPending } = useDiscovery();
+  if (isPending) return <ListSkeleton rows={3} />;
+  const post = data?.post;
+  const reason = data?.reason ? DISCOVERY_REASON[data.reason] : undefined;
+  const past = o.past ? (data?.past ?? []).slice(0, 3) : [];
+  return (
+    <div className="px-5 pb-4">
+      {post ? (
+        <Link to={`/posts/${post.id}`} state={{ summary: post }} className="discovery-card group" onPointerEnter={preload.post}>
+          <span className="discovery-sparkles" aria-hidden>
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="flex items-center gap-1.5 text-[12px] text-fg-weak">
+            <span className="tabular-nums">{monthDay(data!.day)}</span>
+            {reason && (
+              <span className="discovery-reason">
+                <span aria-hidden>{reason.icon}</span> {reason.label}
+              </span>
+            )}
+          </span>
+          <span className="block mt-2 text-[16px] leading-snug font-bold text-fg-strong line-clamp-2 group-hover:text-primary">{post.title}</span>
+          {post.excerpt && <span className="block mt-1 text-[13px] leading-relaxed text-fg-sub line-clamp-3">{post.excerpt}</span>}
+          <span className="flex items-center gap-1.5 mt-3 text-[12px] text-fg-weak min-w-0">
+            <UserAvatar nickname={post.authorNickname} avatarUrl={post.authorAvatar ?? undefined} size={18} />
+            <span className="truncate">
+              {post.authorNickname} · {post.channelName}
+            </span>
+            <span className="ml-auto flex-none tabular-nums">
+              ♡ {compact(post.likeCount)} · 댓글 {compact(post.commentCount)}
+            </span>
+          </span>
+        </Link>
+      ) : (
+        <Empty>오늘은 소개할 숨은 글을 아직 못 찾았어요</Empty>
+      )}
+      {past.length > 0 && (
+        <div className="mt-3">
+          <div className="mb-1 text-[12px] font-semibold text-fg-weak">지난 발견</div>
+          <ul className="list-none m-0 p-0">
+            {past.map((p) => (
+              <li key={p.day}>
+                <Link to={`/posts/${p.post.id}`} className="flex items-baseline gap-2 py-1 text-[13px] text-fg-sub hover:text-fg-strong" onPointerEnter={preload.post}>
+                  <span className="flex-none w-11 text-[12px] text-fg-weak tabular-nums">{p.day.slice(5).replace('-', '/')}</span>
+                  <span className="truncate">{p.post.title}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChannelGrid({ channels }: { channels: { slug: string; name: string; iconVersion?: number }[] }) {
   return (
     <ul className="list-none m-0 px-3 pb-3 grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-1.5">
@@ -214,7 +287,7 @@ function NotificationsBody({ o }: WidgetProps) {
             }}
             className={cn('w-full flex gap-2.5 px-2.5 py-2 rounded-sm text-left transition-colors hover:bg-field', !n.read && 'bg-primary-weak')}
           >
-            <UserAvatar nickname={n.type === 'notice' ? n.post.channelName : (n.actor?.nickname ?? '?')} avatarUrl={n.actor?.avatarUrl} size={30} className="mt-0.5" />
+            <NotificationAvatar n={n} size={30} />
             <span className="flex-1 min-w-0">
               <span className="block text-[13px] leading-[1.45] text-fg">{notificationMessage(n)}</span>
               <span className="block truncate text-[12px] text-fg-weak">
@@ -493,6 +566,18 @@ export const WIDGETS: WidgetDef[] = [
       AUTO_H,
     ],
     Body: PopularBody,
+  },
+  {
+    type: 'discovery',
+    label: '오늘의 발견',
+    desc: '반응은 적어도 흥미로운 글을 매일 하나 골라 소개해요',
+    glyph: '✦',
+    size: { w: 3, h: 5 },
+    min: { w: 3, h: 3 },
+    preview: true,
+    title: () => '오늘의 발견',
+    options: [{ key: 'past', label: '지난 발견도 보기', kind: 'switch', def: true }, AUTO_H],
+    Body: DiscoveryBody,
   },
   {
     type: 'followed',

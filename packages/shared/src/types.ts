@@ -248,7 +248,21 @@ export interface PointLog {
 }
 
 /** 알림 종류: 내 글에 댓글 · 내 댓글에 답글 · 내 글에 공감 · 팔로우한 채널의 새 공지 */
-export type NotificationType = 'comment' | 'reply' | 'like' | 'notice';
+export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery';
+
+/** 오늘의 발견: 왜 골랐는지 */
+export type DiscoveryReason = 'talk' | 'warm' | 'long' | 'hidden';
+
+/** 오늘의 발견 (GET /api/posts/discovery) */
+export interface Discovery {
+  /** 한국 날짜 YYYY-MM-DD */
+  day: string;
+  reason?: DiscoveryReason;
+  /** 오늘 고를 글이 없으면 비어 있다 */
+  post?: PostSummary;
+  /** 지난 발견 (어제부터 최근 6일) */
+  past: { day: string; post: { id: number; title: string; channelName: string } }[];
+}
 
 export interface NotificationItem {
   id: number;
@@ -432,6 +446,7 @@ export interface LikeResponse {
 export type HomeWidgetType =
   | 'feed'
   | 'popular'
+  | 'discovery'
   | 'followed'
   | 'hotChannels'
   | 'notifications'
