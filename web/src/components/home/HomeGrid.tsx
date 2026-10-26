@@ -1,8 +1,8 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { HomeLayout, HomeWidget } from '@loop/shared';
-import { WIDGET, optionsOf, type Options } from './widgets';
-import { GAP, ROW, followGroups, rowsPx, shrinkLayout, stackOrder } from '../../lib/homeGrid';
+import { WIDGET, isAutoHeight, optionsOf, type Options } from './widgets';
+import { GAP, ROW, followGroups, reflowLayout, rowsPx, stackOrder } from '../../lib/homeGrid';
 import { useFollowScroll } from '../Layout';
 import { ui } from '../ui';
 import { cn } from '../../lib/cn';
@@ -77,8 +77,9 @@ export function WidgetFrame({
   const title = (o.title as string) || def.title(o);
   const more = def.more?.(o);
   const Body = def.Body;
-  // 정한 높이에 맞추는 위젯: 보통은 안에서 스크롤, 미리보기 위젯은 들어가는 만큼만
-  const clipped = scroll && !!def.preview;
+  // 정한 높이에 맞추는 위젯: 보통은 안에서 스크롤, 미리보기 위젯은 들어가는 만큼만 (높이 반응형이면 잘릴 일이 없다)
+  const auto = isAutoHeight(widget, o);
+  const clipped = scroll && !!def.preview && !auto;
   const bodyRef = useClipPartial(clipped);
   return (
     <section
@@ -101,7 +102,7 @@ export function WidgetFrame({
       )}
       <div
         ref={bodyRef}
-        className={cn('flex-1 min-h-0', clipped ? 'overflow-hidden' : scroll && 'overflow-y-auto overscroll-contain', !title || o.hideTitle ? 'pt-3' : '')}
+        className={cn('flex-1 min-h-0', clipped ? 'overflow-hidden' : scroll && !auto && 'overflow-y-auto overscroll-contain', !title || o.hideTitle ? 'pt-3' : '')}
       >
         <Body widget={widget} o={o} setOption={setOption} editing={editing} />
       </div>
@@ -178,13 +179,12 @@ export const HomeGrid = memo(function HomeGrid({
 }) {
   const order = new Map(stackOrder(layout.widgets).map((w, i) => [w.id, i]));
   const byId = new Map(layout.widgets.map((w) => [w.id, w]));
-  // 미리보기 위젯은 정한 높이가 '최대'일 뿐: 내용이 적으면 그만큼 줄어들고, 줄어든 만큼 아래 위젯을 끌어올린다
-  const isPreview = (w: HomeWidget) => !optionsOf(w).fit && !!WIDGET[w.type].preview;
+  // 높이 반응형 위젯은 높이 = 내용 (최소 크기는 지킨다): 실제 높이를 재서 아래 위젯을 그만큼 올리고 내린다
   const need = usePreviewRows();
   // 보기 화면의 격자는 8px 줄(SUB) 단위: 한 줄(ROW+GAP)이 PER 줄. 줄어든 높이를 px 가까이 맞춰 빈틈이 남지 않게
   const shown = useMemo(() => {
     const fine = layout.widgets.map((w) => ({ ...w, y: w.y * PER, h: w.h * PER - GAP / SUB }));
-    const placed = new Map(shrinkLayout(fine, need.rows).map((w) => [w.id, w]));
+    const placed = new Map(reflowLayout(fine, need.rows).map((w) => [w.id, w]));
     return fine.map((w) => placed.get(w.id) ?? w);
   }, [layout.widgets, need.rows]);
   // 긴 글 목록 옆의 단은 묶어서 스크롤을 따라 내려온다 (다른 페이지의 사이드바처럼)
@@ -200,11 +200,11 @@ export const HomeGrid = memo(function HomeGrid({
     const o = optionsOf(w);
     const sticky = !at && o.sticky && !o.fit && nothingBelow(w, shown);
     const saved = byId.get(w.id)!;
-    const preview = isPreview(saved);
+    const auto = isAutoHeight(saved, o);
     return (
       <WidgetFrame
         key={w.id}
-        ref={preview ? need.observe(w.id) : undefined}
+        ref={auto ? need.observe(w.id) : undefined}
         widget={w}
         o={o}
         scroll={!o.fit}
@@ -214,10 +214,9 @@ export const HomeGrid = memo(function HomeGrid({
           gridColumn: `${w.x - (at?.x ?? 0) + 1} / span ${w.w}`,
           // position: sticky 는 자기 칸(grid area) 안에서만 따라오므로, 따라오는 위젯은 칸을 격자 끝까지 (높이는 그대로)
           gridRow: sticky ? `${w.y + 1} / ${end}` : `${w.y - (at?.y ?? 0) + 1} / span ${w.h}`,
-          // 정한 높이 (미리보기 위젯은 최대 높이)
-          minHeight: preview ? undefined : rowsPx(saved.h),
-          height: o.fit || preview ? undefined : rowsPx(saved.h),
-          maxHeight: preview ? rowsPx(saved.h) : undefined,
+          // 정한 높이 (높이 반응형이면 내용만큼, 최소 크기보다 작아지지 않게)
+          minHeight: rowsPx(auto ? WIDGET[w.type].min.h : saved.h),
+          height: o.fit || auto ? undefined : rowsPx(saved.h),
           order: order.get(w.id),
         }}
       />

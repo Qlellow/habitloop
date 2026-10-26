@@ -70,7 +70,7 @@ export interface WidgetDef {
   more?: (o: Options) => string | undefined;
   /** 기본으로 내용 높이에 맞춰 늘어나는지 */
   fit?: boolean;
-  /** 미리보기 위젯: 안에서 스크롤하지 않고 칸에 들어가는 만큼만 보인다 (나머지는 '더 보기'로) */
+  /** 미리보기 위젯: 안에서 스크롤하지 않는다. 높이 반응형(autoH)이면 높이 = 내용, 아니면 정한 높이에 들어가는 만큼만 */
   preview?: boolean;
   options?: OptionDef[];
   Body: (p: WidgetProps) => ReactNode;
@@ -442,6 +442,14 @@ function ShortcutsBody({ o }: WidgetProps) {
 /* ───────── 목록 ───────── */
 
 const COUNT = (values: number[]) => values.map((v) => ({ value: v, label: `${v}개` }));
+/** 미리보기 위젯(인기 글 · 팔로우한 채널 · 인기 채널)의 높이 반응형: 켜면 높이 = 내용 (최소 크기는 지킨다) */
+const AUTO_H: OptionDef = {
+  key: 'autoH',
+  label: '높이 반응형',
+  kind: 'switch',
+  def: true,
+  help: '켜면 카드 높이가 내용만큼 자동으로 맞춰져요 (최소 크기보다 작아지지 않고, 꾸미기에서 더 늘릴 수 없어요). 끄면 정한 높이 그대로예요',
+};
 const VIEW: OptionDef = { key: 'view', label: '보기', kind: 'select', def: 'list', choices: [{ value: 'list', label: '목록' }, { value: 'grid', label: '아이콘 바둑판' }] };
 
 export const WIDGETS: WidgetDef[] = [
@@ -482,6 +490,7 @@ export const WIDGETS: WidgetDef[] = [
     options: [
       { key: 'channel', label: '범위', kind: 'channel', def: '', allowAll: true },
       { key: 'count', label: '개수', kind: 'select', def: 5, choices: COUNT([3, 4, 5]) },
+      AUTO_H,
     ],
     Body: PopularBody,
   },
@@ -496,7 +505,7 @@ export const WIDGETS: WidgetDef[] = [
     preview: true,
     title: () => '팔로우한 채널',
     more: () => '/me/channels',
-    options: [VIEW, { key: 'owned', label: '내가 만든 채널도', kind: 'switch', def: false }],
+    options: [VIEW, { key: 'owned', label: '내가 만든 채널도', kind: 'switch', def: false }, AUTO_H],
     Body: FollowedBody,
   },
   {
@@ -509,7 +518,7 @@ export const WIDGETS: WidgetDef[] = [
     preview: true,
     title: () => '인기 채널 · 최근 7일',
     more: () => '/channels',
-    options: [VIEW, { key: 'count', label: '개수', kind: 'select', def: 5, choices: COUNT([3, 5, 8, 10]) }],
+    options: [VIEW, { key: 'count', label: '개수', kind: 'select', def: 5, choices: COUNT([3, 5, 8, 10]) }, AUTO_H],
     Body: HotChannelsBody,
   },
   {
@@ -656,7 +665,7 @@ export const COMMON: OptionDef[] = [
       { value: 'glass', label: '유리' },
     ],
   },
-  { key: 'fit', label: '내용만큼 늘리기', kind: 'switch', def: false, help: '끄면 정한 높이에 맞춰요. 넘치는 내용은 안에서 스크롤해요 (인기 글 · 채널 같은 미리보기는 들어가는 만큼만 보여요)' },
+  { key: 'fit', label: '내용만큼 늘리기', kind: 'switch', def: false, help: '끄면 정한 높이에 맞추고 넘치는 내용은 안에서 스크롤해요' },
   { key: 'sticky', label: '스크롤해도 따라오기', kind: 'switch', def: false, help: '아래에 다른 위젯이 없을 때만 화면에 붙어 따라와요' },
   { key: 'hideMobile', label: '좁은 화면에서 숨기기', kind: 'switch', def: false },
 ];
@@ -669,6 +678,9 @@ export function optionsOf(widget: HomeWidget): Options {
   if (def.fit) out.fit = true;
   return { ...out, ...widget.o };
 }
+
+/** 높이가 내용으로 정해지는 위젯 (높이 반응형을 켠 미리보기 위젯): 보기 · 꾸미기 모두 높이 = 내용, 최소 크기는 지킨다 */
+export const isAutoHeight = (widget: HomeWidget, o: Options = optionsOf(widget)) => !!WIDGET[widget.type].preview && o.autoH !== false;
 
 /** 기본값과 같은 설정은 저장하지 않는다 (배치 JSON 을 작게) */
 export function compactOptions(widget: HomeWidget, o: Options): Options | undefined {
