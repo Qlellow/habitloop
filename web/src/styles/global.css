@@ -4098,18 +4098,3 @@ html.focus-mode main article h1 {
   background: color-mix(in srgb, var(--text-weak) 24%, transparent);
 }
 
-/* 홈 꾸미기: 미리보기 위젯이 비워 둔 칸 (정한 높이 = 최대). 보기 화면에서는 이만큼 아래 위젯이 올라온다 */
-.home-item-reserve {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  /* 아래 왼쪽의 위젯 이름표와 겹치지 않게 그 위에 */
-  padding-bottom: 52px;
-  border: 1.5px dashed color-mix(in srgb, var(--text-weak) 45%, transparent);
-  border-radius: var(--radius-lg, 16px);
-  font-size: 12px;
-  color: var(--text-weak);
-  pointer-events: none;
-}

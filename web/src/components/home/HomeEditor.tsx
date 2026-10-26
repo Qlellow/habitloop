@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth, useChannels, useMyChannels, type HomeLayout, type HomeWidget, type HomeWidgetType } from '@loop/shared';
-import { COMMON, WIDGET, WIDGETS, compactOptions, optionsOf, type OptionDef, type Options } from './widgets';
+import { COMMON, WIDGET, WIDGETS, compactOptions, isAutoHeight, optionsOf, type OptionDef, type Options } from './widgets';
 import { WidgetFrame } from './HomeGrid';
 import { TEMPLATES, fromTemplate, type Template, type TemplateCtx } from '../../lib/homeLayout';
 import { COLS, GAP, MAX_WIDGETS, ROW, addWidget, newId, place, removeWidget, rowsOf, rowsPx, setCompact, type Box } from '../../lib/homeGrid';
@@ -79,6 +79,34 @@ export function HomeEditor({
   const pointer = useRef({ x: 0, y: 0 });
 
   const shown = preview ?? layout;
+
+  // 높이 반응형 위젯: 그려진 내용 높이를 재서 세로 줄 수를 맞춘다 (최소 크기 이상). 끄는 중에는 건드리지 않는다
+  const autoRo = useMemo(
+    () =>
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver((entries) => {
+            if (drag.current) return;
+            const want = new Map<string, number>();
+            for (const e of entries) {
+              const el = e.target as HTMLElement;
+              const min = WIDGET[el.dataset.widget as HomeWidgetType].min.h;
+              // 테두리 · 반올림으로 몇 px 넘는 건 한 줄을 더 쓰지 않는다 (보기 화면은 px 로 따로 잰다)
+              want.set(el.dataset.id!, Math.max(min, Math.ceil((el.getBoundingClientRect().height + GAP - 8) / (ROW + GAP))));
+            }
+            setLayout((l) => {
+              let next = l;
+              for (const [id, h] of want) {
+                const w = next.widgets.find((x) => x.id === id);
+                if (w && w.h !== h) next = place(next, id, { h }, WIDGET[w.type].min);
+              }
+              return next;
+            });
+          }),
+    [],
+  );
+  useEffect(() => () => autoRo?.disconnect(), [autoRo]);
+  const watchAuto = useCallback((el: HTMLElement | null) => el && autoRo?.observe(el), [autoRo]);
 
   useLayoutEffect(() => {
     const el = canvas.current;
@@ -167,7 +195,9 @@ export function HomeEditor({
       }
       if (south) px.height = Math.max(20, d.height + dy);
       const w = Math.max(min.w, Math.round((px.width + GAP) / colStep));
-      const h = Math.max(min.h, Math.round((px.height + GAP) / rowStep));
+      // 높이 반응형 위젯은 세로 크기가 내용으로 정해진다
+      const h = isAutoHeight(d.start) ? d.start.h : Math.max(min.h, Math.round((px.height + GAP) / rowStep));
+      if (isAutoHeight(d.start)) px.height = d.height;
       box = { w, h };
       if (west) box.x = Math.max(0, d.start.x + d.start.w - w);
     }
@@ -231,7 +261,8 @@ export function HomeEditor({
     if (a) {
       e.preventDefault();
       const min = WIDGET[w.type].min;
-      const next = e.shiftKey ? place(layout, w.id, { w: w.w + a[0], h: w.h + a[1] }, min) : place(layout, w.id, { x: w.x + a[0], y: w.y + a[1] }, min);
+      const dh = isAutoHeight(w) ? 0 : a[1];
+      const next = e.shiftKey ? place(layout, w.id, { w: w.w + a[0], h: w.h + dh }, min) : place(layout, w.id, { x: w.x + a[0], y: w.y + a[1] }, min);
       commit(next);
       const n = next.widgets.find((x) => x.id === w.id)!;
       setAnnounce(`${WIDGET[w.type].label}: ${n.x + 1}번째 칸, ${n.y + 1}번째 줄, 가로 ${n.w}칸 세로 ${n.h}줄`);
@@ -370,14 +401,9 @@ export function HomeEditor({
               className={cn('home-item', isDrag && 'is-drag', selected === w.id && 'is-selected', flash === w.id && 'is-new')}
               style={{ transform: `translate(${box.left}px, ${box.top}px)`, ...sizeOf(box) }}
             >
-              {/* 미리보기 위젯은 내용만큼만 그리고, 남는 칸은 점선(내용이 늘면 여기까지 커짐)으로 */}
-              {!o.fit && def.preview ? (
-                <>
-                  <span className="home-item-reserve" aria-hidden>
-                    <span>내용이 늘면 여기까지</span>
-                  </span>
-                  <WidgetFrame widget={w} o={o} editing scroll setOption={() => {}} className="relative max-h-full pointer-events-none select-none" />
-                </>
+              {/* 높이 반응형 위젯은 내용만큼 그리고, 그 높이를 재서 세로 줄 수를 맞춘다 */}
+              {isAutoHeight(w, o) ? (
+                <WidgetFrame ref={watchAuto} widget={w} o={o} editing scroll setOption={() => {}} className="pointer-events-none select-none" style={{ minHeight: rowsPx(def.min.h) }} />
               ) : (
                 <WidgetFrame widget={w} o={{ ...o, fit: false }} editing scroll={false} setOption={() => {}} className="h-full pointer-events-none select-none" />
               )}
@@ -420,7 +446,8 @@ export function HomeEditor({
                   </button>
                 </span>
               </div>
-              {(['w', 'e', 's', 'sw', 'se'] as const).map((m) => (
+              {/* 높이 반응형 위젯은 세로로 늘리지 않으므로 좌우 손잡이만 */}
+              {(isAutoHeight(w, o) ? (['w', 'e'] as const) : (['w', 'e', 's', 'sw', 'se'] as const)).map((m) => (
                 <span key={m} className={`home-handle home-handle-${m}`} onPointerDown={(e) => startDrag(e, w, m)} aria-hidden />
               ))}
             </div>
@@ -679,6 +706,7 @@ function Settings({
 }) {
   const def = WIDGET[widget.type];
   const o = optionsOf(widget);
+  const auto = isAutoHeight(widget, o);
   return (
     <div className="grid gap-4">
       <div className="flex items-start gap-2.5">
@@ -695,7 +723,8 @@ function Settings({
         <h3 className="home-panel-title">크기 · 위치</h3>
         <div className="grid grid-cols-2 gap-1.5">
           <Stepper label="가로 칸" value={widget.w} min={def.min.w} max={COLS} onChange={(w) => onBox({ w })} />
-          <Stepper label="세로 줄" value={widget.h} min={def.min.h} max={40} onChange={(h) => onBox({ h })} />
+          {/* 높이 반응형이면 세로는 내용으로 정해진다 */}
+          <Stepper label="세로 줄" value={widget.h} min={auto ? widget.h : def.min.h} max={auto ? widget.h : 40} onChange={(h) => onBox({ h })} />
           <Stepper label="왼쪽에서" value={widget.x + 1} min={1} max={COLS - widget.w + 1} onChange={(x) => onBox({ x: x - 1 })} />
           <Stepper label="위에서" value={widget.y + 1} min={1} max={400} onChange={(y) => onBox({ y: y - 1 })} />
         </div>
@@ -729,7 +758,7 @@ function Settings({
       <section>
         <h3 className="home-panel-title">모양</h3>
         <div className="grid gap-2.5">
-          {COMMON.map((opt) => (
+          {COMMON.filter((opt) => !(opt.key === 'fit' && def.preview)).map((opt) => (
             <OptionField key={opt.key} def={opt} value={o[opt.key]} onChange={(v) => onChange({ [opt.key]: v })} />
           ))}
         </div>
