@@ -68,6 +68,12 @@ describe('excerpt', () => {
     ].join('\n');
     expect(makeExcerpt(markdown)).toBe('제목 굵게 와 기울임, 코드 그리고 링크 인용문 목록 번호 const snake_case = 1;');
   });
+
+  it('블라인드(||…||)는 미리보기에서 가린다', () => {
+    expect(makeExcerpt('범인은 ||집사|| 였다')).toBe('범인은 ▒▒▒ 였다');
+    // 공백으로 시작 · 끝나면 블라인드가 아니다 (표의 빈 칸 등)
+    expect(makeExcerpt('a || b || c')).toBe('a || b || c');
+  });
 });
 
 describe('커뮤니티', () => {

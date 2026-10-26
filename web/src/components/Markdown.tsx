@@ -69,6 +69,28 @@ marked.use({
   },
 });
 
+/**
+ * 블라인드: ||가릴 문장|| 은 가려 두었다가 누르면 드러난다 (퀴즈 · 반전 · 스포일러 방지).
+ * 여는 || 바로 뒤와 닫는 || 바로 앞은 공백이 아니어야 한다 (표의 빈 칸 '| |' 과 헷갈리지 않게)
+ */
+marked.use({
+  extensions: [
+    {
+      name: 'blind',
+      level: 'inline',
+      start: (src: string) => src.indexOf('||'),
+      tokenizer(src: string) {
+        const m = /^\|\|(?=\S)([\s\S]*?\S)\|\|/.exec(src);
+        if (!m) return undefined;
+        return { type: 'blind', raw: m[0], tokens: this.lexer.inlineTokens(m[1]) };
+      },
+      renderer(token) {
+        return `<span class="loop-blind" role="button" tabindex="0" aria-label="가려진 내용 (눌러서 보기)">${this.parser.parseInline(token.tokens ?? [])}</span>`;
+      },
+    },
+  ],
+});
+
 // 사용자가 쓴 마크다운은 HTML 로 바뀌므로 반드시 sanitize 해서 스크립트 삽입(XSS)을 막는다
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   if (node.tagName === 'A') {
@@ -97,10 +119,21 @@ export function renderMarkdown(source: string): string {
   return body.innerHTML;
 }
 
-/** 같은 본문이면 다시 파싱하지 않도록 memo + useMemo */
-/** 코드 블록의 '복사' (본문은 HTML 로 그리므로 눌린 곳을 찾아서 처리한다) */
-function onCopyClick(e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) {
+/**
+ * 본문 안의 누를 수 있는 것 (본문은 HTML 로 그리므로 눌린 곳을 찾아서 처리한다):
+ * 블라인드는 드러내고(다시 누르면 가린다), 코드 블록의 '복사'는 복사한다
+ */
+function onBodyClick(e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) {
   if ('key' in e && e.key !== 'Enter' && e.key !== ' ') return;
+  const blind = (e.target as HTMLElement).closest<HTMLElement>('.loop-blind');
+  if (blind) {
+    // 드러난 블라인드 안의 링크는 그대로 열린다
+    if (blind.classList.contains('is-open') && (e.target as HTMLElement).closest('a')) return;
+    e.preventDefault();
+    const open = blind.classList.toggle('is-open');
+    blind.setAttribute('aria-label', open ? '드러난 내용 (눌러서 다시 가리기)' : '가려진 내용 (눌러서 보기)');
+    return;
+  }
   const button = (e.target as HTMLElement).closest<HTMLElement>('[data-copy]');
   const code = button?.closest('.loop-code')?.querySelector('pre:not(.loop-code-nums) code');
   if (!button || !code) return;
@@ -124,8 +157,8 @@ export const Markdown = memo(function Markdown({ source, className }: { source: 
   return (
     <div
       className={className ? `prose ${className}` : 'prose'}
-      onClick={onCopyClick}
-      onKeyDown={onCopyClick}
+      onClick={onBodyClick}
+      onKeyDown={onBodyClick}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
