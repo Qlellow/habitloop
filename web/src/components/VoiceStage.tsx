@@ -6,6 +6,7 @@ import { VoiceControlBar } from './VoiceControls';
 import { callSince, useVoice, type VoicePerson, type VoiceScreen } from '../lib/voice';
 import { canPopOut, closeVoiceWindow, openVoiceWindow, useVoiceWindow } from '../lib/voiceWindow';
 import { cn } from '../lib/cn';
+import '../styles/voice.css';
 
 /**
  * 음성방 화면: 화면 공유를 크게 보고(여러 명이면 고르기), 참여자는 타일로(말하면 테두리가 빛남),

@@ -11,6 +11,7 @@ import { toast } from './Toast';
 import { callSince, voice, useVoice, type VoicePerson } from '../lib/voice';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
+import '../styles/voice.css';
 
 /**
  * 채널 화면의 음성방 카드: 운영진이 만든 방 목록과 지금 들어와 있는 사람.

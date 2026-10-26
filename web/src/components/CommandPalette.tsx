@@ -37,10 +37,10 @@ import { cn } from '../lib/cn';
 
 /* ───────── 열기 ───────── */
 
-const OPEN_EVENT = 'loop:command-palette';
-/** 헤더의 단축키 버튼 등 어디서든 커맨드 팔레트 열기 */
-export const openCommandPalette = () => window.dispatchEvent(new Event(OPEN_EVENT));
-export const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+// 여는 단축키 · 이벤트는 lib/commandPalette (가벼운 부분), 이 화면은 처음 열 때 받는다 (components/Deferred)
+import { isMac } from '../lib/commandPalette';
+import '../styles/cmdk.css';
+export { isMac, openCommandPalette } from '../lib/commandPalette';
 
 /* ───────── 찾기: 글자 그대로 + 한글 초성(ㄷㅋ → 다크) ───────── */
 
@@ -115,31 +115,9 @@ const RESULT_SIZE = 5;
  * 커맨드 팔레트 (Ctrl/⌘ + K). 키보드만으로 채널 이동 · 글쓰기 · 테마 바꾸기 · 사용자/글 찾기.
  * Apple 의 Liquid Glass 처럼 뒤 화면이 흐리게 비치고 가장자리에 빛이 맺히는 유리 패널 (global.css .liquid-glass)
  */
-export function CommandPalette() {
-  const [open, setOpen] = useState(false);
+export default function CommandPalette({ open, setOpen }: { open: boolean; setOpen: (open: boolean) => void }) {
   const signOut = useConfirmSignOut();
-  const { pathname } = useLocation();
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setOpen((v) => !v);
-      }
-    };
-    const onOpen = () => setOpen(true);
-    window.addEventListener('keydown', onKey);
-    window.addEventListener(OPEN_EVENT, onOpen);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener(OPEN_EVENT, onOpen);
-    };
-  }, []);
-
-  // 다른 화면으로 가면 닫는다 (뒤로 가기 등)
-  useEffect(() => setOpen(false), [pathname]);
-
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => setOpen(false), [setOpen]);
   return (
     <>
       {open && <Palette onClose={close} onSignOut={signOut.ask} />}

@@ -1,7 +1,5 @@
-import { memo, useMemo, type MouseEvent } from 'react';
+import { memo, useEffect, useMemo, useRef, type MouseEvent } from 'react';
 import { marked, type Tokens } from 'marked';
-import { markedHighlight } from 'marked-highlight';
-import hljs from 'highlight.js/lib/common';
 import DOMPurify from 'dompurify';
 import { applyImageStyles, parseImageSrc } from '../lib/postImage';
 
@@ -18,17 +16,25 @@ const LANG_LABEL: Record<string, string> = {
 };
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// 코드 블록 문법 강조: ``` 옆의 언어로 칠하고, 없거나 모르는 언어면 그대로 둔다
-marked.use(
-  markedHighlight({
-    emptyLangClass: 'hljs',
-    langPrefix: 'hljs language-',
-    highlight(code, lang) {
-      const language = lang.trim().split(/\s/)[0].toLowerCase();
-      return language && hljs.getLanguage(language) ? hljs.highlight(code, { language }).value : escapeHtml(code);
-    },
-  }),
-);
+/**
+ * 코드 블록 문법 강조는 본문에 코드 블록이 있을 때만 highlight.js 를 받아 칠한다 (글 대부분은 코드가 없다).
+ * 처음에는 이스케이프한 글자 그대로 그리고, 받은 뒤 ``` 옆의 언어로 칠한다 (모르는 언어면 그대로)
+ */
+let hljsLoad: Promise<typeof import('highlight.js/lib/common').default> | undefined;
+const loadHljs = () => (hljsLoad ??= import('highlight.js/lib/common').then((m) => m.default));
+
+function highlightIn(root: HTMLElement) {
+  const blocks = root.querySelectorAll<HTMLElement>('.loop-code code[data-lang]:not([data-hl])');
+  if (!blocks.length) return;
+  void loadHljs().then((hljs) => {
+    blocks.forEach((el) => {
+      const language = el.dataset.lang!;
+      el.dataset.hl = '1';
+      if (!hljs.getLanguage(language)) return;
+      el.innerHTML = hljs.highlight(el.textContent ?? '', { language }).value;
+    });
+  });
+}
 
 const escapeAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -45,7 +51,6 @@ marked.use({
     code({ text, lang }: Tokens.Code) {
       const language = (lang ?? '').trim().split(/\s/)[0].toLowerCase();
       const label = LANG_LABEL[language] ?? (language ? language : '코드');
-      // markedHighlight 가 이미 칠해서(이스케이프된 HTML) 넘겨준다
       const lines = text.replace(/\n$/, '').split('\n').length;
       const nums = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
       return (
@@ -53,7 +58,8 @@ marked.use({
         `<div class="loop-code-head"><span class="loop-code-lang">${escapeHtml(label)}</span>` +
         '<span class="loop-code-copy" role="button" tabindex="0" data-copy="1">복사</span></div>' +
         `<div class="loop-code-body"><pre class="loop-code-nums" aria-hidden="true">${nums}</pre>` +
-        `<pre><code class="hljs${language ? ` language-${escapeHtml(language)}` : ''}">${text.replace(/\n$/, '')}</code></pre></div></div>`
+        // 문법 강조는 그린 뒤에 (highlightIn). data-lang 은 sanitize 를 거쳐도 남는다
+        `<pre><code class="hljs${language ? ` language-${escapeHtml(language)}" data-lang="${escapeHtml(language)}` : ''}">${escapeHtml(text.replace(/\n$/, ''))}</code></pre></div></div>`
       );
     },
     image({ href, text }: Tokens.Image) {
@@ -154,8 +160,13 @@ function onBodyClick(e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDiv
 /** 같은 본문이면 다시 파싱하지 않도록 memo + useMemo */
 export const Markdown = memo(function Markdown({ source, className }: { source: string; className?: string }) {
   const html = useMemo(() => renderMarkdown(source), [source]);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ref.current) highlightIn(ref.current);
+  }, [html]);
   return (
     <div
+      ref={ref}
       className={className ? `prose ${className}` : 'prose'}
       onClick={onBodyClick}
       onKeyDown={onBodyClick}

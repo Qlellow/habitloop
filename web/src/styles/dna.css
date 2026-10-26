@@ -1,0 +1,120 @@
+/* 활동 DNA (components/ActivityDna): 프로필 화면과 함께 받는다 */
+
+/* ───────── 활동 DNA (components/ActivityDna.tsx) ───────── */
+.dna-helix {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.dna-strand {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text-weak) 70%, transparent);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+.dna-strand-back {
+  stroke: color-mix(in srgb, var(--text-weak) 30%, transparent);
+}
+.dna-type {
+  margin-top: 2px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  background: linear-gradient(90deg, var(--primary), #22b07d 55%, #f5b84a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.dna-type > span {
+  color: initial;
+}
+.dna-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .dna-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dna-grid > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+.dna-panel {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--field);
+}
+.dna-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-weak);
+}
+.dna-radar,
+.dna-clock {
+  display: block;
+  width: 100%;
+  max-width: 180px;
+  margin: 4px auto 0;
+}
+.dna-radar-grid {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.dna-radar-shape {
+  fill: color-mix(in srgb, var(--primary) 26%, transparent);
+  stroke: var(--primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.dna-radar-label,
+.dna-clock-label {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--text-sub);
+}
+.dna-clock-face {
+  fill: none;
+  stroke: var(--line);
+}
+.dna-clock-bar {
+  stroke: var(--primary);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+.dna-clock-bar.is-peak {
+  stroke: #f5b84a;
+}
+.dna-stats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 8px;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.dna-stats dt {
+  color: var(--text-sub);
+}
+.dna-stats dd {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-strong);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dna-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.dna-chip:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}

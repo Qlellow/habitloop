@@ -1,5 +1,6 @@
 import { copyFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -18,8 +19,23 @@ function spaFallback(): Plugin {
   };
 }
 
-export default defineConfig({
+/**
+ * react-router 는 package.json exports 에 'production' 조건이 없어 빌드에도 개발용 파일(경고 · 검사 포함)이 들어간다.
+ * 빌드할 때만 같은 버전의 production 파일로 바꿔 끼운다
+ */
+const routerDist = resolve(dirname(createRequire(import.meta.url).resolve('react-router/package.json')), 'dist/production');
+
+export default defineConfig(({ command }) => ({
   plugins: [react(), spaFallback()],
+  resolve: {
+    alias:
+      command === 'build'
+        ? [
+            { find: /^react-router$/, replacement: resolve(routerDist, 'index.mjs') },
+            { find: /^react-router\/dom$/, replacement: resolve(routerDist, 'dom-export.mjs') },
+          ]
+        : [],
+  },
   // 포트: 백엔드 3000, 웹 3001 (이미 쓰고 있으면 다른 포트로 넘어가지 않고 바로 에러를 낸다)
   server: {
     port: 3001,
@@ -53,4 +69,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

@@ -108,7 +108,8 @@ export function rememberRoom(roomId: number | undefined) {
     // 저장소를 못 쓰면 새로고침 때 다시 들어가지 않는다
   }
 }
-function rememberedRoom() {
+/** 새로고침 전에 들어가 있던 방 (다시 들어갈 방이 있는지) */
+export function rememberedRoom() {
   try {
     const n = Number(sessionStorage.getItem(RESUME));
     return Number.isInteger(n) && n > 0 ? n : undefined;

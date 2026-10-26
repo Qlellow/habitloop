@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { compact, useActivityDna, type ActivityDna as Dna, type DnaBase, type DnaPeriod, type DnaTrait } from '@loop/shared';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
+import '../styles/dna.css';
 
 /**
  * 활동 DNA (프로필): 언제 · 어디서 · 어떻게 활동했는지로 그린 커뮤니티 성향 (API /api/users/:id/dna).
@@ -38,32 +39,12 @@ const BASE: Record<DnaBase | 'none', { color: string; label: string }> = {
 
 const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/** 돌아가는 이중 나선. 화면에 보일 때만 움직인다 */
+/**
+ * 돌아가는 이중 나선. 화면에 보일 때만 움직인다.
+ * 매 프레임 React 로 다시 그리지 않고, 처음 그린 SVG 요소의 좌표만 직접 바꾼다
+ */
 function Helix({ sequence }: { sequence: DnaBase[] }) {
   const ref = useRef<SVGSVGElement>(null);
-  const [t, setT] = useState(0);
-  useEffect(() => {
-    if (reduced()) return;
-    let raf = 0;
-    let visible = true;
-    const start = performance.now();
-    const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
-    if (ref.current) io.observe(ref.current);
-    let last = 0;
-    const tick = (now: number) => {
-      // 30fps 면 충분하다
-      if (visible && now - last > 33) {
-        last = now;
-        setT((now - start) / 1000);
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      io.disconnect();
-    };
-  }, []);
   // 활동이 적으면 빈 염기쌍으로 채운다
   const pairs: (DnaBase | 'none')[] = sequence.length >= 14 ? sequence : [...Array.from({ length: 14 - sequence.length }, () => 'none' as const), ...sequence];
   // 넓게 그리고 화면 폭에 맞춰 줄인다 (폰에서는 낮아진다)
@@ -73,31 +54,75 @@ function Helix({ sequence }: { sequence: DnaBase[] }) {
   const amp = 38;
   const x0 = 14;
   const step = (W - x0 * 2) / (pairs.length - 1);
-  const phase = (x: number) => t * 1.4 + (x - x0) * 0.028;
-  const strand = (sign: 1 | -1) => {
+  const phase = (t: number, x: number) => t * 1.4 + (x - x0) * 0.028;
+  const strand = (t: number, sign: 1 | -1) => {
     let d = '';
-    for (let x = x0; x <= W - x0 + 0.1; x += 4) d += `${d ? 'L' : 'M'}${x.toFixed(1)} ${(mid + sign * amp * Math.sin(phase(x))).toFixed(1)}`;
+    for (let x = x0; x <= W - x0 + 0.1; x += 4) d += `${d ? 'L' : 'M'}${x.toFixed(1)} ${(mid + sign * amp * Math.sin(phase(t, x))).toFixed(1)}`;
     return d;
   };
-  return (
-    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} className="dna-helix" role="img" aria-label={`최근 활동 ${sequence.length}개를 염기쌍으로 그린 이중 나선`}>
-      <path d={strand(-1)} className="dna-strand dna-strand-back" />
-      {pairs.map((b, i) => {
+  useEffect(() => {
+    const svg = ref.current;
+    if (!svg) return;
+    const back = svg.querySelector<SVGPathElement>('.dna-strand-back')!;
+    const front = svg.querySelector<SVGPathElement>('.dna-strand:not(.dna-strand-back)')!;
+    const rungs = [...svg.querySelectorAll<SVGGElement>('.dna-rung')];
+    const draw = (t: number) => {
+      back.setAttribute('d', strand(t, -1));
+      front.setAttribute('d', strand(t, 1));
+      rungs.forEach((g, i) => {
         const x = x0 + i * step;
-        const s = Math.sin(phase(x));
-        const depth = Math.cos(phase(x));
+        const s = Math.sin(phase(t, x));
+        const depth = Math.cos(phase(t, x));
         const y1 = mid + amp * s;
         const y2 = mid - amp * s;
+        const [line, c1, c2] = g.children as unknown as [SVGLineElement, SVGCircleElement, SVGCircleElement];
+        g.setAttribute('opacity', (0.45 + 0.55 * ((depth + 1) / 2)).toFixed(3));
+        line.setAttribute('y1', y1.toFixed(1));
+        line.setAttribute('y2', y2.toFixed(1));
+        c1.setAttribute('cy', y1.toFixed(1));
+        c1.setAttribute('r', (3 + depth * 1.1).toFixed(2));
+        c2.setAttribute('cy', y2.toFixed(1));
+        c2.setAttribute('r', (3 - depth * 1.1).toFixed(2));
+      });
+    };
+    draw(0);
+    if (reduced()) return;
+    let raf = 0;
+    let visible = true;
+    let last = 0;
+    const start = performance.now();
+    const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
+    io.observe(svg);
+    const tick = (now: number) => {
+      // 30fps 면 충분하다
+      if (visible && now - last > 33) {
+        last = now;
+        draw((now - start) / 1000);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      io.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pairs.length]);
+  return (
+    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} className="dna-helix" role="img" aria-label={`최근 활동 ${sequence.length}개를 염기쌍으로 그린 이중 나선`}>
+      <path className="dna-strand dna-strand-back" />
+      {pairs.map((b, i) => {
+        const x = x0 + i * step;
         const color = BASE[b].color;
         return (
-          <g key={i} opacity={0.45 + 0.55 * ((depth + 1) / 2)}>
-            <line x1={x} y1={y1} x2={x} y2={y2} stroke={color} strokeWidth={2.4} strokeLinecap="round" opacity={b === 'none' ? 0.5 : 0.8} />
-            <circle cx={x} cy={y1} r={3 + depth * 1.1} fill={color} />
-            <circle cx={x} cy={y2} r={3 - depth * 1.1} fill={color} />
+          <g key={i} className="dna-rung">
+            <line x1={x} x2={x} stroke={color} strokeWidth={2.4} strokeLinecap="round" opacity={b === 'none' ? 0.5 : 0.8} />
+            <circle cx={x} fill={color} />
+            <circle cx={x} fill={color} />
           </g>
         );
       })}
-      <path d={strand(1)} className="dna-strand" />
+      <path className="dna-strand" />
     </svg>
   );
 }

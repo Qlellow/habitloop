@@ -1,4 +1,4 @@
-import { isMac, openCommandPalette } from '../../components/CommandPalette';
+import { isMac, openCommandPalette } from '../../lib/commandPalette';
 import { useState, type FormEvent } from 'react';
 import {
   useBlockUser,
