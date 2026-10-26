@@ -1,8 +1,8 @@
-import { memo, useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { HomeLayout, HomeWidget } from '@loop/shared';
 import { WIDGET, optionsOf, type Options } from './widgets';
-import { rowsPx, stackOrder } from '../../lib/homeGrid';
+import { GAP, ROW, rowsPx, shrinkLayout, stackOrder } from '../../lib/homeGrid';
 import { ui } from '../ui';
 import { cn } from '../../lib/cn';
 
@@ -59,6 +59,7 @@ export function WidgetFrame({
   style,
   className,
   children,
+  ref,
 }: {
   widget: HomeWidget;
   o: Options;
@@ -69,6 +70,7 @@ export function WidgetFrame({
   style?: CSSProperties;
   className?: string;
   children?: ReactNode;
+  ref?: (el: HTMLElement | null) => void;
 }) {
   const def = WIDGET[widget.type];
   const title = (o.title as string) || def.title(o);
@@ -81,8 +83,10 @@ export function WidgetFrame({
     <section
       className={cn('home-widget flex flex-col min-w-0 overflow-hidden', STYLE[o.style as string] ?? STYLE.card, className)}
       style={style}
+      ref={ref}
       aria-label={title || def.label}
       data-widget={widget.type}
+      data-id={widget.id}
     >
       {title && !o.hideTitle && (
         <div className={cn(ui.cardHead, 'flex-none')}>
@@ -105,6 +109,57 @@ export function WidgetFrame({
   );
 }
 
+const SUB = 8;
+const PER = (ROW + GAP) / SUB;
+
+/**
+ * 미리보기 위젯의 실제 높이를 재서 (8px) 줄 수로 바꾼다 (ResizeObserver).
+ * 위젯의 높이는 내용으로만 정해지고 격자 위치와는 상관없어서, 다시 놓아도 또 바뀌지 않는다
+ */
+function usePreviewRows() {
+  const [rows, setRows] = useState<Record<string, number>>({});
+  const nodes = useRef(new Map<string, Element>());
+  const ro = useMemo(
+    () =>
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver((entries) =>
+            setRows((prev) => {
+              let next = prev;
+              for (const e of entries) {
+                const id = (e.target as HTMLElement).dataset.id!;
+                const px = e.target.getBoundingClientRect().height;
+                const n = Math.max(1, Math.ceil((px - 0.5) / SUB));
+                if (next[id] !== n) next = { ...next, [id]: n };
+              }
+              return next;
+            }),
+          ),
+    [],
+  );
+  useEffect(() => () => ro?.disconnect(), [ro]);
+  const refs = useRef(new Map<string, (el: HTMLElement | null) => void>());
+  const observe = (id: string) => {
+    let fn = refs.current.get(id);
+    if (!fn) {
+      fn = (el) => {
+        const old = nodes.current.get(id);
+        if (old) ro?.unobserve(old);
+        nodes.current.delete(id);
+        if (el) {
+          nodes.current.set(id, el);
+          ro?.observe(el);
+        } else {
+          setRows(({ [id]: _, ...rest }) => rest);
+        }
+      };
+      refs.current.set(id, fn);
+    }
+    return fn;
+  };
+  return { rows, observe };
+}
+
 /** 이 위젯 아래(가로로 겹치는 칸)에 다른 위젯이 없는지: 그래야 '따라오기'가 다른 위젯을 덮지 않는다 */
 const nothingBelow = (w: HomeWidget, all: HomeWidget[]) =>
   !all.some((o) => o.id !== w.id && o.y >= w.y + w.h && o.x < w.x + w.w && w.x < o.x + o.w);
@@ -121,16 +176,27 @@ export const HomeGrid = memo(function HomeGrid({
   onOption: (id: string, key: string, value: string | number | boolean) => void;
 }) {
   const order = new Map(stackOrder(layout.widgets).map((w, i) => [w.id, i]));
+  // 미리보기 위젯은 정한 높이가 '최대'일 뿐: 내용이 적으면 그만큼 줄어들고, 줄어든 만큼 아래 위젯을 끌어올린다
+  const isPreview = (w: HomeWidget) => !optionsOf(w).fit && !!WIDGET[w.type].preview;
+  const need = usePreviewRows();
+  // 보기 화면의 격자는 8px 줄(SUB) 단위: 한 줄(ROW+GAP)이 PER 줄. 줄어든 높이를 px 가까이 맞춰 빈틈이 남지 않게
+  const shown = useMemo(() => {
+    const fine = layout.widgets.map((w) => ({ ...w, y: w.y * PER, h: w.h * PER - GAP / SUB }));
+    const placed = new Map(shrinkLayout(fine, need.rows).map((w) => [w.id, w]));
+    return fine.map((w) => placed.get(w.id) ?? w);
+  }, [layout.widgets, need.rows]);
   return (
     <div className="home-grid">
-      {layout.widgets.map((w) => {
+      {shown.map((w, i) => {
         const o = optionsOf(w);
-        const sticky = o.sticky && !o.fit && nothingBelow(w, layout.widgets);
-        // 미리보기 위젯은 정한 높이가 '최대'일 뿐: 내용이 적으면 그만큼 줄어든다 (빈 칸을 남기지 않게)
-        const preview = !o.fit && !!WIDGET[w.type].preview;
+        const sticky = o.sticky && !o.fit && nothingBelow(w, shown);
+        const preview = isPreview(layout.widgets[i]);
+        // 정한 높이 (미리보기 위젯은 최대 높이)
+        const maxRows = layout.widgets[i].h;
         return (
           <WidgetFrame
             key={w.id}
+            ref={preview ? need.observe(w.id) : undefined}
             widget={w}
             o={o}
             scroll={!o.fit}
@@ -139,9 +205,9 @@ export const HomeGrid = memo(function HomeGrid({
             style={{
               gridColumn: `${w.x + 1} / span ${w.w}`,
               gridRow: `${w.y + 1} / span ${w.h}`,
-              minHeight: preview ? undefined : rowsPx(w.h),
-              height: o.fit || preview ? undefined : rowsPx(w.h),
-              maxHeight: preview ? rowsPx(w.h) : undefined,
+              minHeight: preview ? undefined : rowsPx(maxRows),
+              height: o.fit || preview ? undefined : rowsPx(maxRows),
+              maxHeight: preview ? rowsPx(maxRows) : undefined,
               order: order.get(w.id),
             }}
           />

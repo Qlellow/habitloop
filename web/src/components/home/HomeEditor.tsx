@@ -370,7 +370,17 @@ export function HomeEditor({
               className={cn('home-item', isDrag && 'is-drag', selected === w.id && 'is-selected', flash === w.id && 'is-new')}
               style={{ transform: `translate(${box.left}px, ${box.top}px)`, ...sizeOf(box) }}
             >
-              <WidgetFrame widget={w} o={{ ...o, fit: false }} editing scroll={false} setOption={() => {}} className="h-full pointer-events-none select-none" />
+              {/* 미리보기 위젯은 내용만큼만 그리고, 남는 칸은 점선(내용이 늘면 여기까지 커짐)으로 */}
+              {!o.fit && def.preview ? (
+                <>
+                  <span className="home-item-reserve" aria-hidden>
+                    <span>내용이 늘면 여기까지</span>
+                  </span>
+                  <WidgetFrame widget={w} o={o} editing scroll setOption={() => {}} className="relative max-h-full pointer-events-none select-none" />
+                </>
+              ) : (
+                <WidgetFrame widget={w} o={{ ...o, fit: false }} editing scroll={false} setOption={() => {}} className="h-full pointer-events-none select-none" />
+              )}
               <div
                 className="home-item-cover"
                 tabIndex={0}
