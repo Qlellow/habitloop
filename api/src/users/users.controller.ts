@@ -7,6 +7,7 @@ import { Database } from '../db/database';
 import { BlocksService } from './blocks.service';
 import { RewardsService } from './rewards.service';
 import { PetsService } from '../pets/pets.service';
+import { DnaService } from './dna.service';
 import { parseHomeLayout, type HomeLayout } from './home-layout';
 
 /** 작성자 프로필: 닉네임 · 가입일 · 쓴 글 / 댓글 수 · 배지 (이메일 같은 개인 정보는 주지 않는다) */
@@ -17,6 +18,7 @@ export class UsersController {
     private readonly rewards: RewardsService,
     private readonly blocks: BlocksService,
     private readonly pets: PetsService,
+    private readonly dna: DnaService,
   ) {}
 
   /** 닉네임으로 사용자 찾기 (커맨드 팔레트). 앞부분이 맞는 사람부터, 공개 정보만 */
@@ -65,6 +67,13 @@ export class UsersController {
   }
 
   /** 사용자 차단 · 해제 (상대에게 알리지 않는다) */
+  /** 활동 DNA: 언제 · 어디서 · 어떻게 활동했는지로 그린 커뮤니티 성향 (공개 채널 활동만) */
+  @Public()
+  @Get('users/:id/dna')
+  activityDna(@Param('id') raw: string) {
+    return this.dna.of(raw);
+  }
+
   @Put('users/:id/block')
   @HttpCode(HttpStatus.NO_CONTENT)
   block(@LoginUser() user: AuthUser, @Param('id') id: string) {

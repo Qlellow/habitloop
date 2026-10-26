@@ -6,6 +6,7 @@ import { Mailer } from '../src/mail/mailer';
 import { Database } from '../src/db/database';
 import { makeExcerpt, EXCERPT_LENGTH } from '../src/posts/excerpt';
 import { weatherOf } from '../src/community/weather.service';
+import { DnaService, periodOf, topTrait, traitsOf } from '../src/users/dna.service';
 import jwtLib from 'jsonwebtoken';
 
 /**
@@ -93,6 +94,33 @@ describe('커뮤니티 감정 날씨', () => {
     expect(weatherOf({ ...zero, posts: 4, comments: 4 }).weather).toBe('partly');
     // 체감 온도는 35도까지
     expect(weatherOf({ ...zero, posts: 100 }).temperature).toBe(35);
+  });
+});
+
+describe('활동 DNA', () => {
+  const hoursAt = (...hs: number[]) => {
+    const a = Array.from({ length: 24 }, () => 0);
+    for (const h of hs) a[h]++;
+    return a;
+  };
+  it('가장 활발한 시간대 · 성향', () => {
+    expect(periodOf(hoursAt(2, 3, 3, 4))).toBe('dawn');
+    expect(periodOf(hoursAt(8, 9, 9))).toBe('morning');
+    expect(periodOf(hoursAt(19, 20, 20, 13))).toBe('evening');
+    expect(periodOf(hoursAt(23, 23, 0))).toBe('night');
+    const writer = traitsOf({ posts: 10, comments: 2, likesGiven: 0, reactionsGiven: 0, channels: 1, avgPostLength: 200, hours: [] });
+    expect(topTrait(writer)).toBe('create');
+    const talker = traitsOf({ posts: 1, comments: 30, likesGiven: 2, reactionsGiven: 0, channels: 2, avgPostLength: 50, hours: [] });
+    expect(topTrait(talker)).toBe('talk');
+    const explorer = traitsOf({ posts: 3, comments: 9, likesGiven: 0, reactionsGiven: 0, channels: 8, avgPostLength: 100, hours: [] });
+    expect(explorer.explore).toBe(100);
+    expect(traitsOf({ posts: 0, comments: 0, likesGiven: 0, reactionsGiven: 0, channels: 0, avgPostLength: 0, hours: [] })).toEqual({
+      create: 0,
+      talk: 0,
+      explore: 0,
+      cheer: 0,
+      depth: 0,
+    });
   });
 });
 
@@ -1324,6 +1352,29 @@ describe('커뮤니티', () => {
     const writerId = (await http().get('/api/me').set(bearer(writer))).body.id;
     await http().put(`/api/users/${writerId}/block`).set(bearer(reader)).expect(204);
     expect((await http().get('/api/posts/discovery').set(bearer(reader)).expect(200)).body.post).toBeUndefined();
+  });
+
+  it('활동 DNA API: 공개 채널 활동만 세고, 활동이 적으면 유형 없이', async () => {
+    const me = await signup('dna-me@test.dev', 'DNA주인');
+    const meId = (await http().get('/api/me').set(bearer(me))).body.id;
+    await http().get('/api/users/not-a-uuid/dna').expect(404);
+    let dna = (await http().get(`/api/users/${meId}/dna`).expect(200)).body;
+    expect(dna).toMatchObject({ ready: false, sequence: [], stats: { posts: 0, comments: 0 } });
+    expect(dna.type).toBeUndefined();
+
+    await http().post('/api/channels').set(bearer(me)).send({ slug: 'dna', name: 'DNA채널' }).expect(201);
+    const post = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'dna', title: 'DNA 글', content: '내용입니다' }).expect(201)).body;
+    await http().post(`/api/posts/${post.id}/comments`).set(bearer(me)).send({ content: '댓글 하나' }).expect(201);
+    await http().post(`/api/posts/${post.id}/comments`).set(bearer(me)).send({ content: '댓글 둘' }).expect(201);
+    // 캐시를 비우고 다시
+    (app.get(DnaService) as unknown as { cache: { clear(): void } }).cache.clear();
+    dna = (await http().get(`/api/users/${meId}/dna`).expect(200)).body;
+    expect(dna.ready).toBe(true);
+    expect(dna.stats).toMatchObject({ posts: 1, comments: 2 });
+    expect(dna.sequence).toEqual(['post', 'comment', 'comment']);
+    expect(dna.channels[0]).toMatchObject({ slug: 'dna', count: 3 });
+    expect(dna.hours.reduce((a: number, b: number) => a + b, 0)).toBe(3);
+    expect(['dawn', 'morning', 'day', 'evening', 'night']).toContain(dna.type.period);
   });
 
   it('커뮤니티 감정 날씨 API: 최근 24시간 통계와 날씨', async () => {

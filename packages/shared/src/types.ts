@@ -250,6 +250,25 @@ export interface PointLog {
 /** 알림 종류: 내 글에 댓글 · 내 댓글에 답글 · 내 글에 공감 · 팔로우한 채널의 새 공지 */
 export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery';
 
+/** 활동 DNA: 다섯 성향 · 시간대 · 최근 활동 순서 */
+export type DnaTrait = 'create' | 'talk' | 'explore' | 'cheer' | 'depth';
+export type DnaPeriod = 'dawn' | 'morning' | 'day' | 'evening' | 'night';
+export type DnaBase = 'post' | 'comment' | 'like' | 'reaction';
+
+export interface ActivityDna {
+  /** 활동이 너무 적으면 false (유형 없이) */
+  ready: boolean;
+  type?: { period: DnaPeriod; trait: DnaTrait };
+  /** 0 ~ 100 */
+  traits: Record<DnaTrait, number>;
+  /** 한국 시각 0~23시별 글 + 댓글 수 */
+  hours: number[];
+  channels: { slug: string; name: string; count: number }[];
+  /** 최근 활동 순서 (오래된 것 → 최근) */
+  sequence: DnaBase[];
+  stats: { posts: number; comments: number; likesGiven: number; reactionsGiven: number; likesReceived: number };
+}
+
 /** 커뮤니티 감정 날씨 (최근 24시간의 반응으로) */
 export type CommunityWeather = 'calm' | 'sunny' | 'hot' | 'partly' | 'windy' | 'cloudy' | 'rain';
 
