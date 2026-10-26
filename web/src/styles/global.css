@@ -4098,3 +4098,58 @@ html.focus-mode main article h1 {
   background: color-mix(in srgb, var(--text-weak) 24%, transparent);
 }
 
+
+/* ── 블라인드 (||가릴 내용||): 누르기 전에는 도트 무늬로 덮여 있다가, 누르면 무늬가 걷히며 드러난다 ── */
+.loop-blind {
+  --blind-ink: color-mix(in srgb, var(--text-strong) 78%, var(--surface));
+  border-radius: 5px;
+  padding: 0 3px;
+  margin: 0 1px;
+  cursor: pointer;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease,
+    box-shadow 0.2s ease;
+}
+.loop-blind:not(.is-open) {
+  color: transparent;
+  background-color: var(--blind-ink);
+  background-image: radial-gradient(color-mix(in srgb, var(--surface) 22%, transparent) 1px, transparent 1.2px);
+  background-size: 4px 4px;
+  user-select: none;
+  animation: loop-blind-noise 0.9s steps(4) infinite;
+}
+/* 안의 링크 · 코드 · 그림도 같이 숨긴다 */
+.loop-blind:not(.is-open) * {
+  visibility: hidden;
+}
+.loop-blind:not(.is-open):hover {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+.loop-blind:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* 드러난 뒤에는 가려졌던 곳이라는 걸 옅은 바탕으로만 남긴다 */
+.loop-blind.is-open {
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+  animation: loop-blind-reveal 0.45s ease;
+}
+@keyframes loop-blind-noise {
+  to {
+    background-position: 4px 2px;
+  }
+}
+@keyframes loop-blind-reveal {
+  from {
+    filter: blur(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loop-blind,
+  .loop-blind.is-open {
+    animation: none;
+  }
+}
