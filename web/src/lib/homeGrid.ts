@@ -85,6 +85,30 @@ export function setCompact(layout: HomeLayout, compact: boolean): HomeLayout {
   return { ...layout, compact, widgets: settle(layout.widgets, compact) };
 }
 
+/**
+ * 보기 화면에서 실제 높이로 다시 놓기. 미리보기 위젯은 정한 높이(h)가 '최대'라 내용이 적으면 줄어드는데,
+ * 격자는 정한 줄을 그대로 차지하므로 아래 위젯과 사이가 크게 벌어진다.
+ * 그래서 줄어든 만큼 아래 위젯을 끌어올린다. 사용자가 일부러 띄운 간격은 그대로 둔다:
+ * 위젯마다, 같은 세로줄에서 위에 있는 위젯들의 '새 아래 끝 + 원래 간격' 중 가장 아래로.
+ * need: 위젯 id → 내용에 필요한 줄 수 (없으면 정한 높이 그대로)
+ */
+export function shrinkLayout<T extends Box & { id: string }>(widgets: T[], need: Record<string, number>): T[] {
+  const sorted = [...widgets].sort(byPosition);
+  const done = new Map<string, T>();
+  for (const w of sorted) {
+    const h = Math.max(1, Math.min(w.h, need[w.id] ?? w.h));
+    // 위에 아무것도 없으면 제자리
+    let y: number | undefined;
+    for (const a of sorted) {
+      const moved = done.get(a.id);
+      if (!moved || a.y + a.h > w.y || a.x >= w.x + w.w || w.x >= a.x + a.w) continue;
+      y = Math.max(y ?? 0, moved.y + moved.h + (w.y - a.y - a.h));
+    }
+    done.set(w.id, { ...w, y: y ?? w.y, h });
+  }
+  return sorted.map((w) => done.get(w.id)!);
+}
+
 /** 격자에 쓰인 줄 수 */
 export const rowsOf = (widgets: Box[]) => widgets.reduce((n, w) => Math.max(n, w.y + w.h), 0);
 
