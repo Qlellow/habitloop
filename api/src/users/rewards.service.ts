@@ -11,6 +11,7 @@ export const POST_POINTS_DAILY_LIMIT = 5;
 export const LIKE_POINTS = 2;
 export const INVITER_POINTS = 100;
 export const INVITEE_POINTS = 30;
+export const DISCOVERY_POINTS = 30;
 
 interface Stats {
   posts: number;
@@ -60,6 +61,11 @@ export class RewardsService {
   private async grant(userId: number, delta: number, reason: string) {
     await this.db.execute('UPDATE users SET points = points + $1 WHERE id = $2', [delta, userId]);
     await this.db.execute('INSERT INTO point_logs (user_id, delta, reason) VALUES ($1, $2, $3)', [userId, delta, reason]);
+  }
+
+  /** 내 글이 오늘의 발견에 뽑힘 (+30P) */
+  async discovered(userId: number) {
+    await this.db.transaction(() => this.grant(userId, DISCOVERY_POINTS, '오늘의 발견'));
   }
 
   /** 오늘 출석 체크 (하루 한 번 +10P, 7일 연속마다 +50P). 이미 했으면 awarded = false */

@@ -78,7 +78,7 @@ const POPULAR_CACHE_SIZE = 20;
  * 목록 조회: 본문(TEXT) 없이 필요한 컬럼만 읽는다.
  * 작성자 역할은 (channel_id, user_id) unique 인덱스로 한 번에 붙인다.
  */
-const SELECT_SUMMARY = `
+export const SELECT_SUMMARY = `
   SELECT p.id, c.slug AS "channelSlug", c.name AS "channelName", cat.name AS "categoryName", p.title, p.excerpt,
          a.uid::text AS "authorId", a.nickname AS "authorNickname",
          CASE WHEN a.avatar_id IS NULL THEN NULL ELSE '/api/images/' || a.avatar_id END AS "authorAvatar", m.role AS "authorRole", p.like_count AS "likeCount",
@@ -89,7 +89,7 @@ const SELECT_SUMMARY = `
   LEFT JOIN channel_categories cat ON cat.id = p.category_id
   LEFT JOIN channel_members m ON m.channel_id = p.channel_id AND m.user_id = p.author_id`;
 
-function toSummary(row: PostSummary & { authorRole: ChannelRole | null; categoryName: string | null }): PostSummary {
+export function toSummary(row: PostSummary & { authorRole: ChannelRole | null; categoryName: string | null }): PostSummary {
   return { ...row, categoryName: row.categoryName ?? undefined, authorRole: badge(row.authorRole) };
 }
 

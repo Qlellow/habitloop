@@ -30,7 +30,24 @@ export function notificationMessage(n: NotificationItem) {
           <b className="font-semibold text-fg-strong">{n.post.channelName}</b>에 새 공지가 올라왔어요
         </>
       );
+    case 'discovery':
+      return (
+        <>
+          내 글이 <b className="font-semibold text-fg-strong">오늘의 발견</b>에 뽑혔어요 (+30P)
+        </>
+      );
   }
+}
+
+/** 알림 왼쪽 그림: 보낸 사람 (공지는 채널, 오늘의 발견은 반짝이 표시) */
+export function NotificationAvatar({ n, size }: { n: NotificationItem; size: number }) {
+  if (n.type === 'discovery')
+    return (
+      <span className="discovery-mark flex-none mt-0.5" style={{ width: size, height: size }} aria-hidden>
+        ✦
+      </span>
+    );
+  return <UserAvatar nickname={n.type === 'notice' ? n.post.channelName : name(n)} avatarUrl={n.actor?.avatarUrl} size={size} className="mt-0.5" />;
 }
 
 /**
@@ -135,7 +152,7 @@ export function NotificationBell() {
                         !n.read && 'bg-primary-weak',
                       )}
                     >
-                      <UserAvatar nickname={n.type === 'notice' ? n.post.channelName : name(n)} avatarUrl={n.actor?.avatarUrl} size={36} className="mt-0.5" />
+                      <NotificationAvatar n={n} size={36} />
                       <span className="flex-1 min-w-0">
                         <span className="block text-[14px] leading-[1.45] text-fg">{notificationMessage(n)}</span>
                         {n.comment && <span className="block mt-0.5 text-[13px] text-fg-sub truncate">“{n.comment.excerpt}”</span>}

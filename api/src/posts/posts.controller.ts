@@ -6,6 +6,7 @@ import type { AuthUser } from '../auth/jwt.service';
 import { ApiError } from '../common/api-error';
 import { intParam } from '../common/cursor-page';
 import { CommentsService } from './comments.service';
+import { DiscoveryService } from './discovery.service';
 import { CommentInput, CommentUpdateInput, CreatePostInput, UpdatePostInput } from './posts.dto';
 import { PostsService, SORTS, type PostSort } from './posts.service';
 
@@ -35,6 +36,7 @@ export class PostsController {
   constructor(
     private readonly posts: PostsService,
     private readonly comments: CommentsService,
+    private readonly discoveries: DiscoveryService,
   ) {}
 
   @Public()
@@ -89,6 +91,14 @@ export class PostsController {
     const slug = channel?.trim() || undefined;
     if (slug) await this.posts.requireChannelAccess(slug, user?.id);
     return this.posts.popular(slug, user?.id);
+  }
+
+  /** 오늘의 발견: 반응은 적어도 흥미로운 글 하나 (하루 동안 같은 글) + 지난 6일 */
+  @Public()
+  @Get('posts/discovery')
+  @Header('Cache-Control', 'private, no-cache')
+  discovery(@CurrentUser() user?: AuthUser) {
+    return this.discoveries.today(user?.id);
   }
 
   @Public()

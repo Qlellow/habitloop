@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
 
-export type NotificationType = 'comment' | 'reply' | 'like' | 'notice';
+export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery';
 
 export interface NotificationItem {
   id: number;
@@ -83,6 +83,13 @@ export class NotificationsService {
            AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = m.user_id AND b.blocked_id = $3)`,
         [postId, channelId, authorId],
       ),
+    );
+  }
+
+  /** 내 글이 오늘의 발견에 뽑혔다 (보낸 사람 없음) */
+  async discovered(postId: number, authorId: number) {
+    await this.safe(() =>
+      this.db.execute(`INSERT INTO notifications (user_id, type, post_id) VALUES ($1, 'discovery', $2)`, [authorId, postId]),
     );
   }
 

@@ -47,6 +47,7 @@ import type {
   PostDetail,
   PostInput,
   PostSummary,
+  Discovery,
   User,
 } from './types';
 import { authStore } from './auth';
@@ -76,6 +77,7 @@ export const keys = {
   posts: ['posts'] as const,
   feed: (f: FeedFilter) => ['posts', 'feed', f] as const,
   popular: (channel?: string) => ['posts', 'popular', channel ?? '*'] as const,
+  discovery: ['posts', 'discovery'] as const,
   post: (id: number) => ['post', id] as const,
   postPreview: (id: number) => ['post', id, 'preview'] as const,
   comments: (postId: number) => ['comments', postId] as const,
@@ -171,6 +173,15 @@ export function usePopular(channel?: string) {
     queryKey: keys.popular(channel),
     queryFn: ({ signal }) => api<PostSummary[]>('/api/posts/popular', { query: { channel }, signal }),
     staleTime: 60_000,
+  });
+}
+
+/** 오늘의 발견: 반응은 적어도 흥미로운 글 하나 (하루 동안 같은 글) */
+export function useDiscovery() {
+  return useQuery({
+    queryKey: keys.discovery,
+    queryFn: ({ signal }) => api<Discovery>('/api/posts/discovery', { signal }),
+    staleTime: 5 * 60_000,
   });
 }
 

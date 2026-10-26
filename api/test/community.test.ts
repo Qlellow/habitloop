@@ -72,7 +72,11 @@ describe('excerpt', () => {
   it('블라인드(||…||)는 미리보기에서 가린다', () => {
     expect(makeExcerpt('범인은 ||집사|| 였다')).toBe('범인은 ▒▒▒ 였다');
     // 공백으로 시작 · 끝나면 블라인드가 아니다 (표의 빈 칸 등)
-    expect(makeExcerpt('a || b || c')).toBe('a || b || c');
+    expect(makeExcerpt('a || b || c')).toBe('a b c');
+  });
+
+  it('표는 칸 내용만 남긴다', () => {
+    expect(makeExcerpt('| 은행 | 금리 |\n| --- | :-: |\n| A | 3.1% |')).toBe('은행 금리 A 3.1%');
   });
 });
 
@@ -1273,6 +1277,37 @@ describe('커뮤니티', () => {
     expect((await list(fan))[0]).toMatchObject({ type: 'notice', post: { title: '새 공지', channelSlug: 'noti' } });
     expect((await list(other)).some((n: { type: string }) => n.type === 'notice')).toBe(false);
     expect((await list(owner)).some((n: { type: string }) => n.type === 'notice')).toBe(false);
+  });
+
+  it('오늘의 발견: 반응은 적어도 흥미로운 글 하나, 하루 동안 같은 글 · 글쓴이에게 알림 + 30P', async () => {
+    const writer = await signup('disc-writer@test.dev', '숨은작가');
+    const reader = await signup('disc-reader@test.dev', '발견독자');
+    const db = app.get(Database);
+    await http().post('/api/channels').set(bearer(writer)).send({ slug: 'disc', name: '발견채널' }).expect(201);
+    const long = '오래 공들여 쓴 글이에요. '.repeat(20);
+    const quiet = (await http().post('/api/posts').set(bearer(writer)).send({ channel: 'disc', title: '조용한 명문', content: long }).expect(201)).body;
+    const short = (await http().post('/api/posts').set(bearer(writer)).send({ channel: 'disc', title: '짧은 글', content: '짧아요' }).expect(201)).body;
+    // 방금 올라온 글은 아직 후보가 아니다 → 하루 지난 글로
+    await db.execute("UPDATE posts SET created_at = now() - interval '1 day' WHERE id = ANY($1)", [[quiet.id, short.id]]);
+
+    const before = (await http().get('/api/me').set(bearer(writer))).body.points as number;
+    const today = (await http().get('/api/posts/discovery').expect(200)).body;
+    expect(today.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // 너무 짧은 글은 고르지 않는다
+    expect(today.post).toMatchObject({ id: quiet.id, title: '조용한 명문', authorNickname: '숨은작가' });
+    expect(['talk', 'warm', 'long', 'hidden']).toContain(today.reason);
+    expect(today.past).toEqual([]);
+    // 다시 물어도 같은 글, 알림 · 포인트는 한 번만
+    expect((await http().get('/api/posts/discovery').set(bearer(reader)).expect(200)).body.post.id).toBe(quiet.id);
+    const items = (await http().get('/api/me/notifications').set(bearer(writer)).expect(200)).body.items;
+    expect(items.filter((n: { type: string }) => n.type === 'discovery')).toHaveLength(1);
+    expect(items[0]).toMatchObject({ type: 'discovery', post: { id: quiet.id } });
+    expect((await http().get('/api/me').set(bearer(writer))).body.points).toBe(before + 30);
+
+    // 글쓴이를 차단한 사람에게는 보이지 않는다
+    const writerId = (await http().get('/api/me').set(bearer(writer))).body.id;
+    await http().put(`/api/users/${writerId}/block`).set(bearer(reader)).expect(204);
+    expect((await http().get('/api/posts/discovery').set(bearer(reader)).expect(200)).body.post).toBeUndefined();
   });
 
   it('신고: 운영진 신고함에서 숨기기 · 숨김 풀기 · 문제 없음 · 지우기', async () => {

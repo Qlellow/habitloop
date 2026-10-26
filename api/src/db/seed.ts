@@ -134,6 +134,18 @@ export class Seeder implements OnApplicationBootstrap {
       }
     }
 
+    // 반응은 적어도 정성 들인 글 (오늘의 발견 예시)
+    await post(
+      users[2],
+      channels.get('daily')!,
+      null,
+      '퇴근길에 한 정거장 일찍 내려 봤어요',
+      '요즘 하루가 너무 똑같아서, 퇴근길에 한 정거장 일찍 내려 걸어 봤어요.\n\n' +
+        '늘 버스 창밖으로만 보던 골목에 작은 꽃집이 있더라고요. 사장님이 문 닫으면서 시든 꽃을 한 묶음 그냥 주셨어요. ' +
+        '집에 와서 물에 꽂아 두니 방이 조금 달라 보였어요.\n\n' +
+        '대단한 일은 아닌데, 같은 길도 조금만 비틀면 새로운 게 보인다는 걸 오랜만에 느꼈어요. 다들 요즘 작게 바꿔 본 습관 있나요?',
+    );
+
     // 채널 안 카테고리 예시: 공지사항(운영진 전용) / 소설 / 일러스트
     const creative = await channel('creative', '창작', CREATIVE_INTRO, users[0]);
     const category = async (name: string, ownerOnly: boolean, position: number) =>
@@ -166,6 +178,13 @@ export class Seeder implements OnApplicationBootstrap {
     // 운영진 배지 예시: 창작 채널의 관리자(민트초코) · 매니저(하늘색)
     await db.execute("UPDATE channel_members SET role = 'ADMIN' WHERE channel_id = $1 AND user_id = $2", [creative, users[1]]);
     await db.execute("UPDATE channel_members SET role = 'MANAGER' WHERE channel_id = $1 AND user_id = $2", [creative, users[2]]);
+    // 글 · 댓글 시간을 최근 며칠에 흩어 둔다 (방금 쓴 글만 있으면 '오늘의 발견' · 활동 시간대 같은 기능을 볼 수 없다)
+    await db.execute(
+      `UPDATE posts SET created_at = now() - interval '20 minutes' - ((SELECT max(id) FROM posts) - id) * interval '97 minutes'`,
+    );
+    await db.execute(
+      `UPDATE comments c SET created_at = LEAST(now(), p.created_at + ((c.id % 7) + 1) * interval '9 minutes') FROM posts p WHERE p.id = c.post_id`,
+    );
     // 카운터 맞추기
     await db.execute(`UPDATE channels c SET
       post_count = (SELECT count(*) FROM posts p WHERE p.channel_id = c.id),
