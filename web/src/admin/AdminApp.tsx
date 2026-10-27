@@ -619,6 +619,76 @@ function Notices({ adminKey }: { adminKey: string }) {
   );
 }
 
+interface ClientErrorRow {
+  id: string;
+  kind: string;
+  message: string;
+  stack: string;
+  path: string;
+  userAgent: string;
+  release?: string;
+  count: number;
+  firstSeen: string;
+  lastSeen: string;
+}
+const ERROR_KIND: Record<string, string> = { render: '화면 깨짐', error: '오류', rejection: '처리 안 된 요청', chunk: '새 버전 파일' };
+
+/** 사용자 화면에서 난 오류: 같은 오류는 묶여서 횟수로. 고쳤으면 '해결' (다시 나면 새로 쌓인다) */
+function ClientErrors({ adminKey }: { adminKey: string }) {
+  const qc = useQueryClient();
+  const list = useAdminQuery<ClientErrorRow[]>(adminKey, '/errors');
+  const [open, setOpen] = useState<string>();
+  const resolve = async (id: string) => {
+    try {
+      await adminApi(adminKey, `/errors/${id}`, { method: 'DELETE' });
+      await qc.invalidateQueries({ queryKey: ['admin', '/errors'] });
+      toast('해결로 표시했어요');
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '처리하지 못했어요');
+    }
+  };
+  return (
+    <section className={cn(ui.card, 'p-5')}>
+      <p className="mt-0 mb-3 text-sm text-fg-sub">사용자 화면에서 난 오류예요. 같은 오류는 한 줄로 묶이고, 주소는 경로만 · 사용자 정보는 남기지 않아요.</p>
+      {!list.data ? (
+        <div className={ui.spinner} />
+      ) : list.data.length === 0 ? (
+        <p className={ui.empty}>최근 오류가 없어요 🎉</p>
+      ) : (
+        <ul className="list-none m-0 p-0">
+          {list.data.map((e) => (
+            <li key={e.id} className="py-3 border-t border-line text-sm">
+              <div className="flex items-start gap-3">
+                <span className={cn('flex-none px-1.5 py-px rounded-sm text-[12px] font-bold', e.kind === 'render' ? 'bg-danger-weak text-danger-text' : 'bg-field text-fg-sub')}>
+                  {ERROR_KIND[e.kind] ?? e.kind}
+                </span>
+                <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setOpen(open === e.id ? undefined : e.id)}>
+                  <span className="block font-semibold text-fg-strong break-all">{e.message}</span>
+                  <span className="block mt-0.5 text-[13px] text-fg-weak">
+                    {e.path} · {e.count.toLocaleString()}번 · 마지막 {dateTime(e.lastSeen)}
+                    {e.release && ` · ${e.release}`}
+                  </span>
+                </button>
+                <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => resolve(e.id)}>
+                  해결
+                </button>
+              </div>
+              {open === e.id && (
+                <pre className="mt-2 mb-0 p-3 rounded-md bg-field text-[12px] text-fg-sub whitespace-pre-wrap break-all max-h-[320px] overflow-auto">
+                  {e.stack || '(스택 없음)'}
+                  {'\n\n'}
+                  {e.userAgent}
+                  {'\n'}처음 {dateTime(e.firstSeen)}
+                </pre>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /* ───────── 관리자 화면 ───────── */
 
 const TABS = [
@@ -627,6 +697,7 @@ const TABS = [
   ['users', '사용자'],
   ['channels', '채널'],
   ['notices', '공지사항'],
+  ['errors', '오류'],
   ['logs', '기록'],
 ] as const;
 type Tab = (typeof TABS)[number][0];
@@ -675,6 +746,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
         {tab === 'users' && <Users adminKey={adminKey} />}
         {tab === 'channels' && <Channels adminKey={adminKey} />}
         {tab === 'notices' && <Notices adminKey={adminKey} />}
+        {tab === 'errors' && <ClientErrors adminKey={adminKey} />}
         {tab === 'logs' && <Logs adminKey={adminKey} />}
       </main>
     </div>

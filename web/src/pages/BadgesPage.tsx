@@ -38,10 +38,10 @@ const earnedOn = (iso?: string) => {
 };
 const holdersText = (p: number) => (p === 0 ? '아직 아무도 없어요' : p < 1 ? '회원의 1% 미만이 가지고 있어요' : `회원의 ${Math.round(p)}%가 가지고 있어요`);
 
-function Progress({ value, goal }: { value: number; goal: number }) {
+function Progress({ value, goal, label = '진행도' }: { value: number; goal: number; label?: string }) {
   const p = Math.min(1, goal ? value / goal : 0);
   return (
-    <div className="badge-progress" role="progressbar" aria-valuemin={0} aria-valuemax={goal} aria-valuenow={Math.min(value, goal)}>
+    <div className="badge-progress" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={goal} aria-valuenow={Math.min(value, goal)}>
       <span style={{ '--p': p } as React.CSSProperties} />
     </div>
   );
@@ -208,7 +208,7 @@ export default function BadgesPage() {
                   <b className="text-fg-strong tabular-nums">{data.earned}</b> / {data.total}개 모았어요 · {pct}%
                 </p>
                 <div className="mt-3 max-w-[420px]">
-                  <Progress value={data.earned} goal={data.total} />
+                  <Progress value={data.earned} goal={data.total} label="배지 모은 정도" />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
                   {tiers.map(([t, e, n]) => (

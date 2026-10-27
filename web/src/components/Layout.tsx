@@ -80,6 +80,8 @@ function UserMenu() {
         className={s.userButton}
         aria-haspopup="menu"
         aria-expanded={open}
+        // 폰에서는 닉네임 글자를 숨기므로 화면 낭독기용 이름을 따로 단다
+        aria-label={`${user.nickname} 메뉴`}
         onClick={() => setOpen((v) => !v)}
         onPointerEnter={preload.me}
       >

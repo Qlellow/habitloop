@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate, Outlet, RouterProvider, ScrollRestoratio
 import { useAuth } from '@loop/shared';
 import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
+import { ErrorBoundary, RouteError } from './components/ErrorBoundary';
 import { TimeSky } from './components/TimeSky';
 import { DeferredUi } from './components/Deferred';
 import { loaders } from './lib/preload';
@@ -85,14 +86,19 @@ function Root() {
       {/* 폰에서는 하단 탭바 높이만큼 아래를 비워 둔다 (--tabbar-h, global.css) */}
       <div className="flex flex-col min-h-dvh pb-[var(--tabbar-h)]">
         <SiteHeader />
-        <Suspense fallback={null}>
-          <Outlet />
-        </Suspense>
+        {/* 화면 하나가 깨져도 헤더 · 탭바는 남고 그 자리에 안내가 뜬다. 주소가 바뀌면 다시 그려 본다 */}
+        <ErrorBoundary resetKey={pathname} name="page">
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
         <SiteFooter />
         <MobileTabBar />
       </div>
       {/* 미니 창 · 음성방 도크 · 커맨드 팔레트 · 인터랙티브 커서 · 데스크톱 펫: 쓸 때 받는다 */}
-      <DeferredUi />
+      <ErrorBoundary fallback={null} name="deferred">
+        <DeferredUi />
+      </ErrorBoundary>
       <ScrollRestoration />
       <Toaster />
     </>
@@ -105,6 +111,7 @@ const guest = (el: ReactNode) => <GuestOnly>{el}</GuestOnly>;
 const router = createBrowserRouter([
   {
     element: <Root />,
+    errorElement: <RouteError />,
     children: [
       { path: '/', element: <HomePage /> },
       // 예전 글 검색 주소는 채널 검색으로
