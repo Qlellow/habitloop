@@ -60,6 +60,13 @@ export class ChannelsController {
     return this.channels.update(user.id, slug, input);
   }
 
+  /** 채널 삭제 (소유자만). 실수하지 않게 채널 이름을 그대로 보내야 한다 */
+  @Delete('channels/:slug')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@LoginUser() user: AuthUser, @Param('slug') slug: string, @Body() body: { name?: string }) {
+    return this.channels.remove(user.id, slug, String(body?.name ?? ''));
+  }
+
   /* ───── 가입 · 북마크 ───── */
 
   /** 채널 가입 (이미 가입했으면 그대로) */
