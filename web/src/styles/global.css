@@ -1122,6 +1122,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
 }
 .rx-inner {
   position: relative;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1163,7 +1164,10 @@ input[type='search']::-webkit-search-cancel-button:hover {
   gap: 8px;
   margin-top: 12px;
 }
+/* 칩은 줄어들거나 글자가 접히지 않는다: 자리가 모자라면 칩째 다음 줄로 (flex-wrap) */
 .rx-chip {
+  flex: none;
+  white-space: nowrap;
   height: 36px;
   padding: 0 12px 0 10px;
   border-radius: 999px;
