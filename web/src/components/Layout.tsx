@@ -15,6 +15,7 @@ import { cn } from '../lib/cn';
 import s from './Layout.styles';
 import { useSmartSticky } from '../lib/smartSticky';
 import { useNewNotice } from '../lib/notices';
+import { isGecko } from '../lib/media';
 
 /** 한국 시간 기준 오늘 (YYYY-MM-DD) */
 const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
@@ -235,7 +236,8 @@ type Variant = 'three' | 'twoRight' | 'nav' | 'single' | 'wide' | 'narrow' | 'fo
  */
 export function useFollowScroll(refs: { current: HTMLElement | null }[] | (() => Iterable<HTMLElement | null>)) {
   useEffect(() => {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // 파이어폭스는 스크롤에 맞춘 JS 움직임이 한 박자 늦어 끊겨 보이므로 따라오기 없이 그냥 붙어 있게
+    if (isGecko || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let last = window.scrollY;
     let offset = 0;
     let frame = 0;
