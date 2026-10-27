@@ -3182,15 +3182,15 @@ html.focus-mode main article h1 {
   width: calc(22vw + var(--i) * 2vw);
   height: calc(6vw + var(--i) * 0.6vw);
   border-radius: 999px;
-  background: var(--wx-cloud);
+  /* 가장자리를 흐리게: filter: blur 대신 그라디언트 (움직이는 동안 매 프레임 흐림을 다시 계산하지 않는다) */
+  background: radial-gradient(closest-side, var(--wx-cloud) 55%, transparent);
   opacity: 0.45;
-  filter: blur(14px);
   animation: wsky-drift calc(70s + var(--i) * 13s) linear infinite;
   animation-delay: calc(var(--i) * -17s);
 }
 .weather-sky-cloudy .wsky-clouds span,
 .weather-sky-rain .wsky-clouds span {
-  background: var(--wx-cloud-shade);
+  background: radial-gradient(closest-side, var(--wx-cloud-shade) 55%, transparent);
   opacity: 0.4;
 }
 .wsky-rain {
@@ -3649,4 +3649,25 @@ html.focus-mode main article h1 {
     inset 0 1px 0 var(--lg-pill-rim),
     0 0 0 0.5px var(--lg-edge),
     0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/*
+ * 파이어폭스: backdrop-filter(뒤 흐리게)를 크로미움처럼 합성 단계에서 싸게 처리하지 못해,
+ * 헤더 뒤로 하늘 · 날씨 · 별이 움직이는 동안 매 프레임 흐림을 다시 계산한다 (애니메이션이 30fps 쯤으로 떨어진다).
+ * 파이어폭스에서만 흐림을 가볍게: 헤더 아래 블러 띠는 색만, 헤더 · 유리 표면은 흐림 반경을 줄이고 바탕을 조금 더 진하게
+ */
+@supports (-moz-appearance: none) {
+  .site-header {
+    background-color: color-mix(in srgb, var(--surface) 92%, transparent) !important;
+    backdrop-filter: blur(10px) !important;
+  }
+  .header-fade > span {
+    backdrop-filter: none;
+  }
+  .liquid-glass {
+    backdrop-filter: blur(14px) saturate(1.5);
+  }
+  .home-glass {
+    backdrop-filter: blur(8px);
+  }
 }
