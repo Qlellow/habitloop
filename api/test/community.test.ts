@@ -1211,6 +1211,39 @@ describe('커뮤니티', () => {
     expect((await upload(owner, 'image/png', png)).body.iconVersion).toBe(2);
   });
 
+  it('채널 삭제: 소유자만, 이름을 그대로 입력해야 하고, 글 · 댓글 · 반응 · 신고 · 팔로워가 함께 지워진다', async () => {
+    const owner = await signup('del-owner@test.dev', '삭제방장');
+    const manager = await signup('del-manager@test.dev', '삭제매니저');
+    const member = await signup('del-member@test.dev', '삭제회원');
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'bye', name: '없어질채널' }).expect(201);
+    for (const t of [manager, member]) await http().post('/api/channels/bye/members').set(bearer(t)).expect(200);
+    const managerId = (await http().get('/api/channels/bye/members').query({ q: '삭제매니저' }).set(bearer(owner))).body[0].userId;
+    await http().put(`/api/channels/bye/members/${managerId}/role`).set(bearer(owner)).send({ role: 'ADMIN' }).expect(200);
+    await http().put('/api/channels/bye/bookmark').set(bearer(member)).expect(200);
+    const post = (await http().post('/api/posts').set(bearer(member)).send({ channel: 'bye', title: '남길 글', content: '내용' }).expect(201)).body;
+    const comment = (await http().post(`/api/posts/${post.id}/comments`).set(bearer(owner)).send({ content: '댓글' }).expect(201)).body;
+    await http().post(`/api/posts/${post.id}/comments/${comment.id}/like`).set(bearer(member));
+    await http().post(`/api/posts/${post.id}/like`).set(bearer(owner));
+    await http().put(`/api/posts/${post.id}/reactions/fire`).set(bearer(owner));
+    await http().post(`/api/posts/${post.id}/report`).set(bearer(owner)).send({ reason: 'spam' }).expect(204);
+
+    // 로그인 · 소유자 · 이름 확인
+    await http().delete('/api/channels/bye').send({ name: '없어질채널' }).expect(401);
+    await http().delete('/api/channels/bye').set(bearer(member)).send({ name: '없어질채널' }).expect(403);
+    await http().delete('/api/channels/bye').set(bearer(manager)).send({ name: '없어질채널' }).expect(403);
+    await http().delete('/api/channels/bye').set(bearer(owner)).send({ name: '없어질' }).expect(400);
+    await http().delete('/api/channels/bye').set(bearer(owner)).expect(400);
+    await http().delete('/api/channels/nope').set(bearer(owner)).send({ name: '없어질채널' }).expect(404);
+
+    await http().delete('/api/channels/bye').set(bearer(owner)).send({ name: ' 없어질채널 ' }).expect(204);
+    await http().get('/api/channels/bye').expect(404);
+    await http().get(`/api/posts/${post.id}`).expect(404);
+    expect((await http().get('/api/me/channels').set(bearer(member))).body.some((c: { slug: string }) => c.slug === 'bye')).toBe(false);
+    expect((await http().get('/api/me/bookmarks/channels').set(bearer(member))).body).toEqual([]);
+    // 같은 주소 · 이름으로 다시 만들 수 있다
+    await http().post('/api/channels').set(bearer(member)).send({ slug: 'bye', name: '없어질채널' }).expect(201);
+  });
+
   it('북마크와 내 정보', async () => {
     const me = await signup('mypage@test.dev', '마이페이지');
     await signup('taken@test.dev', '이미있음');

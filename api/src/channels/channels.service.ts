@@ -263,6 +263,22 @@ export class ChannelsService {
   }
 
   /**
+   * 채널 삭제: 소유자만, 채널 이름을 그대로 입력해야 한다 (실수 방지).
+   * 글을 먼저 지우면 댓글 · 공감 · 반응 · 조회 · 알림 · 신고가 FK ON DELETE CASCADE 로 함께 지워지고,
+   * 채널을 지우면 카테고리 · 팔로워 · 북마크 · 음성방이 함께 지워진다
+   */
+  async remove(userId: number, slug: string, confirmName: string) {
+    const channel = await this.findBySlug(slug);
+    if ((await this.roleOf(channel.id, userId)) !== 'OWNER') throw ApiError.forbidden('채널 소유자만 채널을 삭제할 수 있어요');
+    if ((confirmName ?? '').trim() !== channel.name) throw ApiError.badRequest('채널 이름이 맞지 않아요');
+    await this.db.transaction(async () => {
+      await this.db.execute('DELETE FROM posts WHERE channel_id = $1', [channel.id]);
+      await this.db.execute('DELETE FROM channels WHERE id = $1', [channel.id]);
+    });
+    this.popularCache.clear();
+  }
+
+  /**
    * joined: 가입했는지 (가입해야 글을 쓸 수 있다), mine: 소유자인지, myRole: 운영진 역할 (일반 멤버·비회원은 없음)
    * canManage: 채널 관리 가능, staff: 운영진 전용 카테고리에 글쓰기 가능
    */

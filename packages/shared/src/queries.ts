@@ -438,6 +438,20 @@ export function useRegenerateInvite(slug: string) {
   });
 }
 
+/** 채널 삭제 (소유자만). 실수하지 않게 채널 이름을 그대로 입력해 보낸다 */
+export function useDeleteChannel(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api<void>(`/api/channels/${encodeURIComponent(slug)}`, { method: 'DELETE', body: { name } }),
+    onSuccess: () => {
+      qc.removeQueries({ queryKey: keys.channel(slug) });
+      // 채널 목록 · 내 채널 · 북마크 · 글 목록 · 인기 글에서 이 채널이 빠지게
+      void qc.invalidateQueries({ queryKey: ['channels'] });
+      void qc.invalidateQueries({ queryKey: keys.posts });
+    },
+  });
+}
+
 /** 프로필 사진 · 배너 · 포인트: 바뀐 내 정보로 로그인 상태를 고치고, 사진이 보이는 글·댓글을 새로 받는다 */
 function useMeMutation<T>(fn: (input: T) => Promise<User>) {
   const qc = useQueryClient();

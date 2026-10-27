@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   plainText,
   useAuth,
@@ -9,6 +9,7 @@ import {
   type ChannelDetail,
   useChangeRole,
   useChannel,
+  useDeleteChannel,
   useMemberSearch,
   useStaff,
   type ChannelCategory,
@@ -214,6 +215,95 @@ function DeleteCategoryDialog({
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** 채널 삭제 확인: 지워지는 것을 보여 주고, 채널 이름을 그대로 입력해야 삭제 버튼이 켜진다 */
+function DeleteChannelDialog({ channel, onClose }: { channel: ChannelDetail; onClose: () => void }) {
+  const remove = useDeleteChannel(channel.slug);
+  const navigate = useNavigate();
+  const [name, setName] = useState('');
+  const matches = name.trim() === channel.name;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!matches || remove.isPending) return;
+    remove.mutate(name, {
+      onSuccess: () => {
+        toast(`'${channel.name}' 채널을 삭제했어요`);
+        navigate('/channels', { replace: true });
+      },
+      onError: (err) => toast(err.message),
+    });
+  };
+  return (
+    <Modal onClose={onClose}>
+      <form
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-channel-title"
+        className="w-full max-w-[420px] p-6 rounded-xl border border-border bg-surface shadow-pop"
+        onSubmit={submit}
+      >
+        <h2 id="delete-channel-title" className="m-0 text-lg font-bold text-fg-strong">
+          '{channel.name}' 채널을 삭제할까요?
+        </h2>
+        <p className="mt-2 mb-0 text-[15px] text-fg-sub">삭제하면 되돌릴 수 없어요. 아래 내용이 모두 함께 지워져요.</p>
+        <ul className="mt-3 mb-0 pl-5 text-[14px] text-fg-sub leading-relaxed list-disc">
+          <li>
+            글 <b className="text-fg-strong">{channel.postCount.toLocaleString()}개</b>와 그 댓글 · 공감 · 반응
+          </li>
+          <li>
+            팔로워 <b className="text-fg-strong">{channel.memberCount.toLocaleString()}명</b> · 운영진 · 카테고리 · 음성방 · 신고함
+          </li>
+        </ul>
+        <label className="block mt-5 text-sm text-fg-sub">
+          확인을 위해 채널 이름 <b className="text-fg-strong select-all">{channel.name}</b> 을(를) 입력해 주세요
+          <input
+            className={cn(ui.input, 'mt-1')}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={channel.name}
+            autoFocus
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+        <div className="flex gap-2 mt-6">
+          <button type="button" className={cn(ui.button, ui.ghost, 'flex-1')} onClick={onClose}>
+            취소
+          </button>
+          <button type="submit" className={cn(ui.button, 'bg-danger text-white hover:brightness-95', 'flex-1')} disabled={!matches || remove.isPending}>
+            {remove.isPending ? '삭제하는 중…' : '채널 삭제'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/** 위험 구역: 채널 삭제 (소유자만) */
+function DangerSection({ channel }: { channel: ChannelDetail }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className={cn(ui.card, s.settingsSection, 'border-[color-mix(in_srgb,var(--danger)_35%,var(--border))]')}>
+      <div className={s.pageHead}>
+        <div>
+          <h2 className={cn(s.settingsTitle, 'text-danger-text')}>채널 삭제</h2>
+          <p className={s.settingsDesc} style={{ marginBottom: 0 }}>
+            채널과 채널의 모든 글 · 댓글이 지워지고 되돌릴 수 없어요. 채널 소유자만 할 수 있어요.
+          </p>
+        </div>
+        <button type="button" className={cn(ui.button, 'bg-danger-weak text-danger-text hover:brightness-95')} onClick={() => setOpen(true)}>
+          채널 삭제
+        </button>
+      </div>
+      {open && <DeleteChannelDialog channel={channel} onClose={() => setOpen(false)} />}
+    </section>
   );
 }
 
@@ -549,6 +639,7 @@ export default function ChannelManagePage() {
         {deleting && <DeleteCategoryDialog slug={slug} category={deleting} categories={categories} onClose={() => setDeleting(undefined)} />}
       </section>
       <StaffSection slug={slug} isOwner={channel.mine} />
+      {channel.mine && <DangerSection channel={channel} />}
     </Page>
   );
 }
