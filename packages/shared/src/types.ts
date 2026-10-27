@@ -171,6 +171,7 @@ export interface PostSummary {
   authorNickname: string;
   authorAvatar?: string | null;
   authorRole?: ChannelRole;
+  authorBadge?: FeaturedBadge;
   likeCount: number;
   commentCount: number;
   viewCount: number;
@@ -206,6 +207,8 @@ export interface UserProfile {
   banner?: string | null;
   /** 받은 배지 (도전과제) */
   badges?: Badge[];
+  /** 대표 배지 */
+  featuredBadge?: FeaturedBadge;
   /** 내가 이 사람을 차단했는지 */
   blocked?: boolean;
   /** 프로필에 전시한 펫 */
@@ -220,11 +223,50 @@ export interface BlockedUser {
   blockedAt: string;
 }
 
+export type BadgeTier = 'common' | 'rare' | 'legendary';
+export type BadgeCategory = 'activity' | 'reaction' | 'loop' | 'explore' | 'time' | 'hidden';
+
+/** 받은 배지 (프로필 · 새 배지 알림) */
 export interface Badge {
   code: string;
   name: string;
   description: string;
+  icon: string;
+  tier: BadgeTier;
   earnedAt: string;
+}
+
+/** 닉네임 옆에 다는 대표 배지 */
+export interface FeaturedBadge {
+  code: string;
+  name: string;
+  icon: string;
+  tier: BadgeTier;
+}
+
+/** 도감의 배지 한 칸. 숨은 배지는 받기 전까지 이름 · 설명이 가려진다 */
+export interface BadgeCard {
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  tier: BadgeTier;
+  category: BadgeCategory;
+  hidden: boolean;
+  earned: boolean;
+  earnedAt?: string;
+  /** 내 도감에서만: [지금, 목표] */
+  progress?: [number, number];
+  /** 이 배지를 가진 사람 비율 (%) */
+  holders: number;
+}
+
+export interface BadgeBook {
+  total: number;
+  earned: number;
+  /** 대표 배지 코드 */
+  featured?: string;
+  badges: BadgeCard[];
 }
 
 /** 출석 체크 결과: awarded 가 false 면 오늘 이미 출석했다 */
@@ -351,7 +393,7 @@ export interface PostDetail {
   category?: { id: number; name: string };
   title: string;
   content: string;
-  author: { id: string; nickname: string; avatarUrl?: string; role?: ChannelRole };
+  author: { id: string; nickname: string; avatarUrl?: string; role?: ChannelRole; featuredBadge?: FeaturedBadge };
   likeCount: number;
   commentCount: number;
   viewCount: number;
@@ -386,6 +428,7 @@ export interface Comment {
   authorNickname: string;
   authorAvatar?: string;
   authorRole?: ChannelRole;
+  authorBadge?: FeaturedBadge;
   content: string;
   likeCount: number;
   liked: boolean;

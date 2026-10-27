@@ -7,6 +7,8 @@ import { Database } from '../src/db/database';
 import { makeExcerpt, EXCERPT_LENGTH } from '../src/posts/excerpt';
 import { weatherOf } from '../src/community/weather.service';
 import { DnaService, periodOf, topTrait, traitsOf } from '../src/users/dna.service';
+import { longestRun } from '../src/badges/badges.service';
+import { BADGES } from '../src/badges/catalog';
 import jwtLib from 'jsonwebtoken';
 
 /**
@@ -121,6 +123,20 @@ describe('활동 DNA', () => {
       cheer: 0,
       depth: 0,
     });
+  });
+});
+
+describe('배지 도감', () => {
+  it('배지 54개, 코드는 겹치지 않고 숨은 배지 9개', () => {
+    expect(BADGES).toHaveLength(54);
+    expect(new Set(BADGES.map((b) => b.code)).size).toBe(BADGES.length);
+    expect(BADGES.filter((b) => b.hidden)).toHaveLength(9);
+    expect(BADGES.every((b) => b.code.length <= 30)).toBe(true);
+  });
+  it('가장 긴 연속 일수', () => {
+    expect(longestRun([])).toBe(0);
+    expect(longestRun(['2026-01-01', '2026-01-02', '2026-01-04', '2026-01-05', '2026-01-06'])).toBe(3);
+    expect(longestRun(['2026-02-28', '2026-03-01'])).toBe(2);
   });
 });
 
@@ -945,11 +961,14 @@ describe('커뮤니티', () => {
     const next = await logs({ order: 'oldest', size: 2, cursor: first.nextCursor });
     expect(next.items[0].id).toBeGreaterThan(first.items[1].id);
 
-    // 배지는 다른 사람도 프로필에서 본다
+    // 배지는 다른 사람도 프로필에서 본다 (가입 순서 · 베타 · 개척자 같은 배지도 함께 오므로 활동 배지만 본다)
+    const activity = (list: { code: string }[]) =>
+      list.map((b) => b.code).filter((c) => ['first_post', 'invite_1', 'streak_7', 'first_comment', 'likes_10'].includes(c));
     const profile = (await http().get(`/api/users/${joined.user.id}`)).body;
-    expect(profile.badges.map((b: { code: string }) => b.code)).toEqual(['first_post']);
-    expect((await http().get(`/api/users/${me.id}`)).body.badges.map((b: { code: string }) => b.code)).toEqual(['invite_1']);
-    expect((await http().get(`/api/users/${plain.body.user.id}`)).body.badges.map((b: { code: string }) => b.code)).toEqual(['streak_7']);
+    expect(activity(profile.badges)).toEqual(['first_post']);
+    expect(profile.badges[0]).toMatchObject({ icon: expect.any(String), tier: expect.any(String) });
+    expect(activity((await http().get(`/api/users/${me.id}`)).body.badges)).toEqual(['invite_1']);
+    expect(activity((await http().get(`/api/users/${plain.body.user.id}`)).body.badges)).toEqual(['streak_7']);
 
     // 채널 팔로워 배지: 내 채널 팔로워가 10명을 넘으면
     await http().post('/api/channels').set(bearer(host)).send({ slug: 'reward-ch', name: '보상채널', description: '' }).expect(201);
@@ -958,7 +977,7 @@ describe('커뮤니티', () => {
       await http().post('/api/channels/reward-ch/members').set(bearer(t)).expect(200);
     }
     const hostBadges = (await http().get(`/api/users/${me.id}`)).body.badges.map((b: { code: string }) => b.code);
-    expect(hostBadges).toEqual(['invite_1', 'channel_open', 'followers_10']);
+    expect(hostBadges.filter((c: string) => ['invite_1', 'channel_open', 'followers_10'].includes(c))).toEqual(['channel_open', 'followers_10', 'invite_1']);
   });
 
   it('소셜 로그인: state · 쿠키 확인, 새 가입 · 다시 로그인 · 같은 이메일 계정에 잇기', async () => {
@@ -1428,6 +1447,57 @@ describe('커뮤니티', () => {
     await http().post('/api/bottles').set(bearer(a)).send({ content: '세 번째 병이에요. 안녕' }).expect(201);
     await http().post('/api/bottles').set(bearer(a)).send({ content: '네 번째는 안 돼요' }).expect(429);
     expect((await sea(a)).throwsLeft).toBe(0);
+  });
+
+  it('배지: 도감 · 숨은 배지 · 진행도 · 화면 기록 · 대표 배지 · 새 배지 알림', async () => {
+    const me = await signup('badge-me@test.dev', '배지수집가');
+    const other = await signup('badge-other@test.dev', '배지구경꾼');
+    const meId = (await http().get('/api/me').set(bearer(me))).body.id;
+    await http().get('/api/badges').expect(401);
+
+    // 내 도감: 모든 배지, 숨은 배지는 받기 전까지 ??? , 숫자로 세는 배지는 진행도
+    let book = (await http().get('/api/badges').set(bearer(me)).expect(200)).body;
+    expect(book.total).toBe(54);
+    const secret = book.badges.find((b: { code: string }) => b.code === 'shooting_star');
+    expect(secret).toMatchObject({ name: '???', icon: '❔', earned: false, hidden: true });
+    expect(book.badges.find((b: { code: string }) => b.code === 'posts_10').progress).toEqual([0, 10]);
+    // 가입하자마자 받는 배지 (테스트 DB 는 100명 안쪽이고 정식 오픈 전)
+    expect(book.badges.find((b: { code: string }) => b.code === 'beta').earned).toBe(true);
+
+    // 화면 기록: 모르는 이름은 안 되고, 별똥별을 잡으면 숨은 배지가 드러난다
+    await http().post('/api/me/badge-events').set(bearer(me)).send({ event: 'hack' }).expect(400);
+    const got = (await http().post('/api/me/badge-events').set(bearer(me)).send({ event: 'shooting_star' }).expect(200)).body;
+    expect(got.badges.map((b: { code: string }) => b.code)).toEqual(['shooting_star']);
+    book = (await http().get('/api/badges').set(bearer(me)).expect(200)).body;
+    expect(book.badges.find((b: { code: string }) => b.code === 'shooting_star')).toMatchObject({ name: '별똥별', earned: true, icon: '🌠' });
+    // 남의 도감: 진행도는 없다
+    const theirs = (await http().get(`/api/badges?user=${meId}`).set(bearer(other)).expect(200)).body;
+    expect(theirs.badges.every((b: { progress?: unknown }) => b.progress === undefined)).toBe(true);
+    expect(theirs.badges.find((b: { code: string }) => b.code === 'shooting_star').earned).toBe(true);
+
+    // 새 배지 알림: 보면 사라진다
+    const fresh = (await http().get('/api/me/badges/new').set(bearer(me)).expect(200)).body;
+    expect(fresh.map((b: { code: string }) => b.code)).toContain('shooting_star');
+    await http().post('/api/me/badges/seen').set(bearer(me)).expect(204);
+    expect((await http().get('/api/me/badges/new').set(bearer(me)).expect(200)).body).toEqual([]);
+
+    // 대표 배지: 받은 배지만, 프로필 · 글에 보인다
+    await http().put('/api/me/badge').set(bearer(me)).send({ code: 'posts_100' }).expect(400);
+    await http().put('/api/me/badge').set(bearer(me)).send({ code: 'nope' }).expect(400);
+    await http().put('/api/me/badge').set(bearer(me)).send({ code: 'shooting_star' }).expect(200);
+    expect((await http().get(`/api/users/${meId}`)).body.featuredBadge.code).toBe('shooting_star');
+    await http().post('/api/channels').set(bearer(me)).send({ slug: 'badge-ch', name: '배지채널' }).expect(201);
+    const post = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'badge-ch', title: '배지 글', content: '||숨김|| 내용' }).expect(201)).body;
+    expect(post.author.featuredBadge).toMatchObject({ code: 'shooting_star', icon: expect.any(String), tier: expect.any(String) });
+    expect((await http().get('/api/posts?channel=badge-ch')).body.items[0].authorBadge.code).toBe('shooting_star');
+    await http().put('/api/me/badge').set(bearer(me)).send({ code: null }).expect(200);
+    expect((await http().get(`/api/users/${meId}`)).body.featuredBadge).toBeUndefined();
+
+    // 같은 기록을 너무 빨리 다시 보내면 세지 않는다 (몰입 모드: 5초)
+    await http().post('/api/me/badge-events').set(bearer(me)).send({ event: 'focus_read' }).expect(200);
+    await http().post('/api/me/badge-events').set(bearer(me)).send({ event: 'focus_read' }).expect(200);
+    book = (await http().get('/api/badges').set(bearer(me)).expect(200)).body;
+    expect(book.badges.find((b: { code: string }) => b.code === 'focus_30').progress).toEqual([1, 30]);
   });
 
   it('커뮤니티 감정 날씨 API: 최근 24시간 통계와 날씨', async () => {

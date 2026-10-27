@@ -182,7 +182,8 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
         { id: 'me', group: '이동', label: '마이페이지', keywords: 'my page 내 정보 프로필', icon: <UserIcon />, run: () => go('/me') },
         { id: 'my-channels', group: '이동', label: '내 채널', keywords: 'my channels 팔로우 구독', icon: <StarIcon />, run: () => go('/me/channels'), searchOnly: true },
         { id: 'my-posts', group: '이동', label: '내가 쓴 글', keywords: 'my posts 내 글', icon: <DocIcon />, run: () => go('/me/posts'), searchOnly: true },
-        { id: 'points', group: '이동', label: '포인트', keywords: 'points 포인트 배지 출석', icon: <TrophyIcon />, run: () => go('/me/points'), searchOnly: true },
+        { id: 'points', group: '이동', label: '포인트', keywords: 'points 포인트 출석', icon: <TrophyIcon />, run: () => go('/me/points'), searchOnly: true },
+        { id: 'badges', group: '이동', label: '배지 도감', keywords: 'badges 배지 도감 업적 도전과제 수집', icon: <TrophyIcon />, run: () => go('/badges'), searchOnly: true },
         { id: 'settings', group: '이동', label: '설정', keywords: 'settings 설정 환경', icon: <GearIcon />, run: () => go('/me/settings') },
         { id: 'sea', group: '이동', label: '메시지 표류병', keywords: 'sea bottle 바다 병 편지 표류', icon: <BottleIcon />, run: () => go('/sea') },
         {

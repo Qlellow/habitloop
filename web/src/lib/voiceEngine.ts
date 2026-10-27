@@ -10,7 +10,7 @@ import {
   type RemoteTrackPublication,
   type VideoTrack,
 } from 'livekit-client';
-import { fetchVoiceToken, type VoiceJoin } from '@loop/shared';
+import { fetchVoiceToken, reportBadgeEvent, type VoiceJoin } from '@loop/shared';
 import { getBlocked, getPrefs, idleState, rememberRoom, savePrefs, setVoiceState, voice, type VoicePerson, type VoiceScreen } from './voice';
 
 /**
@@ -225,6 +225,8 @@ export async function toggleScreen() {
   const on = !room.localParticipant.isScreenShareEnabled;
   try {
     await room.localParticipant.setScreenShareEnabled(on, { audio: true, selfBrowserSurface: 'exclude', surfaceSwitching: 'include' });
+    // 배지 '발표자'
+    if (on && room.localParticipant.isScreenShareEnabled) void reportBadgeEvent('screenshare');
   } catch (e) {
     // 고르기 창에서 취소하면 조용히
     if ((e as Error).name !== 'NotAllowedError') throw new Error('화면을 공유하지 못했어요');

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuth, useMyBlocks, voiceKey } from '@loop/shared';
+import { reportBadgeEvent, useAuth, useMyBlocks, voiceKey } from '@loop/shared';
 import { toast } from './Toast';
 import { ExpandIcon, HeadphonesOffIcon, MicIcon, MicOffIcon, MinimizeIcon } from './Icons';
 import { VoiceAvatar, VoiceControlBar, runVoice } from './VoiceControls';
@@ -192,6 +192,14 @@ export function VoiceDock() {
   const drag = useRef<{ dx: number; dy: number; sx: number; sy: number; moved: boolean } | undefined>(undefined);
   const slug = v.join?.channel.slug;
   const me = v.people.find((p) => p.local);
+
+  // 음성방에 머문 시간: 연결돼 있는 동안 1분마다 (배지 '수다방 단골')
+  const connected = v.status === 'connected';
+  useEffect(() => {
+    if (!connected) return;
+    const t = window.setInterval(() => void reportBadgeEvent('voice_minute'), 60_000);
+    return () => window.clearInterval(t);
+  }, [connected]);
 
   // 들어오고 나가는 사람이 바뀌면 채널 화면의 방 목록도 새로
   const count = v.people.length;

@@ -525,4 +525,21 @@ CREATE INDEX idx_post_reactions_user ON post_reactions (user_id);
 CREATE INDEX idx_post_reactions_created_at ON post_reactions (created_at);
 `,
   },
+  {
+    // 배지 확장 (badges/catalog.ts): 새 배지 알림(seen_at) · 대표 배지 · 화면/기능에서 세는 기록(카운터)
+    name: '029_badges',
+    sql: `
+ALTER TABLE user_badges ADD COLUMN seen_at TIMESTAMPTZ;
+UPDATE user_badges SET seen_at = created_at;
+CREATE INDEX idx_user_badges_unseen ON user_badges (user_id) WHERE seen_at IS NULL;
+ALTER TABLE users ADD COLUMN featured_badge VARCHAR(30);
+CREATE TABLE user_counters (
+    user_id     INTEGER       NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    key         VARCHAR(32)   NOT NULL,
+    value       INTEGER       NOT NULL DEFAULT 0,
+    updated_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, key)
+);
+`,
+  },
 ];

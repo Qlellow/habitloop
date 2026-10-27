@@ -1,0 +1,217 @@
+/* 배지: 등급마다 테두리 색 (일반 · 희귀 · 전설), 잠긴 배지, 닉네임 옆 대표 배지, 새 배지 알림 */
+
+:root {
+  --badge-common: linear-gradient(140deg, #d5dde8, #a9b6c7);
+  --badge-common-glow: rgba(120, 140, 165, 0.25);
+  --badge-rare: linear-gradient(140deg, #5b9dff, #8b6bff 55%, #c56cff);
+  --badge-rare-glow: rgba(108, 110, 255, 0.32);
+  --badge-legendary: linear-gradient(140deg, #ffe17a, #ffad33 45%, #ff8a3d 70%, #ffd76a);
+  --badge-legendary-glow: rgba(255, 166, 41, 0.42);
+  --badge-face: var(--surface);
+  --badge-common-text: #66758a;
+  --badge-rare-text: #6b5cff;
+  --badge-legendary-text: #e08a00;
+}
+:root[data-theme='dark'] {
+  --badge-common: linear-gradient(140deg, #6b7686, #3f4754);
+  --badge-common-glow: rgba(140, 150, 170, 0.18);
+  --badge-common-text: #a3aebd;
+  --badge-rare-text: #9d93ff;
+  --badge-legendary-text: #ffbe45;
+}
+
+.badge-medal {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 999px;
+  padding: calc(var(--badge-size) * 0.07);
+  width: var(--badge-size);
+  height: var(--badge-size);
+  background: var(--badge-common);
+  box-shadow: 0 2px 10px var(--badge-common-glow);
+  isolation: isolate;
+  overflow: hidden;
+}
+.badge-medal[data-tier='rare'] {
+  background: var(--badge-rare);
+  box-shadow: 0 3px 14px var(--badge-rare-glow);
+}
+.badge-medal[data-tier='legendary'] {
+  background: var(--badge-legendary);
+  box-shadow: 0 4px 18px var(--badge-legendary-glow);
+}
+.badge-medal-face {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--badge-face);
+  font-size: calc(var(--badge-size) * 0.46);
+  line-height: 1;
+}
+/* 전설 배지: 테두리 위로 빛이 천천히 지나간다 (transform 만 움직여 합성 단계에서 처리) */
+.badge-medal[data-tier='legendary']::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.75) 50%, transparent 60%);
+  transform: translateX(-120%);
+  animation: badge-shine 3.6s var(--ease) infinite;
+}
+@keyframes badge-shine {
+  0%,
+  55% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+/* 아직 받지 않은 배지: 흑백 · 흐리게. 숨은 배지는 점선 테두리 */
+.badge-medal[data-locked] {
+  background: var(--field);
+  box-shadow: none;
+}
+.badge-medal[data-locked]::after {
+  display: none;
+}
+.badge-medal[data-locked] .badge-medal-face {
+  filter: grayscale(1);
+  opacity: 0.38;
+}
+.badge-medal[data-secret] {
+  background: transparent;
+  border: 2px dashed var(--border);
+  padding: 0;
+}
+.badge-medal[data-secret] .badge-medal-face {
+  background: transparent;
+  opacity: 0.6;
+}
+
+.badge-tier-text[data-tier='common'] {
+  color: var(--badge-common-text);
+}
+.badge-tier-text[data-tier='rare'] {
+  color: var(--badge-rare-text);
+}
+.badge-tier-text[data-tier='legendary'] {
+  color: var(--badge-legendary-text);
+}
+
+/* 도감 칸: 받은 배지는 등급 색으로 은은하게 */
+.badge-card {
+  transition:
+    transform 0.18s var(--ease),
+    box-shadow 0.18s var(--ease),
+    border-color 0.18s var(--ease);
+}
+.badge-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-pop);
+}
+.badge-card[data-earned][data-tier='rare'] {
+  border-color: color-mix(in srgb, #7b72ff 35%, var(--border));
+}
+.badge-card[data-earned][data-tier='legendary'] {
+  border-color: color-mix(in srgb, #ffad33 45%, var(--border));
+  background: linear-gradient(180deg, color-mix(in srgb, #ffc24d 8%, var(--surface)), var(--surface) 60%);
+}
+
+.badge-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--field);
+  overflow: hidden;
+}
+.badge-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transform-origin: left;
+  transform: scaleX(var(--p));
+  transition: transform 0.6s var(--ease);
+}
+
+/* 새 배지 알림: 메달이 튀어나오고 반짝이가 퍼진다 */
+.badge-unlock {
+  animation: badge-unlock-in 0.5s var(--ease) both;
+}
+.badge-unlock[data-leaving] {
+  animation: badge-unlock-out 0.3s ease-in both;
+}
+@keyframes badge-unlock-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+}
+@keyframes badge-unlock-out {
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+.badge-unlock .badge-medal {
+  animation: badge-pop 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) 0.12s both;
+}
+@keyframes badge-pop {
+  from {
+    transform: scale(0.2) rotate(-25deg);
+    opacity: 0;
+  }
+}
+.badge-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.badge-sparks > i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 2px;
+  background: var(--c);
+  opacity: 0;
+  animation: badge-spark 0.9s cubic-bezier(0.1, 0.7, 0.3, 1) 0.25s both;
+}
+@keyframes badge-spark {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--a)) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(0.4);
+  }
+}
+.badge-unlock-timer {
+  transform-origin: left;
+  animation: badge-timer var(--t) linear both;
+}
+@keyframes badge-timer {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-medal[data-tier='legendary']::after,
+  .badge-unlock,
+  .badge-unlock .badge-medal,
+  .badge-sparks > i {
+    animation: none;
+  }
+  .badge-card:hover {
+    transform: none;
+  }
+}

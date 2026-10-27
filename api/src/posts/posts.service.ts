@@ -11,6 +11,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BlocksService, notBlockedPost } from '../users/blocks.service';
 import { RewardsService } from '../users/rewards.service';
 import { makeExcerpt } from './excerpt';
+import { featuredBadge, type FeaturedBadge } from '../badges/catalog';
 import type { CreatePostInput, UpdatePostInput } from './posts.dto';
 
 export interface PostSummary {
@@ -25,6 +26,8 @@ export interface PostSummary {
   authorNickname: string;
   /** 작성자 프로필 사진 주소 (없으면 null) */
   authorAvatar: string | null;
+  /** 작성자가 단 대표 배지 */
+  authorBadge?: FeaturedBadge;
   /** 작성자의 채널 운영진 역할 (닉네임 옆 배지). 일반 멤버는 없음 */
   authorRole?: ChannelRole;
   likeCount: number;
@@ -82,6 +85,7 @@ export const SELECT_SUMMARY = `
   SELECT p.id, c.slug AS "channelSlug", c.name AS "channelName", cat.name AS "categoryName", p.title, p.excerpt,
          a.uid::text AS "authorId", a.nickname AS "authorNickname",
          CASE WHEN a.avatar_id IS NULL THEN NULL ELSE '/api/images/' || a.avatar_id END AS "authorAvatar", m.role AS "authorRole", p.like_count AS "likeCount",
+         a.featured_badge AS "authorBadge",
          p.comment_count AS "commentCount", p.view_count AS "viewCount", p.created_at AS "createdAt"
   FROM posts p
   JOIN users a ON a.id = p.author_id
@@ -89,8 +93,10 @@ export const SELECT_SUMMARY = `
   LEFT JOIN channel_categories cat ON cat.id = p.category_id
   LEFT JOIN channel_members m ON m.channel_id = p.channel_id AND m.user_id = p.author_id`;
 
-export function toSummary(row: PostSummary & { authorRole: ChannelRole | null; categoryName: string | null }): PostSummary {
-  return { ...row, categoryName: row.categoryName ?? undefined, authorRole: badge(row.authorRole) };
+export function toSummary(
+  row: Omit<PostSummary, 'authorBadge'> & { authorRole: ChannelRole | null; categoryName: string | null; authorBadge: string | null },
+): PostSummary {
+  return { ...row, categoryName: row.categoryName ?? undefined, authorRole: badge(row.authorRole), authorBadge: featuredBadge(row.authorBadge) };
 }
 
 interface PostRow {
@@ -99,6 +105,7 @@ interface PostRow {
   authorUid: string;
   authorNickname: string;
   authorAvatar: string | null;
+  authorBadge: string | null;
   channelId: number;
   channelSlug: string;
   channelName: string;
@@ -492,6 +499,7 @@ export class PostsService {
     const row = await this.db.one<PostRow>(
       `SELECT p.id, p.author_id AS "authorId", a.uid::text AS "authorUid", a.nickname AS "authorNickname",
               CASE WHEN a.avatar_id IS NULL THEN NULL ELSE '/api/images/' || a.avatar_id END AS "authorAvatar", p.channel_id AS "channelId",
+              a.featured_badge AS "authorBadge",
               c.slug AS "channelSlug", c.name AS "channelName", c.icon_version AS "iconVersion", c.color AS "channelColor",
               p.category_id AS "categoryId", cat.name AS "categoryName", p.title, p.content,
               p.like_count AS "likeCount", p.comment_count AS "commentCount", p.view_count AS "viewCount",
@@ -520,7 +528,7 @@ export class PostsService {
       category: post.categoryId == null ? undefined : { id: post.categoryId, name: post.categoryName },
       title: post.title,
       content: post.content,
-      author: { id: post.authorUid, nickname: post.authorNickname, avatarUrl: post.authorAvatar ?? undefined, role: badge(authorRole) },
+      author: { id: post.authorUid, nickname: post.authorNickname, avatarUrl: post.authorAvatar ?? undefined, role: badge(authorRole), featuredBadge: featuredBadge(post.authorBadge) },
       likeCount: post.likeCount,
       commentCount: post.commentCount,
       viewCount: post.viewCount,

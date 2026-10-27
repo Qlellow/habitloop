@@ -6,6 +6,7 @@ import { BAR_H, MIN_H, MIN_W, miniWindows, useMiniEnabled, useMiniWindows, type 
 import { CloseIcon, ExpandIcon, MinimizeIcon, RestoreIcon } from './Icons';
 import { Markdown } from './Markdown';
 import { RoleBadge } from './RoleBadge';
+import { BadgeMark } from './BadgeMedal';
 import { UserAvatar } from './UserAvatar';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
@@ -88,6 +89,7 @@ function MiniPost({ postId }: { postId: number }) {
         <UserAvatar nickname={post.author.nickname} avatarUrl={post.author.avatarUrl} size={22} />
         <span className="font-semibold text-fg">{post.author.nickname}</span>
         <RoleBadge role={post.author.role} size={14} />
+        <BadgeMark badge={post.author.featuredBadge} size={15} />
         <span className="text-fg-weak">· {timeAgo(post.createdAt)}</span>
       </div>
       <div className="mt-4 pt-4 border-t border-line">

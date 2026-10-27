@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ApiError, compact, isUserId, PET_SPECIES, PET_STAGES, useAuth, useBlockUser, useFeed, useUserProfile, type Badge, type UserProfile } from '@loop/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { toast } from '../components/Toast';
@@ -11,6 +11,10 @@ import { ActivityDnaCard } from '../components/ActivityDna';
 import { PetActor } from '../components/Pet';
 import { UserAvatar } from '../components/UserAvatar';
 import { cn } from '../lib/cn';
+import { preload } from '../lib/preload';
+import { BadgeMark, BadgeMedal, TIER_LABEL } from '../components/BadgeMedal';
+
+const TIER_ORDER = { legendary: 0, rare: 1, common: 2 } as const;
 import NotFoundPage from './NotFoundPage';
 
 const joinedAt = (iso: string) => {
@@ -18,42 +22,32 @@ const joinedAt = (iso: string) => {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 가입`;
 };
 
-/** 배지 종류마다 아이콘 (code 앞부분으로 고른다) */
-const BADGE_ICON: [string, string][] = [
-  ['post', '✍️'],
-  ['first_post', '✍️'],
-  ['comment', '💬'],
-  ['first_comment', '💬'],
-  ['likes', '❤️'],
-  ['streak', '📅'],
-  ['invite', '🤝'],
-  ['channel', '📢'],
-  ['followers', '👥'],
-];
-const badgeIcon = (code: string) => BADGE_ICON.find(([p]) => code.startsWith(p))?.[1] ?? '🏅';
 const earnedOn = (iso: string) => {
   const d = new Date(iso);
   return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} 달성`;
 };
 
 /** 받은 배지(도전과제): 누구나 볼 수 있다 */
-function Badges({ badges }: { badges: Badge[] }) {
+function Badges({ userId, badges }: { userId: string; badges: Badge[] }) {
+  // 높은 등급부터
+  const sorted = [...badges].sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier]);
   return (
     <section className={ui.card}>
       <div className={ui.cardHead}>
         <h2 className={ui.sectionTitle}>
           배지 <span className="text-fg-weak font-semibold">{badges.length}</span>
         </h2>
+        <Link to={`/u/${userId}/badges`} className={ui.cardLink} onPointerEnter={preload.badges} onTouchStart={preload.badges}>
+          도감 보기
+        </Link>
       </div>
       {badges.length === 0 ? (
         <p className="m-0 px-5 pb-5 text-sm text-fg-weak">아직 받은 배지가 없어요</p>
       ) : (
         <ul className="list-none m-0 px-5 pb-5 grid grid-cols-3 gap-2.5 max-[720px]:grid-cols-2 max-[520px]:px-4 max-[520px]:gap-2">
-          {badges.map((b) => (
-            <li key={b.code} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 max-[420px]:flex-col max-[420px]:gap-1.5 max-[420px]:text-center" title={`${b.description} · ${earnedOn(b.earnedAt)}`}>
-              <span className="flex-none grid place-items-center w-10 h-10 rounded-full bg-primary-weak text-[20px]" aria-hidden>
-                {badgeIcon(b.code)}
-              </span>
+          {sorted.map((b) => (
+            <li key={b.code} className="badge-card flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 max-[420px]:flex-col max-[420px]:gap-1.5 max-[420px]:text-center" data-earned data-tier={b.tier} title={`${TIER_LABEL[b.tier]} · ${b.description} · ${earnedOn(b.earnedAt)}`}>
+              <BadgeMedal icon={b.icon} tier={b.tier} size={40} />
               <div className="min-w-0 max-[420px]:w-full">
                 <div className="text-sm font-bold text-fg-strong truncate">{b.name}</div>
                 <div className="text-[12px] text-fg-weak truncate">{b.description}</div>
@@ -121,7 +115,10 @@ export default function UserPage() {
           <div className="flex items-end gap-4 px-6 pb-6">
             <UserAvatar nickname={user.nickname} avatarUrl={user.avatarUrl} size={88} className="-mt-11 ring-4 ring-[var(--surface)]" />
             <div className="min-w-0 pt-3">
-              <h1 className="m-0 text-[22px] font-bold text-fg-strong truncate">{user.nickname}</h1>
+              <h1 className="m-0 flex items-center gap-1.5 text-[22px] font-bold text-fg-strong min-w-0">
+                <span className="truncate">{user.nickname}</span>
+                <BadgeMark badge={user.featuredBadge} size={24} />
+              </h1>
               <p className="mt-1 mb-0 text-sm text-fg-sub">
                 글 {compact(user.postCount)} · 댓글 {compact(user.commentCount)}
               </p>
@@ -158,7 +155,7 @@ export default function UserPage() {
         </section>
       )}
       {user && !user.blocked && <ActivityDnaCard userId={user.id} nickname={user.nickname} />}
-      {user?.badges && <Badges badges={user.badges} />}
+      {user?.badges && <Badges userId={user.id} badges={user.badges} />}
       <section className={ui.card}>
         <div className={ui.cardHead}>
           <h2 className={ui.sectionTitle}>쓴 글</h2>

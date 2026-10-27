@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '@loop/shared';
+import { reportBadgeEvent, useAuth } from '@loop/shared';
 import { OPEN_EVENT } from '../lib/commandPalette';
 import { useMiniWindows } from '../lib/miniWindows';
 import { rememberedRoom, useVoice } from '../lib/voice';
@@ -15,6 +15,7 @@ import { useMediaQuery } from '../lib/media';
  *  - 음성방 도크: 통화 중이거나, 방 화면이 열렸거나, 새로고침 전에 들어가 있던 방이 있으면
  *  - 인터랙티브 커서: 설정에서 켰고 마우스가 있으면
  *  - 데스크톱 펫: 로그인했고 '돌아다니기'를 켰으면
+ *  - 새 배지 알림: 로그인했으면
  * 한 번 받으면 계속 둔다 (음성방 도크는 통화가 끝날 때 정리할 일이 있다)
  */
 
@@ -24,6 +25,7 @@ const MiniWindows = lazy(() => import('./MiniWindows').then((m) => ({ default: m
 const VoiceDock = lazy(() => import('./VoiceDock').then((m) => ({ default: m.VoiceDock })));
 const PixelParticles = lazy(() => import('./PixelParticles').then((m) => ({ default: m.PixelParticles })));
 const DesktopPet = lazy(() => import('./DesktopPet').then((m) => ({ default: m.DesktopPet })));
+const BadgeUnlock = lazy(() => import('./BadgeUnlock').then((m) => ({ default: m.BadgeUnlock })));
 
 /** 한 번 참이 되면 계속 참 */
 function useLatch(on: boolean) {
@@ -59,6 +61,10 @@ function PaletteHost() {
   }, []);
   // 다른 화면으로 가면 닫는다 (뒤로 가기 등)
   useEffect(() => setOpen(false), [pathname]);
+  // 숨은 배지 '키보드 마법사': 팔레트를 연 횟수
+  useEffect(() => {
+    if (open) void reportBadgeEvent('palette');
+  }, [open]);
   return loaded ? <CommandPalette open={open} setOpen={setOpen} /> : null;
 }
 
@@ -84,6 +90,8 @@ export function DeferredUi() {
       {fx && <PixelParticles />}
       {/* 내 펫이 화면을 돌아다닌다 */}
       {pet && <DesktopPet />}
+      {/* 새 배지를 받으면 반짝이며 알린다 */}
+      {isLoggedIn && <BadgeUnlock />}
     </Suspense>
   );
 }

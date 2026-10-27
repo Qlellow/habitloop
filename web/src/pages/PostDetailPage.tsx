@@ -1,6 +1,7 @@
-import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
+  reportBadgeEvent,
   ApiError,
   apiUrl,
   compact,
@@ -25,6 +26,7 @@ import { ExpandIcon, HeartIcon, ImageIcon, MinimizeIcon, PictureInPictureIcon } 
 import { prepareUpload } from '../lib/postImage';
 import { Page } from '../components/Layout';
 import { RoleBadge } from '../components/RoleBadge';
+import { BadgeMark } from '../components/BadgeMedal';
 import { UserAvatar } from '../components/UserAvatar';
 import { Markdown } from '../components/Markdown';
 import { CollapsibleBody } from '../components/CollapsibleBody';
@@ -150,6 +152,7 @@ function CommentItem({ comment: c, postId, best, reply }: { comment: Comment; po
           <UserAvatar nickname={c.authorNickname} avatarUrl={c.authorAvatar} size={reply ? 20 : 24} />
           {c.authorNickname}
           <RoleBadge role={c.authorRole} size={16} />
+          <BadgeMark badge={c.authorBadge} size={16} />
         </Link>
         <time className={s.commentTime} dateTime={c.createdAt} title={new Date(c.createdAt).toLocaleString()}>
           {timeAgo(c.createdAt)}
@@ -454,6 +457,13 @@ export default function PostDetailPage() {
   const showBlocked = shownBlocked === id;
   // 몰입 모드: 사이드바 · 인기글 · 장식을 숨기고 글과 댓글만 (F 로 켜고 끄기, Esc 로 나가기)
   const focus = useFocusMode();
+  // 몰입 모드로 20초 넘게 읽은 글 (배지 '몰입 독서가')
+  const loaded = !!post && !isPlaceholderData;
+  useEffect(() => {
+    if (!focus || !loaded) return;
+    const t = window.setTimeout(() => void reportBadgeEvent('focus_read'), 20_000);
+    return () => window.clearTimeout(t);
+  }, [focus, loaded, id]);
 
   if (!Number.isInteger(id) || (error instanceof ApiError && error.status === 404)) {
     return <NotFoundPage message="삭제되었거나 없는 글이에요" />;
@@ -524,6 +534,7 @@ export default function PostDetailPage() {
                 <Link to={`/u/${post.author.id}`} className={cn(s.bylineName, 'hover:underline underline-offset-2')} onPointerEnter={preload.user}>
                   {post.author.nickname}
                   <RoleBadge role={post.author.role} />
+                  <BadgeMark badge={post.author.featuredBadge} />
                 </Link>
                 <div className={s.bylineMeta}>
                   <time dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString()}>
