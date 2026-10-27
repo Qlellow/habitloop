@@ -95,7 +95,7 @@ function NeedLogin({ what }: { what: string }) {
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="m-0 px-5 py-6 text-center text-sm text-fg-weak">{children}</p>;
+  return <p className="m-0 h-full min-h-[64px] grid place-items-center px-5 pb-3 text-center text-sm text-fg-weak">{children}</p>;
 }
 
 function ListSkeleton({ rows = 4 }: { rows?: number }) {
@@ -164,6 +164,8 @@ function DiscoveryBody({ o }: WidgetProps) {
   const post = data?.post;
   const reason = data?.reason ? DISCOVERY_REASON[data.reason] : undefined;
   const past = o.past ? (data?.past ?? []).slice(0, 3) : [];
+  // 오늘 글도 지난 발견도 없으면 빈 안내만 (카드가 쓸데없이 길어지지 않게)
+  if (!post && !past.length) return <Empty>오늘은 소개할 숨은 글을 아직 못 찾았어요</Empty>;
   return (
     <div className="px-5 pb-4">
       {post ? (
@@ -588,7 +590,7 @@ export const WIDGETS: WidgetDef[] = [
     desc: '최근 7일 동안 반응이 많은 글 (전체 또는 채널 하나)',
     glyph: '♛',
     size: { w: 3, h: 6 },
-    min: { w: 3, h: 3 },
+    min: { w: 3, h: 2 },
     multi: true,
     preview: true,
     title: () => '지금 인기 있는 글',
@@ -605,7 +607,7 @@ export const WIDGETS: WidgetDef[] = [
     desc: '반응은 적어도 흥미로운 글을 매일 하나 골라 소개해요',
     glyph: '✦',
     size: { w: 3, h: 5 },
-    min: { w: 3, h: 3 },
+    min: { w: 3, h: 2 },
     preview: true,
     title: () => '오늘의 발견',
     options: [{ key: 'past', label: '지난 발견도 보기', kind: 'switch', def: true }, AUTO_H],
@@ -617,7 +619,7 @@ export const WIDGETS: WidgetDef[] = [
     desc: '최근 24시간의 반응으로 정한 커뮤니티 분위기',
     glyph: '☀',
     size: { w: 3, h: 4 },
-    min: { w: 3, h: 3 },
+    min: { w: 3, h: 2 },
     preview: true,
     title: () => '커뮤니티 날씨',
     options: [{ key: 'bars', label: '감정 비율 보기', kind: 'switch', def: true }, AUTO_H],
@@ -629,7 +631,7 @@ export const WIDGETS: WidgetDef[] = [
     desc: '병에 담은 말이 낯선 누군가에게 닿아요',
     glyph: '⌇',
     size: { w: 3, h: 3 },
-    min: { w: 2, h: 3 },
+    min: { w: 2, h: 2 },
     login: true,
     preview: true,
     title: () => '메시지 표류병',
@@ -657,7 +659,7 @@ export const WIDGETS: WidgetDef[] = [
     desc: '최근 7일 활동이 많은 채널 순위',
     glyph: '▲',
     size: { w: 3, h: 6 },
-    min: { w: 2, h: 3 },
+    min: { w: 2, h: 2 },
     preview: true,
     title: () => '인기 채널 · 최근 7일',
     more: () => '/channels',
@@ -725,8 +727,10 @@ export const WIDGETS: WidgetDef[] = [
     desc: '새 채널을 만드는 바로가기 카드',
     glyph: '+',
     size: { w: 3, h: 3 },
-    min: { w: 2, h: 3 },
+    min: { w: 2, h: 2 },
+    preview: true,
     title: () => '나만의 채널을 만들어 보세요',
+    options: [AUTO_H],
     Body: MakeChannelBody,
   },
   {
