@@ -1,0 +1,241 @@
+/* 채널 마을 (components/village). 칸 색은 변수로: 라이트는 낮, 다크는 밤 (창 · 등불에 불이 켜진다) */
+.village-scene,
+.village-icon {
+  --vk-o: #3b2d26;
+  --vk-w: #f6e7c8;
+  --vk-W: #dcc49b;
+  --vk-r: #e0564f;
+  --vk-R: #b03c37;
+  --vk-b: #4f86de;
+  --vk-B: #355fae;
+  --vk-n: #b9824c;
+  --vk-N: #80552f;
+  --vk-s: #c9cfd8;
+  --vk-S: #9199a6;
+  --vk-g: #5cbf6a;
+  --vk-G: #3c9150;
+  --vk-t: #8a5a33;
+  --vk-y: #9cd3f0;
+  --vk-c: #f2c14e;
+  --vk-C: #d39a28;
+  --vk-a: #63cdf3;
+  --vk-A: #3aa2d4;
+  --vk-f: #ff8a2a;
+  --vk-F: #ffd23f;
+  --vk-p: #ff7aa8;
+  --vk-v: #a17be6;
+  --vk-e: #ffffff;
+  --vk-k: #4a3a33;
+  --vk-l: #fff1b0;
+  --vk-m: #6b7480;
+  --vk-h: #ffc83a;
+  --vk-sky: #bfe5ff;
+  --vk-sky2: #dff2ff;
+  --vk-sun: #ffd84a;
+  --vk-cloud: #ffffff;
+  --vk-hill: #9fd69a;
+  --vk-grass: #7cc979;
+  --vk-path: #e6d2a4;
+  --vk-path2: #cdb684;
+  --vk-glow: 0;
+}
+:root[data-theme='dark'] .village-scene,
+:root[data-theme='dark'] .village-icon {
+  --vk-o: #14111a;
+  --vk-w: #a99a85;
+  --vk-W: #847764;
+  --vk-r: #a8433f;
+  --vk-R: #7c2f2c;
+  --vk-b: #3b5f9e;
+  --vk-B: #2a4677;
+  --vk-n: #84603b;
+  --vk-N: #5c4127;
+  --vk-s: #8a909b;
+  --vk-S: #666c78;
+  --vk-g: #3f7f4f;
+  --vk-G: #2b5e3a;
+  --vk-t: #5f4027;
+  --vk-y: #ffd56a;
+  --vk-c: #b8913d;
+  --vk-C: #8f6e26;
+  --vk-a: #3f8fb5;
+  --vk-A: #2b6c8f;
+  --vk-p: #c6608a;
+  --vk-v: #7e62b8;
+  --vk-e: #d8d4cc;
+  --vk-k: #2a221f;
+  --vk-l: #ffe58a;
+  --vk-m: #4f5560;
+  --vk-sky: #18213d;
+  --vk-sky2: #233057;
+  --vk-sun: #f3eccf;
+  --vk-cloud: #3a4566;
+  --vk-hill: #2c4a3c;
+  --vk-grass: #335b40;
+  --vk-path: #6e6250;
+  --vk-path2: #57503f;
+  --vk-glow: 0.35;
+}
+.village-scene {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+.vk-o { fill: var(--vk-o); }
+.vk-w { fill: var(--vk-w); }
+.vk-W { fill: var(--vk-W); }
+.vk-r { fill: var(--vk-r); }
+.vk-R { fill: var(--vk-R); }
+.vk-b { fill: var(--vk-b); }
+.vk-B { fill: var(--vk-B); }
+.vk-n { fill: var(--vk-n); }
+.vk-N { fill: var(--vk-N); }
+.vk-s { fill: var(--vk-s); }
+.vk-S { fill: var(--vk-S); }
+.vk-g { fill: var(--vk-g); }
+.vk-G { fill: var(--vk-G); }
+.vk-t { fill: var(--vk-t); }
+.vk-y { fill: var(--vk-y); }
+.vk-c { fill: var(--vk-c); }
+.vk-C { fill: var(--vk-C); }
+.vk-a { fill: var(--vk-a); }
+.vk-A { fill: var(--vk-A); }
+.vk-f { fill: var(--vk-f); }
+.vk-F { fill: var(--vk-F); }
+.vk-p { fill: var(--vk-p); }
+.vk-v { fill: var(--vk-v); }
+.vk-e { fill: var(--vk-e); }
+.vk-k { fill: var(--vk-k); }
+.vk-l { fill: var(--vk-l); }
+.vk-m { fill: var(--vk-m); }
+.vk-h { fill: var(--vk-h); }
+.vk-sky { fill: var(--vk-sky); }
+.vk-sky2 { fill: var(--vk-sky2); }
+.vk-sun { fill: var(--vk-sun); }
+.vk-cloud { fill: var(--vk-cloud); }
+.vk-hill { fill: var(--vk-hill); }
+.vk-grass { fill: var(--vk-grass); }
+.vk-path { fill: var(--vk-path); }
+.vk-path2 { fill: var(--vk-path2); }
+.vk-lantern0 { fill: #ff6b6b; }
+.vk-lantern1 { fill: #ffd23f; }
+.vk-lantern2 { fill: #6bc6ff; }
+
+/* 잠긴 건물 그림: 실루엣 */
+.village-icon.is-locked rect {
+  fill: var(--vk-o);
+  opacity: 0.22;
+}
+
+/* 움직임: transform · opacity 만 (합성 단계에서 처리) */
+.village-flame {
+  animation: village-flicker 0.5s steps(2, end) infinite;
+}
+@keyframes village-flicker {
+  50% {
+    opacity: 0.55;
+  }
+}
+.village-spray {
+  animation: village-flicker 0.8s steps(2, end) infinite;
+}
+.village-blades {
+  transform-box: view-box;
+  animation: village-spin 9s linear infinite;
+}
+@keyframes village-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.village-clouds {
+  animation: village-drift 60s linear infinite alternate;
+}
+@keyframes village-drift {
+  to {
+    transform: translateX(28px);
+  }
+}
+.village-glow {
+  fill: var(--vk-l);
+  opacity: var(--vk-glow);
+}
+.village-lot.is-next {
+  opacity: 0.7;
+}
+.village-new {
+  animation: village-twinkle 1.2s ease-in-out infinite;
+}
+@keyframes village-twinkle {
+  50% {
+    opacity: 0.2;
+  }
+}
+/* 주민: 길을 따라 오간다 (방향이 바뀔 때 몸을 돌린다) */
+.village-walker {
+  animation: village-walk var(--d) linear var(--delay) infinite alternate;
+}
+@keyframes village-walk {
+  from {
+    transform: translateX(var(--from));
+  }
+  to {
+    transform: translateX(var(--to));
+  }
+}
+.village-walker-1 .vk-c { fill: var(--vk-b); }
+.village-walker-2 .vk-c { fill: var(--vk-r); }
+.village-walker-3 .vk-c { fill: var(--vk-g); }
+.village-garland {
+  stroke: var(--vk-N);
+  stroke-width: 0.6;
+}
+.village-firework {
+  transform-box: view-box;
+  animation: village-burst 2.7s ease-out infinite;
+  opacity: 0;
+}
+@keyframes village-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  15% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+.village-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--field);
+  overflow: hidden;
+}
+.village-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f2a43a, #e0564f);
+  transform-origin: left;
+  transform: scaleX(var(--p));
+  transition: transform 0.6s var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .village-flame,
+  .village-spray,
+  .village-blades,
+  .village-clouds,
+  .village-new,
+  .village-walker,
+  .village-firework {
+    animation: none;
+  }
+}

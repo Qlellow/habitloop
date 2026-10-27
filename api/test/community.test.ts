@@ -5,6 +5,7 @@ import { JwtService } from '../src/auth/jwt.service';
 import { Mailer } from '../src/mail/mailer';
 import { Database } from '../src/db/database';
 import { makeExcerpt, EXCERPT_LENGTH } from '../src/posts/excerpt';
+import { VillageService } from '../src/village/village.service';
 import { weatherOf } from '../src/community/weather.service';
 import { DnaService, periodOf, topTrait, traitsOf } from '../src/users/dna.service';
 import { longestRun } from '../src/badges/badges.service';
@@ -1242,6 +1243,51 @@ describe('커뮤니티', () => {
     expect((await http().get('/api/me/bookmarks/channels').set(bearer(member))).body).toEqual([]);
     // 같은 주소 · 이름으로 다시 만들 수 있다
     await http().post('/api/channels').set(bearer(member)).send({ slug: 'bye', name: '없어질채널' }).expect(201);
+  });
+
+  it('채널 마을: 활동이 벽돌로 쌓여 건물이 해금되고, 글이 지워져도 생긴 건물은 남는다', async () => {
+    const owner = await signup('village-owner@test.dev', '촌장');
+    const a = await signup('village-a@test.dev', '주민가');
+    const b = await signup('village-b@test.dev', '주민나');
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'village', name: '마을채널' }).expect(201);
+    // 마을 계산은 30초 캐시라 매번 비우고 본다
+    const village = async (slug = 'village') => {
+      (app.get(VillageService) as unknown as { cache: { clear(): void } }).cache.clear();
+      return (await http().get(`/api/channels/${slug}/village`).expect(200)).body;
+    };
+    const v0 = await village();
+    expect(v0).toMatchObject({ bricks: 0, level: 1, maxLevel: 15, next: { code: 'tent', need: 30 }, festival: false });
+    expect(v0.items[0]).toMatchObject({ code: 'campfire', unlocked: true, isNew: false });
+    expect(v0.week).toMatchObject({ bricks: 0, goal: 60 });
+
+    // 팔로워 2명(10) + 글 2개(20) + 댓글 1개(3) + 공감 1 + 반응 1 = 35 → 텐트 해금
+    for (const t of [a, b]) await http().post('/api/channels/village/members').set(bearer(t)).expect(200);
+    const p1 = (await http().post('/api/posts').set(bearer(a)).send({ channel: 'village', title: '첫 집', content: '벽돌' }).expect(201)).body;
+    await http().post('/api/posts').set(bearer(a)).send({ channel: 'village', title: '둘째', content: '벽돌' }).expect(201);
+    await http().post(`/api/posts/${p1.id}/comments`).set(bearer(b)).send({ content: '좋아요' }).expect(201);
+    await http().post(`/api/posts/${p1.id}/like`).set(bearer(b)).expect(200);
+    await http().put(`/api/posts/${p1.id}/reactions/clap`).set(bearer(b)).expect(200);
+    await new Promise((r) => setTimeout(r, 10));
+    const v1 = await village();
+    expect(v1).toMatchObject({ bricks: 35, level: 2, next: { code: 'well', need: 45 }, breakdown: { posts: 2, comments: 1, reactions: 2, followers: 2 } });
+    expect(v1.items.find((i: { code: string }) => i.code === 'tent')).toMatchObject({ unlocked: true, isNew: true });
+    expect(v1.week.bricks).toBe(35);
+    expect(v1.contributors.map((c: { nickname: string; bricks: number }) => [c.nickname, c.bricks])).toEqual([
+      ['주민가', 20],
+      ['주민나', 5],
+    ]);
+
+    // 글을 지워도 최고치 · 해금은 그대로
+    await http().delete(`/api/posts/${p1.id}`).set(bearer(a)).expect(204);
+    const v2 = await village();
+    expect(v2).toMatchObject({ bricks: 35, level: 2 });
+    expect(v2.breakdown.posts).toBe(1);
+
+    // 비공개 채널 마을은 팔로워만
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'secret-village', name: '숨은마을', visibility: 'private' }).expect(201);
+    await http().get('/api/channels/secret-village/village').set(bearer(a)).expect(403);
+    await http().get('/api/channels/secret-village/village').set(bearer(owner)).expect(200);
+    await http().get('/api/channels/nope/village').expect(404);
   });
 
   it('북마크와 내 정보', async () => {

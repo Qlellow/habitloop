@@ -668,3 +668,31 @@ export interface NoticeInput {
   pinned?: boolean;
   version?: string | null;
 }
+
+/** 채널 마을: 채널 활동(벽돌)으로 자라는 공동 마을 */
+export interface VillageItem {
+  code: string;
+  name: string;
+  description: string;
+  kind: 'building' | 'deco';
+  /** 해금에 필요한 누적 벽돌 */
+  bricks: number;
+  unlocked: boolean;
+  unlockedAt?: string;
+  /** 3일 안에 새로 생겼는지 */
+  isNew: boolean;
+}
+
+export interface Village {
+  /** 지금까지 쌓은 벽돌 (최고치) */
+  bricks: number;
+  level: number;
+  maxLevel: number;
+  next?: { code: string; name: string; bricks: number; need: number };
+  breakdown: { posts: number; comments: number; reactions: number; followers: number };
+  items: VillageItem[];
+  week: { bricks: number; goal: number; from: string };
+  /** 지난주 공동 목표를 넘겨 이번 주 축제 중 */
+  festival: boolean;
+  contributors: { id: string; nickname: string; avatarUrl?: string; bricks: number }[];
+}

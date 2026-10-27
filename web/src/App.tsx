@@ -16,6 +16,7 @@ const UserPage = lazy(loaders.user);
 const BadgesPage = lazy(loaders.badges);
 const NoticesPage = lazy(loaders.notices);
 const NoticeDetailPage = lazy(loaders.notice);
+const VillagePage = lazy(loaders.village);
 const InvitePage = lazy(loaders.invite);
 const WritePage = lazy(loaders.write);
 const LoginPage = lazy(loaders.login);
@@ -127,6 +128,8 @@ const router = createBrowserRouter([
       { path: '/channels/new', element: auth(<ChannelFormPage />) },
       { path: '/c/:slug', element: <ChannelPage /> },
       { path: '/c/:slug/edit', element: auth(<ChannelFormPage />) },
+      // 채널 마을
+      { path: '/c/:slug/village', element: <VillagePage /> },
       { path: '/c/:slug/manage', element: auth(<ChannelManagePage />) },
       // 채널 신고함 (운영진만)
       { path: '/c/:slug/reports', element: auth(<ChannelReportsPage />) },

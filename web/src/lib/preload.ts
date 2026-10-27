@@ -7,6 +7,7 @@ export const loaders = {
   badges: () => import('../pages/BadgesPage'),
   notices: () => import('../pages/NoticesPage'),
   notice: () => import('../pages/NoticeDetailPage'),
+  village: () => import('../pages/VillagePage'),
   invite: () => import('../pages/InvitePage'),
   write: () => import('../pages/WritePage'),
   login: () => import('../pages/LoginPage'),

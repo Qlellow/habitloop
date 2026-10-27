@@ -5,6 +5,8 @@ import { AdminGuard } from './admin/admin.guard';
 import { AdminService } from './admin/admin.service';
 import { NoticesController } from './notices/notices.controller';
 import { NoticesService } from './notices/notices.service';
+import { VillageController } from './village/village.controller';
+import { VillageService } from './village/village.service';
 import { AuthController } from './auth/auth.controller';
 import { AuthGuard, Public } from './auth/auth.guard';
 import { AuthService } from './auth/auth.service';
@@ -59,7 +61,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController, CommunityController, BottlesController, BadgesController, NoticesController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController, CommunityController, BottlesController, BadgesController, NoticesController, VillageController],
   providers: [
     Database,
     PetsService,
@@ -89,6 +91,7 @@ class HealthController {
     ReportsService,
     AdminService,
     NoticesService,
+    VillageService,
     AdminGuard,
     OAuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
