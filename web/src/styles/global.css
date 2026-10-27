@@ -3671,3 +3671,15 @@ html.focus-mode main article h1 {
     backdrop-filter: blur(8px);
   }
 }
+
+/*
+ * 페이지 끝에서 더 당기면 화면 전체가 늘어나는 고무줄 스크롤(elastic overscroll)을 끈다.
+ * 파이어폭스(특히 터치패드 · 부드러운 휠)는 이 늘어남이 커서, 헤더와 글이 한참 내려가고 뒤의 하늘만 보였다.
+ * 폰에서는 당겨서 새로고침을 쓰므로 마우스 · 터치패드가 있는 PC 에서만
+ */
+@media (hover: hover) and (pointer: fine) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
