@@ -90,6 +90,11 @@ export class DnaService {
     return this.cache.getOrLoad(String(user.id), () => this.load(user.id));
   }
 
+  /** 배지(DNA 완성)용: 사람 id 로 (캐시를 함께 쓴다) */
+  ofUser(userId: number): Promise<DnaResponse> {
+    return this.cache.getOrLoad(String(userId), () => this.load(userId));
+  }
+
   private async load(userId: number): Promise<DnaResponse> {
     const OPEN = `JOIN channels ch ON ch.id = p.channel_id AND ch.visibility = 'public'`;
     const [counts, hourRows, channels, seq] = await Promise.all([

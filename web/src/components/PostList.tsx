@@ -1,4 +1,5 @@
 import { RoleBadge } from './RoleBadge';
+import { BadgeMark } from './BadgeMedal';
 import { UserAvatar } from './UserAvatar';
 import { memo, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -136,6 +137,7 @@ export const PostItem = memo(function PostItem({
       <UserAvatar nickname={post.authorNickname} avatarUrl={post.authorAvatar} size={20} />
       <span className="truncate hover:underline underline-offset-2">{post.authorNickname}</span>
       <RoleBadge role={post.authorRole} size={16} />
+      <BadgeMark badge={post.authorBadge} size={16} />
     </span>
   );
   return (

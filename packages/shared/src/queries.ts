@@ -52,6 +52,8 @@ import type {
   ActivityDna,
   SeaState,
   MyBottle,
+  Badge,
+  BadgeBook,
   User,
 } from './types';
 import { authStore } from './auth';
@@ -159,6 +161,56 @@ export function useUserProfile(id: string) {
     queryFn: ({ signal }) => api<UserProfile>(`/api/users/${encodeURIComponent(id)}`, { signal }),
     enabled: isUserId(id),
   });
+}
+
+/** 배지 도감: id 가 없으면 내 것 (진행도 포함) */
+export function useBadgeBook(id?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['badges', 'book', id ?? 'me'] as const,
+    queryFn: ({ signal }) => api<BadgeBook>('/api/badges', { query: { user: id }, signal }),
+    enabled: enabled && (id == null || isUserId(id)),
+  });
+}
+
+/** 대표 배지 달기 · 떼기 (null) */
+export function useFeatureBadge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string | null) => api<{ featured?: string }>('/api/me/badge', { method: 'PUT', body: { code } }),
+    onSuccess: ({ featured }) => {
+      qc.setQueriesData<BadgeBook>({ queryKey: ['badges', 'book'] }, (b) => (b && b.badges.some((x) => x.progress) ? { ...b, featured } : b));
+      qc.invalidateQueries({ queryKey: ['user'] });
+      qc.invalidateQueries({ queryKey: ['badges', 'book'] });
+    },
+  });
+}
+
+/** 새로 받았지만 아직 알리지 않은 배지 (1분마다, 창으로 돌아올 때) */
+export function useUnseenBadges(enabled = true) {
+  return useQuery({
+    queryKey: ['badges', 'new'] as const,
+    queryFn: ({ signal }) => api<Badge[]>('/api/me/badges/new', { signal }),
+    enabled,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/** 새 배지 알림을 띄운 뒤 본 것으로 표시 */
+export async function markBadgesSeen() {
+  await api<void>('/api/me/badges/seen', { method: 'POST' });
+  queryClient.setQueryData(['badges', 'new'], []);
+}
+
+/** 화면에서 일어난 일 (숨은 배지 · 몰입 독서 · 음성방 시간 등). 새 배지를 받으면 알림이 바로 뜨도록 새로 받는다 */
+export async function reportBadgeEvent(event: string) {
+  if (!authStore.getToken()) return;
+  try {
+    const { badges } = await api<{ badges: Badge[] }>('/api/me/badge-events', { method: 'POST', body: { event } });
+    if (badges.length) queryClient.invalidateQueries({ queryKey: ['badges'] });
+  } catch {
+    // 기록은 놓쳐도 괜찮다
+  }
 }
 
 /** 활동 DNA (공개 채널 활동만, 서버가 10분 캐시) */

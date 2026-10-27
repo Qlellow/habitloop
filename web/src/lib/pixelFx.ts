@@ -1,3 +1,4 @@
+import { reportBadgeEvent } from '@loop/shared';
 import type { FxDesign } from './settings';
 
 /**
@@ -242,7 +243,10 @@ const DESIGNS: Record<FxDesign, Design> = {
       // 숨은 2: 잠깐 무지개 하트 (움직이는 동안 1분에 한 번 굴림)
       if (now - rainbowRolled >= RAINBOW_EVERY) {
         rainbowRolled = now;
-        if (Math.random() < HIDDEN.rainbow) rainbowUntil = now + 5000;
+        if (Math.random() < HIDDEN.rainbow) {
+          rainbowUntil = now + 5000;
+          void reportBadgeEvent('cursor_secret');
+        }
       }
       add({ x, y, frames: [S.heartS], vy: rand(-0.6, -0.3), vx: rand(-0.2, 0.2), sway: 0.4, life: rand(500, 750), colors: c() });
     },
@@ -692,7 +696,7 @@ function setHover(el: HTMLElement | null) {
   hoverClock = DESIGNS[design].hoverRate * 0.7;
   if (!el) return;
   // 숨은: 눈 디자인으로 버튼에 오래 올려 두면 눈이 쌓인다
-  if (design === 'snow') hoverTimer = window.setTimeout(() => hoverEl === el && Math.random() < HIDDEN.snowPile && (snowPile = true), 2500);
+  if (design === 'snow') hoverTimer = window.setTimeout(() => hoverEl === el && Math.random() < HIDDEN.snowPile && ((snowPile = true), void reportBadgeEvent('cursor_secret')), 2500);
   wake();
 }
 
@@ -734,8 +738,11 @@ function onDown(e: PointerEvent) {
   const plain = e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
   const roll = forceHidden || Math.random() < HIDDEN.click;
   forceHidden = false;
-  if (btn && plain && !held && roll) d.hiddenClick(e.clientX, e.clientY, btn);
-  else d.click(e.clientX, e.clientY);
+  if (btn && plain && !held && roll) {
+    d.hiddenClick(e.clientX, e.clientY, btn);
+    // 숨은 배지 '숨은 애니메이션'
+    void reportBadgeEvent('cursor_secret');
+  } else d.click(e.clientX, e.clientY);
   wake();
 }
 

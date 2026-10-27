@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ApiError } from '../common/api-error';
+import { BadgesService } from '../badges/badges.service';
 import { Database } from '../db/database';
 
 /**
@@ -59,7 +60,10 @@ export interface Sea {
 
 @Injectable()
 export class BottlesService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly badges: BadgesService,
+  ) {}
 
   /** 하루 넘게 손에 든 병은 바다로 돌려보낸다 */
   private async sweep() {
@@ -155,11 +159,13 @@ export class BottlesService {
     );
     if (today >= DAILY_THROWS) throw ApiError.tooMany(`병은 하루에 ${DAILY_THROWS}개까지 띄울 수 있어요`);
     const row = await this.db.one<{ id: number }>('INSERT INTO bottles (author_id, content) VALUES ($1, $2) RETURNING id', [userId, content]);
+    await this.badges.checkQuietly(userId);
     return { id: row!.id };
   }
 
   /** 손에 든 병을 놓는다: 다시 바다로 (열 번째 사람이면 해변으로), 신고면 그 사람의 병을 더 받지 않는다 */
-  private async letGo(userId: number, bottleId: number, action: HopAction) {
+  /** 띄운 사람 id 를 돌려준다 (해변에 닿았으면 배지를 확인한다) */
+  private async letGo(userId: number, bottleId: number, action: HopAction): Promise<number> {
     const bottle = await this.db.one<{ authorId: number; hops: number }>(
       `SELECT author_id AS "authorId", hops FROM bottles WHERE id = $1 AND status = 'held' AND holder_id = $2`,
       [bottleId, userId],
@@ -176,24 +182,28 @@ export class BottlesService {
        WHERE id = $1`,
       [bottleId],
     );
+    return bottle.authorId;
   }
 
   async reply(userId: number, bottleId: number, raw: string) {
     const content = (raw ?? '').trim();
     if (content.length < 2) throw ApiError.badRequest('답장을 적어 주세요');
     if (content.length > BOTTLE_MAX_LENGTH) throw ApiError.badRequest(`답장은 ${BOTTLE_MAX_LENGTH}자까지 쓸 수 있어요`);
-    await this.db.transaction(async () => {
-      await this.letGo(userId, bottleId, 'reply');
+    const author = await this.db.transaction(async () => {
+      const a = await this.letGo(userId, bottleId, 'reply');
       await this.db.execute('INSERT INTO bottle_replies (bottle_id, author_id, content) VALUES ($1, $2, $3)', [bottleId, userId, content]);
+      return a;
     });
+    await this.badges.checkQuietly(userId);
+    await this.badges.checkQuietly(author);
   }
 
-  release(userId: number, bottleId: number) {
-    return this.db.transaction(() => this.letGo(userId, bottleId, 'release'));
+  async release(userId: number, bottleId: number) {
+    await this.badges.checkQuietly(await this.db.transaction(() => this.letGo(userId, bottleId, 'release')));
   }
 
-  report(userId: number, bottleId: number) {
-    return this.db.transaction(() => this.letGo(userId, bottleId, 'report'));
+  async report(userId: number, bottleId: number) {
+    await this.badges.checkQuietly(await this.db.transaction(() => this.letGo(userId, bottleId, 'report')));
   }
 
   /** 내가 띄운 병들: 상태 · 여정 · 답장 (보고 나면 답장은 읽음) */
@@ -222,6 +232,11 @@ export class BottlesService {
       'UPDATE bottle_replies SET read_at = now() WHERE read_at IS NULL AND bottle_id = ANY($1)',
       [ids],
     );
+    // 여정을 마치고 돌아온 내 병을 다시 읽었다 (숨은 배지 '자기 자신과의 대화')
+    if (bottles.some((b) => b.status === 'ashore')) {
+      await this.badges.mark(userId, 'own_ashore');
+      await this.badges.checkQuietly(userId);
+    }
     return bottles.map((b) => ({
       ...b,
       // 신고로 건져 낸 병은 '해변에 닿음'으로만 보인다 (신고 사실은 알리지 않는다)

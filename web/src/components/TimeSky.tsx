@@ -1,4 +1,5 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
+import { reportBadgeEvent } from '@loop/shared';
 
 /** 별 자리 · 크기 · 밝기 (그릴 때마다 바뀌지 않게 고정된 씨앗으로 만든다) */
 const GROUPS = 6;
@@ -18,6 +19,7 @@ const STARS = (() => {
  * 무엇을 보일지는 CSS(:root[data-time])가 정해서, 시간대가 바뀌어도 다시 그리지 않는다. 시간대 테마가 아니면 숨는다
  */
 export const TimeSky = memo(function TimeSky() {
+  const shooting = useShootingStarCatch();
   return (
     <div className="time-sky" aria-hidden>
       <div className="sky-rays" />
@@ -40,7 +42,31 @@ export const TimeSky = memo(function TimeSky() {
           </div>
         ))}
       </div>
-      <div className="sky-shooting" />
+      <div ref={shooting} className="sky-shooting" />
     </div>
   );
 });
+
+/**
+ * 숨은 배지 '별똥별': 새벽 하늘에 별똥별이 지나가는 순간 그 근처를 누르면 잡힌다.
+ * 하늘은 화면 뒤에 깔려 있어 직접 눌리지 않으므로, 누른 자리가 별똥별 가까이인지 본다
+ */
+function useShootingStarCatch() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const el = ref.current;
+      if (!el || e.button !== 0) return;
+      const style = getComputedStyle(el);
+      if (style.display === 'none' || Number(style.opacity) < 0.2) return;
+      const r = el.getBoundingClientRect();
+      const pad = 36;
+      if (e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad) {
+        void reportBadgeEvent('shooting_star');
+      }
+    };
+    document.addEventListener('pointerdown', onDown, { passive: true });
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, []);
+  return ref;
+}

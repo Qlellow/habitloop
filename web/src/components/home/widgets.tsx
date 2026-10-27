@@ -340,7 +340,7 @@ function ActivityBody() {
     ['글', data?.postCount, '/me/posts'],
     ['댓글', data?.commentCount, '/me/posts'],
     ['포인트', user.points ?? 0, '/me/points'],
-    ['배지', data?.badges?.length, `/u/${user.id}`],
+    ['배지', data?.badges?.length, '/badges'],
   ] as const;
   return (
     <div className="px-5 pb-4">
@@ -520,6 +520,7 @@ export const SHORTCUTS = [
   { key: 'myPosts', label: '내 글', to: '/me/posts', glyph: '≡' },
   { key: 'points', label: '포인트', to: '/me/points', glyph: 'P' },
   { key: 'pet', label: '펫', to: '/me/pet', glyph: '◕' },
+  { key: 'badges', label: '배지 도감', to: '/badges', glyph: '◈' },
   { key: 'settings', label: '설정', to: '/me/settings', glyph: '⚙' },
   { key: 'newChannel', label: '채널 만들기', to: '/channels/new', glyph: '+' },
 ] as const;

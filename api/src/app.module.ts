@@ -32,6 +32,8 @@ import { WeatherService } from './community/weather.service';
 import { DnaService } from './users/dna.service';
 import { BottlesController } from './bottles/bottles.controller';
 import { BottlesService } from './bottles/bottles.service';
+import { BadgesController } from './badges/badges.controller';
+import { BadgesService } from './badges/badges.service';
 import { DiscoveryService } from './posts/discovery.service';
 import { PostsService } from './posts/posts.service';
 import { ReportsController } from './reports/reports.controller';
@@ -55,7 +57,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController, CommunityController, BottlesController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController, CommunityController, BottlesController, BadgesController],
   providers: [
     Database,
     PetsService,
@@ -75,6 +77,7 @@ class HealthController {
     WeatherService,
     DnaService,
     BottlesService,
+    BadgesService,
     DiscoveryService,
     CommentsService,
     PreviewsService,

@@ -6,6 +6,9 @@ import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BlocksService } from '../users/blocks.service';
+import { BadgesService } from '../badges/badges.service';
+import { featuredBadge } from '../badges/catalog';
+import { WeatherService } from '../community/weather.service';
 import { RewardsService } from '../users/rewards.service';
 
 const MAX_PAGE_SIZE = 100;
@@ -19,6 +22,7 @@ interface CommentRow {
   authorUid: string;
   authorNickname: string;
   authorAvatar: string | null;
+  authorBadge: string | null;
   content: string;
   likeCount: number;
   createdAt: Date;
@@ -28,7 +32,7 @@ interface CommentRow {
 }
 
 const SELECT_COMMENT = `SELECT c.id, c.author_id AS "authorId", u.uid::text AS "authorUid", u.nickname AS "authorNickname",
-  CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "authorAvatar", c.content,
+  CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "authorAvatar", u.featured_badge AS "authorBadge", c.content,
   c.like_count AS "likeCount", c.created_at AS "createdAt", c.updated_at AS "updatedAt", c.parent_id AS "parentId",
   c.hidden_at IS NOT NULL AS hidden
   FROM comments c JOIN users u ON u.id = c.author_id`;
@@ -40,6 +44,8 @@ export class CommentsService {
     private readonly channels: ChannelsService,
     private readonly rewards: RewardsService,
     private readonly notifications: NotificationsService,
+    private readonly weather: WeatherService,
+    private readonly badges: BadgesService,
     private readonly blocks: BlocksService,
   ) {}
 
@@ -91,6 +97,8 @@ export class CommentsService {
       await this.db.execute('UPDATE posts SET comment_count = comment_count + 1 WHERE id = $1', [postId]);
       return row!.id;
     });
+    // 커뮤니티 날씨가 '비'일 때 단 댓글 (배지 '비 오는 날의 위로')
+    if ((await this.weather.now().catch(() => undefined))?.weather === 'rain') await this.badges.bump(userId, 'rain_comment');
     await this.rewards.checkBadges(userId);
     await this.notifications.commented(postId, id, userId, parentId ?? null);
     const row = await this.db.one<CommentRow>(`${SELECT_COMMENT} WHERE c.id = $1`, [id]);
@@ -219,6 +227,7 @@ export class CommentsService {
       authorNickname: c.authorNickname,
       authorAvatar: c.authorAvatar ?? undefined,
       authorRole: badge(authorRole),
+      authorBadge: featuredBadge(c.authorBadge),
       content: masked ? '' : c.content,
       hidden: c.hidden,
       blocked: blocked || undefined,

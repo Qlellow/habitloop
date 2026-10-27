@@ -6,6 +6,7 @@ import { escapeLike } from '../common/cursor-page';
 import { Database } from '../db/database';
 import { BlocksService } from './blocks.service';
 import { RewardsService } from './rewards.service';
+import { featuredBadge } from '../badges/catalog';
 import { PetsService } from '../pets/pets.service';
 import { DnaService } from './dna.service';
 import { parseHomeLayout, type HomeLayout } from './home-layout';
@@ -41,11 +42,13 @@ export class UsersController {
   @Public()
   @Get('users/:id')
   async profile(@Param('id') raw: string, @CurrentUser() viewer?: AuthUser) {
-    const user: { internalId: number; id: string; nickname: string; createdAt: Date; postCount: string; commentCount: string } | undefined =
+    const user:
+      | { internalId: number; id: string; nickname: string; createdAt: Date; postCount: string; commentCount: string; featuredBadge: string | null }
+      | undefined =
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
         ? undefined
         : await this.db.one(
-            `SELECT u.id AS "internalId", u.uid::text AS id, u.nickname, u.created_at AS "createdAt", u.banner,
+            `SELECT u.id AS "internalId", u.uid::text AS id, u.nickname, u.created_at AS "createdAt", u.banner, u.featured_badge AS "featuredBadge",
                     CASE WHEN u.avatar_id IS NULL THEN NULL ELSE '/api/images/' || u.avatar_id END AS "avatarUrl",
                     (SELECT count(*) FROM posts WHERE author_id = u.id) AS "postCount",
                     (SELECT count(*) FROM comments WHERE author_id = u.id) AS "commentCount"
@@ -63,6 +66,7 @@ export class UsersController {
       ...rest,
       postCount: Number(user.postCount),
       commentCount: Number(user.commentCount),
+      featuredBadge: featuredBadge(user.featuredBadge),
       badges,
       /** 내가 이 사람을 차단했는지 (비로그인 · 내 프로필은 false) */
       blocked,
@@ -102,6 +106,7 @@ export class UsersController {
   async saveHome(@LoginUser() user: AuthUser, @Body() body: { layout?: unknown }) {
     const layout = parseHomeLayout(body?.layout);
     await this.db.execute('UPDATE users SET home_layout = $2 WHERE id = $1', [user.id, JSON.stringify(layout)]);
+    await this.rewards.checkBadges(user.id);
     return { layout };
   }
 
