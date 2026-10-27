@@ -2577,6 +2577,7 @@ body.home-dragging {
 }
 .home-seg > button {
   flex: 1 0 auto;
+  white-space: nowrap;
   height: 30px;
   padding: 0 10px;
   border-radius: 8px;

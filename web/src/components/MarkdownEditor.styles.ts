@@ -6,9 +6,9 @@ const s = {
   tool:
     'flex-none min-w-8 h-8 px-1.5 rounded-sm text-sm font-bold text-fg-sub ' +
     '[&:not(:disabled)]:hover:bg-field [&:not(:disabled)]:hover:text-fg-strong disabled:opacity-35 disabled:cursor-default',
-  modes: 'inline-flex p-[3px] rounded-[7px] bg-field',
+  modes: 'flex-none inline-flex p-[3px] rounded-[7px] bg-field',
   mode:
-    'h-7 px-3 rounded-[5px] text-[13px] font-semibold text-fg-sub ' +
+    'flex-none whitespace-nowrap h-7 px-3 rounded-[5px] text-[13px] font-semibold text-fg-sub ' +
     'aria-selected:bg-surface aria-selected:text-fg-strong aria-selected:shadow-[0_1px_2px_rgba(0,0,0,0.08)]',
   // 좁은 화면에서는 나란히 보기를 쓰지 않는다
   splitOnly: 'max-[860px]:hidden',

@@ -63,9 +63,9 @@ const s = {
   staffName: 'flex items-center gap-1.5 min-w-0 font-semibold text-fg-strong',
   staffRole: 'text-sm text-fg-weak',
   staffSearch: 'mt-3 pt-4 border-t border-border flex flex-col gap-1',
-  roleSegment: 'inline-flex p-[3px] rounded-[7px] bg-field',
+  roleSegment: 'flex-none inline-flex p-[3px] rounded-[7px] bg-field',
   segmentButton:
-    'h-7 px-3 rounded-[5px] text-[13px] font-semibold text-fg-sub hover:text-fg-strong disabled:opacity-60 ' +
+    'flex-none whitespace-nowrap h-7 px-3 rounded-[5px] text-[13px] font-semibold text-fg-sub hover:text-fg-strong disabled:opacity-60 ' +
     'aria-pressed:bg-surface aria-pressed:text-fg-strong aria-pressed:shadow-[0_1px_2px_rgba(0,0,0,0.08)]',
   iconPickerBody: 'flex flex-col gap-2 min-w-0',
   iconPickerActions: 'flex flex-wrap gap-1.5',

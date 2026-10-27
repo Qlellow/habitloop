@@ -47,9 +47,10 @@ const s = {
   sessionIcon: 'flex-none grid place-items-center w-9 h-9 rounded-full bg-surface text-lg',
   inlineForm: 'flex flex-col gap-2.5 mt-1 mb-2 p-4 rounded-md bg-pressed',
   inlineActions: 'flex items-center gap-1.5',
-  segment: 'flex-none inline-flex p-[3px] rounded-sm bg-field',
+  // 고르는 칸이 많아도 글자가 접히지 않게 (좁은 화면에서는 가로로 스크롤)
+  segment: 'flex-none inline-flex max-w-full overflow-x-auto [scrollbar-width:none] p-[3px] rounded-sm bg-field',
   segmentButton:
-    'h-8 px-3.5 rounded text-sm font-semibold text-fg-sub ' +
+    'flex-none whitespace-nowrap h-8 px-3.5 rounded text-sm font-semibold text-fg-sub ' +
     'aria-checked:bg-surface aria-checked:text-fg-strong aria-checked:shadow-[0_1px_2px_rgba(0,0,0,0.08)]',
   switch:
     "relative flex-none w-[46px] h-7 rounded-[14px] bg-fg-weak transition-colors after:content-[''] after:absolute " +
