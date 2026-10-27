@@ -1723,6 +1723,36 @@ describe('커뮤니티', () => {
       const logs = (await http().get('/api/admin/logs').set(admin).expect(200)).body.map((l: { action: string }) => l.action);
       expect(logs.slice(0, 3)).toEqual(['user.unsuspend', 'user.suspend', 'login']);
 
+      // 사이트 공지사항: 관리자만 쓰고 누구나 본다
+      const notice = (body: object) => http().post('/api/admin/notices').set(admin).send(body);
+      await http().post('/api/admin/notices').set(bearer(user)).send({ title: 't', body: 'b', kind: 'notice' }).expect(404);
+      await notice({ title: ' ', body: 'b', kind: 'notice' }).expect(400);
+      await notice({ title: 't', body: 'b', kind: 'nope' }).expect(400);
+      const first = (await notice({ title: '루프에 오신 걸 환영해요', body: '**반가워요**', kind: 'notice', pinned: true }).expect(201)).body;
+      const v1 = (await notice({ title: '1.1 업데이트', body: '- 배지 도감\n- 채널 삭제', kind: 'update', version: 'v1.1.0' }).expect(201)).body;
+      const ev = (await notice({ title: '가을 이벤트', body: '이벤트', kind: 'event' }).expect(201)).body;
+      expect(v1).toMatchObject({ kind: 'update', version: 'v1.1.0', pinned: false, excerpt: '배지 도감 채널 삭제' });
+
+      const list = (await http().get('/api/notices').expect(200)).body;
+      expect(list.pinned.map((n: { id: number }) => n.id)).toEqual([first.id]);
+      expect(list.items.map((n: { id: number }) => n.id)).toEqual([ev.id, v1.id]);
+      expect(list.items[0].body).toBeUndefined();
+      expect((await http().get('/api/notices').query({ kind: 'update' })).body.items.map((n: { id: number }) => n.id)).toEqual([v1.id]);
+      expect((await http().get('/api/notices').query({ size: 1 })).body.nextCursor).toBe(ev.id);
+      expect((await http().get('/api/notices/latest')).body).toMatchObject({ id: ev.id, title: '가을 이벤트' });
+      const detail = (await http().get(`/api/notices/${v1.id}`).expect(200)).body;
+      expect(detail).toMatchObject({ body: '- 배지 도감\n- 채널 삭제', prev: { id: first.id }, next: { id: ev.id } });
+      await http().get('/api/notices/abc').expect(404);
+
+      const edited = (await http().put(`/api/admin/notices/${v1.id}`).set(admin).send({ title: '1.1 업데이트 소식', body: '고침', kind: 'update', version: 'v1.1.0' }).expect(200)).body;
+      expect(edited.title).toBe('1.1 업데이트 소식');
+      expect(edited.updatedAt).toBeDefined();
+      await http().delete(`/api/admin/notices/${ev.id}`).set(admin).expect(204);
+      await http().delete(`/api/admin/notices/${ev.id}`).set(admin).expect(404);
+      await http().get(`/api/notices/${ev.id}`).expect(404);
+      const noticeLogs = (await http().get('/api/admin/logs').set(admin)).body.map((l: { action: string }) => l.action);
+      expect(noticeLogs.slice(0, 2)).toEqual(['notice.delete', 'notice.update']);
+
       // 비밀번호를 바꾸면 이미 받은 토큰도 바로 못 쓴다
       setEnv({ ADMIN_PASSWORD: 'another-password-456!' });
       await http().get('/api/admin/stats').set(admin).expect(401);

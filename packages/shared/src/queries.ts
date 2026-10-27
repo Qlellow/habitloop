@@ -54,6 +54,9 @@ import type {
   MyBottle,
   Badge,
   BadgeBook,
+  NoticeDetail,
+  NoticeKind,
+  NoticePage,
   User,
 } from './types';
 import { authStore } from './auth';
@@ -160,6 +163,34 @@ export function useUserProfile(id: string) {
     queryKey: ['user', id] as const,
     queryFn: ({ signal }) => api<UserProfile>(`/api/users/${encodeURIComponent(id)}`, { signal }),
     enabled: isUserId(id),
+  });
+}
+
+/** 사이트 공지사항 목록 (종류로 거르기, 첫 페이지에 고정 공지) */
+export function useSiteNotices(kind?: NoticeKind) {
+  return useInfiniteQuery({
+    queryKey: ['notices', 'list', kind ?? 'all'] as const,
+    queryFn: ({ pageParam, signal }) => api<NoticePage>('/api/notices', { query: { kind, cursor: pageParam, size: 15 }, signal }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+}
+
+export function useSiteNotice(id: number) {
+  return useQuery({
+    queryKey: ['notices', 'detail', id] as const,
+    queryFn: ({ signal }) => api<NoticeDetail>(`/api/notices/${id}`, { signal }),
+    enabled: Number.isInteger(id) && id > 0,
+  });
+}
+
+/** 가장 최근 공지 (안 읽은 공지 점 · 홈 안내 띠). 5분마다 */
+export function useLatestSiteNotice() {
+  return useQuery({
+    queryKey: ['notices', 'latest'] as const,
+    queryFn: ({ signal }) => api<{ id?: number; title?: string; kind?: NoticeKind; createdAt?: string }>('/api/notices/latest', { signal }),
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 }
 

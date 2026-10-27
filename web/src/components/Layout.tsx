@@ -14,6 +14,7 @@ import { ui } from './ui';
 import { cn } from '../lib/cn';
 import s from './Layout.styles';
 import { useSmartSticky } from '../lib/smartSticky';
+import { useNewNotice } from '../lib/notices';
 
 /** 한국 시간 기준 오늘 (YYYY-MM-DD) */
 const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
@@ -48,6 +49,7 @@ function UserMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
+  const freshNotice = useNewNotice();
   useDailyAttendance(user?.id);
 
   useEffect(() => setOpen(false), [pathname]);
@@ -101,6 +103,10 @@ function UserMenu() {
           </Link>
           <Link to="/badges" className={s.menuItem} role="menuitem" onPointerEnter={preload.badges}>
             배지 도감
+          </Link>
+          <Link to="/notices" className={cn(s.menuItem, 'flex items-center gap-1.5')} role="menuitem" onPointerEnter={preload.notices}>
+            공지사항
+            {freshNotice && <span className="w-1.5 h-1.5 rounded-full bg-danger" aria-label="새 공지" />}
           </Link>
           <Link to="/me/channels" className={s.menuItem} role="menuitem">
             내 채널
@@ -340,6 +346,17 @@ const CONTACT_URL = 'https://app.notion.com/p/3eae8a58bd17804a97e9d25b148c01fe';
 /** 로그인 · 회원가입 · 비밀번호 찾기 화면은 큰 카드 하나로 채우므로 푸터를 숨긴다 */
 const NO_FOOTER = ['/login', '/signup', '/password/reset'];
 
+/** 푸터의 공지사항 링크: 아직 보지 않은 새 공지가 있으면 빨간 점 */
+function FooterNoticeLink() {
+  const fresh = useNewNotice();
+  return (
+    <Link to="/notices" className="relative text-[13px] font-semibold text-fg-sub hover:text-fg-strong" onPointerEnter={preload.notices}>
+      공지사항
+      {fresh && <span className="absolute -top-0.5 -right-2 w-1.5 h-1.5 rounded-full bg-danger" aria-label="새 공지" />}
+    </Link>
+  );
+}
+
 export function SiteFooter() {
   const { pathname } = useLocation();
   if (NO_FOOTER.includes(pathname)) return null;
@@ -357,6 +374,7 @@ export function SiteFooter() {
             노션에 문의 남기기 ↗
           </a>
         </p>
+        <FooterNoticeLink />
         <p className={s.copyright}>© 루프 커뮤니티</p>
       </div>
     </footer>

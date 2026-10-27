@@ -3,6 +3,8 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AdminController } from './admin/admin.controller';
 import { AdminGuard } from './admin/admin.guard';
 import { AdminService } from './admin/admin.service';
+import { NoticesController } from './notices/notices.controller';
+import { NoticesService } from './notices/notices.service';
 import { AuthController } from './auth/auth.controller';
 import { AuthGuard, Public } from './auth/auth.guard';
 import { AuthService } from './auth/auth.service';
@@ -57,7 +59,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController, CommunityController, BottlesController, BadgesController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController, CommunityController, BottlesController, BadgesController, NoticesController],
   providers: [
     Database,
     PetsService,
@@ -86,6 +88,7 @@ class HealthController {
     NotificationsService,
     ReportsService,
     AdminService,
+    NoticesService,
     AdminGuard,
     OAuthService,
     { provide: APP_GUARD, useClass: AuthGuard },

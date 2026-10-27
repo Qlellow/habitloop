@@ -1,10 +1,17 @@
-import { Body, Controller, Get, Header, HttpCode, HttpStatus, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { Public } from '../auth/auth.guard';
+import { ApiError } from '../common/api-error';
 import { intParam } from '../common/cursor-page';
-import { AdminLoginCodeInput, AdminLoginInput, AdminReportActionInput, SuspendInput } from './admin.dto';
+import { AdminLoginCodeInput, AdminLoginInput, AdminReportActionInput, NoticeInputDto, SuspendInput } from './admin.dto';
 import { AdminGuard, AdminLogin, CurrentAdmin, type AdminUser } from './admin.guard';
 import { AdminService } from './admin.service';
+
+const noticeId = (raw: string) => {
+  const n = intParam(raw);
+  if (n == null || n < 1) throw ApiError.notFound('없는 공지예요');
+  return n;
+};
 
 const ipOf = (req: Request) => String(req.header('x-forwarded-for') ?? req.socket.remoteAddress ?? '').split(',')[0].trim();
 
@@ -77,6 +84,24 @@ export class AdminController {
   @Get('channels')
   channels(@Query('q') q?: string) {
     return this.admin.channelList(q?.slice(0, 50));
+  }
+
+  /* ───── 사이트 공지사항 (업데이트 소식 · 공지 · 이벤트 · 점검) ───── */
+
+  @Post('notices')
+  createNotice(@Body() input: NoticeInputDto) {
+    return this.admin.createNotice(input);
+  }
+
+  @Put('notices/:id')
+  updateNotice(@Param('id') id: string, @Body() input: NoticeInputDto) {
+    return this.admin.updateNotice(noticeId(id), input);
+  }
+
+  @Delete('notices/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeNotice(@Param('id') id: string) {
+    return this.admin.removeNotice(noticeId(id));
   }
 
   @Get('logs')

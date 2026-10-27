@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError, CODE_LENGTH, REPORT_REASONS, timeAgo } from '@loop/shared';
+import { api, ApiError, CODE_LENGTH, REPORT_REASONS, timeAgo, type NoticeDetail, type NoticeInput, type NoticeKind, type NoticePage, type NoticeSummary } from '@loop/shared';
+import { MarkdownEditor } from '../components/MarkdownEditor';
+import { noticeDate, NOTICE_KIND, NOTICE_KINDS } from '../lib/notices';
 import { LogoMark } from '../components/Layout';
 import { Toaster, toast } from '../components/Toast';
 import { ui } from '../components/ui';
@@ -73,6 +75,9 @@ const ACTION_LABEL: Record<string, string> = {
   'report.unhide': '신고 · 숨김 풀기',
   'report.delete': '신고 · 삭제',
   'report.dismiss': '신고 · 문제 없음',
+  'notice.create': '공지 올림',
+  'notice.update': '공지 고침',
+  'notice.delete': '공지 지움',
 };
 const reasonLabel = (r: string) => REPORT_REASONS.find((x) => x.value === r)?.label ?? r;
 const dateTime = (iso: string) => new Date(iso).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
@@ -472,6 +477,148 @@ function Logs({ adminKey }: { adminKey: string }) {
   );
 }
 
+/** 업데이트 공지를 새로 쓸 때 넣어 주는 틀 */
+const UPDATE_TEMPLATE = '## ✨ 새 기능\n- \n\n## 🛠 바뀐 점\n- \n\n## 🐞 고친 문제\n- \n';
+
+/** 공지 쓰기 · 고치기 */
+function NoticeEditor({ adminKey, editing, onDone }: { adminKey: string; editing?: NoticeSummary; onDone: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState<NoticeInput>({ title: '', body: editing ? '' : UPDATE_TEMPLATE, kind: 'update', pinned: false, version: '' });
+  const [loaded, setLoaded] = useState(!editing);
+  const [saving, setSaving] = useState(false);
+  // 고칠 때는 본문까지 받아 온다 (목록에는 미리보기만 있다)
+  useEffect(() => {
+    if (!editing) return;
+    void api<NoticeDetail>(`/api/notices/${editing.id}`).then((n) => {
+      setForm({ title: n.title, body: n.body, kind: n.kind, pinned: n.pinned, version: n.version ?? '' });
+      setLoaded(true);
+    });
+  }, [editing]);
+  const set = (patch: Partial<NoticeInput>) => setForm((f) => ({ ...f, ...patch }));
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const body = { ...form, version: form.version?.trim() || null };
+      await adminApi(adminKey, editing ? `/notices/${editing.id}` : '/notices', { method: editing ? 'PUT' : 'POST', body });
+      await qc.invalidateQueries({ queryKey: ['notices'] });
+      toast(editing ? '공지를 고쳤어요' : '공지를 올렸어요');
+      onDone();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '저장하지 못했어요');
+    } finally {
+      setSaving(false);
+    }
+  };
+  if (!loaded) return <div className={ui.spinner} />;
+  return (
+    <form className={cn(ui.card, 'p-5 flex flex-col gap-4')} onSubmit={submit}>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="m-0 text-[17px] font-bold text-fg-strong">{editing ? '공지 고치기' : '새 공지'}</h2>
+        <button type="button" className={cn(ui.button, ui.text, ui.small)} onClick={onDone}>
+          취소
+        </button>
+      </div>
+      <div>
+        <div className={ui.label}>종류</div>
+        <div className={ui.chips}>
+          {NOTICE_KINDS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              className={cn(ui.chip, 'h-8')}
+              aria-pressed={form.kind === k}
+              onClick={() => set({ kind: k, body: k === 'update' && !form.body.trim() ? UPDATE_TEMPLATE : form.body })}
+            >
+              {NOTICE_KIND[k].label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_160px] gap-4 max-[640px]:grid-cols-1">
+        <label className="block">
+          <span className={ui.label}>제목</span>
+          <input className={ui.input} value={form.title} maxLength={100} onChange={(e) => set({ title: e.target.value })} placeholder="예: 배지 도감이 생겼어요" required />
+        </label>
+        <label className="block">
+          <span className={ui.label}>버전 (선택)</span>
+          <input className={ui.input} value={form.version ?? ''} maxLength={20} onChange={(e) => set({ version: e.target.value })} placeholder="v1.1.0" />
+        </label>
+      </div>
+      <label className="flex items-center gap-2 text-sm font-semibold text-fg-sub">
+        <input type="checkbox" checked={!!form.pinned} onChange={(e) => set({ pinned: e.target.checked })} />
+        목록 맨 위에 고정
+      </label>
+      <MarkdownEditor value={form.body} onChange={(body) => set({ body })} label="내용" />
+      <div className="flex justify-end gap-2">
+        <button type="submit" className={cn(ui.button, ui.primary)} disabled={saving || !form.title.trim() || !form.body.trim()}>
+          {saving ? '저장하는 중…' : editing ? '고치기' : '올리기'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** 사이트 공지사항: 업데이트 소식 · 공지 · 이벤트 · 점검 (사이트의 /notices 에 보인다) */
+function Notices({ adminKey }: { adminKey: string }) {
+  const qc = useQueryClient();
+  const list = useQuery({ queryKey: ['notices', 'admin'], queryFn: () => api<NoticePage>('/api/notices', { query: { size: 50 } }) });
+  const [editing, setEditing] = useState<NoticeSummary | 'new'>();
+  const remove = async (n: NoticeSummary) => {
+    if (!confirm(`'${n.title}' 공지를 지울까요?`)) return;
+    try {
+      await adminApi(adminKey, `/notices/${n.id}`, { method: 'DELETE' });
+      await qc.invalidateQueries({ queryKey: ['notices'] });
+      toast('공지를 지웠어요');
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '지우지 못했어요');
+    }
+  };
+  if (editing) return <NoticeEditor adminKey={adminKey} editing={editing === 'new' ? undefined : editing} onDone={() => setEditing(undefined)} />;
+  const rows = [...(list.data?.pinned ?? []), ...(list.data?.items ?? [])];
+  return (
+    <section className={cn(ui.card, 'p-5')}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <p className="m-0 text-sm text-fg-sub">
+          올린 공지는 사이트의{' '}
+          <a href="/notices" target="_blank" rel="noreferrer" className="text-primary font-semibold">
+            공지사항
+          </a>
+          에 보이고, 30일 동안 홈 위쪽에 새 공지 안내가 떠요.
+        </p>
+        <button type="button" className={cn(ui.button, ui.primary, ui.small)} onClick={() => setEditing('new')}>
+          새 공지
+        </button>
+      </div>
+      {!list.data ? (
+        <div className={ui.spinner} />
+      ) : rows.length === 0 ? (
+        <p className={ui.empty}>아직 올린 공지가 없어요</p>
+      ) : (
+        <ul className="list-none m-0 p-0">
+          {rows.map((n) => (
+            <li key={n.id} className="flex items-center gap-3 py-3 border-t border-line text-sm">
+              <span className={cn('flex-none px-1.5 py-px rounded-sm text-[12px] font-bold', NOTICE_KIND[n.kind as NoticeKind].className)}>{NOTICE_KIND[n.kind as NoticeKind].label}</span>
+              <a href={`/notices/${n.id}`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-semibold text-fg-strong hover:text-primary">
+                {n.pinned && '📌 '}
+                {n.title}
+                {n.version && <span className="ml-1.5 font-medium text-fg-weak">{n.version}</span>}
+              </a>
+              <span className="flex-none text-[13px] text-fg-weak tabular-nums">{noticeDate(n.createdAt)}</span>
+              <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => setEditing(n)}>
+                고치기
+              </button>
+              <button type="button" className={cn(ui.button, ui.text, ui.small, 'text-danger-text')} onClick={() => remove(n)}>
+                지우기
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /* ───────── 관리자 화면 ───────── */
 
 const TABS = [
@@ -479,6 +626,7 @@ const TABS = [
   ['reports', '신고'],
   ['users', '사용자'],
   ['channels', '채널'],
+  ['notices', '공지사항'],
   ['logs', '기록'],
 ] as const;
 type Tab = (typeof TABS)[number][0];
@@ -526,6 +674,7 @@ function Dashboard({ adminKey, onLogout }: { adminKey: string; onLogout: () => v
         {tab === 'reports' && <Reports adminKey={adminKey} />}
         {tab === 'users' && <Users adminKey={adminKey} />}
         {tab === 'channels' && <Channels adminKey={adminKey} />}
+        {tab === 'notices' && <Notices adminKey={adminKey} />}
         {tab === 'logs' && <Logs adminKey={adminKey} />}
       </main>
     </div>

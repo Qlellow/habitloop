@@ -14,6 +14,8 @@ import HomePage from './pages/HomePage';
 const PostDetailPage = lazy(loaders.post);
 const UserPage = lazy(loaders.user);
 const BadgesPage = lazy(loaders.badges);
+const NoticesPage = lazy(loaders.notices);
+const NoticeDetailPage = lazy(loaders.notice);
 const InvitePage = lazy(loaders.invite);
 const WritePage = lazy(loaders.write);
 const LoginPage = lazy(loaders.login);
@@ -112,6 +114,9 @@ const router = createBrowserRouter([
       // 배지 도감: 내 것 · 다른 사람 것
       { path: '/badges', element: auth(<BadgesPage />) },
       { path: '/u/:id/badges', element: <BadgesPage /> },
+      // 사이트 공지사항 · 업데이트 소식
+      { path: '/notices', element: <NoticesPage /> },
+      { path: '/notices/:id', element: <NoticeDetailPage /> },
       // 비공개 채널 초대 링크 · QR
       { path: '/invite/:code', element: <InvitePage /> },
       { path: '/posts/:id/edit', element: auth(<WritePage />) },
