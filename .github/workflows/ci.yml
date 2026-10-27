@@ -67,9 +67,37 @@ jobs:
         env:
           CI: 1
 
+  e2e:
+    name: 화면 자동 테스트 (E2E)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: API · 웹 빌드
+        run: npm run build -w api && npm run build -w web
+      - name: 크로미움 설치
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      # API 는 메모리 DB + 샘플 데이터로 뜨고(DATABASE_URL 없음), 웹은 빌드 미리보기로 (playwright.config.ts 의 webServer)
+      - name: 주요 흐름 테스트
+        run: npm run e2e -w web
+      - name: 실패하면 리포트 · 추적 남기기
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 7
+
   docker:
     name: Docker 이미지 (${{ matrix.service }})
-    needs: [api, web-and-mobile]
+    needs: [api, web-and-mobile, e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: read
