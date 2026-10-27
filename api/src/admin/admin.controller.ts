@@ -6,6 +6,7 @@ import { intParam } from '../common/cursor-page';
 import { AdminLoginCodeInput, AdminLoginInput, AdminReportActionInput, NoticeInputDto, SuspendInput } from './admin.dto';
 import { AdminGuard, AdminLogin, CurrentAdmin, type AdminUser } from './admin.guard';
 import { AdminService } from './admin.service';
+import { ClientErrorsService } from '../client-errors/client-errors.service';
 
 const noticeId = (raw: string) => {
   const n = intParam(raw);
@@ -25,7 +26,10 @@ const ipOf = (req: Request) => String(req.header('x-forwarded-for') ?? req.socke
 @UseGuards(AdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly errors: ClientErrorsService,
+  ) {}
 
   /** 관리자 주소가 맞는지 (맞으면 204, 아니면 가드가 404) */
   @AdminLogin()
@@ -102,6 +106,19 @@ export class AdminController {
   @HttpCode(HttpStatus.NO_CONTENT)
   removeNotice(@Param('id') id: string) {
     return this.admin.removeNotice(noticeId(id));
+  }
+
+  /* ───── 사용자 화면 오류 ───── */
+
+  @Get('errors')
+  clientErrors() {
+    return this.errors.list();
+  }
+
+  @Delete('errors/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  resolveError(@Param('id') id: string) {
+    return this.errors.resolve(id.slice(0, 40));
   }
 
   @Get('logs')

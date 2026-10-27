@@ -571,4 +571,23 @@ CREATE TABLE channel_villages (
 );
 `,
   },
+  {
+    // 사용자 화면에서 난 오류 (같은 오류는 fingerprint 로 묶어 횟수만). 사용자 · IP 는 남기지 않는다
+    name: '032_client_errors',
+    sql: `
+CREATE TABLE client_errors (
+    fingerprint  VARCHAR(40)   PRIMARY KEY,
+    kind         VARCHAR(12)   NOT NULL,
+    message      VARCHAR(500)  NOT NULL,
+    stack        TEXT          NOT NULL DEFAULT '',
+    path         VARCHAR(200)  NOT NULL DEFAULT '/',
+    user_agent   VARCHAR(300)  NOT NULL DEFAULT '',
+    release      VARCHAR(40),
+    count        INTEGER       NOT NULL DEFAULT 1,
+    first_seen   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    last_seen    TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_client_errors_last ON client_errors (last_seen DESC);
+`,
+  },
 ];

@@ -21,8 +21,9 @@
   --surface-pressed: var(--grey-50);
   --text-strong: var(--grey-900);
   --text: var(--grey-800);
-  --text-sub: var(--grey-600);
-  --text-weak: var(--grey-500);
+  /* 보조 글자색: 흰 · 회색 바탕에서 명도 대비 4.5:1 이상 (WCAG AA) */
+  --text-sub: var(--grey-700);
+  --text-weak: #66707d;
   --line: var(--grey-100);
   --field: var(--grey-100);
   /* 회색 버튼(bg-field)을 올렸을 때: 원래보다 한 단계만 진하게/밝게 */
@@ -30,9 +31,11 @@
   --primary: var(--blue-500);
   --primary-pressed: var(--blue-600);
   --primary-weak: var(--blue-50);
+  /* 글자로 쓰는 포인트 색 (text-primary): 바탕 · 연한 포인트 바탕에서도 4.5:1 이상. 버튼 바탕(bg-primary)은 브랜드 색 그대로 */
+  --primary-text: #1b64da;
   --danger: var(--red-500);
   /* 글자로 쓰는 빨강: 다크 배경에서는 더 밝게 (삭제·로그아웃 같은 위험한 동작) */
-  --danger-text: var(--red-500);
+  --danger-text: #d92b3a;
   --skeleton: var(--grey-100);
   --danger-weak: var(--red-50);
   --toast-bg: rgba(25, 31, 40, 0.94);
@@ -65,8 +68,9 @@
   --surface-pressed: #26262c;
   --text-strong: #f2f2f4;
   --text: #d9d9de;
-  --text-sub: #9e9ea6;
-  --text-weak: #7e7e87;
+  --text-sub: #b4b4bc;
+  --text-weak: #93939c;
+  --primary-text: #5aa0ff;
   --line: #2a2a31;
   --field: #2a2a31;
   --field-hover: #35353d;
@@ -89,8 +93,9 @@
     --surface-pressed: #26262c;
     --text-strong: #f2f2f4;
     --text: #d9d9de;
-    --text-sub: #9e9ea6;
-    --text-weak: #7e7e87;
+    --text-sub: #b4b4bc;
+    --text-weak: #93939c;
+    --primary-text: #5aa0ff;
     --line: #2a2a31;
     --field: #2a2a31;
   --field-hover: #35353d;
@@ -123,6 +128,7 @@
   --primary: #f2674a;
   --primary-pressed: #e0563a;
   --primary-weak: #ffece6;
+  --primary-text: #b8452a;
 }
 /* 낮 · 한낮: 맑은 하늘색 + 선명한 파랑 */
 :root[data-time='day'] {
@@ -136,6 +142,7 @@
   --primary: #2f80ed;
   --primary-pressed: #1f6fdc;
   --primary-weak: #e5f0ff;
+  --primary-text: #1b64da;
 }
 /* 저녁 · 노을: 남보랏빛 어스름, 지평선에만 부드러운 살구 · 장밋빛이 남는다 + 노을 살구색 */
 :root[data-time='evening'] {
@@ -150,6 +157,7 @@
   --primary: #e8795e;
   --primary-pressed: #d9684e;
   --primary-weak: rgba(232, 121, 94, 0.18);
+  --primary-text: #f2a088;
 }
 /* 새벽 · 별밤: 깊은 남색 + 차분한 파랑 */
 :root[data-time='dawn'] {
@@ -164,6 +172,7 @@
   --primary: #5b7cfa;
   --primary-pressed: #4a6aee;
   --primary-weak: rgba(91, 124, 250, 0.18);
+  --primary-text: #8ea4ff;
 }
 
 /* 하늘: 화면 뒤에 고정. 시간대가 바뀔 때는 이전 하늘을 복제(data-period)해 위에 겹쳐 1.2초 동안 사라지게 한다(크로스페이드).
@@ -884,7 +893,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
   color: var(--text-strong);
 }
 .loop-code-copy[data-copied] {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .loop-code-body {
   display: flex;
@@ -1186,7 +1195,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
 .rx-chip[aria-pressed='true'] {
   border-color: var(--primary);
   background: var(--primary-weak);
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .rx-emoji {
   font-size: 18px;
@@ -1786,7 +1795,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
 .live-chip.is-mine {
   border-color: var(--primary);
   background: var(--primary-weak);
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .live-emoji {
   font-size: 14px;
@@ -1991,7 +2000,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
 .read-ring-label svg {
   width: 20px;
   height: 20px;
-  color: var(--primary);
+  color: var(--primary-text);
   animation: read-check 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 .read-progress.is-done .read-ring {
@@ -2353,7 +2362,7 @@ body.home-dragging {
   cursor: pointer;
 }
 .home-item-actions > button:hover {
-  color: var(--primary);
+  color: var(--primary-text);
   border-color: var(--primary);
 }
 .home-item-actions > button:last-child:hover {
@@ -2474,7 +2483,7 @@ body.home-dragging {
   height: 34px;
   border-radius: 9px;
   background: var(--primary-weak);
-  color: var(--primary);
+  color: var(--primary-text);
   font-size: 16px;
   font-weight: 700;
 }
@@ -2865,7 +2874,7 @@ html.focus-mode main article h1 {
   padding: 1px 7px;
   border-radius: 999px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--primary-text);
   background: color-mix(in srgb, var(--primary) 12%, transparent);
 }
 .discovery-sparkles {

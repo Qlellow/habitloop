@@ -25,8 +25,12 @@ function spaFallback(): Plugin {
  */
 const routerDist = resolve(dirname(createRequire(import.meta.url).resolve('react-router/package.json')), 'dist/production');
 
+/** 이 빌드의 이름 (오류 보고에 붙인다): Vercel · GitHub Actions 의 커밋, 없으면 dev */
+const RELEASE = (process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'dev').slice(0, 7);
+
 export default defineConfig(({ command }) => ({
   plugins: [react(), spaFallback()],
+  define: { __RELEASE__: JSON.stringify(RELEASE) },
   resolve: {
     alias:
       command === 'build'

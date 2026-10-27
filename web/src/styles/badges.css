@@ -8,9 +8,9 @@
   --badge-legendary: linear-gradient(140deg, #ffe17a, #ffad33 45%, #ff8a3d 70%, #ffd76a);
   --badge-legendary-glow: rgba(255, 166, 41, 0.42);
   --badge-face: var(--surface);
-  --badge-common-text: #66758a;
-  --badge-rare-text: #6b5cff;
-  --badge-legendary-text: #e08a00;
+  --badge-common-text: #5d6b80;
+  --badge-rare-text: #5b4bd6;
+  --badge-legendary-text: #9a5c00;
 }
 :root[data-theme='dark'] {
   --badge-common: linear-gradient(140deg, #6b7686, #3f4754);

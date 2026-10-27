@@ -8,6 +8,8 @@ export default {
   theme: {
     extend: {
       maxWidth: { page: '1240px' },
+      // 글자로 쓰는 포인트 색은 명도 대비를 맞춘 --primary-text (버튼 바탕 bg-primary 는 브랜드 색 그대로)
+      textColor: { primary: { DEFAULT: 'var(--primary-text)' }, danger: { DEFAULT: 'var(--danger-text)' } },
       height: { header: '64px' },
       spacing: { header: '64px' },
       boxShadow: {
@@ -31,7 +33,7 @@ export default {
           css: {
             '--tw-prose-body': 'var(--text)',
             '--tw-prose-headings': 'var(--text-strong)',
-            '--tw-prose-links': 'var(--primary)',
+            '--tw-prose-links': 'var(--primary-text)',
             '--tw-prose-bold': 'var(--text-strong)',
             '--tw-prose-counters': 'var(--text-sub)',
             '--tw-prose-bullets': 'var(--text-weak)',

@@ -1769,6 +1769,22 @@ describe('커뮤니티', () => {
       const logs = (await http().get('/api/admin/logs').set(admin).expect(200)).body.map((l: { action: string }) => l.action);
       expect(logs.slice(0, 3)).toEqual(['user.unsuspend', 'user.suspend', 'login']);
 
+      // 사용자 화면 오류: 누구나 보내고(204), 같은 오류는 한 줄로 묶여 횟수만, 주소는 경로만 남긴다
+      const crash = { kind: 'render', message: "Cannot read properties of undefined (reading 'map')", stack: 'TypeError: x\n    at syncCachedSummary (queries-AbCd1234.js:10:5)', url: 'https://loop.dev/posts/9?token=secret#x' };
+      for (let i = 0; i < 3; i++) await http().post('/api/client-errors').send(crash).expect(204);
+      await http().post('/api/client-errors').send({ kind: 'nope', message: '다른 오류' }).expect(204);
+      await http().get('/api/admin/errors').set(bearer(user)).expect(404);
+      const errs = (await http().get('/api/admin/errors').set(admin).expect(200)).body;
+      expect(errs).toHaveLength(2);
+      const grouped = errs.find((e: { message: string }) => e.message.startsWith('Cannot read'));
+      expect(grouped).toMatchObject({ kind: 'render', count: 3, path: '/posts/9' });
+      expect(errs.find((e: { message: string }) => e.message === '다른 오류').kind).toBe('error');
+      await http().delete(`/api/admin/errors/${grouped.id}`).set(admin).expect(204);
+      expect((await http().get('/api/admin/errors').set(admin)).body).toHaveLength(1);
+      // 한 곳에서 너무 자주 보내면 1분에 20개까지만 받는다
+      for (let i = 0; i < 25; i++) await http().post('/api/client-errors').send({ message: `폭주 ${i}` }).expect(204);
+      expect((await http().get('/api/admin/errors').set(admin)).body.length).toBeLessThanOrEqual(21);
+
       // 사이트 공지사항: 관리자만 쓰고 누구나 본다
       const notice = (body: object) => http().post('/api/admin/notices').set(admin).send(body);
       await http().post('/api/admin/notices').set(bearer(user)).send({ title: 't', body: 'b', kind: 'notice' }).expect(404);

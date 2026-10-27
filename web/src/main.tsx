@@ -5,7 +5,10 @@ import { authStore, configureApi, queryClient, verifySession } from '@loop/share
 import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 import './styles/global.css';
 import App from './App';
+import { installErrorReporting } from './lib/errorReport';
 
+// 잡히지 않은 오류를 서버로 모은다 (관리자 화면 '오류' 탭)
+installErrorReporting();
 // 웹은 같은 도메인의 /api 로 요청한다 (개발: Vite 프록시, 운영: Nginx 프록시)
 configureApi({ baseUrl: import.meta.env.VITE_API_URL ?? '' });
 // localStorage 는 동기라 첫 렌더 전에 로그인 상태가 복원된다
