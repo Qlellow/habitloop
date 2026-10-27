@@ -440,7 +440,7 @@ export default function PostDetailPage() {
   const id = Number(useParams().id);
   const summary = (useLocation().state as { summary?: PostSummary } | null)?.summary;
   const navigate = useNavigate();
-  const { data: post, isPlaceholderData, error } = usePost(id, summary?.id === id ? summary : undefined);
+  const { data: post, isPlaceholderData, error, refetch, isFetching } = usePost(id, summary?.id === id ? summary : undefined);
   const del = useDeletePost();
   const { isLoggedIn } = useAuth();
   const [reporting, setReporting] = useState(false);
@@ -501,7 +501,15 @@ export default function PostDetailPage() {
     >
       {focus && <FocusBar />}
       <article className={cn(ui.card, s.article)}>
-        {!post ? (
+        {!post && error ? (
+          // 404 · 403 말고 다른 오류(네트워크 등): 뼈대만 남기지 않고 다시 시도할 수 있게
+          <div className={ui.empty}>
+            <p className="m-0 mb-3">글을 불러오지 못했어요</p>
+            <button type="button" className={cn(ui.button, ui.secondary, ui.small)} disabled={isFetching} onClick={() => void refetch()}>
+              {isFetching ? '불러오는 중…' : '다시 시도'}
+            </button>
+          </div>
+        ) : !post ? (
           <>
             <div className={ui.skeleton} style={{ width: 80, height: 16 }} />
             <div className={ui.skeleton} style={{ width: '70%', height: 32, margin: '14px 0 24px' }} />

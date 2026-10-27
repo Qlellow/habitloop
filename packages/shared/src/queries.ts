@@ -687,14 +687,27 @@ export function useCategoryMutation(slug: string) {
 /* ───────── 게시글 ───────── */
 
 /** ['posts', ...] 아래 캐시 모양: 무한 스크롤 목록 · 번호 페이지 · 인기글/공지 배열 */
-type PostsCache = InfiniteData<CursorPage<PostSummary>> | PostPage | PostSummary[];
+/**
+ * ['posts', …] 아래 캐시의 모양: 무한 목록 · 번호 페이지 · 배열(인기글 · 공지), 그리고 오늘의 발견({ post, past }).
+ * 모양이 다른 캐시가 더 생겨도 깨지지 않게, 아는 모양만 다룬다
+ */
+type PostsCache = InfiniteData<CursorPage<PostSummary>> | PostPage | PostSummary[] | Discovery;
+
+/** 캐시 하나에 들어 있는 글 요약들 (모르는 모양이면 빈 배열) */
+function summariesIn(data: PostsCache | undefined): PostSummary[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  // 무한 목록 (번호 페이지 PostPage 의 pages 는 쪽수라 pageParams 로 가른다)
+  if ('pageParams' in data && Array.isArray(data.pages)) return data.pages.flatMap((p) => p?.items ?? []);
+  if ('items' in data && Array.isArray(data.items)) return data.items;
+  if ('post' in data && data.post) return [data.post];
+  return [];
+}
 
 /** 목록·인기글 캐시에 이미 있는 글 요약을 찾는다 (상세 화면을 먼저 그리는 데 쓴다) */
 function findCachedSummary(qc: QueryClient, id: number): PostSummary | undefined {
   for (const [, data] of qc.getQueriesData<PostsCache>({ queryKey: keys.posts })) {
-    if (!data) continue;
-    const items = Array.isArray(data) ? data : 'pageParams' in data ? data.pages.flatMap((p) => p.items) : data.items;
-    const hit = items.find((p) => p.id === id);
+    const hit = summariesIn(data).find((p) => p.id === id);
     if (hit) return hit;
   }
   // 채널 목록의 최근 글 미리보기에서 들어온 경우
@@ -724,15 +737,23 @@ function syncCachedSummary(qc: QueryClient, post: PostDetail) {
   qc.setQueriesData<PostsCache>({ queryKey: keys.posts }, (data) => {
     if (!data) return data;
     if (Array.isArray(data)) return patchList(data);
-    if (!('pageParams' in data)) {
+    if ('pageParams' in data) {
+      const pages = data.pages.map((page) => {
+        const items = patchList(page.items);
+        return items === page.items ? page : { ...page, items };
+      });
+      return pages.some((page, i) => page !== data.pages[i]) ? { ...data, pages } : data;
+    }
+    if ('items' in data && Array.isArray(data.items)) {
       const items = patchList(data.items);
       return items === data.items ? data : { ...data, items };
     }
-    const pages = data.pages.map((page) => {
-      const items = patchList(page.items);
-      return items === page.items ? page : { ...page, items };
-    });
-    return pages.some((page, i) => page !== data.pages[i]) ? { ...data, pages } : data;
+    // 오늘의 발견
+    if ('post' in data && data.post) {
+      const next = patch(data.post);
+      return next === data.post ? data : { ...data, post: next };
+    }
+    return data;
   });
   qc.setQueriesData<ChannelPreview[]>({ queryKey: ['channels', 'previews'] }, (list) => {
     if (!list) return list;
@@ -750,7 +771,12 @@ export function usePost(id: number, placeholder?: PostSummary) {
     queryKey: keys.post(id),
     queryFn: async ({ signal }) => {
       const post = await api<PostDetail>(`/api/posts/${id}`, { signal });
-      syncCachedSummary(qc, post);
+      // 목록 숫자 맞추기는 덤: 여기서 무엇이 잘못돼도 글은 보여야 한다
+      try {
+        syncCachedSummary(qc, post);
+      } catch (e) {
+        console.warn('목록 캐시를 맞추지 못했어요', e);
+      }
       return post;
     },
     // 목록에서 넘어온 경우 이미 아는 정보(제목, 작성자 등)로 먼저 그려서 체감 속도를 높인다
