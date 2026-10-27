@@ -7,6 +7,7 @@ import { Database } from '../db/database';
 import { Mailer } from '../mail/mailer';
 import { VerificationService } from '../mail/verification.service';
 import { PostsService } from '../posts/posts.service';
+import { NoticesService, type NoticeInput } from '../notices/notices.service';
 import { adminConfig, adminVersion, checkAdmin } from './admin.config';
 
 const LOGIN_FAIL_LIMIT = 5;
@@ -34,6 +35,7 @@ export class AdminService {
     private readonly mailer: Mailer,
     private readonly posts: PostsService,
     private readonly channels: ChannelsService,
+    private readonly notices: NoticesService,
   ) {}
 
   /* ───── 로그인 ───── */
@@ -252,6 +254,25 @@ export class AdminService {
   }
 
   /* ───── 관리 기록 ───── */
+
+  /* ───── 사이트 공지사항 ───── */
+
+  async createNotice(input: NoticeInput) {
+    const notice = await this.notices.create(input);
+    await this.log('notice.create', `notice:${notice.id}`, notice.title);
+    return notice;
+  }
+
+  async updateNotice(id: number, input: NoticeInput) {
+    const notice = await this.notices.update(id, input);
+    await this.log('notice.update', `notice:${id}`, notice.title);
+    return notice;
+  }
+
+  async removeNotice(id: number) {
+    const title = await this.notices.remove(id);
+    await this.log('notice.delete', `notice:${id}`, title);
+  }
 
   logs() {
     return this.db.query(

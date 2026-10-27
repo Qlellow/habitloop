@@ -176,6 +176,7 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
     const list: Command[] = [
       { id: 'home', group: '이동', label: '홈', keywords: 'home 처음 메인', icon: <HomeIcon />, run: () => go('/') },
       { id: 'channels', group: '이동', label: '채널 둘러보기', keywords: 'channels 채널 목록 찾기 탐색', icon: <GridIcon />, run: () => go('/channels') },
+      { id: 'notices', group: '이동', label: '공지사항', keywords: 'notices notice update 공지 업데이트 소식 새 기능 패치', icon: <DocIcon />, run: () => go('/notices'), searchOnly: true },
     ];
     if (isLoggedIn) {
       list.push(

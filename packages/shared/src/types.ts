@@ -632,3 +632,39 @@ export interface VoiceJoin {
   room: { id: number; name: string; maxParticipants: number };
   channel: { slug: string; name: string; iconVersion: number; color?: number | null };
 }
+
+/** 사이트 공지사항 종류: 업데이트 · 공지 · 이벤트 · 점검 */
+export type NoticeKind = 'update' | 'notice' | 'event' | 'maintenance';
+
+export interface NoticeSummary {
+  id: number;
+  title: string;
+  excerpt: string;
+  kind: NoticeKind;
+  pinned: boolean;
+  /** 업데이트 버전 (v1.1.0 등) */
+  version?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface NoticeDetail extends NoticeSummary {
+  body: string;
+  prev?: { id: number; title: string };
+  next?: { id: number; title: string };
+}
+
+export interface NoticePage {
+  /** 고정 공지 (첫 페이지에만) */
+  pinned: NoticeSummary[];
+  items: NoticeSummary[];
+  nextCursor?: number | null;
+}
+
+export interface NoticeInput {
+  title: string;
+  body: string;
+  kind: NoticeKind;
+  pinned?: boolean;
+  version?: string | null;
+}
