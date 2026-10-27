@@ -10,3 +10,7 @@ target/
 .DS_Store
 *.tsbuildinfo
 .expo/
+
+# 화면 자동 테스트 결과
+web/test-results/
+web/playwright-report/
