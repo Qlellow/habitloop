@@ -9,15 +9,16 @@ const s = {
   logo: 'flex-none flex items-center gap-2 text-xl font-extrabold tracking-[-0.03em] text-fg-strong select-none',
   logoMark: 'w-7 h-7',
   // 아주 좁은 화면: 홈은 로고로, 채널은 검색으로 갈 수 있으니 글자 메뉴를 숨겨 검색창 자리를 만든다
-  nav: 'flex gap-0.5 select-none max-[520px]:hidden',
+  // 검색창이 넓어져도 메뉴는 줄어들지 않는다 (파이어폭스는 '채널'을 두 줄로 접었다)
+  nav: 'flex-none flex gap-0.5 select-none max-[520px]:hidden',
   navLink:
-    'flex items-center h-9 px-3 rounded-sm text-[15px] font-semibold text-fg-sub transition-colors ' +
+    'flex items-center h-9 px-3 rounded-sm text-[15px] font-semibold whitespace-nowrap text-fg-sub transition-colors ' +
     'hover:bg-field hover:text-fg-strong aria-[current=page]:text-fg-strong',
   actions: 'ml-auto flex items-center gap-2 select-none',
 
   menuWrap: 'relative',
   userButton:
-    'flex items-center gap-2 h-10 pl-1 pr-2.5 rounded-md font-semibold text-fg-strong transition-colors ' +
+    'flex items-center gap-2 h-10 pl-1 pr-2.5 rounded-md font-semibold whitespace-nowrap text-fg-strong transition-colors ' +
     'hover:bg-field aria-expanded:bg-field',
   userName: 'max-[520px]:hidden',
   avatar: 'flex-none grid place-items-center w-8 h-8 rounded-full bg-primary-weak text-primary text-sm font-bold',
