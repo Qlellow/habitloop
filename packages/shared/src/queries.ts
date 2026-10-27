@@ -57,6 +57,7 @@ import type {
   NoticeDetail,
   NoticeKind,
   NoticePage,
+  Village,
   User,
 } from './types';
 import { authStore } from './auth';
@@ -163,6 +164,16 @@ export function useUserProfile(id: string) {
     queryKey: ['user', id] as const,
     queryFn: ({ signal }) => api<UserProfile>(`/api/users/${encodeURIComponent(id)}`, { signal }),
     enabled: isUserId(id),
+  });
+}
+
+/** 채널 마을 (서버가 30초 캐시) */
+export function useVillage(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: ['channel', slug, 'village'] as const,
+    queryFn: ({ signal }) => api<Village>(`/api/channels/${encodeURIComponent(slug)}/village`, { signal }),
+    enabled: enabled && !!slug,
+    staleTime: 30_000,
   });
 }
 

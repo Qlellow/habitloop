@@ -559,4 +559,16 @@ CREATE TABLE site_notices (
 CREATE INDEX idx_site_notices_kind ON site_notices (kind, id);
 `,
   },
+  {
+    // 채널 마을: 지금까지 쌓은 벽돌의 최고치와 건물 해금 시각 ({ code: ISO 시각 }). 한 번 생긴 건물은 사라지지 않는다
+    name: '031_channel_villages',
+    sql: `
+CREATE TABLE channel_villages (
+    channel_id  INTEGER       PRIMARY KEY REFERENCES channels (id) ON DELETE CASCADE,
+    peak        INTEGER       NOT NULL DEFAULT 0,
+    unlocked    JSONB         NOT NULL DEFAULT '{}'::jsonb,
+    updated_at  TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+`,
+  },
 ];
