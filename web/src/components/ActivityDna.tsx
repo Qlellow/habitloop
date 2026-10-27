@@ -138,12 +138,18 @@ function Radar({ traits }: { traits: Dna['traits'] }) {
   const ring = (v: number) => TRAITS.map((_, i) => at(i, v).join(',')).join(' ');
   return (
     <svg viewBox="0 0 180 180" className="dna-radar" role="img" aria-label={TRAITS.map((k) => `${TRAIT[k].label} ${traits[k]}`).join(', ')}>
-      {[0.25, 0.5, 0.75, 1].map((v) => (
-        <polygon key={v} points={ring(v)} className="dna-radar-grid" />
+      {/* 바깥 오각형 + 안쪽 눈금 (25 · 50 · 75) + 꼭짓점까지 잇는 축 */}
+      <polygon points={ring(1)} className="dna-radar-outline" />
+      {[0.25, 0.5, 0.75].map((v) => (
+        <polygon key={v} points={ring(v)} className={v === 0.5 ? 'dna-radar-grid' : 'dna-radar-grid dna-radar-dash'} />
       ))}
       {TRAITS.map((_, i) => {
         const [x, y] = at(i, 1);
         return <line key={i} x1={c} y1={c} x2={x} y2={y} className="dna-radar-grid" />;
+      })}
+      {TRAITS.map((_, i) => {
+        const [x, y] = at(i, 1);
+        return <circle key={i} cx={x} cy={y} r={2} className="dna-radar-tip" />;
       })}
       <polygon points={TRAITS.map((k, i) => at(i, Math.max(0.04, traits[k] / 100)).join(',')).join(' ')} className="dna-radar-shape" />
       {TRAITS.map((k, i) => {
