@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Image, Linking, ScrollView, Text, View } from 'react-native';
-import { marked, type Token, type Tokens } from 'marked';
+import { Marked, type Token, type Tokens } from 'marked';
 import { apiUrl, displayRatio, parseImageSrc } from '@loop/shared';
 import { cn } from './cn';
 
@@ -8,6 +8,38 @@ import { cn } from './cn';
  * 마크다운 → 네이티브 컴포넌트.
  * HTML 을 거치지 않고 marked 의 토큰을 Text/View 로 직접 그리므로 스크립트 삽입(XSS) 걱정이 없다.
  */
+
+/** 블라인드 ||가린 글||: 웹과 같은 규칙. 눌러야 보인다 */
+const md = new Marked({
+  gfm: true,
+  breaks: true,
+  extensions: [
+    {
+      name: 'blind',
+      level: 'inline',
+      start: (src: string) => src.indexOf('||'),
+      tokenizer(src: string) {
+        const m = /^\|\|(?=\S)([\s\S]*?\S)\|\|/.exec(src);
+        if (!m) return undefined;
+        return { type: 'blind', raw: m[0], tokens: this.lexer.inlineTokens(m[1]) };
+      },
+    },
+  ],
+});
+
+function Blind({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Text
+      accessibilityRole="button"
+      accessibilityLabel={open ? undefined : '가려진 내용 (눌러서 보기)'}
+      onPress={() => setOpen((v) => !v)}
+      className={open ? 'bg-field rounded-[4px]' : 'bg-fg-weak text-transparent rounded-[4px]'}
+    >
+      {children}
+    </Text>
+  );
+}
 
 const SAFE_URL = /^(https?:|mailto:)/i;
 
@@ -65,7 +97,7 @@ function RemoteImage({ src, alt }: { src: string; alt: string }) {
 
 export const Markdown = memo(function Markdown({ source }: { source: string }) {
   // 같은 본문이면 다시 파싱하지 않는다
-  const tokens = useMemo(() => marked.lexer(source, { gfm: true, breaks: true }), [source]);
+  const tokens = useMemo(() => md.lexer(source), [source]);
 
   const inline = (list: Token[] | undefined, key = ''): ReactNode[] =>
     (list ?? []).map((t, i) => {
@@ -97,6 +129,8 @@ export const Markdown = memo(function Markdown({ source }: { source: string }) {
           );
         case 'br':
           return '\n';
+        case 'blind':
+          return <Blind key={k}>{inline((t as Tokens.Generic).tokens, k)}</Blind>;
         case 'link':
           return (
             <Text key={k} className={s.link} onPress={() => open(t.href)} accessibilityRole="link">

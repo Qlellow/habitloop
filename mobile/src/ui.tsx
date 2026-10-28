@@ -1,9 +1,10 @@
 import { memo, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View, type PressableProps, type TextInputProps } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, Text, TextInput, View, type PressableProps, type TextInputProps } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { channelColor } from '@loop/shared';
+import { apiUrl, channelColor, type BadgeTier, type ChannelRole, type FeaturedBadge } from '@loop/shared';
 import { cn } from './cn';
-import { useColors } from './theme';
+import { useColors, useThemeVars } from './theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'text' | 'danger';
 
@@ -114,13 +115,82 @@ export const ChannelIcon = memo(function ChannelIcon({ slug, name, size = 36, co
   );
 });
 
-export function Avatar({ name, size = 38 }: { name: string; size?: number }) {
+/** 프로필 사진 (없으면 닉네임 첫 글자) */
+export function Avatar({ name, size = 38, uri }: { name: string; size?: number; uri?: string | null }) {
+  if (uri) {
+    return <Image source={{ uri: uri.startsWith('/api/') ? apiUrl(uri) : uri }} style={{ width: size, height: size, borderRadius: size / 2 }} accessibilityLabel={`${name} 프로필 사진`} />;
+  }
   return (
     <View className="items-center justify-center bg-primary-weak rounded-full" style={{ width: size, height: size }}>
       <Text className="text-primary font-bold" style={{ fontSize: size * 0.4 }}>
         {name.slice(0, 1)}
       </Text>
     </View>
+  );
+}
+
+const TIER_RING: Record<BadgeTier, string> = { common: '#a9b6c7', rare: '#7b72ff', legendary: '#ffad33' };
+
+/** 닉네임 옆 대표 배지 (등급 색 테두리 안의 아이콘) */
+export function BadgeMark({ badge, size = 18 }: { badge?: FeaturedBadge; size?: number }) {
+  if (!badge) return null;
+  return (
+    <View
+      accessibilityLabel={`대표 배지 ${badge.name}`}
+      className="items-center justify-center rounded-full bg-surface"
+      style={{ width: size, height: size, borderWidth: Math.max(1.5, size * 0.09), borderColor: TIER_RING[badge.tier] }}
+    >
+      <Text style={{ fontSize: size * 0.52, lineHeight: size * 0.7 }}>{badge.icon}</Text>
+    </View>
+  );
+}
+
+/** 운영진 표시 (소유자 · 관리자 · 매니저) */
+export function RoleTag({ role }: { role?: ChannelRole }) {
+  if (!role) return null;
+  const meta = { OWNER: ['소유자', '#f5a700'], ADMIN: ['관리자', '#03b26c'], MANAGER: ['매니저', '#3182f6'] }[role];
+  return (
+    <Text className="px-1.5 py-px rounded-[6px] overflow-hidden text-[11px] font-bold" style={{ color: meta[1], backgroundColor: `${meta[1]}22` }}>
+      {meta[0]}
+    </Text>
+  );
+}
+
+export interface SheetOption {
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+}
+
+/** 아래에서 올라오는 고르기 창 (안드로이드 Alert 는 버튼이 3개까지라 이걸로) */
+export function Sheet({ visible, title, options, onClose }: { visible: boolean; title?: string; options: SheetOption[]; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  // Modal 은 루트 밖에 그려지므로 색 변수를 여기서 다시 건다
+  const themeVars = useThemeVars();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable className="flex-1 justify-end bg-black/40" style={themeVars} onPress={onClose} accessibilityLabel="닫기">
+        <Pressable className="mx-3 rounded-[18px] bg-surface overflow-hidden" style={{ marginBottom: 12 + insets.bottom }} onPress={() => undefined}>
+          {title ? <Text className="px-5 pt-4 pb-2 text-[13px] font-semibold text-fg-weak">{title}</Text> : null}
+          {options.map((o, i) => (
+            <Pressable
+              key={i}
+              accessibilityRole="button"
+              className="px-5 py-4 border-t border-line active:bg-pressed"
+              onPress={() => {
+                onClose();
+                o.onPress();
+              }}
+            >
+              <Text className={cn('text-[16px] font-semibold', o.destructive ? 'text-danger' : 'text-fg-strong')}>{o.label}</Text>
+            </Pressable>
+          ))}
+          <Pressable accessibilityRole="button" className="px-5 py-4 border-t border-line items-center active:bg-pressed" onPress={onClose}>
+            <Text className="text-[16px] font-semibold text-fg-sub">취소</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -146,12 +216,13 @@ export function Heart({ filled, size = 16, color }: { filled?: boolean; size?: n
   return <Ionicons name={filled ? 'heart' : 'heart-outline'} size={size} color={color} />;
 }
 
-/** 헤더 오른쪽 아이콘 버튼 */
-export function HeaderIcon({ name, onPress, label }: { name: keyof typeof Ionicons.glyphMap; onPress: () => void; label: string }) {
+/** 헤더 오른쪽 아이콘 버튼 (dot: 안 읽은 것이 있다는 빨간 점) */
+export function HeaderIcon({ name, onPress, label, dot }: { name: keyof typeof Ionicons.glyphMap; onPress: () => void; label: string; dot?: boolean }) {
   const c = useColors();
   return (
     <Pressable onPress={onPress} accessibilityLabel={label} hitSlop={10} className="px-1.5">
       <Ionicons name={name} size={24} color={c.textStrong} />
+      {dot ? <View className="absolute top-0 right-1 w-2 h-2 rounded-full bg-danger" /> : null}
     </Pressable>
   );
 }
