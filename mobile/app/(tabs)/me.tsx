@@ -1,11 +1,14 @@
-import { Alert, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useAuth, useFeed, useSignOut } from '@loop/shared';
 import { PostFeed } from '../../src/PostList';
 import { Avatar, Button, SectionTitle } from '../../src/ui';
+import { useColors } from '../../src/theme';
 
 export default function MeScreen() {
   const { user } = useAuth();
+  const c = useColors();
   const signOut = useSignOut();
   const feed = useFeed({ authorId: user?.id }, user != null);
 
@@ -26,13 +29,19 @@ export default function MeScreen() {
       empty="아직 작성한 글이 없어요"
       header={
         <View className="pt-3">
-          <View className="flex-row items-center gap-3.5 p-5 bg-surface">
-            <Avatar name={user.nickname} size={56} />
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="내 프로필 보기"
+            onPress={() => router.push(`/u/${user.id}`)}
+            className="flex-row items-center gap-3.5 p-5 bg-surface active:bg-pressed"
+          >
+            <Avatar name={user.nickname} uri={user.avatarUrl} size={56} />
             <View className="flex-1">
               <Text className="text-xl font-bold text-fg-strong">{user.nickname}</Text>
               <Text className="mt-0.5 text-sm text-fg-weak">{user.email}</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color={c.weak} />
+          </Pressable>
           <View className="flex-row gap-2 px-5 pb-5 bg-surface mb-3">
             <Button title="채널 만들기" variant="secondary" className="flex-1" onPress={() => router.push('/channel-form')} />
             <Button

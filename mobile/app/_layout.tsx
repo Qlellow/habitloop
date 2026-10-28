@@ -42,6 +42,8 @@ export default function RootLayout() {
             <Stack.Screen name="c/[slug]/index" options={{ title: '' }} />
             <Stack.Screen name="c/[slug]/manage" options={{ title: '채널 관리' }} />
             <Stack.Screen name="search" options={{ title: '검색' }} />
+            <Stack.Screen name="notifications" options={{ title: '알림' }} />
+            <Stack.Screen name="u/[id]" options={{ title: '' }} />
             <Stack.Screen name="write" options={{ presentation: 'modal', title: '글쓰기' }} />
             <Stack.Screen name="channel-form" options={{ presentation: 'modal', title: '채널 만들기' }} />
             <Stack.Screen name="login" options={{ presentation: 'modal', title: '로그인' }} />

@@ -1,7 +1,7 @@
 import { ScrollView, Pressable, Text, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
-import { compact, useAuth, useChannels, useFeed } from '@loop/shared';
+import { compact, useAuth, useChannels, useFeed, useUnreadNotifications } from '@loop/shared';
 import { PostFeed } from '../../src/PostList';
 import { PopularBlock } from '../../src/Popular';
 import { ChannelIcon, HeaderIcon, SectionTitle } from '../../src/ui';
@@ -43,17 +43,26 @@ export default function HomeScreen() {
   const feed = useFeed({});
   const { isLoggedIn } = useAuth();
   const navigation = useNavigation();
+  const unread = useUnreadNotifications(isLoggedIn).data?.count ?? 0;
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <View className="flex-row gap-2.5 mr-3">
           <HeaderIcon name="search" label="검색" onPress={() => router.push('/search')} />
+          {isLoggedIn ? (
+            <HeaderIcon
+              name="notifications-outline"
+              label={unread > 0 ? `알림 ${unread}개 안 읽음` : '알림'}
+              dot={unread > 0}
+              onPress={() => router.push('/notifications')}
+            />
+          ) : null}
           <HeaderIcon name="create-outline" label="글쓰기" onPress={() => router.push(isLoggedIn ? '/write' : '/login')} />
         </View>
       ),
     });
-  }, [navigation, isLoggedIn]);
+  }, [navigation, isLoggedIn, unread]);
 
   return (
     <PostFeed
