@@ -28,7 +28,7 @@ function ChannelRail() {
             onPress={() => router.push(`/c/${c.slug}`)}
             className="w-[120px] p-3.5 rounded-md bg-field gap-1 active:opacity-70"
           >
-            <ChannelIcon slug={c.slug} name={c.name} />
+            <ChannelIcon slug={c.slug} name={c.name} color={c.color} iconVersion={c.iconVersion} />
             <Text className="mt-2 text-[15px] font-bold text-fg-strong" numberOfLines={1}>
               {c.name}
             </Text>

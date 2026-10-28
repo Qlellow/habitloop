@@ -2,7 +2,7 @@ import { memo, type ReactNode } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, Text, TextInput, View, type PressableProps, type TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { apiUrl, channelColor, type BadgeTier, type ChannelRole, type FeaturedBadge } from '@loop/shared';
+import { apiUrl, channelColor, channelIconUrl, type BadgeTier, type ChannelRole, type FeaturedBadge } from '@loop/shared';
 import { cn } from './cn';
 import { useColors, useThemeVars } from './theme';
 
@@ -101,13 +101,27 @@ export function SectionTitle({ children, right }: { children: ReactNode; right?:
   );
 }
 
-// 크기·채널 색처럼 값에 따라 바뀌는 부분만 style 로 넘긴다
-export const ChannelIcon = memo(function ChannelIcon({ slug, name, size = 36, color }: { slug: string; name: string; size?: number; color?: number | null }) {
+/** 채널 아이콘: 올린 이미지가 있으면 이미지, 없으면 채널 색 위에 이름 첫 글자 (크기·색처럼 값에 따라 바뀌는 부분만 style 로) */
+export const ChannelIcon = memo(function ChannelIcon({
+  slug,
+  name,
+  size = 36,
+  color,
+  iconVersion,
+}: {
+  slug: string;
+  name: string;
+  size?: number;
+  color?: number | null;
+  iconVersion?: number;
+}) {
+  const uri = channelIconUrl({ slug, iconVersion });
+  const radius = size * 0.3;
+  if (uri) {
+    return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: radius }} accessibilityLabel={`${name} 채널 아이콘`} />;
+  }
   return (
-    <View
-      className="items-center justify-center"
-      style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: channelColor(slug, color) }}
-    >
+    <View className="items-center justify-center" style={{ width: size, height: size, borderRadius: radius, backgroundColor: channelColor(slug, color) }}>
       <Text className="text-white font-extrabold" style={{ fontSize: size * 0.44 }}>
         {name.slice(0, 1)}
       </Text>

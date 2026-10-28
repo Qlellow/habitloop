@@ -54,6 +54,7 @@ export default function RootLayout() {
             <Stack.Screen name="points" options={{ title: '포인트' }} />
             <Stack.Screen name="settings" options={{ title: '설정' }} />
             <Stack.Screen name="c/[slug]/village" options={{ title: '마을' }} />
+            <Stack.Screen name="c/[slug]/reports" options={{ title: '신고함' }} />
             <Stack.Screen name="u/[id]" options={{ title: '' }} />
             <Stack.Screen name="write" options={{ presentation: 'modal', title: '글쓰기' }} />
             <Stack.Screen name="channel-form" options={{ presentation: 'modal', title: '채널 만들기' }} />

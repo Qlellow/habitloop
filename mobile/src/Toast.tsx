@@ -55,7 +55,7 @@ export function ToastHost() {
         position: 'absolute',
         left: 16,
         right: 16,
-        bottom: insets.bottom + 72,
+        bottom: insets.bottom + 96,
         alignItems: 'center',
         opacity: show,
         transform: [{ translateY: show.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],

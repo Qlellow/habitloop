@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Image, Linking, ScrollView, Text, View } from 'react-native';
 import { Marked, type Token, type Tokens } from 'marked';
+import { router, type Href } from 'expo-router';
 import { apiUrl, displayRatio, parseImageSrc } from '@loop/shared';
 import { cn } from './cn';
 
@@ -43,8 +44,12 @@ function Blind({ children }: { children: ReactNode }) {
 
 const SAFE_URL = /^(https?:|mailto:)/i;
 
+/** 루프 안의 주소(/c/…, /post/…, /u/…, /notices/…)는 앱 화면으로, 그 밖의 http(s) · mailto 는 바깥 앱으로 */
+const INTERNAL = /^\/(c|post|u|notices)\/[^\s]+$/;
+
 function open(url: string) {
-  if (SAFE_URL.test(url)) void Linking.openURL(url);
+  if (INTERNAL.test(url)) router.push(url as Href);
+  else if (SAFE_URL.test(url)) void Linking.openURL(url);
 }
 
 function decode(text: string) {

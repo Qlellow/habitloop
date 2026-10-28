@@ -371,18 +371,18 @@ export function useSaveChannel(slug?: string) {
  * 새 버전 번호를 채널 캐시에 바로 넣어 이미지가 곧장 바뀌고, 목록에 보이는 채널도 다시 받는다.
  */
 export function useChannelIcon(slug: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (image: Blob | null) =>
-      image
-        ? api<{ iconVersion: number }>(`/api/channels/${encodeURIComponent(slug)}/icon`, { method: 'PUT', blob: image })
-        : api<void>(`/api/channels/${encodeURIComponent(slug)}/icon`, { method: 'DELETE' }).then(() => ({ iconVersion: 0 })),
-    onSuccess: ({ iconVersion }) => {
-      qc.setQueryData<ChannelDetail>(keys.channel(slug), (c) => (c ? { ...c, iconVersion } : c));
-      qc.invalidateQueries({ queryKey: ['channels'] });
-      qc.invalidateQueries({ queryKey: ['post'] });
-    },
-  });
+  return useMutation({ mutationFn: (image: Blob | null) => uploadChannelIcon(slug, image) });
+}
+
+/** 채널 프로필 이미지 올리기/지우기 (훅 없이: 방금 만든 채널처럼 주소를 나중에 알 때) */
+export async function uploadChannelIcon(slug: string, image: Blob | null) {
+  const { iconVersion } = image
+    ? await api<{ iconVersion: number }>(`/api/channels/${encodeURIComponent(slug)}/icon`, { method: 'PUT', blob: image })
+    : await api<void>(`/api/channels/${encodeURIComponent(slug)}/icon`, { method: 'DELETE' }).then(() => ({ iconVersion: 0 }));
+  queryClient.setQueryData<ChannelDetail>(keys.channel(slug), (c) => (c ? { ...c, iconVersion } : c));
+  void queryClient.invalidateQueries({ queryKey: ['channels'] });
+  void queryClient.invalidateQueries({ queryKey: ['post'] });
+  return { iconVersion };
 }
 
 /** 운영진 목록 (소유자 → 관리자 → 매니저) */
