@@ -7,7 +7,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { authStore, configureApi, queryClient, useAuth, verifySession } from '@loop/shared';
 import { API_URL } from '../src/config';
 import { secureStorage } from '../src/storage';
-import { useColors, useThemeVars } from '../src/theme';
+import { useColors, useScheme, useThemeVars } from '../src/theme';
 import { ToastHost } from '../src/Toast';
 import { AppEffects } from '../src/AppEffects';
 
@@ -19,6 +19,7 @@ export default function RootLayout() {
   const { ready } = useAuth();
   const c = useColors();
   const themeVars = useThemeVars();
+  const scheme = useScheme();
 
   // 로그인 정보를 읽기 전에 요청하면 liked/mine 이 틀리게 오므로 잠깐 기다린다
   if (!ready) return <View className="flex-1 bg-bg" style={themeVars} />;
@@ -28,7 +29,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         {/* 팔레트를 CSS 변수로 내려 주는 루트: 아래 모든 화면의 className 색이 여기서 정해진다 */}
         <View className="flex-1" style={themeVars}>
-          <StatusBar style="auto" />
+          <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
           <Stack
             screenOptions={{
               headerStyle: { backgroundColor: c.surface },
@@ -51,6 +52,7 @@ export default function RootLayout() {
             <Stack.Screen name="pet" options={{ title: '내 펫' }} />
             <Stack.Screen name="sea" options={{ title: '메시지 표류병' }} />
             <Stack.Screen name="points" options={{ title: '포인트' }} />
+            <Stack.Screen name="settings" options={{ title: '설정' }} />
             <Stack.Screen name="c/[slug]/village" options={{ title: '마을' }} />
             <Stack.Screen name="u/[id]" options={{ title: '' }} />
             <Stack.Screen name="write" options={{ presentation: 'modal', title: '글쓰기' }} />

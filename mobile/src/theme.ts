@@ -1,5 +1,42 @@
+import { useSyncExternalStore } from 'react';
 import { useColorScheme } from 'react-native';
 import { vars } from 'nativewind';
+import { secureStorage } from './storage';
+
+/** 화면 테마: 기기 설정을 따르거나 밝게 · 어둡게 고정 (설정 화면에서 고르고, 이 기기에 저장) */
+export type ThemePref = 'system' | 'light' | 'dark';
+const THEME_KEY = 'loop.theme';
+let pref: ThemePref = 'system';
+const listeners = new Set<() => void>();
+
+void Promise.resolve(secureStorage.getItem(THEME_KEY))
+  .then((v) => {
+    if (v === 'light' || v === 'dark') setThemePref(v, false);
+  })
+  .catch(() => undefined);
+
+export function setThemePref(next: ThemePref, save = true) {
+  pref = next;
+  listeners.forEach((l) => l());
+  if (save) void Promise.resolve(next === 'system' ? secureStorage.removeItem(THEME_KEY) : secureStorage.setItem(THEME_KEY, next)).catch(() => undefined);
+}
+
+export function useThemePref() {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => void listeners.delete(l);
+    },
+    () => pref,
+  );
+}
+
+/** 지금 그릴 색 모드 (고른 테마, 아니면 기기 설정) */
+export function useScheme(): 'light' | 'dark' {
+  const system = useColorScheme();
+  const p = useThemePref();
+  return p === 'system' ? (system === 'dark' ? 'dark' : 'light') : p;
+}
 
 // 웹과 같은 토스 톤의 팔레트 (다크 모드 포함)
 const light = {
@@ -45,7 +82,7 @@ const dark: typeof light = {
 export type Colors = typeof light;
 
 export function useColors(): Colors {
-  return useColorScheme() === 'dark' ? dark : light;
+  return useScheme() === 'dark' ? dark : light;
 }
 
 /**
@@ -78,5 +115,5 @@ function toVars(c: Colors) {
 const themes = { light: toVars(light), dark: toVars(dark) };
 
 export function useThemeVars() {
-  return useColorScheme() === 'dark' ? themes.dark : themes.light;
+  return useScheme() === 'dark' ? themes.dark : themes.light;
 }
