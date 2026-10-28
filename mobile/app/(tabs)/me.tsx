@@ -12,6 +12,7 @@ const MENU: [keyof typeof Ionicons.glyphMap, string, Href][] = [
   ['boat-outline', '메시지 표류병', '/sea'],
   ['wallet-outline', '포인트', '/points'],
   ['megaphone-outline', '공지사항', '/notices'],
+  ['settings-outline', '설정', '/settings'],
 ];
 
 export default function MeScreen() {
@@ -27,6 +28,8 @@ export default function MeScreen() {
         <Text className="mt-2.5 mb-8 text-[15px] text-fg-sub">글을 쓰고, 좋아요를 누르고, 나만의 채널을 만들 수 있어요.</Text>
         <Button title="로그인" size="lg" full onPress={() => router.push('/login')} />
         <Button title="회원가입" variant="ghost" size="lg" full onPress={() => router.push('/signup')} className="mt-2.5" />
+        <Button title="공지사항" variant="text" full onPress={() => router.push('/notices')} className="mt-6" />
+        <Button title="화면 설정" variant="text" full onPress={() => router.push('/settings')} />
       </View>
     );
   }

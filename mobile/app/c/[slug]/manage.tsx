@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useCategoryMutation, useChannel, type ChannelCategory } from '@loop/shared';
+import { useCategoryMutation, useChannel, useDeleteChannel, type ChannelDetail, type ChannelCategory } from '@loop/shared';
 import { Button, Input, Loading } from '../../../src/ui';
 import { useColors } from '../../../src/theme';
+import { toast } from '../../../src/Toast';
 
 const MAX = 20;
 
@@ -99,6 +100,40 @@ function Row({
   );
 }
 
+/** 위험 구역: 채널 삭제 (소유자만). 채널 이름을 그대로 입력해야 삭제 버튼이 켜진다 */
+function DeleteChannel({ channel }: { channel: ChannelDetail }) {
+  const remove = useDeleteChannel(channel.slug);
+  const [typed, setTyped] = useState('');
+  return (
+    <View className="mb-3 p-5 bg-surface gap-3">
+      <Text className="text-[17px] font-bold text-danger">채널 삭제</Text>
+      <Text className="text-[13px] leading-[19px] text-fg-sub">
+        삭제하면 되돌릴 수 없어요. 글 {channel.postCount.toLocaleString()}개와 그 댓글 · 공감 · 반응, 팔로워 {channel.memberCount.toLocaleString()}명 · 운영진 · 카테고리 ·
+        음성방 · 신고함이 모두 함께 지워져요.
+      </Text>
+      <Text className="text-[13px] text-fg-sub">
+        확인을 위해 채널 이름 <Text className="font-bold text-fg-strong">{channel.name}</Text> 을(를) 입력해 주세요
+      </Text>
+      <Input value={typed} onChangeText={setTyped} placeholder={channel.name} autoCorrect={false} autoCapitalize="none" />
+      <Button
+        title="채널 삭제"
+        variant="danger"
+        disabled={typed !== channel.name}
+        loading={remove.isPending}
+        onPress={() =>
+          remove.mutate(typed, {
+            onSuccess: () => {
+              toast(`'${channel.name}' 채널을 삭제했어요`);
+              router.dismissTo('/channels');
+            },
+            onError: (e) => Alert.alert(e.message),
+          })
+        }
+      />
+    </View>
+  );
+}
+
 export default function ManageScreen() {
   const c = useColors();
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -176,6 +211,7 @@ export default function ManageScreen() {
             <Button title="추가" full disabled={!name.trim() || categories.length >= MAX} loading={mutation.isPending} onPress={add} />
           </View>
         </View>
+        <DeleteChannel channel={channel} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

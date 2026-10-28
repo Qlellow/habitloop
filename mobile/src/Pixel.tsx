@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, Text, View, useColorScheme } from 'react-native';
+import { Animated, Easing, Pressable, Text, View } from 'react-native';
 import { PET_GRID, VILLAGE_COLORS, VILLAGE_LOTS, petRects, villageSprite, type PetPublic, type Village, type VillageSpriteName } from '@loop/shared';
+import { useScheme } from './theme';
 
 /**
  * 도트(픽셀) 그림. 같은 색이 이어지는 가로 칸 하나를 View 하나로 그린다.
@@ -129,7 +130,7 @@ const spriteRuns = (name: VillageSpriteName, colors: Record<string, string>): Ru
  */
 export const VillageView = memo(function VillageView({ village }: { village: Village }) {
   const [width, setWidth] = useState(0);
-  const dark = useColorScheme() === 'dark';
+  const dark = useScheme() === 'dark';
   const colors = dark ? VILLAGE_COLORS.dark : VILLAGE_COLORS.light;
   const scale = width / W;
 
