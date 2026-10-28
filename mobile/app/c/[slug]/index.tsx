@@ -6,6 +6,7 @@ import { PostFeed } from '../../../src/PostList';
 import { ChannelIcon, Chip, Empty, HeaderIcon, Skeleton } from '../../../src/ui';
 import { PopularBlock } from '../../../src/Popular';
 import { VillageView } from '../../../src/Pixel';
+import { Markdown } from '../../../src/Markdown';
 
 /** 채널 마을 미리보기: 누르면 마을로 */
 function VillageCard({ slug }: { slug: string }) {
@@ -75,7 +76,11 @@ export default function ChannelScreen() {
                     <Text className="text-sm text-fg-weak">c/{channel.slug}</Text>
                   </View>
                 </View>
-                {channel.description ? <Text className="mt-3.5 text-[15px] leading-[22px] text-fg-sub">{channel.description}</Text> : null}
+                {channel.description ? (
+                  <View className="mt-3.5 -mb-3.5">
+                    <Markdown source={channel.description} />
+                  </View>
+                ) : null}
                 <Text className="mt-2 text-[13px] text-fg-weak">
                   글 {compact(channel.postCount)}개{channel.ownerNickname ? ` · 만든 사람 ${channel.ownerNickname}` : ''}
                 </Text>
