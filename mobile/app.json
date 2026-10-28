@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "루프",
-    "slug": "loop-community",
+    "slug": "loop",
+    "owner": "qlellow",
     "scheme": "loop",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -27,6 +28,14 @@
     "plugins": ["expo-router", "expo-secure-store"],
     "experiments": {
       "typedRoutes": false
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d0aa314d-916f-4db5-9036-5fffd0a8e2d5"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d0aa314d-916f-4db5-9036-5fffd0a8e2d5"
+      }
     }
   }
 }
