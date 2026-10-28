@@ -1,17 +1,20 @@
 import { useState, type ReactNode } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
+import { KeyboardArea } from '../src/Keyboard';
 import { router } from 'expo-router';
 import {
   CODE_LENGTH,
   cleanCode,
   passwordProblem,
   timeAgo,
+  uploadPostImage,
   useAuth,
   useBlockUser,
   useChangePassword,
   useLoginSessions,
   useMyBlocks,
   useRevokeSession,
+  useSetAvatar,
   useTwoFactor,
   useUpdateProfile,
   useWithdraw,
@@ -19,6 +22,7 @@ import {
 import { Avatar, Button, Chip, Empty, Input, Loading } from '../src/ui';
 import { setThemePref, useThemePref, type ThemePref } from '../src/theme';
 import { toast } from '../src/Toast';
+import { pickImage } from '../src/pickImage';
 
 function Section({ title, desc, children }: { title: string; desc?: string; children: ReactNode }) {
   return (
@@ -44,6 +48,46 @@ function ThemeSection() {
         {THEMES.map(([v, label]) => (
           <Chip key={v} label={label} selected={pref === v} onPress={() => setThemePref(v)} />
         ))}
+      </View>
+    </Section>
+  );
+}
+
+/** 프로필 사진: 정사각형으로 잘라 올린다 */
+function AvatarSection() {
+  const { user } = useAuth();
+  const setAvatar = useSetAvatar();
+  const [busy, setBusy] = useState(false);
+  const pick = async () => {
+    try {
+      const picked = await pickImage({ square: true, maxSide: 512 });
+      if (!picked) return;
+      setBusy(true);
+      const { id } = await uploadPostImage(picked.blob);
+      await setAvatar.mutateAsync(id);
+      toast('프로필 사진을 바꿨어요');
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!user) return null;
+  return (
+    <Section title="프로필 사진" desc="글 · 댓글 · 프로필에 보여요.">
+      <View className="flex-row items-center gap-4">
+        <Avatar name={user.nickname} uri={user.avatarUrl} size={64} />
+        <View className="flex-row gap-2">
+          <Button title="사진 고르기" variant="secondary" size="sm" loading={busy} onPress={pick} />
+          {user.avatarUrl ? (
+            <Button
+              title="지우기"
+              variant="ghost"
+              size="sm"
+              onPress={() => setAvatar.mutate(null, { onSuccess: () => toast('프로필 사진을 지웠어요'), onError: (e) => toast(e.message) })}
+            />
+          ) : null}
+        </View>
       </View>
     </Section>
   );
@@ -278,11 +322,12 @@ function WithdrawSection() {
 export default function SettingsScreen() {
   const { user } = useAuth();
   return (
-    <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardArea className="flex-1">
       <ScrollView contentContainerClassName="pt-3 pb-10" keyboardShouldPersistTaps="handled">
         <ThemeSection />
         {user ? (
           <>
+            <AvatarSection />
             <NicknameSection />
             <PasswordSection />
             <TwoFactorSection />
@@ -294,6 +339,6 @@ export default function SettingsScreen() {
           <Empty>로그인하면 계정 설정을 바꿀 수 있어요</Empty>
         )}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardArea>
   );
 }

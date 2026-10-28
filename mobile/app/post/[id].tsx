@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Alert, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
+import { KeyboardArea, useKeyboardVisible } from '../../src/Keyboard';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -10,6 +11,7 @@ import {
   apiUrl,
   compact,
   timeAgo,
+  uploadPostImage,
   useAddComment,
   useAuth,
   useBestComments,
@@ -31,6 +33,7 @@ import { Avatar, BadgeMark, Button, Empty, Heart, Loading, RoleTag, Sheet, Skele
 import { cn } from '../../src/cn';
 import { useColors } from '../../src/theme';
 import { toast } from '../../src/Toast';
+import { pickImage } from '../../src/pickImage';
 
 /** 댓글 안의 사진 ![](/api/images/…) 은 글자 대신 작은 사진으로 */
 const COMMENT_IMAGE = /!\[[^\]\n]*\]\((\/api\/images\/[A-Za-z0-9_-]{16,32})(?:#[^)\s]*)?\)/g;
@@ -270,6 +273,8 @@ function CommentItem({ comment: cm, best, reply }: { comment: Comment; best?: bo
 function Composer({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  // 키보드가 떠 있으면 아래 안전 영역(내비게이션 바) 여백은 키보드가 대신 차지한다
+  const bottom = useKeyboardVisible() ? 0 : insets.bottom;
   const { isLoggedIn } = useAuth();
   const { postId } = useContext(Ctx);
   const add = useAddComment(postId);
@@ -277,6 +282,21 @@ function Composer({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void })
   const [text, setText] = useState('');
   const input = useRef<TextInput>(null);
   const [inputHeight, setInputHeight] = useState(42);
+  const [uploading, setUploading] = useState(false);
+  /** 댓글에 사진 넣기: 올리고 글 끝에 ![](주소) 를 붙인다 (웹과 같은 방식, 목록에서는 작은 사진으로 보인다) */
+  const addImage = async () => {
+    try {
+      const picked = await pickImage();
+      if (!picked) return;
+      setUploading(true);
+      const { url } = await uploadPostImage(picked.blob);
+      setText((t) => `${t.trim() ? `${t.trimEnd()}\n` : ''}![](${url})`);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
   // 보내거나 다 지우면 다시 한 줄로 (웹은 늘어난 높이에서 줄어든 크기를 알려 주지 않는다)
   useEffect(() => {
     if (!text) setInputHeight(42);
@@ -292,7 +312,7 @@ function Composer({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void })
 
   if (!isLoggedIn) {
     return (
-      <View className="flex-row items-end gap-2 px-3 pt-2.5 bg-surface border-t border-border" style={{ paddingBottom: 10 + insets.bottom }}>
+      <View className="flex-row items-end gap-2 px-3 pt-2.5 bg-surface border-t border-border" style={{ paddingBottom: 10 + bottom }}>
         <Button title="로그인하고 댓글 남기기" variant="secondary" full onPress={() => router.push('/login')} />
       </View>
     );
@@ -310,7 +330,7 @@ function Composer({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void })
     else add.mutate(mode.kind === 'reply' ? { content, parentId: mode.to.id } : content, { onSuccess: done, onError });
   };
   return (
-    <View className="bg-surface border-t border-border" style={{ paddingBottom: 10 + insets.bottom }}>
+    <View className="bg-surface border-t border-border" style={{ paddingBottom: 10 + bottom }}>
       {mode.kind !== 'new' ? (
         <View className="flex-row items-center px-4 pt-2">
           <Text className="flex-1 text-[13px] text-fg-sub" numberOfLines={1}>
@@ -322,6 +342,17 @@ function Composer({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void })
         </View>
       ) : null}
       <View className="flex-row items-end gap-2 px-3 pt-2.5">
+        {mode.kind !== 'edit' ? (
+          <Pressable
+            onPress={addImage}
+            disabled={uploading}
+            accessibilityLabel="사진 넣기"
+            className="w-[36px] h-[42px] items-center justify-center"
+            hitSlop={6}
+          >
+            {uploading ? <ActivityIndicator color={c.primary} /> : <Ionicons name="image-outline" size={24} color={c.sub} />}
+          </Pressable>
+        ) : null}
         <TextInput
           ref={input}
           className="flex-1 px-4 rounded-[21px] bg-field text-[15px] text-fg-strong"
@@ -354,7 +385,8 @@ export default function PostScreen() {
   const id = Number(useLocalSearchParams<{ id: string }>().id);
   const navigation = useNavigation();
   const { isLoggedIn } = useAuth();
-  const { data: post, isPlaceholderData, error } = usePost(id);
+  const { data: post, isPlaceholderData, error, refetch: refetchPost } = usePost(id);
+  const [refreshing, setRefreshing] = useState(false);
   const comments = useComments(id);
   const best = useBestComments(id);
   const del = useDeletePost();
@@ -441,7 +473,7 @@ export default function PostScreen() {
 
   return (
     <Ctx.Provider value={ctx}>
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+      <KeyboardArea className="flex-1">
         <FlatList
           data={list}
           keyExtractor={(cm) => String(cm.id)}
@@ -462,12 +494,22 @@ export default function PostScreen() {
           ListFooterComponent={comments.isFetchingNextPage ? <Loading /> : <View className="h-6" />}
           onEndReached={() => comments.hasNextPage && !comments.isFetchingNextPage && comments.fetchNextPage()}
           onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                void Promise.all([refetchPost(), comments.refetch(), best.refetch()]).finally(() => setRefreshing(false));
+              }}
+              tintColor={c.primary}
+            />
+          }
           className="bg-surface"
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         />
         <Composer mode={mode} setMode={setMode} />
-      </KeyboardAvoidingView>
+      </KeyboardArea>
       <Sheet visible={sheet != null} title={sheet?.title} options={sheet?.options ?? []} onClose={() => setSheet(null)} />
     </Ctx.Provider>
   );

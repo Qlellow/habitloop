@@ -1,23 +1,29 @@
 import { useDeferredValue, useLayoutEffect, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { KeyboardArea, useKeyboardVisible } from '../src/Keyboard';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useChannel, useChannels, usePost, useSavePost, type PostDetail } from '@loop/shared';
+import { uploadPostImage, useChannel, useMyChannels, usePost, useSavePost, type PostDetail } from '@loop/shared';
 import { Markdown } from '../src/Markdown';
+import { pickImage } from '../src/pickImage';
 import { ChannelIcon, Chip, Input, Loading } from '../src/ui';
 import { cn } from '../src/cn';
 import { useColors } from '../src/theme';
 
+/** 올릴 채널: 글은 팔로우한 채널에만 쓸 수 있어서 내 채널(팔로우 · 북마크 순)에서 고른다 */
 function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: string) => void }) {
   const [open, setOpen] = useState(!value);
   const [input, setInput] = useState('');
-  const q = useDeferredValue(input);
+  const q = useDeferredValue(input.trim().toLowerCase());
   const { data: selected } = useChannel(value);
-  const { data: channels } = useChannels(q);
+  const { data: mine, isPending } = useMyChannels(true);
+  const list = (mine ?? []).filter((c) => !q || c.name.toLowerCase().includes(q) || c.slug.includes(q));
 
   if (!open && selected) {
     return (
       <Pressable className="flex-row items-center gap-2.5 p-3 rounded-md bg-field mb-3 active:opacity-70" onPress={() => setOpen(true)}>
-        <ChannelIcon slug={selected.slug} name={selected.name} color={selected.color} size={30} />
+        <ChannelIcon slug={selected.slug} name={selected.name} color={selected.color} iconVersion={selected.iconVersion} size={30} />
         <Text className="flex-1 text-base font-semibold text-fg-strong">{selected.name}</Text>
         <Text className="text-sm font-semibold text-primary">변경</Text>
       </Pressable>
@@ -26,7 +32,11 @@ function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: s
   return (
     <View className="gap-1 mb-3">
       <Input placeholder="어느 채널에 올릴까요?" value={input} onChangeText={setInput} />
-      {channels?.slice(0, 8).map((c) => (
+      {isPending ? <Loading /> : null}
+      {!isPending && !mine?.length ? (
+        <Text className="py-3 text-sm text-fg-sub">팔로우한 채널이 없어요. 채널을 팔로우하면 그 채널에 글을 쓸 수 있어요.</Text>
+      ) : null}
+      {list.slice(0, 12).map((c) => (
         <Pressable
           key={c.slug}
           className="flex-row items-center gap-2.5 py-2.5 px-1 active:opacity-60"
@@ -35,7 +45,7 @@ function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: s
             setOpen(false);
           }}
         >
-          <ChannelIcon slug={c.slug} name={c.name} color={c.color} size={30} />
+          <ChannelIcon slug={c.slug} name={c.name} color={c.color} iconVersion={c.iconVersion} size={30} />
           <Text className="flex-1 text-base font-semibold text-fg-strong">{c.name}</Text>
           <Text className="text-[13px] text-fg-weak">c/{c.slug}</Text>
         </Pressable>
@@ -44,19 +54,21 @@ function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: s
   );
 }
 
+/** 카테고리: 카테고리가 있는 채널은 꼭 골라야 한다 (서버도 막는다). 운영진 전용 카테고리는 운영진에게만 */
 function CategoryPicker({ channel, value, onChange }: { channel: string; value: number | null; onChange: (id: number | null) => void }) {
   const { data, isPlaceholderData } = useChannel(channel);
   if (!data || isPlaceholderData) return null;
-  // 관리자 전용 카테고리는 채널 관리자에게만 보인다
-  const selectable = data.categories.filter((c) => !c.ownerOnly || data.mine);
+  const selectable = data.categories.filter((c) => !c.ownerOnly || data.staff);
   if (!selectable.length) return null;
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 pb-3">
-      <Chip label="선택 안 함" selected={value == null} onPress={() => onChange(null)} />
-      {selectable.map((c) => (
-        <Chip key={c.id} label={c.name} selected={value === c.id} onPress={() => onChange(c.id)} />
-      ))}
-    </ScrollView>
+    <View className="pb-3">
+      <Text className={cn('mb-2 text-[13px] font-semibold', value == null ? 'text-primary' : 'text-fg-weak')}>카테고리를 골라 주세요</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
+        {selectable.map((c) => (
+          <Chip key={c.id} label={c.ownerOnly ? `📌 ${c.name}` : c.name} selected={value === c.id} onPress={() => onChange(c.id)} />
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -81,8 +93,13 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
   const [content, setContent] = useState(initial?.content ?? '');
   const [preview, setPreview] = useState(false);
   const selection = useRef({ start: 0, end: 0 });
+  const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
 
-  const valid = !!channel && title.trim().length > 0 && content.trim().length > 0;
+  const { data: channelData } = useChannel(channel);
+  const needsCategory = !!channelData?.categories.length;
+  const valid = !!channel && title.trim().length > 0 && content.trim().length > 0 && (!needsCategory || categoryId != null);
+  const [uploading, setUploading] = useState(false);
 
   const submit = () => {
     if (!valid || save.isPending) return;
@@ -122,16 +139,28 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
     selection.current = { start: cursor, end: cursor };
   };
 
+  /** 사진 넣기: 서버에 올리고 커서 자리에 ![](주소) 를 넣는다 */
+  const addImage = async () => {
+    if (uploading) return;
+    try {
+      const picked = await pickImage();
+      if (!picked) return;
+      setUploading(true);
+      const { url } = await uploadPostImage(picked.blob);
+      apply(() => ['\n![](', url, ')\n']);
+    } catch (e) {
+      Alert.alert((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-surface"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={100}
-    >
+    <KeyboardArea className="flex-1 bg-surface">
       <ScrollView contentContainerClassName="p-5 pb-10" keyboardShouldPersistTaps="handled">
         {initial ? (
           <View className="flex-row items-center gap-2.5 p-3 rounded-md bg-field mb-3">
-            <ChannelIcon slug={initial.channel.slug} name={initial.channel.name} color={initial.channel.color} size={30} />
+            <ChannelIcon slug={initial.channel.slug} name={initial.channel.name} color={initial.channel.color} iconVersion={initial.channel.iconVersion} size={30} />
             <Text className="flex-1 text-base font-semibold text-fg-strong">{initial.channel.name}</Text>
           </View>
         ) : (
@@ -190,7 +219,18 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
           keyboardShouldPersistTaps="always"
           className="grow-0 border-t border-border bg-surface"
           contentContainerClassName="px-2 py-1.5 gap-0.5"
+          // 키보드가 없을 때는 안드로이드 내비게이션 바에 가리지 않게
+          style={{ paddingBottom: keyboardVisible ? 0 : insets.bottom }}
         >
+          <Pressable
+            onPress={addImage}
+            disabled={uploading}
+            accessibilityLabel="사진 넣기"
+            className="min-w-[42px] h-[38px] items-center justify-center rounded-[8px] active:bg-field"
+            hitSlop={4}
+          >
+            {uploading ? <ActivityIndicator color={c.primary} /> : <Ionicons name="image-outline" size={20} color={c.sub} />}
+          </Pressable>
           {TOOLS.map(([label, wrap]) => (
             <Pressable
               key={label}
@@ -203,7 +243,7 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
           ))}
         </ScrollView>
       ) : null}
-    </KeyboardAvoidingView>
+    </KeyboardArea>
   );
 }
 

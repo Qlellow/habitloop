@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
+import { KeyboardArea } from '../src/Keyboard';
 import { router } from 'expo-router';
 import { cleanCode, CODE_LENGTH, useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
 import { Button, Input } from '../src/ui';
@@ -30,7 +31,7 @@ export default function LoginScreen() {
 
   if (twoFactor) {
     return (
-      <KeyboardAvoidingView className={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardArea className={s.flex}>
         <ScrollView contentContainerClassName={s.wrap} keyboardShouldPersistTaps="handled">
           <Text className={s.title}>{'이메일로 받은\n인증번호를 입력해 주세요'}</Text>
           <Text className={s.label}>{twoFactor.maskedEmail ?? '가입한 이메일'}(으)로 보냈어요</Text>
@@ -57,12 +58,12 @@ export default function LoginScreen() {
             onPress={() => resend.mutate(twoFactor.challenge, { onSuccess: (r) => setTwoFactor({ ...twoFactor, challenge: r.challenge }) })}
           />
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardArea>
     );
   }
 
   return (
-    <KeyboardAvoidingView className={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardArea className={s.flex}>
       <ScrollView contentContainerClassName={s.wrap} keyboardShouldPersistTaps="handled">
         <Text className={s.title}>{'이메일로\n로그인할게요'}</Text>
         <Text className={s.label}>이메일</Text>
@@ -79,6 +80,6 @@ export default function LoginScreen() {
         </Text>
         {__DEV__ ? <Text className={s.hint}>체험 계정: demo@loop.dev / password1234</Text> : null}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardArea>
   );
 }

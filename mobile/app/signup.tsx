@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
+import { KeyboardArea } from '../src/Keyboard';
 import { router } from 'expo-router';
 import { CODE_LENGTH, cleanCode, passwordProblem, useSignup, useSignupCode } from '@loop/shared';
 import { Button, Input } from '../src/ui';
@@ -18,7 +19,7 @@ export default function SignupScreen() {
   const valid = emailOk && sent && form.code.length === CODE_LENGTH && !passwordProblem(form.password) && form.nickname.trim().length >= 2;
 
   return (
-    <KeyboardAvoidingView className={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardArea className={s.flex}>
       <ScrollView contentContainerClassName={s.wrap} keyboardShouldPersistTaps="handled">
         <Text className={s.title}>{'반가워요!\n몇 가지만 알려 주세요'}</Text>
         <Text className={s.label}>닉네임</Text>
@@ -72,6 +73,6 @@ export default function SignupScreen() {
           </Text>
         </Text>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardArea>
   );
 }
