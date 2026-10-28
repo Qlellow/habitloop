@@ -1,8 +1,9 @@
 import { useLayoutEffect } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
-import { ApiError, compact, isUserId, useAuth, useBlockUser, useFeed, useUserProfile, type UserProfile } from '@loop/shared';
+import { ApiError, PET_SPECIES, PET_STAGES, compact, isUserId, useAuth, useBlockUser, useFeed, useUserProfile, type UserProfile } from '@loop/shared';
 import { PostFeed } from '../../src/PostList';
+import { PetView } from '../../src/Pixel';
 import { Avatar, BadgeMark, Button, Empty, SectionTitle, Skeleton } from '../../src/ui';
 
 const joinedAt = (iso: string) => {
@@ -50,6 +51,22 @@ function Header({ user }: { user?: UserProfile }) {
         </View>
         {me && me.id !== user.id ? <BlockButton user={user} /> : null}
       </View>
+      {user.pet ? (
+        <View className="flex-row items-center gap-4 mx-5 mb-4 p-3 rounded-lg bg-field">
+          <View className="w-[80px] h-[80px] items-center justify-end">
+            <PetView pet={user.pet} size={4} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[13px] text-fg-weak">{user.nickname}의 펫</Text>
+            <Text className="text-base font-bold text-fg-strong" numberOfLines={1}>
+              {user.pet.name} <Text className="text-sm text-primary">Lv.{user.pet.level}</Text>
+            </Text>
+            <Text className="text-sm text-fg-sub">
+              {PET_SPECIES.find((p) => p.species === user.pet!.species)?.label} · {PET_STAGES[user.pet.stage].label}
+            </Text>
+          </View>
+        </View>
+      ) : null}
       {user.badges?.length ? (
         <View className="pb-4">
           <Text className="px-5 pb-2 text-[13px] font-semibold text-fg-weak">받은 배지 {user.badges.length}</Text>

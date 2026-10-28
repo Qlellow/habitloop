@@ -129,18 +129,25 @@ export function Avatar({ name, size = 38, uri }: { name: string; size?: number; 
   );
 }
 
-const TIER_RING: Record<BadgeTier, string> = { common: '#a9b6c7', rare: '#7b72ff', legendary: '#ffad33' };
+export const TIER_RING: Record<BadgeTier, string> = { common: '#a9b6c7', rare: '#7b72ff', legendary: '#ffad33' };
 
-/** 닉네임 옆 대표 배지 (등급 색 테두리 안의 아이콘) */
-export function BadgeMark({ badge, size = 18 }: { badge?: FeaturedBadge; size?: number }) {
+/** 배지 메달 (닉네임 옆 대표 배지 · 도감): 등급 색 테두리 안의 아이콘. locked 면 흐리게, secret 이면 점선 */
+export function BadgeMark({ badge, size = 18, locked, secret }: { badge?: Pick<FeaturedBadge, 'name' | 'icon' | 'tier'>; size?: number; locked?: boolean; secret?: boolean }) {
+  const c = useColors();
   if (!badge) return null;
   return (
     <View
-      accessibilityLabel={`대표 배지 ${badge.name}`}
-      className="items-center justify-center rounded-full bg-surface"
-      style={{ width: size, height: size, borderWidth: Math.max(1.5, size * 0.09), borderColor: TIER_RING[badge.tier] }}
+      accessibilityLabel={locked ? undefined : `배지 ${badge.name}`}
+      className={cn('items-center justify-center rounded-full', locked ? 'bg-field' : 'bg-surface')}
+      style={{
+        width: size,
+        height: size,
+        borderWidth: Math.max(1.5, size * 0.07),
+        borderColor: locked ? c.border : TIER_RING[badge.tier],
+        borderStyle: secret ? 'dashed' : 'solid',
+      }}
     >
-      <Text style={{ fontSize: size * 0.52, lineHeight: size * 0.7 }}>{badge.icon}</Text>
+      <Text style={{ fontSize: size * 0.5, lineHeight: size * 0.68, opacity: locked ? 0.35 : 1 }}>{badge.icon}</Text>
     </View>
   );
 }

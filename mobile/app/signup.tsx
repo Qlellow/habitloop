@@ -8,7 +8,7 @@ import { auth as s } from '../src/authStyles';
 export default function SignupScreen() {
   const signup = useSignup();
   const sendCode = useSignupCode();
-  const [form, setForm] = useState({ nickname: '', email: '', password: '', code: '' });
+  const [form, setForm] = useState({ nickname: '', email: '', password: '', code: '', ref: '' });
   // 인증번호를 보낸 이메일. 이메일을 고치면 다시 받아야 한다
   const [sentTo, setSentTo] = useState<string>();
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -52,6 +52,8 @@ export default function SignupScreen() {
         ) : null}
         <Text className={s.label}>비밀번호</Text>
         <Input value={form.password} onChangeText={set('password')} secureTextEntry placeholder="8자 이상, 숫자·특수문자 포함" textContentType="newPassword" />
+        <Text className={s.label}>초대 코드 (선택)</Text>
+        <Input value={form.ref} onChangeText={set('ref')} autoCapitalize="characters" autoCorrect={false} placeholder="친구에게 받은 코드가 있으면 넣어 주세요 (+30P)" />
         {form.password && passwordProblem(form.password) ? <Text className={s.error}>{passwordProblem(form.password)}</Text> : null}
         {signup.error ? <Text className={s.error}>{signup.error.message}</Text> : null}
         <Button
@@ -61,7 +63,7 @@ export default function SignupScreen() {
           className="mt-7"
           loading={signup.isPending}
           disabled={!valid}
-          onPress={() => signup.mutate({ ...form, email }, { onSuccess: () => router.back() })}
+          onPress={() => signup.mutate({ ...form, email, ref: form.ref.trim() || undefined }, { onSuccess: () => router.back() })}
         />
         <Text className={s.switch}>
           이미 계정이 있나요?{' '}

@@ -4,6 +4,7 @@ import { useLayoutEffect } from 'react';
 import { compact, useAuth, useChannels, useFeed, useUnreadNotifications } from '@loop/shared';
 import { PostFeed } from '../../src/PostList';
 import { PopularBlock } from '../../src/Popular';
+import { DiscoveryCard, WeatherCard } from '../../src/HomeCards';
 import { ChannelIcon, HeaderIcon, SectionTitle } from '../../src/ui';
 
 function ChannelRail() {
@@ -70,7 +71,9 @@ export default function HomeScreen() {
       empty="아직 글이 없어요. 첫 글을 남겨 보세요!"
       header={
         <View className="bg-bg pt-3">
+          <WeatherCard />
           <ChannelRail />
+          <DiscoveryCard />
           <PopularBlock />
           <View className="bg-surface pb-3">
             <SectionTitle>전체 글</SectionTitle>

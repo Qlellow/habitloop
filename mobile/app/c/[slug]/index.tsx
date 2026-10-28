@@ -1,10 +1,28 @@
 import { useLayoutEffect } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { ApiError, compact, useAuth, useChannel, useFeed } from '@loop/shared';
+import { ApiError, compact, useAuth, useChannel, useFeed, useVillage } from '@loop/shared';
 import { PostFeed } from '../../../src/PostList';
 import { ChannelIcon, Chip, Empty, HeaderIcon, Skeleton } from '../../../src/ui';
 import { PopularBlock } from '../../../src/Popular';
+import { VillageView } from '../../../src/Pixel';
+
+/** 채널 마을 미리보기: 누르면 마을로 */
+function VillageCard({ slug }: { slug: string }) {
+  const { data: v } = useVillage(slug);
+  if (!v) return null;
+  return (
+    <Pressable onPress={() => router.push(`/c/${slug}/village`)} accessibilityRole="button" className="bg-surface px-5 py-4 mb-3 active:opacity-80">
+      <View className="flex-row items-center justify-between mb-2.5">
+        <Text className="text-[17px] font-bold text-fg-strong">
+          채널 마을 <Text className="text-sm text-primary">Lv.{v.level}</Text> {v.festival ? '🎆' : ''}
+        </Text>
+        <Text className="text-[13px] text-fg-weak">🧱 {v.bricks.toLocaleString()} ›</Text>
+      </View>
+      <VillageView village={v} />
+    </Pressable>
+  );
+}
 
 export default function ChannelScreen() {
   const params = useLocalSearchParams<{ slug: string; category?: string }>();
@@ -77,6 +95,7 @@ export default function ChannelScreen() {
               </ScrollView>
             ) : null}
           </View>
+          {!active && channel ? <VillageCard slug={slug} /> : null}
           {!active ? <PopularBlock channel={slug} /> : null}
         </View>
       }

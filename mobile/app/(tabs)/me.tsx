@@ -1,10 +1,18 @@
 import { Alert, Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useAuth, useFeed, useSignOut } from '@loop/shared';
 import { PostFeed } from '../../src/PostList';
 import { Avatar, Button, SectionTitle } from '../../src/ui';
 import { useColors } from '../../src/theme';
+
+const MENU: [keyof typeof Ionicons.glyphMap, string, Href][] = [
+  ['ribbon-outline', '배지 도감', '/badges'],
+  ['paw-outline', '내 펫', '/pet'],
+  ['boat-outline', '메시지 표류병', '/sea'],
+  ['wallet-outline', '포인트', '/points'],
+  ['megaphone-outline', '공지사항', '/notices'],
+];
 
 export default function MeScreen() {
   const { user } = useAuth();
@@ -56,6 +64,16 @@ export default function MeScreen() {
                 ])
               }
             />
+          </View>
+          <View className="bg-surface mb-3">
+            {MENU.map(([icon, label, href]) => (
+              <Pressable key={label} accessibilityRole="link" onPress={() => router.push(href)} className="flex-row items-center gap-3.5 px-5 py-3.5 active:bg-pressed">
+                <Ionicons name={icon} size={21} color={c.sub} />
+                <Text className="flex-1 text-base text-fg-strong">{label}</Text>
+                {href === '/points' ? <Text className="text-[15px] font-semibold text-primary">{(user.points ?? 0).toLocaleString()}P</Text> : null}
+                <Ionicons name="chevron-forward" size={18} color={c.weak} />
+              </Pressable>
+            ))}
           </View>
           <View className="bg-surface">
             <SectionTitle>내가 쓴 글</SectionTitle>
