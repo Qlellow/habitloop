@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useColors } from '../../src/theme';
+import { HeaderLogo } from '../../src/Logo';
 
 export default function TabsLayout() {
   const c = useColors();
@@ -23,6 +24,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: '루프',
+          headerTitle: () => <HeaderLogo />,
           tabBarLabel: '홈',
           tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'home' : 'home-outline'} size={23} color={color} />,
         }}
