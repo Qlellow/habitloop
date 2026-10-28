@@ -276,6 +276,11 @@ function Composer({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void })
   const edit = useEditComment(postId);
   const [text, setText] = useState('');
   const input = useRef<TextInput>(null);
+  const [inputHeight, setInputHeight] = useState(42);
+  // 보내거나 다 지우면 다시 한 줄로 (웹은 늘어난 높이에서 줄어든 크기를 알려 주지 않는다)
+  useEffect(() => {
+    if (!text) setInputHeight(42);
+  }, [text]);
 
   // 고치기를 고르면 그 댓글로 채우고, 답글 · 고치기를 고르면 입력창에 바로 커서를 둔다
   useEffect(() => {
@@ -319,7 +324,11 @@ function Composer({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void })
       <View className="flex-row items-end gap-2 px-3 pt-2.5">
         <TextInput
           ref={input}
-          className="flex-1 min-h-[42px] max-h-[120px] px-4 py-[11px] rounded-[21px] bg-field text-[15px] text-fg-strong"
+          className="flex-1 px-4 rounded-[21px] bg-field text-[15px] text-fg-strong"
+          // 한 줄(42)로 시작해서 글이 길어지면 120 까지 늘어난다 (multiline 기본 높이는 두 줄이라 직접 정한다)
+          style={{ height: inputHeight, paddingTop: 11, paddingBottom: 11, lineHeight: 20, textAlignVertical: 'top' }}
+          onContentSizeChange={(e) => setInputHeight(Math.min(120, Math.max(42, Math.ceil(e.nativeEvent.contentSize.height))))}
+          numberOfLines={1}
           placeholder={mode.kind === 'reply' ? '답글을 남겨 보세요' : '댓글을 남겨 보세요'}
           placeholderTextColor={c.weak}
           value={text}
