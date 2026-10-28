@@ -32,6 +32,7 @@ import { CommandPaletteFx, CommandPaletteFxBadge } from './CommandPaletteFx';
 import { toggleFocusMode } from './FocusMode';
 import { toast } from './Toast';
 import { GlassFilter, glassFilterId, useClientSize } from '../lib/glass';
+import { isGecko } from '../lib/media';
 import { useMediaQuery, usePhone } from '../lib/media';
 import { cn } from '../lib/cn';
 
@@ -414,7 +415,9 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
     }
   };
 
-  // 굴절 유리 (lib/glass): 목록 위 · 아래 가장자리, 고른 항목 위의 렌즈
+  // 굴절 유리 (lib/glass): 목록 위 · 아래 가장자리, 고른 항목 위의 렌즈.
+  // 파이어폭스는 SVG 필터(filter: url())를 매 프레임 CPU 로 다시 그려 팔레트가 버벅이므로, 굴절 없이 반투명 강조만 (refract=false)
+  const refract = !isGecko;
   const list = useClientSize(listRef);
   const edgeId = glassFilterId('cmdk-edge', list.w, list.h);
   const lensW = Math.max(0, list.w - LIST_PAD_X * 2);
@@ -509,17 +512,19 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
             <kbd className="cmdk-kbd">esc</kbd>
           )}
         </div>
-        <svg width="0" height="0" aria-hidden style={{ position: 'absolute' }}>
-          <GlassFilter id={edgeId} w={list.w} h={list.h} bezel={LIST_PAD_Y} axis="y" scale={18} />
-          <GlassFilter id={lensId} w={lensW} h={lensH} radius={14} bezel={8} scale={14} />
-        </svg>
+        {refract && (
+          <svg width="0" height="0" aria-hidden style={{ position: 'absolute' }}>
+            <GlassFilter id={edgeId} w={list.w} h={list.h} bezel={LIST_PAD_Y} axis="y" scale={18} />
+            <GlassFilter id={lensId} w={lensW} h={lensH} radius={14} bezel={8} scale={14} />
+          </svg>
+        )}
         <div
-          className="cmdk-list"
+          className={cn('cmdk-list', !refract && 'cmdk-list-plain')}
           id={listId}
           role="listbox"
           aria-label="결과"
           ref={listRef}
-          style={list.w ? { filter: `url(#${edgeId})` } : undefined}
+          style={refract && list.w ? { filter: `url(#${edgeId})` } : undefined}
         >
           {rows(false)}
           {/* 고른 항목 위의 유리 렌즈: 아래 줄들을 복제해 가장자리에서 휘게 비춘다. 항목 사이를 출렁이며 옮겨 다닌다 */}
@@ -527,11 +532,13 @@ function Palette({ onClose, onSignOut }: { onClose: () => void; onSignOut: () =>
             <div aria-hidden className={cn('cmdk-pill', pill.instant && 'cmdk-pill-instant')} style={{ transform: `translateY(${pill.top}px)`, height: pill.height }}>
               <div className="cmdk-lens">
                 {/* 휘는 건 줄들만, 둥근 모서리 자르기는 바깥(.cmdk-lens)에서: 모서리가 굴절돼 각지지 않게 */}
-                <div className="cmdk-lens-bend" style={lensW && lensH ? { filter: `url(#${lensId})` } : undefined}>
-                  <div className="cmdk-lens-rows" style={{ transform: `translateY(${-pill.top}px)`, width: list.w || undefined }}>
-                    {rows(true)}
+                {refract && (
+                  <div className="cmdk-lens-bend" style={lensW && lensH ? { filter: `url(#${lensId})` } : undefined}>
+                    <div className="cmdk-lens-rows" style={{ transform: `translateY(${-pill.top}px)`, width: list.w || undefined }}>
+                      {rows(true)}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}

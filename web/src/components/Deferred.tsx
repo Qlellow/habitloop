@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { reportBadgeEvent, useAuth } from '@loop/shared';
 import { OPEN_EVENT } from '../lib/commandPalette';
@@ -59,8 +59,14 @@ function PaletteHost() {
       window.cancelIdleCallback?.(id as number);
     };
   }, []);
-  // 다른 화면으로 가면 닫는다 (뒤로 가기 등)
-  useEffect(() => setOpen(false), [pathname]);
+  // 다른 화면으로 가면 닫는다 (뒤로 가기 등). 주소가 실제로 바뀐 때만: 처음 열 때 팔레트 코드를 받느라
+  // 잠깐 숨었다 다시 보이면(Suspense) 이 효과가 다시 돌아 막 연 팔레트를 닫아 버렸다 (개발 모드 StrictMode)
+  const lastPath = useRef(pathname);
+  useEffect(() => {
+    if (lastPath.current === pathname) return;
+    lastPath.current = pathname;
+    setOpen(false);
+  }, [pathname]);
   // 숨은 배지 '키보드 마법사': 팔레트를 연 횟수
   useEffect(() => {
     if (open) void reportBadgeEvent('palette');

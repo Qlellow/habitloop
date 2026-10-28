@@ -264,6 +264,16 @@
   transition: transform 0.42s cubic-bezier(0.25, 1.35, 0.4, 1);
   will-change: transform;
 }
+/* 굴절 없이(파이어폭스): 렌즈는 줄 뒤에 깔린 반투명 강조. 줄이 위에 그려지도록 줄을 띄운다 */
+.cmdk-list-plain .cmdk-pill {
+  z-index: 0;
+}
+/* 감싸는 줄이 아니라 항목 자체를 띄운다 (감싸는 줄을 띄우면 렌즈 위치를 재는 기준(offsetParent)이 바뀐다) */
+.cmdk-list-plain .cmdk-item,
+.cmdk-list-plain .cmdk-group {
+  position: relative;
+  z-index: 1;
+}
 .cmdk-pill-instant,
 .cmdk-pill-instant .cmdk-lens-rows {
   transition: none;
