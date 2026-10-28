@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useCategoryMutation, useChannel, useDeleteChannel, type ChannelDetail, type ChannelCategory } from '@loop/shared';
+import { plainText, useCategoryMutation, useChannel, useDeleteChannel, type ChannelDetail, type ChannelCategory } from '@loop/shared';
 import { Button, Input, Loading } from '../../../src/ui';
 import { useColors } from '../../../src/theme';
 import { toast } from '../../../src/Toast';
@@ -173,7 +173,7 @@ export default function ManageScreen() {
           <View className="flex-1">
             <Text className="text-[17px] font-bold text-fg-strong">채널 정보 수정</Text>
             <Text className="mt-1 text-[13px] text-fg-sub" numberOfLines={1}>
-              {channel.name} · {channel.description || '소개 없음'}
+              {channel.name} · {plainText(channel.description ?? '') || '소개 없음'}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={c.weak} />

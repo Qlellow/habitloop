@@ -1,7 +1,7 @@
 import { useDeferredValue, useLayoutEffect, useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
-import { compact, useAuth, useChannels, type ChannelSummary } from '@loop/shared';
+import { compact, plainText, useAuth, useChannels, type ChannelSummary } from '@loop/shared';
 import { ChannelIcon, Empty, Input, Loading, Button } from '../../src/ui';
 
 export default function ChannelsScreen() {
@@ -45,7 +45,7 @@ export default function ChannelsScreen() {
           <View className="flex-1">
             <Text className="text-base font-semibold text-fg-strong">{item.name}</Text>
             <Text className="mt-0.5 text-sm text-fg-sub" numberOfLines={1}>
-              {item.description || `c/${item.slug}`}
+              {plainText(item.description ?? '') || `c/${item.slug}`}
             </Text>
           </View>
           <Text className="text-[13px] text-fg-weak">글 {compact(item.postCount)}</Text>
