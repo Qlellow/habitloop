@@ -3676,6 +3676,11 @@ html.focus-mode main article h1 {
   .liquid-glass {
     backdrop-filter: blur(14px) saturate(1.5);
   }
+  /* 커맨드 팔레트: 흐림은 가볍게, 대신 바탕을 더 진하게 (열리는 동안 커지는 애니메이션에도 매 프레임 흐림을 다시 계산한다) */
+  .cmdk.liquid-glass {
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
+    backdrop-filter: blur(8px);
+  }
   .home-glass {
     backdrop-filter: blur(8px);
   }
