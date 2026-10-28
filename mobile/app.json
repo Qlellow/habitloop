@@ -5,6 +5,9 @@
     "owner": "qlellow",
     "scheme": "loop",
     "version": "0.1.0",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",

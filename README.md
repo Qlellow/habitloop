@@ -123,7 +123,7 @@ PR 을 열거나 main 에 머지하면 GitHub Actions(`.github/workflows/eas-upd
 | Variable | `EXPO_PUBLIC_API_URL` | 휴대폰이 접속할 API 주소 = 배포한 사이트 주소 (예: `https://habitloop-eight.vercel.app`). 앱이 여기에 `/api/…` 를 붙여 부릅니다 |
 
 - Expo 프로젝트: `qlellow/loop` (`mobile/app.json` 의 `owner` · `slug` · `extra.eas.projectId`)
-- Expo Go 로 열 수 있도록 `runtimeVersion` 은 따로 정하지 않습니다 (SDK 버전을 그대로 씀). 네이티브 모듈을 넣게 되면 Expo Go 로는 못 열고 EAS Build 가 필요합니다.
+- Expo Go 는 SDK 버전(`exposdk:57.0.0`)으로 업데이트를 찾으므로 `runtimeVersion` 은 `{ "policy": "sdkVersion" }` 로 둡니다. 비워 두면 EAS 가 앱 버전(`0.1.0`)으로 올려서 Expo Go 가 "Failed to download remote update" 로 못 엽니다. 네이티브 모듈을 넣게 되면 Expo Go 로는 못 열고 EAS Build 가 필요합니다.
 
 ### Docker (Postgres + API + 웹)
 
