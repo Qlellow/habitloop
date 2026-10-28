@@ -2,10 +2,17 @@ name: 앱 설치 파일 (Android APK)
 
 # Expo 서버(EAS Build)에서 Android 설치 파일(APK)을 만든다. Expo Go 없이 휴대폰에 바로 깔 수 있다.
 # Actions 탭 → 이 작업 → Run workflow 로 직접 실행한다 (빌드는 Expo 서버에서 10~20분).
-# 설치 파일에 앱 코드가 들어 있어서, 업데이트를 못 받아도 들어 있는 버전으로 열린다.
+#  - development(개발용): 나만의 Expo Go. PR 의 미리보기 QR · PC 개발 서버를 바로 연다. 네이티브 구성이 바뀔 때만 다시 빌드
+#  - preview(미리보기): 일반 앱처럼 main 의 업데이트를 받아서 연다
 # 필요한 설정: Secret EXPO_TOKEN, Variable EXPO_PUBLIC_API_URL (eas-update.yml 과 같음)
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: 빌드 종류
+        type: choice
+        default: development
+        options: [development, preview]
 
 jobs:
   build:
@@ -43,19 +50,24 @@ jobs:
       # 빌드는 Expo 서버에서 하므로 GitHub 의 변수를 빌드 프로필 환경 변수로 넘긴다 (저장소에는 남기지 않는다)
       - name: API 주소를 빌드 설정에 넣기
         working-directory: mobile
+        env:
+          PROFILE: ${{ inputs.profile }}
         run: |
           node -e '
             const fs = require("fs");
             const eas = JSON.parse(fs.readFileSync("eas.json", "utf8"));
-            eas.build.preview.env = { ...(eas.build.preview.env || {}), EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL || "" };
+            const profile = eas.build[process.env.PROFILE];
+            profile.env = { ...(profile.env || {}), EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL || "" };
             fs.writeFileSync("eas.json", JSON.stringify(eas, null, 2));
           '
 
       - name: 빌드 시작
         id: build
         working-directory: mobile
+        env:
+          PROFILE: ${{ inputs.profile }}
         run: |
-          eas build --platform android --profile preview --non-interactive --no-wait --json > build.json
+          eas build --platform android --profile "$PROFILE" --non-interactive --no-wait --json > build.json
           cat build.json
           echo "url=$(node -e 'const b=require("./build.json");const x=Array.isArray(b)?b[0]:b;console.log(`https://expo.dev/accounts/${x.project?.ownerAccount?.name ?? "qlellow"}/projects/${x.project?.slug ?? "loop"}/builds/${x.id}`)')" >> "$GITHUB_OUTPUT"
 
@@ -64,7 +76,7 @@ jobs:
           URL: ${{ steps.build.outputs.url }}
         run: |
           {
-            echo "## Android 설치 파일 빌드를 시작했어요"
+            echo "## Android 설치 파일 빌드를 시작했어요 (${{ inputs.profile }})"
             echo "Expo 서버에서 10~20분 걸려요. 아래 페이지가 **Finished** 가 되면 휴대폰으로 열어서 **Install** 을 누르세요."
             echo ""
             echo "- [빌드 페이지 열기]($URL)"

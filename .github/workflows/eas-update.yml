@@ -1,6 +1,7 @@
 name: 앱 미리보기 (EAS Update)
 
-# 앱 코드를 Expo 서버에 올려서, 휴대폰의 Expo Go 로 QR 만 찍어 열 수 있게 한다 (PC 에서 코드를 실행하지 않아도 된다).
+# 앱 코드를 Expo 서버에 올려서, 휴대폰의 개발용 앱(development 빌드)으로 QR 만 찍어 열 수 있게 한다 (PC 에서 코드를 실행하지 않아도 된다).
+# 설치 파일(APK)은 main 업데이트를 자동으로 받으므로, 네이티브 구성이 같으면 다시 빌드하지 않아도 된다.
 #  - PR: pr-<번호> 브랜치로 올리고, PR 에 QR 코드 댓글을 단다 (커밋을 더 올리면 같은 댓글을 고친다)
 #  - main: main 브랜치로 올리고, 작업 요약(Summary)에 QR 링크를 남긴다
 # 필요한 설정 (저장소 Settings → Secrets and variables → Actions):
@@ -71,7 +72,8 @@ jobs:
         uses: expo/expo-github-action/preview@v8
         with:
           working-directory: mobile
-          qr-target: expo-go
+          # 개발용 빌드(expo-dev-client)로 열리는 QR (Expo Go 는 서버가 이 프로젝트를 열어 주지 않는다)
+          qr-target: dev-client
           command: eas update --auto --non-interactive --branch pr-${{ github.event.pull_request.number }}
 
       - name: main 올리기
@@ -80,7 +82,8 @@ jobs:
         uses: expo/expo-github-action/preview@v8
         with:
           working-directory: mobile
-          qr-target: expo-go
+          # 개발용 빌드(expo-dev-client)로 열리는 QR (Expo Go 는 서버가 이 프로젝트를 열어 주지 않는다)
+          qr-target: dev-client
           comment: false
           command: eas update --auto --non-interactive --branch main
 
@@ -92,7 +95,7 @@ jobs:
         run: |
           {
             echo "## 앱 미리보기 (main)"
-            echo "휴대폰의 Expo Go 로 아래 QR 을 찍으면 최신 앱이 열려요."
+            echo "휴대폰에 깐 개발용 앱(development 빌드)으로 아래 QR 을 찍으면 최신 앱이 열려요."
             echo ""
             echo "![QR]($QR)"
             echo ""

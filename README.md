@@ -90,45 +90,33 @@ MAIL_USERNAME='보내는주소@gmail.com' MAIL_PASSWORD='앱 비밀번호' npm r
 npm run web          # http://localhost:3001 (/api 는 API 3000 으로 프록시)
 ```
 
-### 3) 모바일 앱 (Expo Go)
+### 3) 모바일 앱 (개발용 앱 · development 빌드)
 
-휴대폰에 **Expo Go (SDK 57)** 를 설치하고, PC 와 휴대폰을 **같은 Wi-Fi** 에 연결한 뒤:
+이 앱은 **개발용 앱**(expo-dev-client 를 넣은 development 빌드)으로 테스트합니다. 한 번 깔아 두면 나만의 Expo Go 처럼 쓰입니다.
+(Expo Go 는 Expo 서버가 이 프로젝트를 열어 주지 않아서 쓰지 않습니다: "Not compatible" · "not viewable in Expo Go")
 
-```bash
-npm run mobile       # = cd mobile && npx expo start
-```
+**처음 한 번: 개발용 앱 설치 (Android)**
+GitHub → Actions → **앱 설치 파일 (Android APK)** → Run workflow → 빌드 종류 **development** → 10~20분 뒤 빌드 페이지에서 Install.
+네이티브 구성이 바뀔 때(네이티브 모듈 추가 · Expo SDK 올림)만 다시 빌드하면 됩니다.
 
-터미널에 나오는 QR 코드를 Expo Go(Android) 또는 카메라(iOS)로 찍으면 앱이 열립니다.
+**코드를 고친 뒤 보기 (빌드 없이, 몇 분)**
+- **PR**: PR 을 열면 GitHub Actions(`.github/workflows/eas-update.yml`)가 앱 코드를 Expo 서버에 올리고 **PR 에 QR 댓글**을 답니다. 개발용 앱으로 QR 을 찍으면 그 PR 의 앱이 열립니다.
+- **main**: 머지하면 main 으로 올라가고, Actions 작업 요약(Summary) · expo.dev → 프로젝트 → Updates 에 QR 이 생깁니다.
+- **PC 개발 서버**: `npm run mobile` (= `expo start`) 후 개발용 앱에서 같은 Wi-Fi 의 서버를 고르거나 터미널의 QR 을 찍으면, 저장할 때마다 바로 바뀝니다.
+  - 앱은 개발 서버가 떠 있는 PC 의 IP 로 API(`http://<PC IP>:3000`)를 자동으로 찾아갑니다. 연결이 안 되면 PC 방화벽에서 3000 포트를 열어 주세요.
+  - 다른 서버를 쓰려면 `EXPO_PUBLIC_API_URL=https://api.example.com npm run mobile`.
 
-- 앱은 Expo 개발 서버가 떠 있는 PC 의 IP 로 API(`http://<PC IP>:3000`)를 자동으로 찾아갑니다.
-  휴대폰에서 연결이 안 되면 PC 방화벽에서 3000 포트를 열어 주세요.
-- Android 에뮬레이터는 `a`, iOS 시뮬레이터는 `i` 를 누르면 됩니다.
-- 다른 서버를 쓰려면 `EXPO_PUBLIC_API_URL=https://api.example.com npm run mobile`.
-- 스토어 배포용 빌드는 EAS Build(`npx eas build`)를 쓰고, 이때는 HTTPS API 주소를 `EXPO_PUBLIC_API_URL` 로 넣어 주세요.
-
-#### PC 없이 휴대폰으로 보기 (EAS Update)
-
-PR 을 열거나 main 에 머지하면 GitHub Actions(`.github/workflows/eas-update.yml`)가 앱 코드를 Expo 서버에 올립니다.
-휴대폰에 **Expo Go** 를 깔고 QR 만 찍으면 앱이 열립니다 (PC 에서 코드를 실행할 필요 없음).
-
-- **PR**: PR 에 QR 코드 댓글이 달립니다 (`pr-<번호>` 브랜치, 커밋을 더 올리면 같은 댓글이 바뀜)
-- **main**: Actions 작업 요약(Summary)과 expo.dev → 프로젝트 → Updates 에서 QR 을 볼 수 있습니다
-- Android 는 Expo Go 앱 안의 스캐너, iPhone 은 기본 카메라로 찍습니다
-
-처음 한 번, GitHub 저장소 **Settings → Secrets and variables → Actions** 에 넣어 주세요:
+**처음 한 번 설정 (GitHub 저장소 Settings → Secrets and variables → Actions)**
 
 | 종류 | 이름 | 값 |
 | --- | --- | --- |
-| Secret | `EXPO_TOKEN` | expo.dev → 계정 설정 → Access tokens 에서 만든 토큰 (없으면 이 작업은 건너뜀) |
+| Secret | `EXPO_TOKEN` | expo.dev → 계정 설정 → Access tokens 에서 만든 토큰 (없으면 업로드 · 빌드 작업은 건너뜀) |
 | Variable | `EXPO_PUBLIC_API_URL` | 휴대폰이 접속할 API 주소 = 배포한 사이트 주소 (예: `https://habitloop-eight.vercel.app`). 앱이 여기에 `/api/…` 를 붙여 부릅니다 |
 
 - Expo 프로젝트: `qlellow/loop` (`mobile/app.json` 의 `owner` · `slug` · `extra.eas.projectId`)
-- Expo Go 는 SDK 버전(`exposdk:57.0.0`)으로 업데이트를 찾으므로 `runtimeVersion` 은 `{ "policy": "sdkVersion" }` 로 둡니다. 비워 두면 EAS 가 앱 버전(`0.1.0`)으로 올려서 Expo Go 가 "Failed to download remote update" 로 못 엽니다. 네이티브 모듈을 넣게 되면 Expo Go 로는 못 열고 EAS Build 가 필요합니다.
-
-**Expo Go 로 안 열릴 때: Android 설치 파일(APK)**
-GitHub → Actions → **앱 설치 파일 (Android APK)** → Run workflow 를 누르면 Expo 서버에서 APK 를 만듭니다 (10~20분).
-작업 요약(Summary)의 빌드 페이지가 Finished 가 되면 휴대폰으로 열어 Install 을 누르세요. 설치 파일에 앱 코드가 들어 있어 Expo Go 없이 열립니다.
-서명 키는 첫 빌드 때 Expo 서버가 만들어 보관합니다 (`.github/workflows/eas-build.yml`, 빌드 설정은 `mobile/eas.json` 의 `preview`).
+- `runtimeVersion` 은 `{ "policy": "fingerprint" }`: 네이티브 구성이 같은 앱에만 업데이트가 갑니다. 네이티브 구성이 바뀌면 런타임 버전이 바뀌어 예전 앱은 새 업데이트를 받지 않으므로(받으면 꺼질 수 있어서) 다시 빌드해 주세요.
+- 빌드 종류 (`mobile/eas.json`): **development**(개발용 앱) · **preview**(일반 앱처럼 main 업데이트를 받는 설치 파일) · production. development 와 preview 는 같은 앱 ID 라서 하나만 깔립니다 (바꾸면 덮어씀).
+- 서명 키는 첫 빌드 때 Expo 서버가 만들어 보관합니다. 스토어 배포는 production 프로필로 EAS Build(`npx eas build`)를 씁니다.
 
 ### Docker (Postgres + API + 웹)
 
