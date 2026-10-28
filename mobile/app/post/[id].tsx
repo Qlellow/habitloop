@@ -30,6 +30,7 @@ import { Markdown } from '../../src/Markdown';
 import { Avatar, BadgeMark, Button, Empty, Heart, Loading, RoleTag, Sheet, Skeleton, type SheetOption } from '../../src/ui';
 import { cn } from '../../src/cn';
 import { useColors } from '../../src/theme';
+import { toast } from '../../src/Toast';
 
 /** 댓글 안의 사진 ![](/api/images/…) 은 글자 대신 작은 사진으로 */
 const COMMENT_IMAGE = /!\[[^\]\n]*\]\((\/api\/images\/[A-Za-z0-9_-]{16,32})(?:#[^)\s]*)?\)/g;
@@ -49,10 +50,6 @@ function CommentContent({ content }: { content: string }) {
       ) : null}
     </>
   );
-}
-
-function toast(message: string) {
-  Alert.alert(message);
 }
 
 /** 댓글 입력창이 지금 하는 일: 새 댓글 · 답글 · 고치기 */

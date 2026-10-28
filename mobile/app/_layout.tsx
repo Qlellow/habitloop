@@ -8,6 +8,8 @@ import { authStore, configureApi, queryClient, useAuth, verifySession } from '@l
 import { API_URL } from '../src/config';
 import { secureStorage } from '../src/storage';
 import { useColors, useThemeVars } from '../src/theme';
+import { ToastHost } from '../src/Toast';
+import { AppEffects } from '../src/AppEffects';
 
 // 앱이 뜰 때 한 번: 서버 주소 설정 + 보안 저장소에서 로그인 정보 읽기
 configureApi({ baseUrl: API_URL });
@@ -43,12 +45,21 @@ export default function RootLayout() {
             <Stack.Screen name="c/[slug]/manage" options={{ title: '채널 관리' }} />
             <Stack.Screen name="search" options={{ title: '검색' }} />
             <Stack.Screen name="notifications" options={{ title: '알림' }} />
+            <Stack.Screen name="badges" options={{ title: '배지 도감' }} />
+            <Stack.Screen name="notices/index" options={{ title: '공지사항' }} />
+            <Stack.Screen name="notices/[id]" options={{ title: '공지사항' }} />
+            <Stack.Screen name="pet" options={{ title: '내 펫' }} />
+            <Stack.Screen name="sea" options={{ title: '메시지 표류병' }} />
+            <Stack.Screen name="points" options={{ title: '포인트' }} />
+            <Stack.Screen name="c/[slug]/village" options={{ title: '마을' }} />
             <Stack.Screen name="u/[id]" options={{ title: '' }} />
             <Stack.Screen name="write" options={{ presentation: 'modal', title: '글쓰기' }} />
             <Stack.Screen name="channel-form" options={{ presentation: 'modal', title: '채널 만들기' }} />
             <Stack.Screen name="login" options={{ presentation: 'modal', title: '로그인' }} />
             <Stack.Screen name="signup" options={{ presentation: 'modal', title: '회원가입' }} />
           </Stack>
+          <AppEffects />
+          <ToastHost />
         </View>
       </SafeAreaProvider>
     </QueryClientProvider>

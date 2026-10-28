@@ -1,8 +1,8 @@
-import type { BadgeTier, FeaturedBadge } from '@loop/shared';
+import { TIER_LABEL, type BadgeTier, type FeaturedBadge } from '@loop/shared';
 import { cn } from '../lib/cn';
 import '../styles/badges.css';
 
-export const TIER_LABEL: Record<BadgeTier, string> = { common: '일반', rare: '희귀', legendary: '전설' };
+export { TIER_LABEL };
 
 /** 배지 메달: 등급마다 테두리 색이 다르다 (전설은 빛이 지나간다). locked 면 흑백, secret 이면 점선 */
 export function BadgeMedal({

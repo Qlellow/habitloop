@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
+  DISCOVERY_REASON,
   compact,
   timeAgo,
   useAuth,
@@ -18,7 +19,6 @@ import {
   useReadNotifications,
   useUserProfile,
   PET_STAGES,
-  type DiscoveryReason,
   type HomeWidget,
   type HomeWidgetType,
 } from '@loop/shared';
@@ -144,13 +144,7 @@ function PopularBody({ o }: WidgetProps) {
   );
 }
 
-/** 오늘의 발견을 고른 이유 */
-export const DISCOVERY_REASON: Record<DiscoveryReason, { icon: string; label: string }> = {
-  talk: { icon: '💬', label: '대화가 오가는 글' },
-  warm: { icon: '💛', label: '조용히 공감받는 글' },
-  long: { icon: '📜', label: '정성 가득한 긴 글' },
-  hidden: { icon: '🔍', label: '아직 덜 알려진 글' },
-};
+export { DISCOVERY_REASON };
 
 const monthDay = (day: string) => {
   const [, m, d] = day.split('-').map(Number);

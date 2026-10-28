@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { useLatestSiteNotice, type NoticeKind } from '@loop/shared';
+import { noticeDate, useLatestSiteNotice, type NoticeKind } from '@loop/shared';
 
 /** 공지 종류마다 이름 · 색 (목록 · 자세히 · 관리자 화면에서 같이 쓴다) */
 export const NOTICE_KIND: Record<NoticeKind, { label: string; className: string }> = {
@@ -10,10 +10,7 @@ export const NOTICE_KIND: Record<NoticeKind, { label: string; className: string 
 };
 export const NOTICE_KINDS = Object.keys(NOTICE_KIND) as NoticeKind[];
 
-export const noticeDate = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-};
+export { noticeDate };
 
 /* 마지막으로 본 공지 번호 (이 브라우저에만). 새 공지가 올라오면 점과 홈 안내 띠로 알린다 */
 const KEY = 'loop.noticeSeen';

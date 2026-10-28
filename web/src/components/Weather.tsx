@@ -1,5 +1,5 @@
 import { memo, type CSSProperties } from 'react';
-import { REACTIONS, useCommunityWeather, type CommunityWeather, type WeatherReport } from '@loop/shared';
+import { REACTIONS, WEATHER, useCommunityWeather, type CommunityWeather, type WeatherReport } from '@loop/shared';
 import { useSettings } from '../lib/settings';
 import { cn } from '../lib/cn';
 
@@ -10,15 +10,7 @@ import { cn } from '../lib/cn';
  *  - WeatherSummary: 홈 위젯 내용 (날씨 · 체감 온도 · 한 줄 · 감정 막대)
  */
 
-export const WEATHER: Record<CommunityWeather, { label: string; message: string }> = {
-  calm: { label: '잔잔함', message: '조용한 하루예요. 먼저 말을 걸어 보는 건 어때요?' },
-  sunny: { label: '맑음', message: '즐거운 이야기가 많은 날이에요.' },
-  hot: { label: '쨍쨍', message: '커뮤니티가 뜨겁게 달아올랐어요!' },
-  partly: { label: '구름 조금', message: '평온하게 이야기가 오가는 날이에요.' },
-  windy: { label: '바람', message: '놀라운 소식이 바람처럼 돌고 있어요.' },
-  cloudy: { label: '흐림', message: '고민이 조금 많은 날이에요. 따뜻한 댓글 하나 어때요?' },
-  rain: { label: '비', message: '위로가 필요한 날이에요. 서로에게 우산이 되어 주세요.' },
-};
+export { WEATHER };
 
 const hasSun = (w: CommunityWeather) => w === 'sunny' || w === 'hot' || w === 'partly';
 const cloudsOf = (w: CommunityWeather) => (w === 'partly' ? 1 : w === 'windy' ? 1 : w === 'cloudy' ? 2 : w === 'rain' ? 2 : 0);
