@@ -125,6 +125,11 @@ PR 을 열거나 main 에 머지하면 GitHub Actions(`.github/workflows/eas-upd
 - Expo 프로젝트: `qlellow/loop` (`mobile/app.json` 의 `owner` · `slug` · `extra.eas.projectId`)
 - Expo Go 는 SDK 버전(`exposdk:57.0.0`)으로 업데이트를 찾으므로 `runtimeVersion` 은 `{ "policy": "sdkVersion" }` 로 둡니다. 비워 두면 EAS 가 앱 버전(`0.1.0`)으로 올려서 Expo Go 가 "Failed to download remote update" 로 못 엽니다. 네이티브 모듈을 넣게 되면 Expo Go 로는 못 열고 EAS Build 가 필요합니다.
 
+**Expo Go 로 안 열릴 때: Android 설치 파일(APK)**
+GitHub → Actions → **앱 설치 파일 (Android APK)** → Run workflow 를 누르면 Expo 서버에서 APK 를 만듭니다 (10~20분).
+작업 요약(Summary)의 빌드 페이지가 Finished 가 되면 휴대폰으로 열어 Install 을 누르세요. 설치 파일에 앱 코드가 들어 있어 Expo Go 없이 열립니다.
+서명 키는 첫 빌드 때 Expo 서버가 만들어 보관합니다 (`.github/workflows/eas-build.yml`, 빌드 설정은 `mobile/eas.json` 의 `preview`).
+
 ### Docker (Postgres + API + 웹)
 
 ```bash
