@@ -106,6 +106,25 @@ npm run mobile       # = cd mobile && npx expo start
 - 다른 서버를 쓰려면 `EXPO_PUBLIC_API_URL=https://api.example.com npm run mobile`.
 - 스토어 배포용 빌드는 EAS Build(`npx eas build`)를 쓰고, 이때는 HTTPS API 주소를 `EXPO_PUBLIC_API_URL` 로 넣어 주세요.
 
+#### PC 없이 휴대폰으로 보기 (EAS Update)
+
+PR 을 열거나 main 에 머지하면 GitHub Actions(`.github/workflows/eas-update.yml`)가 앱 코드를 Expo 서버에 올립니다.
+휴대폰에 **Expo Go** 를 깔고 QR 만 찍으면 앱이 열립니다 (PC 에서 코드를 실행할 필요 없음).
+
+- **PR**: PR 에 QR 코드 댓글이 달립니다 (`pr-<번호>` 브랜치, 커밋을 더 올리면 같은 댓글이 바뀜)
+- **main**: Actions 작업 요약(Summary)과 expo.dev → 프로젝트 → Updates 에서 QR 을 볼 수 있습니다
+- Android 는 Expo Go 앱 안의 스캐너, iPhone 은 기본 카메라로 찍습니다
+
+처음 한 번, GitHub 저장소 **Settings → Secrets and variables → Actions** 에 넣어 주세요:
+
+| 종류 | 이름 | 값 |
+| --- | --- | --- |
+| Secret | `EXPO_TOKEN` | expo.dev → 계정 설정 → Access tokens 에서 만든 토큰 (없으면 이 작업은 건너뜀) |
+| Variable | `EXPO_PUBLIC_API_URL` | 휴대폰이 접속할 API 주소 = 배포한 사이트 주소 (예: `https://habitloop-eight.vercel.app`). 앱이 여기에 `/api/…` 를 붙여 부릅니다 |
+
+- Expo 프로젝트: `qlellow/loop` (`mobile/app.json` 의 `owner` · `slug` · `extra.eas.projectId`)
+- Expo Go 로 열 수 있도록 `runtimeVersion` 은 따로 정하지 않습니다 (SDK 버전을 그대로 씀). 네이티브 모듈을 넣게 되면 Expo Go 로는 못 열고 EAS Build 가 필요합니다.
+
 ### Docker (Postgres + API + 웹)
 
 ```bash
