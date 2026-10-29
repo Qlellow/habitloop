@@ -1,9 +1,11 @@
-import { Controller, Delete, Get, Param, Post, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ApiError } from '../common/api-error';
 import { LoginUser, Public } from './auth.guard';
 import type { AuthUser } from './jwt.service';
 import { OAuthService, isProvider, type OAuthProvider } from './oauth.service';
+import { AppCodeInput } from './auth.dto';
+import { JwtService } from './jwt.service';
 
 const COOKIE = 'loop_oauth';
 const COOKIE_PATH = '/api/auth/oauth';
@@ -22,6 +24,9 @@ export function siteUrl(req: Request) {
 
 const redirectUri = (req: Request, provider: OAuthProvider) => `${siteUrl(req)}/api/auth/oauth/${provider}/callback`;
 
+/** 앱으로 돌아가는 주소 (app.json 의 scheme). 예: loop://oauth?code=… */
+const appReturn = (params: Record<string, string>) => `${process.env.APP_SCHEME?.trim() || 'loop'}://oauth?${new URLSearchParams(params)}`;
+
 function readCookie(req: Request, name: string) {
   for (const part of (req.headers.cookie ?? '').split(';')) {
     const [k, ...v] = part.trim().split('=');
@@ -37,7 +42,10 @@ function readCookie(req: Request, name: string) {
  */
 @Controller()
 export class OAuthController {
-  constructor(private readonly oauth: OAuthService) {}
+  constructor(
+    private readonly oauth: OAuthService,
+    private readonly jwt: JwtService,
+  ) {}
 
   /**
    * 카카오톡 공유용 JavaScript 키. 원래 브라우저에 공개되는 키(등록한 도메인에서만 동작)라 그대로 내려준다.
@@ -82,16 +90,19 @@ export class OAuthController {
     @Query('next') next: string | undefined,
     @Query('ref') ref: string | undefined,
     @Query('link') link: string | undefined,
+    // 앱에서 시작한 로그인: 앱이 만든 확인값 (끝나면 앱으로 교환 코드를 돌려보낸다)
+    @Query('app') app: string | undefined,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     if (!isProvider(provider)) throw ApiError.notFound('없는 로그인 방법이에요');
     let started: { url: string; nonce: string };
     try {
-      started = this.oauth.start(provider, redirectUri(req, provider), { next, ref, link });
+      started = this.oauth.start(provider, redirectUri(req, provider), { next, ref, link, app });
     } catch (e) {
       // 브라우저가 이동해 온 요청이라 JSON 대신 웹으로 돌려보내 이유를 보여 준다
       const message = e instanceof ApiError ? e.message : '소셜 로그인을 시작하지 못했어요';
+      if (app != null) return void res.redirect(302, appReturn({ error: message }));
       res.redirect(302, `${siteUrl(req)}/oauth/callback#${new URLSearchParams({ error: message, next: link ? '/me/settings' : '/' })}`);
       return;
     }
@@ -118,8 +129,16 @@ export class OAuthController {
     if (!isProvider(provider)) throw ApiError.notFound('없는 로그인 방법이에요');
     res.clearCookie(COOKIE, { path: COOKIE_PATH });
     const back = `${siteUrl(req)}/oauth/callback`;
+    // 앱에서 시작했는지 (실패해도 앱으로 돌려보내야 해서 먼저 본다. 서명이 맞는 state 만)
+    const appChallenge = query.state ? this.jwt.parseOAuthState(query.state)?.app : undefined;
     try {
       const done = await this.oauth.callback(provider, query, readCookie(req, COOKIE), redirectUri(req, provider), String(req.headers['user-agent'] ?? ''));
+      // 앱: 토큰은 주소에 싣지 않고 한 번 쓰는 교환 코드만 보낸다
+      if (appChallenge && 'result' in done && done.result) {
+        const r = done.result;
+        const payload = r.twoFactorRequired ? { twoFactorRequired: true as const, challenge: r.challenge ?? '', maskedEmail: r.maskedEmail } : { token: r.token };
+        return void res.redirect(302, appReturn({ code: await this.oauth.createAppCode(appChallenge, payload) }));
+      }
       const hash = new URLSearchParams({ next: done.next });
       const result = 'result' in done ? done.result : undefined;
       if (!result) {
@@ -133,7 +152,16 @@ export class OAuthController {
       res.redirect(302, `${back}#${hash}`);
     } catch (e) {
       const message = e instanceof ApiError ? e.message : '소셜 로그인 중 문제가 생겼어요. 다시 시도해 주세요';
+      if (appChallenge) return void res.redirect(302, appReturn({ error: message }));
       res.redirect(302, `${back}#${new URLSearchParams({ error: message })}`);
     }
+  }
+
+  /** 앱 소셜 로그인 마무리: 앱으로 보낸 교환 코드 + 시작할 때 만든 비밀값 → 로그인 결과 (한 번만, 5분) */
+  @Public()
+  @Post('auth/oauth/app/exchange')
+  @HttpCode(HttpStatus.OK)
+  exchange(@Body() input: AppCodeInput) {
+    return this.oauth.exchangeAppCode(input.code, input.verifier);
   }
 }

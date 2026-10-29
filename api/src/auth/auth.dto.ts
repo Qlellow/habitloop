@@ -114,3 +114,14 @@ export class BannerInput {
   @MaxLength(48)
   banner?: string | null;
 }
+
+/** 앱 소셜 로그인: 받은 교환 코드 + 시작할 때 만든 비밀값 */
+export class AppCodeInput {
+  @NotBlank('다시 로그인해 주세요')
+  @MaxLength(64)
+  code!: string;
+
+  @NotBlank('다시 로그인해 주세요')
+  @Length(43, 128)
+  verifier!: string;
+}

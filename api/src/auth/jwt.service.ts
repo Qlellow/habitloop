@@ -97,11 +97,12 @@ export class JwtService {
   }
 
   /** 소셜 로그인 state: 어느 제공자로, 어떤 브라우저(nonce)에서 시작했는지 · 돌아갈 곳 · 초대 코드. 10분 */
-  issueOAuthState(state: { provider: string; nonce: string; next: string; ref?: string; link?: number }): string {
+  /** app: 앱에서 시작한 로그인이면 앱이 만든 확인값(PKCE 의 code_challenge 같은 것) */
+  issueOAuthState(state: { provider: string; nonce: string; next: string; ref?: string; link?: number; app?: string }): string {
     return jwt.sign({ purpose: OAUTH_PURPOSE, ...state }, this.secret, { expiresIn: '10m', algorithm: 'HS256' });
   }
 
-  parseOAuthState(token: string): { provider: string; nonce: string; next: string; ref?: string; link?: number } | undefined {
+  parseOAuthState(token: string): { provider: string; nonce: string; next: string; ref?: string; link?: number; app?: string } | undefined {
     try {
       const c = jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
       if (c.purpose !== OAUTH_PURPOSE || typeof c.provider !== 'string' || typeof c.nonce !== 'string') return undefined;
@@ -111,6 +112,7 @@ export class JwtService {
         next: typeof c.next === 'string' ? c.next : '/',
         ref: typeof c.ref === 'string' ? c.ref : undefined,
         link: Number.isInteger(c.link) ? (c.link as number) : undefined,
+        app: typeof c.app === 'string' ? c.app : undefined,
       };
     } catch {
       return undefined;

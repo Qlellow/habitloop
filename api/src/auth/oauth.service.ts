@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { ApiError } from '../common/api-error';
@@ -6,6 +6,11 @@ import { Database } from '../db/database';
 import { RewardsService } from '../users/rewards.service';
 import { AuthService } from './auth.service';
 import { JwtService } from './jwt.service';
+
+/** 앱 로그인 확인값: base64url SHA-256 (43자) */
+const APP_CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
+/** 앱이 교환 코드로 받는 로그인 결과 */
+export type AppLoginPayload = { token: string } | { twoFactorRequired: true; challenge: string; maskedEmail?: string };
 
 export const OAUTH_PROVIDERS = ['google', 'kakao', 'naver'] as const;
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
@@ -138,12 +143,14 @@ export class OAuthService {
 
   /** 제공자 로그인 화면 주소와, 브라우저 쿠키에 심을 nonce */
   /** link: 설정에서 '연결'을 눌렀을 때 받은 연결 토큰 (있으면 로그인 대신 지금 계정에 이어 붙인다) */
-  start(provider: OAuthProvider, redirectUri: string, extra: { next?: string; ref?: string; link?: string }) {
+  /** app: 앱에서 시작한 로그인이면 앱이 만든 확인값 (base64url SHA-256). 끝나면 토큰 대신 한 번 쓰는 교환 코드를 앱으로 보낸다 */
+  start(provider: OAuthProvider, redirectUri: string, extra: { next?: string; ref?: string; link?: string; app?: string }) {
     const config = this.config(provider);
     const link = extra.link ? this.jwt.parseOAuthLink(extra.link, provider) : undefined;
     if (extra.link && link == null) throw ApiError.badRequest('연결 요청 시간이 지났어요. 설정에서 다시 눌러 주세요');
+    if (extra.app != null && !APP_CHALLENGE.test(extra.app)) throw ApiError.badRequest('앱 로그인 요청이 올바르지 않아요. 앱을 다시 열어 주세요');
     const nonce = randomBytes(16).toString('base64url');
-    const state = this.jwt.issueOAuthState({ provider, nonce, next: safeNext(extra.next), ref: extra.ref?.slice(0, 20), link });
+    const state = this.jwt.issueOAuthState({ provider, nonce, next: safeNext(extra.next), ref: extra.ref?.slice(0, 20), link, app: extra.app });
     const url = new URL(config.authorizeUrl);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('client_id', config.clientId!);
@@ -195,7 +202,32 @@ export class OAuthService {
       return { linked: provider, next: state.next };
     }
     const userId = await this.findOrCreate(provider, profile, state.ref);
-    return { result: await this.auth.socialLogin(userId, userAgent), next: state.next };
+    return { result: await this.auth.socialLogin(userId, userAgent), next: state.next, app: state.app };
+  }
+
+  /* ───── 앱 로그인: 한 번 쓰는 교환 코드 ─────
+   * 앱은 loop:// 주소로 돌아오는데, 다른 앱이 같은 주소를 가로챌 수 있어서 토큰을 주소에 싣지 않는다.
+   * 서버는 결과를 잠깐 맡아 두고 코드만 보내고, 앱은 시작할 때 만든 비밀값(verifier)과 함께 코드를 토큰으로 바꾼다 */
+
+  async createAppCode(challenge: string, payload: AppLoginPayload) {
+    const code = randomBytes(24).toString('base64url');
+    await this.db.execute("DELETE FROM oauth_app_codes WHERE created_at < now() - interval '1 hour'");
+    await this.db.execute('INSERT INTO oauth_app_codes (code, challenge, payload) VALUES ($1, $2, $3)', [code, challenge, JSON.stringify(payload)]);
+    return code;
+  }
+
+  async exchangeAppCode(code: string, verifier: string): Promise<AppLoginPayload> {
+    // 한 번만: 찾으면서 지운다
+    const row = await this.db.one<{ challenge: string; payload: AppLoginPayload | string; fresh: boolean }>(
+      `DELETE FROM oauth_app_codes WHERE code = $1 RETURNING challenge, payload, created_at > now() - interval '5 minutes' AS fresh`,
+      [code],
+    );
+    const expected = row ? Buffer.from(row.challenge) : Buffer.alloc(0);
+    const actual = Buffer.from(createHash('sha256').update(verifier).digest('base64url'));
+    if (!row || !row.fresh || expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+      throw ApiError.badRequest('로그인 시간이 지났거나 올바르지 않은 요청이에요. 다시 시도해 주세요');
+    }
+    return typeof row.payload === 'string' ? (JSON.parse(row.payload) as AppLoginPayload) : row.payload;
   }
 
   /** 설정에서 연결: 로그인한 계정에 이 소셜 계정을 이어 붙인다 */

@@ -52,6 +52,12 @@
       }
     },
     {
+      "source": "/.well-known/(assetlinks\\.json|apple-app-site-association)",
+      "destination": {
+        "service": "api"
+      }
+    },
+    {
       "source": "/(robots\\.txt|sitemap\\.xml)",
       "destination": {
         "service": "api"

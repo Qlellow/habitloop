@@ -14,3 +14,6 @@ target/
 # 화면 자동 테스트 결과
 web/test-results/
 web/playwright-report/
+
+# 안드로이드 푸시(FCM) 설정 파일: 저장소에 올리지 않고 EAS 환경 변수 GOOGLE_SERVICES_JSON 으로 넣는다
+mobile/google-services.json

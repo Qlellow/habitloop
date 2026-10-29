@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
+import { PushService } from './push.service';
 
 export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery';
 
@@ -44,7 +45,10 @@ const EXCERPT = 60;
  */
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly push: PushService,
+  ) {}
 
   /** 새 댓글: 글쓴이에게 / 답글: 원댓글 쓴 사람에게 (글쓴이와 원댓글 쓴 사람이 같으면 답글 알림 하나만) */
   async commented(postId: number, commentId: number, actorId: number, parentId: number | null) {
@@ -52,8 +56,10 @@ export class NotificationsService {
       const post = await this.db.one<{ authorId: number }>('SELECT author_id AS "authorId" FROM posts WHERE id = $1', [postId]);
       const parent =
         parentId == null ? undefined : await this.db.one<{ authorId: number }>('SELECT author_id AS "authorId" FROM comments WHERE id = $1', [parentId]);
-      if (parent && parent.authorId !== actorId) await this.insert(parent.authorId, 'reply', actorId, postId, commentId);
-      if (post && post.authorId !== actorId && post.authorId !== parent?.authorId) await this.insert(post.authorId, 'comment', actorId, postId, commentId);
+      const ids: number[] = [];
+      if (parent && parent.authorId !== actorId) ids.push(...(await this.insert(parent.authorId, 'reply', actorId, postId, commentId)));
+      if (post && post.authorId !== actorId && post.authorId !== parent?.authorId) ids.push(...(await this.insert(post.authorId, 'comment', actorId, postId, commentId)));
+      await this.pushFor(ids);
     });
   }
 
@@ -69,28 +75,32 @@ export class NotificationsService {
                      ORDER BY id DESC LIMIT 1)`,
         [post.authorId, postId, actorId],
       );
-      if (!merged) await this.insert(post.authorId, 'like', actorId, postId, null);
+      // 모인 공감은 다시 울리지 않는다 (처음 한 번만 푸시)
+      if (!merged) await this.pushFor(await this.insert(post.authorId, 'like', actorId, postId, null));
     });
   }
 
   /** 운영진 전용 카테고리(공지)에 새 글: 그 채널 팔로워 모두에게 (쓴 사람 제외) */
   async noticePosted(postId: number, channelId: number, authorId: number) {
-    await this.safe(() =>
-      this.db.execute(
+    await this.safe(async () => {
+      const rows = await this.db.query<{ id: number }>(
         `INSERT INTO notifications (user_id, type, actor_id, post_id)
          SELECT m.user_id, 'notice', $3, $1 FROM channel_members m
          WHERE m.channel_id = $2 AND m.user_id <> $3
-           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = m.user_id AND b.blocked_id = $3)`,
+           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = m.user_id AND b.blocked_id = $3)
+         RETURNING id`,
         [postId, channelId, authorId],
-      ),
-    );
+      );
+      await this.pushFor(rows.map((r) => r.id));
+    });
   }
 
   /** 내 글이 오늘의 발견에 뽑혔다 (보낸 사람 없음) */
   async discovered(postId: number, authorId: number) {
-    await this.safe(() =>
-      this.db.execute(`INSERT INTO notifications (user_id, type, post_id) VALUES ($1, 'discovery', $2)`, [authorId, postId]),
-    );
+    await this.safe(async () => {
+      const rows = await this.db.query<{ id: number }>(`INSERT INTO notifications (user_id, type, post_id) VALUES ($1, 'discovery', $2) RETURNING id`, [authorId, postId]);
+      await this.pushFor(rows.map((r) => r.id));
+    });
   }
 
   async list(userId: number, cursor: number | undefined, size: number): Promise<CursorPage<NotificationItem>> {
@@ -125,13 +135,41 @@ export class NotificationsService {
     await this.db.execute('UPDATE notifications SET read_at = now() WHERE user_id = $1 AND read_at IS NULL', [userId]);
   }
 
-  /** 받는 사람이 actor 를 차단했으면 보내지 않는다 */
-  private insert(userId: number, type: NotificationType, actorId: number, postId: number, commentId: number | null) {
-    return this.db.execute(
+  /** 받는 사람이 actor 를 차단했으면 보내지 않는다. 만든 알림 번호를 돌려준다 (푸시용) */
+  private async insert(userId: number, type: NotificationType, actorId: number, postId: number, commentId: number | null) {
+    const rows = await this.db.query<{ id: number }>(
       `INSERT INTO notifications (user_id, type, actor_id, post_id, comment_id)
        SELECT $1::int, $2::varchar, $3::int, $4::int, $5::int
-       WHERE NOT EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = $1::int AND blocked_id = $3::int)`,
+       WHERE NOT EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = $1::int AND blocked_id = $3::int)
+       RETURNING id`,
       [userId, type, actorId, postId, commentId],
+    );
+    return rows.map((r) => r.id);
+  }
+
+  /** 방금 만든 알림을 그 사람의 앱으로 푸시 (알림 목록과 같은 문장) */
+  private async pushFor(ids: number[]) {
+    if (!ids.length) return;
+    const rows = await this.db.query<{ userId: number; type: NotificationType; actor: string | null; postId: number; postTitle: string; channelName: string; comment: string | null }>(
+      `SELECT n.user_id AS "userId", n.type, a.nickname AS actor, p.id AS "postId", p.title AS "postTitle", c.name AS "channelName", cm.content AS comment
+       FROM notifications n JOIN posts p ON p.id = n.post_id JOIN channels c ON c.id = p.channel_id
+       LEFT JOIN users a ON a.id = n.actor_id LEFT JOIN comments cm ON cm.id = n.comment_id
+       WHERE n.id = ANY($1)`,
+      [ids],
+    );
+    const who = (r: { actor: string | null }) => r.actor ?? '누군가';
+    const short = (s: string | null) => (s ?? '').replace(/\s+/g, ' ').trim().slice(0, EXCERPT);
+    await this.push.send(
+      rows.map((r) => {
+        const title =
+          r.type === 'comment' ? `${who(r)}님이 내 글에 댓글을 달았어요`
+          : r.type === 'reply' ? `${who(r)}님이 내 댓글에 답글을 달았어요`
+          : r.type === 'like' ? `${who(r)}님이 내 글을 좋아해요`
+          : r.type === 'notice' ? `${r.channelName} 새 공지`
+          : '내 글이 오늘의 발견에 뽑혔어요';
+        const body = r.type === 'comment' || r.type === 'reply' ? short(r.comment) || r.postTitle : r.postTitle;
+        return { userId: r.userId, title, body, url: `/post/${r.postId}` };
+      }),
     );
   }
 

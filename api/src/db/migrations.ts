@@ -601,4 +601,30 @@ CREATE TABLE login_failures (
 CREATE INDEX idx_login_failures_key ON login_failures (key, at);
 `,
   },
+  {
+    // 앱 소셜 로그인: 앱으로 돌려보낸 한 번 쓰는 교환 코드 (5분 안에 앱이 비밀값과 함께 토큰으로 바꾼다)
+    name: '034_oauth_app_codes',
+    sql: `
+CREATE TABLE oauth_app_codes (
+    code        VARCHAR(64)   PRIMARY KEY,
+    challenge   VARCHAR(64)   NOT NULL,
+    payload     JSONB         NOT NULL,
+    created_at  TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+`,
+  },
+  {
+    // 앱 푸시 알림: 기기마다 Expo 푸시 토큰 (같은 기기에서 계정을 바꾸면 user_id 가 바뀐다)
+    name: '035_push_tokens',
+    sql: `
+CREATE TABLE push_tokens (
+    token       VARCHAR(255)  PRIMARY KEY,
+    user_id     INTEGER       NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    platform    VARCHAR(10)   NOT NULL,
+    created_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_push_tokens_user ON push_tokens (user_id);
+`,
+  },
 ];
