@@ -32,8 +32,9 @@ test.describe('회원 흐름', () => {
     await expect(clap.locator('.rx-count')).toHaveText('1');
 
     // 삭제 (확인 창은 수락)
-    page.once('dialog', (d) => void d.accept());
+    // 삭제는 사이트 확인 창(alertdialog)에서 한 번 더 누른다
     await page.getByRole('button', { name: '삭제' }).first().click();
+    await page.getByRole('alertdialog').getByRole('button', { name: '삭제' }).click();
     await expect(page).toHaveURL(/\/c\/free$/);
     await expect(page.getByText(title)).toHaveCount(0);
     w.expectNone();
