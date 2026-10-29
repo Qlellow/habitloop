@@ -18,7 +18,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useLeaveThenSignOut } from '../../lib/authNav';
 import { UserAvatar } from '../../components/UserAvatar';
-import { Modal } from '../../components/Modal';
+import { Modal, useEscape } from '../../components/Modal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PROVIDERS } from '../../components/SocialLogin';
 import { CodeField, CodeTimer, useCodeTimer } from '../../components/CodeField';
@@ -380,6 +380,7 @@ function WithdrawDialog({ onClose }: { onClose: () => void }) {
     });
   };
 
+  useEscape(onClose);
   return (
     <Modal onClose={onClose}>
       <form

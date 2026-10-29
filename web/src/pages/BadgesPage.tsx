@@ -13,7 +13,7 @@ import {
 } from '@loop/shared';
 import { BadgeMedal, TIER_LABEL } from '../components/BadgeMedal';
 import { Page } from '../components/Layout';
-import { Modal } from '../components/Modal';
+import { Modal, useEscape } from '../components/Modal';
 import { toast } from '../components/Toast';
 import { ui } from '../components/ui';
 import { cn } from '../lib/cn';
@@ -106,6 +106,7 @@ function Detail({ b, mine, featured, onClose }: { b: BadgeCard; mine: boolean; f
       },
       onError: (e) => toast(e instanceof ApiError ? e.message : '바꾸지 못했어요'),
     });
+  useEscape(onClose);
   return (
     <Modal onClose={onClose}>
       <div role="dialog" aria-modal aria-label={b.name} className="w-full max-w-[360px] rounded-xl border border-border bg-surface shadow-pop px-6 pt-8 pb-6 text-center">
