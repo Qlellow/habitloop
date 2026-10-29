@@ -960,13 +960,20 @@ export function useSaveHomeLayout() {
 
 export const voiceKey = (slug: string) => ['channel', slug, 'voice'] as const;
 
-/** 채널 음성방과 지금 들어와 있는 사람. 보고 있는 동안 10초마다 새로 받는다 */
+/**
+ * 채널 음성방과 지금 들어와 있는 사람. 보고 있는 동안 누가 있으면 10초, 아무도 없으면 45초마다 새로 받는다
+ * (서버에 음성채팅이 꺼져 있으면 다시 묻지 않는다). 창으로 돌아오면 바로 새로 받는다
+ */
 export function useChannelVoice(slug: string, enabled = true) {
   return useQuery({
     queryKey: voiceKey(slug),
     queryFn: ({ signal }) => api<ChannelVoice>(`/api/channels/${encodeURIComponent(slug)}/voice`, { signal }),
     enabled: enabled && !!slug,
-    refetchInterval: 10_000,
+    refetchInterval: (query) => {
+      const voice = query.state.data;
+      if (voice && !voice.enabled) return false;
+      return voice?.rooms.some((r) => r.members.length > 0) ? 10_000 : 45_000;
+    },
     refetchOnWindowFocus: true,
   });
 }

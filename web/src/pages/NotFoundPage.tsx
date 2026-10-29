@@ -10,7 +10,7 @@ export default function NotFoundPage({ message = '페이지를 찾을 수 없어
   return (
     <Page variant="single">
       <CursorZone className={cn(ui.card, ui.empty)} style={{ padding: '80px 20px' }}>
-        <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-strong)', margin: '0 0 8px' }}>{message}</p>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-strong)', margin: '0 0 8px' }}>{message}</h1>
         <p style={{ margin: '0 0 24px' }}>{hint}</p>
         <Link to="/" className={cn(ui.button, ui.primary)}>
           홈으로 가기

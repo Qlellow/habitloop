@@ -8,8 +8,9 @@ export default {
   theme: {
     extend: {
       maxWidth: { page: '1240px' },
-      // 글자로 쓰는 포인트 색은 명도 대비를 맞춘 --primary-text (버튼 바탕 bg-primary 는 브랜드 색 그대로)
+      // 글자로 쓰는 포인트 색은 명도 대비를 맞춘 --primary-text, 흰 글자를 올리는 바탕(bg-primary)은 --primary-solid
       textColor: { primary: { DEFAULT: 'var(--primary-text)' }, danger: { DEFAULT: 'var(--danger-text)' } },
+      backgroundColor: { primary: { DEFAULT: 'var(--primary-solid)', pressed: 'var(--primary-solid-pressed)' } },
       height: { header: '64px' },
       spacing: { header: '64px' },
       boxShadow: {

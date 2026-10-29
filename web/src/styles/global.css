@@ -31,11 +31,16 @@
   --primary: var(--blue-500);
   --primary-pressed: var(--blue-600);
   --primary-weak: var(--blue-50);
-  /* 글자로 쓰는 포인트 색 (text-primary): 바탕 · 연한 포인트 바탕에서도 4.5:1 이상. 버튼 바탕(bg-primary)은 브랜드 색 그대로 */
+  /* 글자로 쓰는 포인트 색 (text-primary): 바탕 · 연한 포인트 바탕에서도 4.5:1 이상 */
   --primary-text: #1b64da;
+  /* 흰 글자를 올리는 바탕 (bg-primary 버튼 등): 흰 글자와 4.5:1 이상 (WCAG AA). 테두리 · 막대 같은 장식은 브랜드 색 --primary 그대로 */
+  --primary-solid: #1b6ae0;
+  --primary-solid-pressed: #1859c4;
   --danger: var(--red-500);
   /* 글자로 쓰는 빨강: 다크 배경에서는 더 밝게 (삭제·로그아웃 같은 위험한 동작) */
   --danger-text: #d92b3a;
+  /* 비밀번호 '보통' 같은 주황 글자: 밝은 바탕에서 4.5:1 이상 */
+  --fair-text: #a86500;
   --skeleton: var(--grey-100);
   --danger-weak: var(--red-50);
   --toast-bg: rgba(25, 31, 40, 0.94);
@@ -78,6 +83,7 @@
   --skeleton: #2a2a31;
   --danger-weak: rgba(240, 68, 82, 0.14);
   --danger-text: #ff7a85;
+  --fair-text: #f5a700;
   --toast-bg: rgba(70, 70, 80, 0.96);
   --role-owner-bg: rgba(245, 167, 0, 0.18);
   --role-admin-bg: rgba(3, 178, 108, 0.18);
@@ -103,6 +109,7 @@
     --skeleton: #2a2a31;
     --danger-weak: rgba(240, 68, 82, 0.14);
     --danger-text: #ff7a85;
+  --fair-text: #f5a700;
     --toast-bg: rgba(70, 70, 80, 0.96);
   --role-owner-bg: rgba(245, 167, 0, 0.18);
   --role-admin-bg: rgba(3, 178, 108, 0.18);
@@ -129,6 +136,8 @@
   --primary-pressed: #e0563a;
   --primary-weak: #ffece6;
   --primary-text: #b8452a;
+  --primary-solid: #c84a2e;
+  --primary-solid-pressed: #b23f24;
 }
 /* 낮 · 한낮: 맑은 하늘색 + 선명한 파랑 */
 :root[data-time='day'] {
@@ -143,6 +152,8 @@
   --primary-pressed: #1f6fdc;
   --primary-weak: #e5f0ff;
   --primary-text: #1b64da;
+  --primary-solid: #1f6fdc;
+  --primary-solid-pressed: #1a5fc2;
 }
 /* 저녁 · 노을: 남보랏빛 어스름, 지평선에만 부드러운 살구 · 장밋빛이 남는다 + 노을 살구색 */
 :root[data-time='evening'] {
@@ -158,6 +169,8 @@
   --primary-pressed: #d9684e;
   --primary-weak: rgba(232, 121, 94, 0.18);
   --primary-text: #f2a088;
+  --primary-solid: #b8543b;
+  --primary-solid-pressed: #a3482f;
 }
 /* 새벽 · 별밤: 깊은 남색 + 차분한 파랑 */
 :root[data-time='dawn'] {
@@ -173,6 +186,8 @@
   --primary-pressed: #4a6aee;
   --primary-weak: rgba(91, 124, 250, 0.18);
   --primary-text: #8ea4ff;
+  --primary-solid: #4a63e0;
+  --primary-solid-pressed: #3d55c4;
 }
 
 /* 하늘: 화면 뒤에 고정. 시간대가 바뀔 때는 이전 하늘을 복제(data-period)해 위에 겹쳐 1.2초 동안 사라지게 한다(크로스페이드).
@@ -2024,7 +2039,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
   align-items: center;
   height: 40px;
   border-radius: 999px;
-  background: var(--primary);
+  background: var(--primary-solid);
   color: #fff;
   box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 35%, transparent);
   animation: read-resume-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s backwards;

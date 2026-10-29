@@ -102,6 +102,8 @@ export default function HomePage() {
 
   return (
     <Page variant="wide">
+      {/* 화면 읽기 프로그램용 제목 (눈에는 안 보인다) */}
+      <h1 className="sr-only">루프 홈</h1>
       {/* 커뮤니티 감정 날씨: 홈 화면 뒤에 깔린다 (설정에서 끌 수 있다) */}
       <WeatherSky />
       {/* 새 공지 · 업데이트 소식 (아직 보지 않은 것) */}
