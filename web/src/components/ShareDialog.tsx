@@ -12,6 +12,8 @@ export interface ShareContent {
   url: string;
   title: string;
   text: string;
+  /** 카카오톡 메시지 아래 버튼 글자 (기본: 루프 시작하기) */
+  buttonTitle?: string;
 }
 
 const KAKAO_SDK = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js';
@@ -121,14 +123,24 @@ function targets(kakaoKey: string | null | undefined): Target[] {
       icon: ICONS.kakao,
       bg: 'bg-[#FEE500]',
       run: async (c) => {
+        const send = (kakao: KakaoSdk) => {
+          try {
+            kakao.Share.sendDefault({
+              objectType: 'text',
+              text: `${c.title}\n${c.text}`,
+              link: { mobileWebUrl: c.url, webUrl: c.url },
+              buttonTitle: c.buttonTitle ?? '루프 시작하기',
+            });
+          } catch {
+            // PC 는 SDK 가 공유 창(팝업)을 여는데, 브라우저가 막으면 열린 창이 없어 SDK 안에서 오류가 난다
+            toast('카카오톡 공유 창이 막혔어요. 주소창 오른쪽에서 이 사이트의 팝업을 허용해 주세요');
+          }
+        };
+        // 공유 창은 누른 순간에 바로 열어야 팝업으로 막히지 않는다: 공유 창을 열 때 미리 받아 둔 SDK 를 곧바로 쓴다
+        const ready = window.Kakao?.isInitialized() ? window.Kakao : undefined;
+        if (ready) return send(ready);
         try {
-          const kakao = await loadKakao(kakaoKey);
-          kakao.Share.sendDefault({
-            objectType: 'text',
-            text: `${c.title}\n${c.text}`,
-            link: { mobileWebUrl: c.url, webUrl: c.url },
-            buttonTitle: '루프 시작하기',
-          });
+          send(await loadKakao(kakaoKey));
         } catch (e) {
           toast((e as Error).message);
         }
@@ -202,6 +214,10 @@ export function ShareDialog({ content, heading = '공유하기', onClose }: { co
     staleTime: Infinity,
   }).data?.key;
   const list = useMemo(() => targets(kakaoKey), [kakaoKey]);
+  // 카카오 SDK 는 공유 창이 열릴 때 미리 받아 둔다 (누른 뒤에 받으면 그사이 '사용자가 누른 순간'이 지나 공유 창이 팝업 차단된다)
+  useEffect(() => {
+    if (kakaoKey) loadKakao(kakaoKey).catch(() => undefined);
+  }, [kakaoKey]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
