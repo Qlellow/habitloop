@@ -7,6 +7,7 @@ import { ui } from '../components/ui';
 import { iconOf, VillageIcon, VillageScene } from '../components/village/VillageScene';
 import { cn } from '../lib/cn';
 import NotFoundPage from './NotFoundPage';
+import { usePageTitle } from '../lib/title';
 
 const Bar = ({ p, className }: { p: number; className?: string }) => (
   <div className={cn('village-progress', className)}>
@@ -40,6 +41,7 @@ function ItemCard({ item, need }: { item: VillageItem; need: number }) {
 export default function VillagePage() {
   const slug = useParams().slug ?? '';
   const channel = useChannel(slug).data;
+  usePageTitle(channel && `${channel.name} 마을`);
   const { data: v, error } = useVillage(slug);
 
   if (error instanceof ApiError && error.status === 404) return <NotFoundPage message="없거나 사라진 채널이에요" />;

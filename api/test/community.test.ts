@@ -2007,3 +2007,26 @@ function binary(res: request.Response, done: (err: Error | null, body: Buffer) =
   stream.on('data', (c: Buffer) => chunks.push(c));
   stream.on('end', () => done(null, Buffer.concat(chunks)));
 }
+
+describe('링크 미리보기 카드', () => {
+  it('봇이 글 주소를 열면 그 글의 제목 · 요약 · 첫 이미지를 담은 HTML 을 준다', async () => {
+    const owner = await signup('ogcard@test.dev', '카드주인');
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'ogcard', name: '카드채널' }).expect(201);
+    const post = await http()
+      .post('/api/posts')
+      .set(bearer(owner))
+      .send({ channel: 'ogcard', title: '제목 <b>"따옴표"</b>', content: '![](/api/images/abc) **굵게** 본문 ||스포||' })
+      .expect(201);
+
+    const res = await http().get(`/posts/${post.body.id}`).set('User-Agent', 'kakaotalk-scrap/1.0').expect(200);
+    expect(res.headers['content-type']).toMatch(/text\/html/);
+    // 제목은 HTML 로 해석되지 않게 이스케이프한다
+    expect(res.text).toContain('<meta property="og:title" content="제목 &lt;b&gt;&quot;따옴표&quot;&lt;/b&gt; · 루프" />');
+    expect(res.text).toContain('content="카드채널 · 굵게 본문 ▒▒▒"');
+    expect(res.text).toMatch(/og:image" content="http:\/\/[^"]+\/api\/images\/abc"/);
+
+    // 없는 글은 사이트 기본 카드
+    const missing = await http().get('/posts/99999999').expect(200);
+    expect(missing.text).toContain('og:title" content="루프 · 좋아하는 이야기로 이어지는 곳"');
+  });
+});

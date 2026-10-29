@@ -7,6 +7,7 @@ import { toast } from '../components/Toast';
 import { ui } from '../components/ui';
 import { cn } from '../lib/cn';
 import s from './pages.styles';
+import { usePageTitle } from '../lib/title';
 
 const reasonLabel = (r: string) => REPORT_REASONS.find((x) => x.value === r)?.label ?? r;
 
@@ -104,6 +105,7 @@ function ReportRow({ report: r, slug, done }: { report: ReportGroup; slug: strin
 export default function ChannelReportsPage() {
   const { slug = '' } = useParams();
   const { data: channel, isPending, isPlaceholderData, isError } = useChannel(slug);
+  usePageTitle(channel && `${channel.name} 신고함`);
   const [tab, setTab] = useState<'open' | 'done'>('open');
   const reports = useChannelReports(slug, tab);
 

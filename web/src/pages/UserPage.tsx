@@ -16,6 +16,7 @@ import { BadgeMark, BadgeMedal, TIER_LABEL } from '../components/BadgeMedal';
 
 const TIER_ORDER = { legendary: 0, rare: 1, common: 2 } as const;
 import NotFoundPage from './NotFoundPage';
+import { usePageTitle } from '../lib/title';
 
 const joinedAt = (iso: string) => {
   const d = new Date(iso);
@@ -99,6 +100,7 @@ function BlockButton({ user }: { user: UserProfile }) {
 export default function UserPage() {
   const id = useParams().id ?? '';
   const profile = useUserProfile(id);
+  usePageTitle(profile.data?.nickname);
   const feed = useFeed({ authorId: id }, isUserId(id));
   const { user: me } = useAuth();
 

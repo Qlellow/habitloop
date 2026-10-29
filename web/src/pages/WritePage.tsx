@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ApiError, useChannel, usePost, useSavePost, type ChannelDetail, type PostDetail } from '@loop/shared';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link, Navigate, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ApiError, timeAgo, useAuth, useChannel, usePost, useSavePost, type ChannelDetail, type PostDetail } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { Dropdown, type DropdownOption } from '../components/Dropdown';
 import { JoinButton } from '../components/JoinButton';
@@ -11,6 +11,8 @@ import { ui } from '../components/ui';
 import s from './pages.styles';
 import w from './WritePage.styles';
 import { cn } from '../lib/cn';
+import { readDraft, usePostDraft } from '../lib/draft';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 /** 글은 채널 안에서만 쓴다. 채널은 들어온 곳으로 고정되고, 카테고리만 드롭다운으로 고른다. */
 function PostForm({
@@ -32,9 +34,38 @@ function PostForm({
   const initialCategory = initial
     ? (initial.category?.id ?? null)
     : (ordered.find((c) => c.id === defaultCategory && canUse(c))?.id ?? null);
-  const [categoryId, setCategoryId] = useState<number | null>(initialCategory);
-  const [title, setTitle] = useState(initial?.title ?? '');
-  const [content, setContent] = useState(initial?.content ?? '');
+  const start = { title: initial?.title ?? '', content: initial?.content ?? '', categoryId: initialCategory };
+  const target = initial ? `edit.${initial.id}` : `new.${channel.slug}`;
+  // 쓰다 만 글이 남아 있으면 이어서 쓴다 (고를 수 없게 된 카테고리는 버린다)
+  const [saved] = useState(() => readDraft(target, start));
+  const [categoryId, setCategoryId] = useState<number | null>(
+    saved && (saved.categoryId == null || ordered.some((c) => c.id === saved.categoryId && canUse(c))) ? saved.categoryId : initialCategory,
+  );
+  const [title, setTitle] = useState(saved?.title ?? start.title);
+  const [content, setContent] = useState(saved?.content ?? start.content);
+  const [restoredNote, setRestoredNote] = useState(!!saved);
+  const draft = usePostDraft(target, { title, content, categoryId }, start);
+
+  // 쓰던 글이 있으면 떠나기 전에 한 번 묻는다 (새로고침 · 창 닫기는 브라우저 기본 확인창).
+  // 올리는 중 · 로그인이 풀려 로그인 화면으로 가는 중에는 묻지 않는다 (임시저장이 남아 있어 다시 로그인하면 이어서 쓴다)
+  const { isLoggedIn } = useAuth();
+  const leaving = useRef(false);
+  const guard = draft.dirty && isLoggedIn;
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => guard && !leaving.current && currentLocation.pathname !== nextLocation.pathname);
+  useEffect(() => {
+    if (!guard) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [guard]);
+
+  /** 쓰던 내용을 버리고 처음 상태로 */
+  const startOver = () => {
+    setTitle(start.title);
+    setContent(start.content);
+    setCategoryId(start.categoryId);
+    setRestoredNote(false);
+  };
 
   // 카테고리가 있는 채널은 카테고리를 골라야 글을 올릴 수 있다
   const valid = title.trim().length > 0 && content.trim().length > 0 && (!needsCategory || categoryId != null);
@@ -57,6 +88,8 @@ function PostForm({
       { channel: channel.slug, categoryId, title: title.trim(), content },
       {
         onSuccess: (post) => {
+          draft.clear();
+          leaving.current = true;
           toast(initial ? '글을 수정했어요' : '글을 올렸어요');
           navigate(`/posts/${post.id}`, { replace: true });
         },
@@ -76,6 +109,14 @@ function PostForm({
         </Link>
         <h1 className={s.pageTitle}>{initial ? '글 수정' : '글쓰기'}</h1>
       </div>
+      {restoredNote && (
+        <div className={w.restored} role="status">
+          <span>쓰다 만 글을 불러왔어요 · {timeAgo(new Date(saved!.savedAt).toISOString())} 임시저장</span>
+          <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={startOver}>
+            {initial ? '원래 글로 되돌리기' : '지우고 새로 쓰기'}
+          </button>
+        </div>
+      )}
       <form className={cn(ui.card, s.formCard)} onSubmit={submit}>
         {/* 카테고리(왼쪽) + 제목 */}
         <div className={w.titleRow}>
@@ -110,6 +151,17 @@ function PostForm({
           </button>
         </div>
       </form>
+      <ConfirmDialog
+        open={blocker.state === 'blocked'}
+        title={initial ? '수정을 그만둘까요?' : '글쓰기를 그만둘까요?'}
+        message="쓰던 내용은 이 브라우저에 임시저장돼서, 다시 들어오면 이어서 쓸 수 있어요."
+        confirmLabel="나가기"
+        onConfirm={() => {
+          leaving.current = true;
+          blocker.proceed?.();
+        }}
+        onClose={() => !leaving.current && blocker.reset?.()}
+      />
     </>
   );
 }

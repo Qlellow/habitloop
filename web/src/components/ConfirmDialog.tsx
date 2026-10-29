@@ -47,9 +47,10 @@ export function ConfirmDialog({
             ref={confirmRef}
             type="button"
             className={cn(ui.button, danger ? 'bg-danger text-white hover:brightness-95' : ui.primary, 'flex-1')}
+            // 확인을 먼저: 닫기(onClose)가 확인 동작을 되돌리는 경우가 있다 (글쓰기의 떠나기 확인)
             onClick={() => {
-              onClose();
               onConfirm();
+              onClose();
             }}
           >
             {confirmLabel}

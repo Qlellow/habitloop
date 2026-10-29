@@ -13,7 +13,7 @@ const COOKIE_PATH = '/api/auth/oauth';
  * 로그인을 마치고 돌아갈 웹 주소를 모두 이 값으로 만든다 → 각 개발자 콘솔에 등록한 주소와 항상 같다.
  * SITE_URL 이 없으면(로컬 개발 등) 이 요청이 들어온 주소를 쓴다.
  */
-function siteUrl(req: Request) {
+export function siteUrl(req: Request) {
   if (process.env.SITE_URL) return process.env.SITE_URL.trim().replace(/\/$/, '');
   const proto = String(req.headers['x-forwarded-proto'] ?? req.protocol).split(',')[0];
   const host = String(req.headers['x-forwarded-host'] ?? req.headers.host);

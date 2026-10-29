@@ -44,6 +44,7 @@ const signedOut = { token: null, user: null };
 let state: AuthState = { ...signedOut, ready: false };
 let storage: AuthStorage | null = null;
 const listeners = new Set<() => void>();
+const expireListeners = new Set<() => void>();
 
 function set(next: AuthState) {
   state = next;
@@ -123,6 +124,22 @@ export const authStore = {
   signOut() {
     set({ ...signedOut, ready: true });
     void persist(signedOut);
+  },
+  /**
+   * 서버가 이 토큰을 거절했다 (만료 · 다른 곳에서 로그아웃 · 비밀번호 변경): 로그아웃하고 안내할 수 있게 알린다.
+   * 그사이 다시 로그인해서 토큰이 바뀌었으면 예전 요청의 401 이므로 무시한다.
+   */
+  expire(token: string) {
+    if (state.token !== token) return;
+    authStore.signOut();
+    expireListeners.forEach((l) => l());
+  },
+  /** 로그인이 풀렸을 때 할 일 (웹 · 앱이 안내 문구를 띄운다) */
+  onExpire(listener: () => void) {
+    expireListeners.add(listener);
+    return () => {
+      expireListeners.delete(listener);
+    };
   },
   subscribe(listener: () => void) {
     listeners.add(listener);

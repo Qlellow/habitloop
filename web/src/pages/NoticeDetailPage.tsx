@@ -8,11 +8,13 @@ import { cn } from '../lib/cn';
 import { markNoticeSeen, noticeDate } from '../lib/notices';
 import { NoticeKindBadge } from './NoticesPage';
 import NotFoundPage from './NotFoundPage';
+import { usePageTitle } from '../lib/title';
 
 /** 공지 자세히: 마크다운 본문 + 이전 · 다음 공지 */
 export default function NoticeDetailPage() {
   const id = Number(useParams().id);
   const { data: n, error } = useSiteNotice(id);
+  usePageTitle(n?.title);
   useEffect(() => markNoticeSeen(n?.id), [n?.id]);
 
   if (!Number.isInteger(id) || id < 1 || (error instanceof ApiError && error.status === 404)) return <NotFoundPage message="없는 공지예요" />;

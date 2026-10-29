@@ -14,6 +14,8 @@ const s = {
     'hover:bg-field hover:text-fg-strong aria-checked:border-primary aria-checked:bg-primary-weak aria-checked:text-primary ' +
     '[&_span]:text-[11px] [&_span]:py-0 [&_span]:px-1.5',
   title: 'flex-1 min-w-0 h-[46px] text-lg font-semibold',
+  // 임시저장을 불러왔다는 안내
+  restored: 'flex flex-wrap items-center justify-between gap-2 mt-4 px-4 py-2.5 rounded-lg bg-primary-weak text-sm text-fg',
   // 팔로우 안내
   gate: 'flex flex-col items-center px-6 py-14 text-center',
   gateTitle: 'mt-[18px] mb-1.5 text-xl font-bold text-fg-strong',

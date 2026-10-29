@@ -26,6 +26,7 @@ import { ui } from '../components/ui';
 import s from './pages.styles';
 import { Modal } from '../components/Modal';
 import { cn } from '../lib/cn';
+import { usePageTitle } from '../lib/title';
 
 const MAX = 20;
 const ADULT_HINT = '설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요';
@@ -548,6 +549,7 @@ function StaffSection({ slug, isOwner }: { slug: string; isOwner: boolean }) {
 export default function ChannelManagePage() {
   const { slug = '' } = useParams();
   const { data: channel, isPending, isPlaceholderData, isError } = useChannel(slug);
+  usePageTitle(channel && `${channel.name} 관리`);
   const reorder = useCategoryMutation(slug);
   const [pendingOrder, setPendingOrder] = useState<number[]>();
   const [deleting, setDeleting] = useState<ChannelCategory>();

@@ -20,6 +20,37 @@ function spaFallback(): Plugin {
 }
 
 /**
+ * 콘텐츠 보안 정책(CSP): 혹시 글 본문 등에 스크립트가 끼어들어도 실행되지 않게, 스크립트는 이 사이트 파일과 카카오 공유 SDK 만 허용한다.
+ * 로그인 정보가 localStorage 에 있으므로 XSS 의 마지막 안전망. 개발 서버는 인라인 스크립트 · HMR 웹소켓을 써서 빌드에만 넣는다.
+ * meta 로 넣어 Vercel · Docker(nginx) 어디서나 같게 적용된다 (meta 로 못 넣는 frame-ancestors 는 vercel.json · nginx.conf 헤더)
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' https://t1.kakaocdn.net",
+  // React 의 style 속성 · CodeMirror 가 넣는 <style>
+  "style-src 'self' 'unsafe-inline'",
+  // 본문 이미지는 바깥 주소도 쓸 수 있고, 올리기 전 미리보기는 blob:
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' blob: https:",
+  "font-src 'self' data:",
+  // 음성방(LiveKit) 은 wss:, 날씨 등은 https:
+  "connect-src 'self' https: wss:",
+  "worker-src 'self' blob:",
+  'frame-src https://*.kakao.com',
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'content-security-policy',
+    apply: 'build',
+    transformIndexHtml: () => [{ tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: CSP }, injectTo: 'head-prepend' }],
+  };
+}
+
+/**
  * react-router 는 package.json exports 에 'production' 조건이 없어 빌드에도 개발용 파일(경고 · 검사 포함)이 들어간다.
  * 빌드할 때만 같은 버전의 production 파일로 바꿔 끼운다
  */
@@ -29,7 +60,7 @@ const routerDist = resolve(dirname(createRequire(import.meta.url).resolve('react
 const RELEASE = (process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'dev').slice(0, 7);
 
 export default defineConfig(({ command }) => ({
-  plugins: [react(), spaFallback()],
+  plugins: [react(), spaFallback(), contentSecurityPolicy()],
   define: { __RELEASE__: JSON.stringify(RELEASE) },
   resolve: {
     alias:
