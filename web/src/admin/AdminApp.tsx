@@ -8,6 +8,7 @@ import { Toaster, toast } from '../components/Toast';
 import { ui } from '../components/ui';
 import { cn } from '../lib/cn';
 import { adminApi, adminToken } from './adminApi';
+import { ask } from '../components/ConfirmHost';
 
 /* ───────── 타입 ───────── */
 
@@ -209,7 +210,7 @@ function Reports({ adminKey }: { adminKey: string }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const act = async (r: AdminReport, action: 'hide' | 'unhide' | 'delete' | 'dismiss') => {
-    if (action === 'delete' && !confirm('지우면 되돌릴 수 없어요. 지울까요?')) return;
+    if (action === 'delete' && !(await ask('지울까요?', { message: '지우면 되돌릴 수 없어요.', confirmLabel: '지우기', danger: true }))) return;
     setBusy(true);
     try {
       await adminApi(adminKey, '/reports/action', { method: 'POST', body: { postId: r.postId, commentId: r.commentId, action } });
@@ -307,7 +308,7 @@ function Users({ adminKey }: { adminKey: string }) {
   const qc = useQueryClient();
   const toggle = async (u: AdminUserRow) => {
     const suspend = !u.suspended;
-    if (suspend && !confirm(`${u.nickname}님의 이용을 정지할까요?\n모든 기기에서 로그아웃되고 다시 로그인할 수 없어요.`)) return;
+    if (suspend && !(await ask(`${u.nickname}님의 이용을 정지할까요?`, { message: '모든 기기에서 로그아웃되고 다시 로그인할 수 없어요.', confirmLabel: '정지', danger: true }))) return;
     try {
       await adminApi(adminKey, `/users/${u.id}/suspend`, { method: 'POST', body: { suspend } });
       toast(suspend ? '이용을 정지했어요' : '정지를 풀었어요');
@@ -565,7 +566,7 @@ function Notices({ adminKey }: { adminKey: string }) {
   const list = useQuery({ queryKey: ['notices', 'admin'], queryFn: () => api<NoticePage>('/api/notices', { query: { size: 50 } }) });
   const [editing, setEditing] = useState<NoticeSummary | 'new'>();
   const remove = async (n: NoticeSummary) => {
-    if (!confirm(`'${n.title}' 공지를 지울까요?`)) return;
+    if (!(await ask(`'${n.title}' 공지를 지울까요?`, { confirmLabel: '지우기', danger: true }))) return;
     try {
       await adminApi(adminKey, `/notices/${n.id}`, { method: 'DELETE' });
       await qc.invalidateQueries({ queryKey: ['notices'] });

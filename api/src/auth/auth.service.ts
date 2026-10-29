@@ -12,6 +12,11 @@ import type { LoginInput, PasswordInput, PasswordResetInput, SignupInput } from 
 import { describeDevice } from './device';
 import { JwtService, type AuthUser } from './jwt.service';
 
+/** 로그인 실패 제한: 15분 동안 계정마다 10번, IP 마다 30번 (같은 와이파이를 쓰는 여러 사람을 생각해 IP 는 넉넉히) */
+const LOGIN_FAIL_WINDOW = '15 minutes';
+const LOGIN_FAIL_LIMIT_EMAIL = 10;
+const LOGIN_FAIL_LIMIT_IP = 30;
+
 interface UserRow {
   id: number;
   uid: string;
@@ -114,16 +119,38 @@ export class AuthService {
   }
 
   /** 비밀번호가 맞으면 토큰을 준다. 2단계 인증이 켜져 있으면 대신 이메일로 번호를 보내고 challenge 를 준다 */
-  async login(input: LoginInput, userAgent = '') {
-    const user = await this.db.one<UserRow>(`${SELECT_USER} WHERE email = $1`, [normalize(input.email)]);
+  async login(input: LoginInput, userAgent = '', ip = '') {
+    const email = normalize(input.email);
+    // 비밀번호 대입 막기: 계정마다 · IP 마다 15분에 틀린 횟수를 센다 (맞는 비밀번호여도 막혀 있는 동안은 거절)
+    const keys = [`email:${email}`, ...(ip ? [`ip:${ip}`] : [])];
+    await this.checkLoginFailures(keys);
+    const user = await this.db.one<UserRow>(`${SELECT_USER} WHERE email = $1`, [email]);
     if (!user || !(await bcrypt.compare(input.password, user.password))) {
+      await this.recordLoginFailure(keys);
       throw new ApiError(HttpStatus.UNAUTHORIZED, '이메일 또는 비밀번호가 맞지 않아요');
     }
+    await this.db.execute('DELETE FROM login_failures WHERE key = $1', [keys[0]]);
     if (user.twoFactorEnabled) {
       const challenge = await this.verification.send(user.email, 'LOGIN', user.id);
       return { twoFactorRequired: true, challenge, maskedEmail: mask(user.email) };
     }
     return { ...(await this.toAuth(user, userAgent)), twoFactorRequired: false };
+  }
+
+  private async checkLoginFailures(keys: string[]) {
+    const rows = await this.db.query<{ key: string; n: number }>(
+      `SELECT key, count(*)::int AS n FROM login_failures WHERE key = ANY($1) AND at > now() - interval '${LOGIN_FAIL_WINDOW}' GROUP BY key`,
+      [keys],
+    );
+    if (rows.some((r) => r.n >= (r.key.startsWith('ip:') ? LOGIN_FAIL_LIMIT_IP : LOGIN_FAIL_LIMIT_EMAIL))) {
+      throw ApiError.tooMany('로그인을 너무 많이 틀렸어요. 15분 뒤에 다시 시도하거나, 비밀번호 찾기로 바꿔 주세요');
+    }
+  }
+
+  private async recordLoginFailure(keys: string[]) {
+    for (const key of keys) await this.db.execute('INSERT INTO login_failures (key) VALUES ($1)', [key]);
+    // 가끔 오래된 기록을 지운다
+    if (Math.random() < 0.05) await this.db.execute("DELETE FROM login_failures WHERE at < now() - interval '1 day'");
   }
 
   /**

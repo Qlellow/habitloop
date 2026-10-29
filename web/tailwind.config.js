@@ -10,7 +10,7 @@ export default {
       maxWidth: { page: '1240px' },
       // 글자로 쓰는 포인트 색은 명도 대비를 맞춘 --primary-text, 흰 글자를 올리는 바탕(bg-primary)은 --primary-solid
       textColor: { primary: { DEFAULT: 'var(--primary-text)' }, danger: { DEFAULT: 'var(--danger-text)' } },
-      backgroundColor: { primary: { DEFAULT: 'var(--primary-solid)', pressed: 'var(--primary-solid-pressed)' } },
+      backgroundColor: { primary: { DEFAULT: 'var(--primary-solid)', pressed: 'var(--primary-solid-pressed)' }, danger: { DEFAULT: 'var(--danger-solid)' } },
       height: { header: '64px' },
       spacing: { header: '64px' },
       boxShadow: {

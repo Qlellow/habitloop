@@ -38,7 +38,7 @@ export function ConfirmDialog({
         <h2 id="confirm-title" className="m-0 text-lg font-bold text-fg-strong">
           {title}
         </h2>
-        {message && <p className="mt-2 mb-0 text-[15px] text-fg-sub">{message}</p>}
+        {message && <p className="mt-2 mb-0 text-[15px] text-fg-sub whitespace-pre-line">{message}</p>}
         <div className="flex gap-2 mt-6">
           <button type="button" className={cn(ui.button, ui.ghost, 'flex-1')} onClick={onClose}>
             취소

@@ -278,6 +278,13 @@ export const RestoreIcon = (p: P) => (
 );
 
 /** 큰 화면(글 페이지)으로 열기 */
+/** 공유: 위로 나가는 화살표 + 상자 */
+export const ShareIcon = (p: P) => (
+  <svg {...base} data-icon="share" {...p}>
+    <path d="M12 3v12M7.5 7.5L12 3l4.5 4.5M5 12v6.5A1.5 1.5 0 006.5 20h11a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const ExpandIcon = (p: P) => (
   <svg {...base} data-icon="expand" {...p}>
     <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />

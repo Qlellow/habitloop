@@ -23,6 +23,9 @@ let jwt: JwtService;
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
   process.env.MAIL_RESEND_INTERVAL_SECONDS = '0';
+  // 도배 제한은 따로 확인한다 (다른 테스트는 글 · 댓글을 한꺼번에 많이 쓴다)
+  process.env.POST_RATE_LIMIT = '1000';
+  process.env.COMMENT_RATE_LIMIT = '1000';
   // TEST_DATABASE_URL 을 주면 진짜 Postgres 로, 없으면 메모리 DB(PGlite)로 돌린다
   if (process.env.TEST_DATABASE_URL) process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
   else delete process.env.DATABASE_URL;
@@ -2028,5 +2031,72 @@ describe('링크 미리보기 카드', () => {
     // 없는 글은 사이트 기본 카드
     const missing = await http().get('/posts/99999999').expect(200);
     expect(missing.text).toContain('og:title" content="루프 · 좋아하는 이야기로 이어지는 곳"');
+  });
+});
+
+describe('도배 · 비밀번호 대입 막기', () => {
+  it('로그인을 10번 틀리면 15분 동안 그 계정은 맞는 비밀번호로도 막힌다', async () => {
+    await signup('brute@test.dev', '대입대상');
+    for (let i = 0; i < 10; i++) {
+      await http().post('/api/auth/login').send({ email: 'brute@test.dev', password: `wrong-${i}!` }).expect(401);
+    }
+    const blocked = await http().post('/api/auth/login').send({ email: 'brute@test.dev', password: 'password1234!' }).expect(429);
+    expect(blocked.body.message).toContain('15분');
+    // 다른 계정은 그대로 (같은 IP 라도 IP 한도 30번 전에는)
+    await signup('brute2@test.dev', '옆사람');
+    await http().post('/api/auth/login').send({ email: 'brute2@test.dev', password: 'password1234!' }).expect(200);
+  });
+
+  it('맞게 로그인하면 그 계정의 틀린 기록이 지워진다', async () => {
+    await signup('reset-fail@test.dev', '기록지움');
+    for (let i = 0; i < 9; i++) {
+      await http().post('/api/auth/login').send({ email: 'reset-fail@test.dev', password: `wrong-${i}!` }).expect(401);
+    }
+    await http().post('/api/auth/login').send({ email: 'reset-fail@test.dev', password: 'password1234!' }).expect(200);
+    await http().post('/api/auth/login').send({ email: 'reset-fail@test.dev', password: 'wrong-x!' }).expect(401);
+    await http().post('/api/auth/login').send({ email: 'reset-fail@test.dev', password: 'password1234!' }).expect(200);
+  });
+
+  it('짧은 시간에 글 · 댓글을 너무 많이 쓰면 429', async () => {
+    const token = await signup('spam@test.dev', '도배러');
+    await http().post('/api/channels').set(bearer(token)).send({ slug: 'spamch', name: '도배채널' }).expect(201);
+    process.env.POST_RATE_LIMIT = '2';
+    process.env.COMMENT_RATE_LIMIT = '2';
+    try {
+      let postId = 0;
+      for (let i = 0; i < 2; i++) {
+        postId = (await http().post('/api/posts').set(bearer(token)).send({ channel: 'spamch', title: `글 ${i}`, content: '본문' }).expect(201)).body.id;
+      }
+      const tooMany = await http().post('/api/posts').set(bearer(token)).send({ channel: 'spamch', title: '하나 더', content: '본문' }).expect(429);
+      expect(tooMany.body.message).toContain('너무 자주');
+      for (let i = 0; i < 2; i++) {
+        await http().post(`/api/posts/${postId}/comments`).set(bearer(token)).send({ content: `댓글 ${i}` }).expect(201);
+      }
+      await http().post(`/api/posts/${postId}/comments`).set(bearer(token)).send({ content: '하나 더' }).expect(429);
+    } finally {
+      process.env.POST_RATE_LIMIT = '1000';
+      process.env.COMMENT_RATE_LIMIT = '1000';
+    }
+  });
+});
+
+describe('검색엔진', () => {
+  it('robots.txt 는 사이트맵 주소를, sitemap.xml 은 공개 채널 · 글만 담는다', async () => {
+    const robots = await http().get('/robots.txt').expect(200);
+    expect(robots.text).toMatch(/Sitemap: http:\/\/[^\s]+\/sitemap\.xml/);
+    expect(robots.text).toContain('Disallow: /me');
+
+    const owner = await signup('seo@test.dev', '검색주인');
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'seopub', name: '공개검색' }).expect(201);
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'seopriv', name: '비공개검색', visibility: 'private' }).expect(201);
+    const pub = (await http().post('/api/posts').set(bearer(owner)).send({ channel: 'seopub', title: '공개 글', content: '본문' }).expect(201)).body.id;
+    const priv = (await http().post('/api/posts').set(bearer(owner)).send({ channel: 'seopriv', title: '비공개 글', content: '본문' }).expect(201)).body.id;
+
+    const map = await http().get('/sitemap.xml').expect(200);
+    expect(map.headers['content-type']).toMatch(/xml/);
+    expect(map.text).toContain('/c/seopub</loc>');
+    expect(map.text).not.toContain('/c/seopriv</loc>');
+    expect(map.text).toContain(`/posts/${pub}</loc>`);
+    expect(map.text).not.toContain(`/posts/${priv}</loc>`);
   });
 });

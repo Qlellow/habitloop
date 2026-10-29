@@ -22,7 +22,8 @@ import {
   type PostSummary,
 } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
-import { ExpandIcon, HeartIcon, ImageIcon, MinimizeIcon, PictureInPictureIcon } from '../components/Icons';
+import { ExpandIcon, HeartIcon, ImageIcon, MinimizeIcon, PictureInPictureIcon, ShareIcon } from '../components/Icons';
+import { ShareDialog } from '../components/ShareDialog';
 import { prepareUpload } from '../lib/postImage';
 import { Page } from '../components/Layout';
 import { RoleBadge } from '../components/RoleBadge';
@@ -43,6 +44,7 @@ import s from './pages.styles';
 import NotFoundPage from './NotFoundPage';
 import { cn } from '../lib/cn';
 import { usePageTitle } from '../lib/title';
+import { ask } from '../components/ConfirmHost';
 
 function useLoginRedirect(postId: number) {
   const navigate = useNavigate();
@@ -201,14 +203,12 @@ function CommentItem({ comment: c, postId, best, reply }: { comment: Comment; po
             <button
               type="button"
               className={s.commentDelete}
-              onClick={() =>
-                confirm(
-                  c.mine
-                    ? reply || !c.replies?.length
-                      ? '댓글을 삭제할까요?'
-                      : `댓글을 삭제할까요?\n답글 ${c.replies.length}개도 함께 지워져요.`
-                    : `${c.authorNickname}님의 댓글을 운영진 권한으로 삭제할까요?`,
-                ) && remove.mutate(c.id, { onError: (e) => toast(e.message) })
+              onClick={async () =>
+                (await ask(c.mine ? '댓글을 삭제할까요?' : `${c.authorNickname}님의 댓글을 운영진 권한으로 삭제할까요?`, {
+                  message: c.mine && !reply && c.replies?.length ? `답글 ${c.replies.length}개도 함께 지워져요.` : undefined,
+                  confirmLabel: '삭제',
+                  danger: true,
+                })) && remove.mutate(c.id, { onError: (e) => toast(e.message) })
               }
             >
               삭제
@@ -446,6 +446,7 @@ export default function PostDetailPage() {
   const del = useDeletePost();
   const { isLoggedIn } = useAuth();
   const [reporting, setReporting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   // 내가 차단한 사람의 글은 내용을 접어 두고, 누르면 보여 준다
   const [shownBlocked, setShownBlocked] = useState<number>();
   const mini = useMiniEnabled();
@@ -475,8 +476,8 @@ export default function PostDetailPage() {
     return <NotFoundPage message={error.message} hint="이 글은 지금 볼 수 없어요." />;
   }
 
-  const onDelete = () => {
-    if (!post || !confirm(post.mine ? '글을 삭제할까요?' : `${post.author.nickname}님의 글을 운영진 권한으로 삭제할까요?`)) return;
+  const onDelete = async () => {
+    if (!post || !(await ask(post.mine ? '글을 삭제할까요?' : `${post.author.nickname}님의 글을 운영진 권한으로 삭제할까요?`, { confirmLabel: '삭제', danger: true }))) return;
     del.mutate(id, {
       onSuccess: () => {
         toast('글을 삭제했어요');
@@ -565,6 +566,10 @@ export default function PostDetailPage() {
                     {focus ? <MinimizeIcon /> : <ExpandIcon />}
                     {focus ? '몰입 끄기' : '몰입 모드'}
                   </button>
+                  <button type="button" className={cn(ui.button, ui.text, ui.small, 'gap-1 [&>svg]:w-4 [&>svg]:h-4')} title="카카오톡 · 링크 복사 등으로 공유" onClick={() => setSharing(true)}>
+                    <ShareIcon />
+                    공유
+                  </button>
                   {mini && (
                     <button type="button" className={cn(ui.button, ui.text, ui.small, 'gap-1 [&>svg]:w-4 [&>svg]:h-4')} title="작은 창으로 띄우고 다른 글 보기" onClick={toMini}>
                       <PictureInPictureIcon />
@@ -589,6 +594,13 @@ export default function PostDetailPage() {
                 </div>
               )}
               {reporting && <ReportDialog postId={id} onClose={() => setReporting(false)} />}
+              {sharing && (
+                <ShareDialog
+                  heading="글 공유하기"
+                  content={{ url: `${location.origin}/posts/${post.id}`, title: post.title, text: `${post.channel.name} · ${plainText(post.content).slice(0, 80)}` }}
+                  onClose={() => setSharing(false)}
+                />
+              )}
             </div>
             <div className={s.content}>
               {isPlaceholderData ? (

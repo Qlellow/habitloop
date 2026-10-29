@@ -14,6 +14,7 @@ import { preload } from '../../lib/preload';
 import { ui } from '../../components/ui';
 import s from './my.styles';
 import { cn } from '../../lib/cn';
+import { ask } from '../../components/ConfirmHost';
 
 function ChannelRow({ channel, action }: { channel: ChannelSummary; action: React.ReactNode }) {
   return (
@@ -42,8 +43,9 @@ function LeaveButton({ channel }: { channel: ChannelSummary }) {
       type="button"
       className={cn(ui.button, ui.ghost, ui.small)}
       disabled={membership.isPending}
-      onClick={() => {
-        if (!confirm(`'${channel.name}' 채널 팔로우를 취소할까요?\n팔로우를 취소하면 이 채널에 글을 쓸 수 없어요.`)) return;
+      onClick={async () => {
+        const ok = await ask(`'${channel.name}' 채널 팔로우를 취소할까요?`, { message: '팔로우를 취소하면 이 채널에 글을 쓸 수 없어요.', confirmLabel: '팔로우 취소', danger: true });
+        if (!ok) return;
         membership.mutate(false, { onSuccess: () => toast('채널 팔로우를 취소했어요'), onError: (e) => toast(e.message) });
       }}
     >

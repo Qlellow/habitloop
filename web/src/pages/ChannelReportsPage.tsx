@@ -8,6 +8,7 @@ import { ui } from '../components/ui';
 import { cn } from '../lib/cn';
 import s from './pages.styles';
 import { usePageTitle } from '../lib/title';
+import { ask } from '../components/ConfirmHost';
 
 const reasonLabel = (r: string) => REPORT_REASONS.find((x) => x.value === r)?.label ?? r;
 
@@ -17,8 +18,8 @@ const DONE_LABEL: Record<string, string> = { hidden: '숨김', dismissed: '문�
 function ReportRow({ report: r, slug, done }: { report: ReportGroup; slug: string; done: boolean }) {
   const action = useReportAction(slug);
   const what = r.commentId ? '댓글' : '글';
-  const run = (a: ReportAction) => {
-    if (a === 'delete' && !confirm(`이 ${what}을 지울까요? 지우면 되돌릴 수 없어요.`)) return;
+  const run = async (a: ReportAction) => {
+    if (a === 'delete' && !(await ask(`이 ${what}을 지울까요?`, { message: '지우면 되돌릴 수 없어요.', confirmLabel: '지우기', danger: true }))) return;
     action.mutate(
       { postId: r.postId, commentId: r.commentId, action: a },
       {

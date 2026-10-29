@@ -8,6 +8,7 @@ import { CloseIcon } from '../Icons';
 import { toast } from '../Toast';
 import { ui } from '../ui';
 import { cn } from '../../lib/cn';
+import { ask } from '../ConfirmHost';
 
 /**
  * 나만의 홈 편집 모드.
@@ -361,7 +362,7 @@ export function HomeEditor({
         <button
           type="button"
           className={cn(ui.button, ui.ghost, ui.small)}
-          onClick={() => (!dirty || confirm('바꾼 내용을 저장하지 않고 나갈까요?')) && onCancel()}
+          onClick={async () => (!dirty || (await ask('바꾼 내용을 저장하지 않고 나갈까요?', { confirmLabel: '나가기' }))) && onCancel()}
         >
           취소
         </button>

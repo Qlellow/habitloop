@@ -4,6 +4,7 @@ import { useAuth, useBookmark, useMembership, type ChannelDetail } from '@loop/s
 import { toast } from './Toast';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
+import { ask } from './ConfirmHost';
 
 /**
  * 채널 팔로우/팔로우 취소 버튼.
@@ -57,8 +58,13 @@ export function JoinButton({
       className={cn(ui.button, ui.ghost, sizeClass)}
       title="누르면 팔로우를 취소할 수 있어요"
       disabled={membership.isPending}
-      onClick={() => {
-        if (!confirm(`'${channel.name}' 채널 팔로우를 취소할까요?\n팔로우를 취소하면 이 채널에 글을 쓸 수 없어요. (보기·댓글은 계속 가능해요)`)) return;
+      onClick={async () => {
+        const ok = await ask(`'${channel.name}' 채널 팔로우를 취소할까요?`, {
+          message: '팔로우를 취소하면 이 채널에 글을 쓸 수 없어요. (보기·댓글은 계속 가능해요)',
+          confirmLabel: '팔로우 취소',
+          danger: true,
+        });
+        if (!ok) return;
         membership.mutate(false, {
           onSuccess: () => toast('채널 팔로우를 취소했어요'),
           onError: (e) => toast(e.message),
