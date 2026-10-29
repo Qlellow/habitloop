@@ -19,3 +19,9 @@ function resolveApiUrl(): string {
 }
 
 export const API_URL = resolveApiUrl();
+
+/**
+ * 웹 사이트 주소 (글 · 초대 링크 공유용). EXPO_PUBLIC_WEB_URL 이 없으면 API 주소와 같다고 본다
+ * (배포는 한 도메인에서 웹과 /api 를 함께 내보낸다)
+ */
+export const WEB_URL = (process.env.EXPO_PUBLIC_WEB_URL ?? API_URL).replace(/\/$/, '');

@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { CODE_LENGTH, cleanCode, passwordProblem, useSignup, useSignupCode } from '@loop/shared';
 import { Button, Input } from '../src/ui';
 import { auth as s } from '../src/authStyles';
+import { leave } from '../src/nav';
 
 export default function SignupScreen() {
   const signup = useSignup();
@@ -64,7 +65,7 @@ export default function SignupScreen() {
           className="mt-7"
           loading={signup.isPending}
           disabled={!valid}
-          onPress={() => signup.mutate({ ...form, email, ref: form.ref.trim() || undefined }, { onSuccess: () => router.back() })}
+          onPress={() => signup.mutate({ ...form, email, ref: form.ref.trim() || undefined }, { onSuccess: leave })}
         />
         <Text className={s.switch}>
           이미 계정이 있나요?{' '}

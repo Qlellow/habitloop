@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 import { KeyboardArea } from '../src/Keyboard';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { cleanCode, CODE_LENGTH, useLogin, useResendLoginCode, useVerifyLogin } from '@loop/shared';
 import { Button, Input } from '../src/ui';
 import { auth as s } from '../src/authStyles';
+import { leave } from '../src/nav';
 
 export default function LoginScreen() {
   const login = useLogin();
   const verify = useVerifyLogin();
   const resend = useResendLoginCode();
-  const [email, setEmail] = useState('');
+  // 비밀번호를 바꾸고 돌아왔을 때 이메일을 채워 둔다
+  const [email, setEmail] = useState(useLocalSearchParams<{ email?: string }>().email ?? '');
   const [password, setPassword] = useState('');
   // 2단계 인증이 켜진 계정: 비밀번호 확인 뒤 이메일로 받은 번호를 입력한다
   const [twoFactor, setTwoFactor] = useState<{ challenge: string; maskedEmail?: string }>();
@@ -22,12 +24,12 @@ export default function LoginScreen() {
       {
         onSuccess: (res) => {
           if (res.twoFactorRequired && res.challenge) setTwoFactor({ challenge: res.challenge, maskedEmail: res.maskedEmail });
-          else router.back();
+          else leave();
         },
       },
     );
   const confirm = () =>
-    twoFactor && verify.mutate({ challenge: twoFactor.challenge, code }, { onSuccess: () => router.back(), onError: () => setCode('') });
+    twoFactor && verify.mutate({ challenge: twoFactor.challenge, code }, { onSuccess: leave, onError: () => setCode('') });
 
   if (twoFactor) {
     return (
@@ -72,6 +74,7 @@ export default function LoginScreen() {
         <Input value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" textContentType="password" onSubmitEditing={submit} returnKeyType="go" />
         {login.error ? <Text className={s.error}>{login.error.message}</Text> : null}
         <Button title="로그인" size="lg" full className="mt-7" loading={login.isPending} disabled={!email || !password} onPress={submit} />
+        <Button title="비밀번호를 잊었나요?" variant="text" full className="mt-2" onPress={() => router.push({ pathname: '/password-reset', params: { email } })} />
         <Text className={s.switch}>
           처음이신가요?{' '}
           <Text className={s.link} onPress={() => router.replace('/signup')}>

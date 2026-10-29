@@ -62,6 +62,7 @@ export default function RootLayout() {
             <Stack.Screen name="channel-form" options={{ presentation: 'modal', title: '채널 만들기' }} />
             <Stack.Screen name="login" options={{ presentation: 'modal', title: '로그인' }} />
             <Stack.Screen name="signup" options={{ presentation: 'modal', title: '회원가입' }} />
+            <Stack.Screen name="password-reset" options={{ presentation: 'modal', title: '비밀번호 찾기' }} />
           </Stack>
           <AppEffects />
           <ToastHost />

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Platform, Pressable, RefreshControl, Share, Text, TextInput, View } from 'react-native';
 import { KeyboardArea, useKeyboardVisible } from '../../src/Keyboard';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +34,8 @@ import { cn } from '../../src/cn';
 import { useColors } from '../../src/theme';
 import { toast } from '../../src/Toast';
 import { pickImage } from '../../src/pickImage';
+import { WEB_URL } from '../../src/config';
+import { leave } from '../../src/nav';
 
 /** 댓글 안의 사진 ![](/api/images/…) 은 글자 대신 작은 사진으로 */
 const COMMENT_IMAGE = /!\[[^\]\n]*\]\((\/api\/images\/[A-Za-z0-9_-]{16,32})(?:#[^)\s]*)?\)/g;
@@ -430,6 +432,17 @@ export default function PostScreen() {
   const postMenu = () => {
     if (!post) return;
     const options: SheetOption[] = [];
+    // 휴대폰 공유 창(카카오톡 · 메시지 등)으로 웹 주소를 보낸다. 받은 쪽에는 글 제목 · 요약 미리보기 카드가 보인다
+    options.push({
+      label: '공유',
+      onPress: () => {
+        const url = `${WEB_URL}/posts/${post.id}`;
+        // iOS 는 url 을 따로 받고(메시지에 또 넣으면 링크가 두 번 간다), 안드로이드는 메시지에 함께 넣는다
+        Share.share(Platform.OS === 'ios' ? { message: post.title, url } : { title: post.title, message: `${post.title}\n${url}` }).catch(() =>
+          toast('공유하지 못했어요'),
+        );
+      },
+    });
     if (post.mine) options.push({ label: '수정', onPress: () => router.push(`/write?id=${id}`) });
     if (post.mine || post.canModerate)
       options.push({
@@ -438,7 +451,7 @@ export default function PostScreen() {
         onPress: () =>
           Alert.alert('글을 삭제할까요?', '댓글도 함께 지워져요.', [
             { text: '취소', style: 'cancel' },
-            { text: '삭제', style: 'destructive', onPress: () => del.mutate(id, { onSuccess: () => router.back(), onError: (e) => toast(e.message) }) },
+            { text: '삭제', style: 'destructive', onPress: () => del.mutate(id, { onSuccess: leave, onError: (e) => toast(e.message) }) },
           ]),
       });
     if (!post.mine) {
