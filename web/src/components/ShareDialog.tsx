@@ -124,14 +124,20 @@ function targets(kakaoKey: string | null | undefined): Target[] {
       bg: 'bg-[#FEE500]',
       run: async (c) => {
         const send = (kakao: KakaoSdk) => {
-          // PC 는 SDK 가 공유 창(팝업)을 연다. 브라우저가 막았는지(창이 null) 직접 보고 안내를 나눈다
-          let blocked = false;
-          const nativeOpen = window.open;
-          window.open = (...args: Parameters<typeof window.open>) => {
-            const w = nativeOpen.apply(window, args);
-            if (!w) blocked = true;
-            return w;
-          };
+          // PC: SDK 는 공유 창을 'sharer' 라는 이름의 새 창으로 연다. 이미 떠 있던 카카오 창을 닫고 다시 열다 막히는 일이 있어
+          // 누른 순간에 같은 이름의 창을 먼저 열어 둔다 → SDK 는 새 창을 만들지 않고 이 창을 다시 써서 팝업 차단에 걸리지 않는다
+          if (!isMobile()) {
+            const w = 480;
+            const h = 700;
+            const left = Math.max(0, (window.screenX ?? 0) + (window.outerWidth - w) / 2);
+            const top = Math.max(0, (window.screenY ?? 0) + (window.outerHeight - h) / 2);
+            const popup = window.open('', 'sharer', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=1`);
+            if (!popup) {
+              console.error('[카카오톡 공유] 빈 공유 창도 열리지 않음', { activation: navigator.userActivation?.isActive });
+              toast('브라우저가 카카오톡 공유 창을 막았어요. 이 사이트의 팝업을 허용하거나 팝업 차단 확장 프로그램을 꺼 주세요');
+              return;
+            }
+          }
           try {
             kakao.Share.sendDefault({
               objectType: 'text',
@@ -141,16 +147,9 @@ function targets(kakaoKey: string | null | undefined): Target[] {
             });
           } catch (e) {
             console.error('[카카오톡 공유]', e);
-            toast(
-              blocked
-                ? '카카오톡 공유 창이 막혔어요. 주소창 오른쪽에서 이 사이트의 팝업을 허용하고 새로고침해 주세요'
-                : `카카오톡 공유를 열지 못했어요 (${(e as Error)?.message ?? e})`,
-            );
-          } finally {
-            window.open = nativeOpen;
+            toast(`카카오톡 공유를 열지 못했어요 (${(e as Error)?.message ?? e})`);
           }
         };
-        // 공유 창은 누른 순간에 바로 열어야 팝업으로 막히지 않는다: 공유 창을 열 때 미리 받아 둔 SDK 를 곧바로 쓴다
         // 아직 못 받았으면 받는 동안 '누른 순간'이 지나 공유 창이 막히므로, 받아 두고 한 번 더 누르게 한다
         const ready = window.Kakao?.isInitialized() ? window.Kakao : undefined;
         if (ready) return send(ready);
