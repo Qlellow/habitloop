@@ -52,6 +52,12 @@
       }
     },
     {
+      "source": "/(robots\\.txt|sitemap\\.xml)",
+      "destination": {
+        "service": "api"
+      }
+    },
+    {
       "source": "/posts/:id(\\d+)",
       "has": [
         {

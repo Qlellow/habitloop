@@ -590,4 +590,15 @@ CREATE TABLE client_errors (
 CREATE INDEX idx_client_errors_last ON client_errors (last_seen DESC);
 `,
   },
+  {
+    // 로그인 실패 기록 (비밀번호 대입 막기): 'email:…' · 'ip:…' 별로 최근 15분 실패 수를 센다. 하루 지난 기록은 지운다
+    name: '033_login_failures',
+    sql: `
+CREATE TABLE login_failures (
+    key  VARCHAR(320)  NOT NULL,
+    at   TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_login_failures_key ON login_failures (key, at);
+`,
+  },
 ];

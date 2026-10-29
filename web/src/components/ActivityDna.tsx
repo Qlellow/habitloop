@@ -267,7 +267,7 @@ export function ActivityDnaCard({ userId, nickname }: { userId: string; nickname
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {data.channels.map((c) => (
                   <Link key={c.slug} to={`/c/${c.slug}`} className="dna-chip">
-                    {c.name} <span className="opacity-60 tabular-nums">{c.count}</span>
+                    {c.name} <span className="text-fg-weak tabular-nums">{c.count}</span>
                   </Link>
                 ))}
               </div>

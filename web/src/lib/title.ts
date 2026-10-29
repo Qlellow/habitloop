@@ -43,3 +43,14 @@ export function usePageTitle(title: string | null | undefined) {
     if (title) document.title = format(title);
   }, [title]);
 }
+
+/** 없는 페이지: SPA 라 서버가 404 를 못 주므로, 검색엔진이 이 화면을 수집하지 않게 noindex 를 붙여 둔다 */
+export function useNoIndex() {
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex';
+    document.head.appendChild(meta);
+    return () => meta.remove();
+  }, []);
+}

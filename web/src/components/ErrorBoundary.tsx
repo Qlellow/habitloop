@@ -1,28 +1,48 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, useEffect, type ErrorInfo, type ReactNode } from 'react';
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
-import { isChunkError, reloadForNewVersion, reportError } from '../lib/errorReport';
+import { isChunkError, isOffline, reloadForNewVersion, reportError } from '../lib/errorReport';
+import { toast } from './Toast';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 
-/** 화면이 깨졌을 때 보여 줄 안내 (흰 화면 대신) */
+/** 인터넷이 다시 연결되면 새로고침해서 못 받은 화면을 받는다 */
+function useReloadWhenOnline(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    const onOnline = () => location.reload();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [enabled]);
+}
+
+/** 화면이 깨졌을 때 보여 줄 안내 (흰 화면 대신). 화면 조각을 못 받았으면 인터넷이 끊긴 것인지 새 버전인지 나눠 알려 준다 */
 export function CrashScreen({ onRetry, chunk }: { onRetry?: () => void; chunk?: boolean }) {
+  const offline = !!chunk && isOffline();
+  useReloadWhenOnline(offline);
+  const [title, desc, icon] = offline
+    ? ['인터넷 연결이 끊겼어요', '연결되면 자동으로 다시 불러와요.', '📡']
+    : chunk
+      ? ['새 버전이 나왔어요', '새로고침하면 최신 화면으로 바뀌어요.', '🔄']
+      : ['화면을 그리다 문제가 생겼어요', '잠깐 뒤 다시 시도해 주세요. 문제가 계속되면 자동으로 운영진에게 알려졌어요.', '🫧'];
   return (
     <div className="w-full max-w-[480px] mx-auto px-6 py-20 text-center" role="alert">
       <div className="text-[44px] leading-none" aria-hidden>
-        {chunk ? '🔄' : '🫧'}
+        {icon}
       </div>
-      <h1 className="mt-4 mb-0 text-[20px] font-bold text-fg-strong">{chunk ? '새 버전이 나왔어요' : '화면을 그리다 문제가 생겼어요'}</h1>
-      <p className="mt-2 mb-0 text-[15px] text-fg-sub">
-        {chunk ? '새로고침하면 최신 화면으로 바뀌어요.' : '잠깐 뒤 다시 시도해 주세요. 문제가 계속되면 자동으로 운영진에게 알려졌어요.'}
-      </p>
+      <h1 className="mt-4 mb-0 text-[20px] font-bold text-fg-strong">{title}</h1>
+      <p className="mt-2 mb-0 text-[15px] text-fg-sub">{desc}</p>
       <div className="mt-6 flex justify-center gap-2">
         {onRetry && !chunk && (
           <button type="button" className={cn(ui.button, ui.ghost)} onClick={onRetry}>
             다시 시도
           </button>
         )}
-        <button type="button" className={cn(ui.button, ui.primary)} onClick={() => location.reload()}>
-          새로고침
+        <button
+          type="button"
+          className={cn(ui.button, ui.primary)}
+          onClick={() => (isOffline() ? toast('아직 인터넷에 연결되지 않았어요') : location.reload())}
+        >
+          {offline ? '다시 시도' : '새로고침'}
         </button>
         {!chunk && (
           <a href="/" className={cn(ui.button, ui.text)}>

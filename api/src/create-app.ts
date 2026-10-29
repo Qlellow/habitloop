@@ -6,6 +6,7 @@ import express from 'express';
 import { AppModule } from './app.module';
 import { MAX_IMAGE_BYTES } from './images/images.service';
 import { installPostPreview } from './posts/post-preview';
+import { installSeo } from './common/seo';
 
 /**
  * 앱 설정을 한곳에: 서버(main.ts) · 테스트가 같은 설정을 쓴다.
@@ -27,6 +28,8 @@ export async function createApp(): Promise<INestApplication> {
   app.getHttpAdapter().getInstance().disable('x-powered-by');
   // 링크 미리보기 봇이 여는 /posts/{번호} (api 접두어 밖): 글 제목 · 요약 카드
   installPostPreview(app);
+  // 검색엔진용 /robots.txt · /sitemap.xml
+  installSeo(app);
 
   const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:3001')
     .split(',')

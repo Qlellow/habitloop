@@ -13,6 +13,7 @@ import { RewardsService } from '../users/rewards.service';
 import { makeExcerpt } from './excerpt';
 import { featuredBadge, type FeaturedBadge } from '../badges/catalog';
 import type { CreatePostInput, UpdatePostInput } from './posts.dto';
+import { checkPostRate } from '../common/write-limit';
 
 export interface PostSummary {
   id: number;
@@ -319,6 +320,7 @@ export class PostsService {
   }
 
   async create(userId: number, input: CreatePostInput) {
+    await checkPostRate(this.db, userId);
     const channel = await this.channels.findBySlug(input.channel);
     // 글쓰기는 채널 가입자만 (보기·공감·댓글은 가입 없이 가능)
     await this.membership.requireMember(channel, userId);

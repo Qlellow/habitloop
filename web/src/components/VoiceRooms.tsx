@@ -12,6 +12,7 @@ import { callSince, voice, useVoice, type VoicePerson } from '../lib/voice';
 import { ui } from './ui';
 import { cn } from '../lib/cn';
 import '../styles/voice.css';
+import { ask } from './ConfirmHost';
 
 /**
  * 채널 화면의 음성방 카드: 운영진이 만든 방 목록과 지금 들어와 있는 사람.
@@ -224,7 +225,7 @@ export function VoiceRooms({ slug }: { slug: string }) {
                           </button>
                           <button
                             type="button"
-                            onClick={() => confirm(`'${room.name}' 방을 지울까요? 들어와 있는 사람도 모두 나가게 돼요.`) && run({ kind: 'delete', id: room.id }, '음성방을 지웠어요')}
+                            onClick={async () => (await ask(`'${room.name}' 방을 지울까요?`, { message: '들어와 있는 사람도 모두 나가게 돼요.', confirmLabel: '지우기', danger: true })) && run({ kind: 'delete', id: room.id }, '음성방을 지웠어요')}
                             aria-label={`${room.name} 지우기`}
                             title="지우기"
                           >

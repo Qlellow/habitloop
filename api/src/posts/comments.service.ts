@@ -10,6 +10,7 @@ import { BadgesService } from '../badges/badges.service';
 import { featuredBadge } from '../badges/catalog';
 import { WeatherService } from '../community/weather.service';
 import { RewardsService } from '../users/rewards.service';
+import { checkCommentRate } from '../common/write-limit';
 
 const MAX_PAGE_SIZE = 100;
 /** 베스트 댓글이 되려면 받아야 하는 최소 좋아요 수 */
@@ -80,6 +81,7 @@ export class CommentsService {
   /** parentId 가 있으면 그 댓글의 답글 (답글에 다는 답글은 같은 댓글 아래에 모인다: 한 단계) */
   async create(userId: number, postId: number, content: string, parentId?: number) {
     const channelId = await this.channelOf(postId);
+    await checkCommentRate(this.db, userId);
     let parent: number | null = null;
     if (parentId != null) {
       const p = await this.db.one<{ id: number; parentId: number | null }>(

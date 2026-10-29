@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate, Outlet, RouterProvider, ScrollRestoratio
 import { useAuth } from '@loop/shared';
 import { MobileTabBar, SiteFooter, SiteHeader } from './components/Layout';
 import { Toaster } from './components/Toast';
+import { ConfirmHost } from './components/ConfirmHost';
 import { ErrorBoundary, RouteError } from './components/ErrorBoundary';
 import { TimeSky } from './components/TimeSky';
 import { DeferredUi } from './components/Deferred';
@@ -78,6 +79,7 @@ function Root() {
     return (
       <Suspense fallback={null}>
         <AdminApp adminKey={adminKey} onDenied={deny} />
+        <ConfirmHost />
       </Suspense>
     );
   }
@@ -103,6 +105,7 @@ function Root() {
       </ErrorBoundary>
       <ScrollRestoration />
       <Toaster />
+      <ConfirmHost />
     </>
   );
 }

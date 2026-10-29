@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Post, Put, Query, Req } from '@nestjs/common';
+import type { Request } from 'express';
+import { clientIp } from '../common/client-ip';
 import {
   AgeInput,
   AvatarInput,
@@ -48,8 +50,8 @@ export class AuthController {
   @Public()
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() input: LoginInput, @Headers('user-agent') ua = '') {
-    return this.auth.login(input, ua);
+  login(@Body() input: LoginInput, @Req() req: Request, @Headers('user-agent') ua = '') {
+    return this.auth.login(input, ua, clientIp(req));
   }
 
   @Public()

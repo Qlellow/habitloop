@@ -16,8 +16,15 @@ const RELOAD_KEY = 'loop.chunkReload';
 
 export const isChunkError = (e: unknown) => CHUNK.test(String((e as Error)?.message ?? e));
 
-/** 옛 청크를 못 받았을 때: 30초 안에 이미 한 번 새로고침했으면 또 하지 않는다 (무한 새로고침 방지) */
+/** 인터넷이 끊겨서 못 받은 것 (새 버전 때문이 아님): 새로고침하면 브라우저의 오프라인 화면만 뜬다 */
+export const isOffline = () => typeof navigator !== 'undefined' && navigator.onLine === false;
+
+/**
+ * 옛 청크를 못 받았을 때: 30초 안에 이미 한 번 새로고침했으면 또 하지 않는다 (무한 새로고침 방지).
+ * 오프라인이면 새로고침하지 않는다 (화면이 '인터넷 연결을 확인해 주세요' 를 보여 준다)
+ */
 export function reloadForNewVersion(): boolean {
+  if (isOffline()) return false;
   try {
     const last = Number(sessionStorage.getItem(RELOAD_KEY)) || 0;
     if (Date.now() - last < 30_000) return false;
@@ -30,7 +37,7 @@ export function reloadForNewVersion(): boolean {
 }
 
 export function reportError(kind: Kind, error: unknown) {
-  if (error instanceof ApiError) return;
+  if (error instanceof ApiError || (isOffline() && isChunkError(error))) return;
   const e = error instanceof Error ? error : new Error(typeof error === 'string' ? error : JSON.stringify(error ?? null));
   const message = `${e.name && e.name !== 'Error' ? `${e.name}: ` : ''}${e.message}`.slice(0, 500);
   const stack = (e.stack ?? '').slice(0, 4000);

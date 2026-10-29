@@ -27,6 +27,7 @@ import s from './pages.styles';
 import { Modal } from '../components/Modal';
 import { cn } from '../lib/cn';
 import { usePageTitle } from '../lib/title';
+import { ask } from '../components/ConfirmHost';
 
 const MAX = 20;
 const ADULT_HINT = '설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요';
@@ -425,8 +426,8 @@ function InviteSection({ channel }: { channel: ChannelDetail }) {
                 type="button"
                 className={cn(ui.button, ui.text, ui.small, ui.danger, '-ml-2.5')}
                 disabled={regenerate.isPending}
-                onClick={() =>
-                  confirm('초대 코드를 새로 만들까요?\n예전 링크 · 코드 · QR 로는 더 이상 팔로우할 수 없어요.') &&
+                onClick={async () =>
+                  (await ask('초대 코드를 새로 만들까요?', { message: '예전 링크 · 코드 · QR 로는 더 이상 팔로우할 수 없어요.', confirmLabel: '새로 만들기', danger: true })) &&
                   regenerate.mutate(undefined, { onSuccess: () => toast('새 초대 코드를 만들었어요'), onError: (e) => toast(e.message) })
                 }
               >

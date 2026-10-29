@@ -23,7 +23,7 @@
   --text: var(--grey-800);
   /* 보조 글자색: 흰 · 회색 바탕에서 명도 대비 4.5:1 이상 (WCAG AA) */
   --text-sub: var(--grey-700);
-  --text-weak: #66707d;
+  --text-weak: #5f6874;
   --line: var(--grey-100);
   --field: var(--grey-100);
   /* 회색 버튼(bg-field)을 올렸을 때: 원래보다 한 단계만 진하게/밝게 */
@@ -37,8 +37,10 @@
   --primary-solid: #1b6ae0;
   --primary-solid-pressed: #1859c4;
   --danger: var(--red-500);
+  /* 흰 글자를 올리는 빨간 바탕 (삭제 버튼 · 알림 수): 흰 글자와 4.5:1 이상 */
+  --danger-solid: #d22030;
   /* 글자로 쓰는 빨강: 다크 배경에서는 더 밝게 (삭제·로그아웃 같은 위험한 동작) */
-  --danger-text: #d92b3a;
+  --danger-text: #c8202f;
   /* 비밀번호 '보통' 같은 주황 글자: 밝은 바탕에서 4.5:1 이상 */
   --fair-text: #a86500;
   --skeleton: var(--grey-100);
@@ -171,6 +173,8 @@
   --primary-text: #f2a088;
   --primary-solid: #b8543b;
   --primary-solid-pressed: #a3482f;
+  /* 저녁 남보라 바탕 위 흐린 글자: 4.5:1 이상 */
+  --text-weak: #a0a0a9;
 }
 /* 새벽 · 별밤: 깊은 남색 + 차분한 파랑 */
 :root[data-time='dawn'] {
