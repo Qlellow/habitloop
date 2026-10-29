@@ -1,15 +1,17 @@
-import { useDeferredValue, useLayoutEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { KeyboardArea, useKeyboardVisible } from '../src/Keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { uploadPostImage, useChannel, useMyChannels, usePost, useSavePost, type PostDetail } from '@loop/shared';
+import { timeAgo, uploadPostImage, useAuth, useChannel, useMyChannels, usePost, useSavePost, type PostDetail } from '@loop/shared';
 import { Markdown } from '../src/Markdown';
 import { pickImage } from '../src/pickImage';
 import { ChannelIcon, Chip, Input, Loading } from '../src/ui';
 import { cn } from '../src/cn';
 import { useColors } from '../src/theme';
+import { readDraft, usePostDraft } from '../src/draft';
+import { leave } from '../src/nav';
 
 /** 올릴 채널: 글은 팔로우한 채널에만 쓸 수 있어서 내 채널(팔로우 · 북마크 순)에서 고른다 */
 function ChannelPicker({ value, onChange }: { value?: string; onChange: (slug: string) => void }) {
@@ -87,10 +89,31 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
   const c = useColors();
   const navigation = useNavigation();
   const save = useSavePost(initial?.id);
-  const [channel, setChannel] = useState(initial?.channel.slug ?? defaultChannel);
-  const [categoryId, setCategoryId] = useState<number | null>(initial ? (initial.category?.id ?? null) : (defaultCategory ?? null));
-  const [title, setTitle] = useState(initial?.title ?? '');
-  const [content, setContent] = useState(initial?.content ?? '');
+  const start = {
+    channel: initial?.channel.slug ?? defaultChannel,
+    categoryId: initial ? (initial.category?.id ?? null) : (defaultCategory ?? null),
+    title: initial?.title ?? '',
+    content: initial?.content ?? '',
+  };
+  // 쓰다 만 글이 있으면 이어서 쓴다 (새 글은 하나만 기억한다: 다른 채널에 쓰던 글이면 그 채널로)
+  const target = initial ? `edit.${initial.id}` : 'new';
+  const [saved] = useState(() => readDraft(target, start));
+  const [channel, setChannel] = useState(initial ? start.channel : (saved?.channel ?? start.channel));
+  const [categoryId, setCategoryId] = useState<number | null>(saved ? saved.categoryId : start.categoryId);
+  const [title, setTitle] = useState(saved?.title ?? start.title);
+  const [content, setContent] = useState(saved?.content ?? start.content);
+  const [restoredNote, setRestoredNote] = useState(!!saved);
+  const draft = usePostDraft(target, { channel, categoryId, title, content }, start);
+  const { isLoggedIn } = useAuth();
+  const leaving = useRef(false);
+  /** 쓰던 내용을 버리고 처음 상태로 */
+  const startOver = () => {
+    setChannel(start.channel);
+    setCategoryId(start.categoryId);
+    setTitle(start.title);
+    setContent(start.content);
+    setRestoredNote(false);
+  };
   const [preview, setPreview] = useState(false);
   const selection = useRef({ start: 0, end: 0 });
   const insets = useSafeAreaInsets();
@@ -107,7 +130,9 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
       { channel, categoryId, title: title.trim(), content },
       {
         onSuccess: (post) => {
-          router.back();
+          leaving.current = true;
+          draft.clear();
+          leave();
           if (!initial) router.push(`/post/${post.id}`);
         },
         onError: (e) => Alert.alert(e.message),
@@ -115,11 +140,37 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
     );
   };
 
+  // 쓰던 글이 있으면 닫기 전에 한 번 묻는다 (취소 · 안드로이드 뒤로가기). 임시저장돼 있어 나가도 다시 열면 이어서 쓴다.
+  // 올리는 중 · 로그인이 풀린 뒤에는 묻지 않는다
+  const guard = draft.dirty && isLoggedIn;
+  useEffect(
+    () =>
+      navigation.addListener('beforeRemove', (e) => {
+        if (!guard || leaving.current) return;
+        e.preventDefault();
+        const go = () => {
+          leaving.current = true;
+          navigation.dispatch(e.data.action);
+        };
+        const title = initial ? '수정을 그만둘까요?' : '글쓰기를 그만둘까요?';
+        const message = '쓰던 내용은 이 기기에 임시저장돼서, 다시 열면 이어서 쓸 수 있어요.';
+        // 브라우저 미리보기에서는 Alert 가 뜨지 않으므로 confirm
+        if (Platform.OS === 'web') return void (globalThis.confirm?.(`${title}\n${message}`) && go());
+        Alert.alert(title, message, [
+          { text: '계속 쓰기', style: 'cancel' },
+          { text: '나가기', style: 'destructive', onPress: go },
+        ]);
+      }),
+    [navigation, guard, initial],
+  );
+
   useLayoutEffect(() => {
     navigation.setOptions({
+      // 쓰던 글이 있으면 아래로 쓸어 닫기를 막는다 (실수로 닫히지 않게, 취소로 닫으면 한 번 묻는다)
+      gestureEnabled: !guard,
       title: initial ? '글 수정' : '글쓰기',
       headerLeft: () => (
-        <Text className="text-base text-fg-sub px-1" onPress={() => router.back()}>
+        <Text className="text-base text-fg-sub px-1" onPress={leave}>
           취소
         </Text>
       ),
@@ -158,6 +209,14 @@ function Form({ initial, defaultChannel, defaultCategory }: { initial?: PostDeta
   return (
     <KeyboardArea className="flex-1 bg-surface">
       <ScrollView contentContainerClassName="p-5 pb-10" keyboardShouldPersistTaps="handled">
+        {restoredNote && saved ? (
+          <View className="flex-row items-center justify-between gap-2 mb-3 px-3.5 py-2.5 rounded-md bg-primary-weak">
+            <Text className="flex-1 text-[13px] text-fg">쓰다 만 글을 불러왔어요 · {timeAgo(new Date(saved.savedAt).toISOString())} 임시저장</Text>
+            <Text className="text-[13px] font-semibold text-primary" onPress={startOver} accessibilityRole="button">
+              {initial ? '원래 글로' : '새로 쓰기'}
+            </Text>
+          </View>
+        ) : null}
         {initial ? (
           <View className="flex-row items-center gap-2.5 p-3 rounded-md bg-field mb-3">
             <ChannelIcon slug={initial.channel.slug} name={initial.channel.name} color={initial.channel.color} iconVersion={initial.channel.iconVersion} size={30} />

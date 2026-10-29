@@ -780,6 +780,8 @@ export function usePost(id: number, placeholder?: PostSummary) {
   const qc = useQueryClient();
   return useQuery<PostDetail>({
     queryKey: keys.post(id),
+    // 0 은 '글 없음' (앱 글쓰기 화면처럼 새 글일 때): 서버에 묻지 않는다
+    enabled: id !== 0,
     queryFn: async ({ signal }) => {
       const post = await api<PostDetail>(`/api/posts/${id}`, { signal });
       // 목록 숫자 맞추기는 덤: 여기서 무엇이 잘못돼도 글은 보여야 한다

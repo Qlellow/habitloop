@@ -7,6 +7,7 @@ import { plainText, useRegenerateInvite, useChangeRole, useMemberSearch, useStaf
 import { Button, Input, Loading, RoleTag, Sheet } from '../../../src/ui';
 import { useColors } from '../../../src/theme';
 import { toast } from '../../../src/Toast';
+import { WEB_URL } from '../../../src/config';
 
 const MAX = 20;
 
@@ -129,27 +130,52 @@ function Row({
   );
 }
 
-/** 비공개 채널의 초대 코드: 받은 사람만 팔로우할 수 있다 */
+/** 초대 코드 · 링크: 비공개 채널은 이걸로만 팔로우할 수 있고, 공개 채널도 링크로 초대할 수 있다 (웹 채널 관리와 같다) */
 function InviteSection({ channel }: { channel: ChannelDetail }) {
   const regen = useRegenerateInvite(channel.slug);
-  if (channel.visibility !== 'private' || !channel.inviteCode) return null;
+  const isPrivate = channel.visibility === 'private';
+  const code = channel.inviteCode;
+  const link = code ? `${WEB_URL}/invite/${code}` : '';
+  const make = (done: string) => regen.mutate(undefined, { onSuccess: () => toast(done), onError: (e) => toast(e.message) });
   return (
     <View className="mb-3 p-5 bg-surface gap-3">
-      <Text className="text-[17px] font-bold text-fg-strong">초대 코드</Text>
-      <Text className="-mt-1.5 text-[13px] text-fg-sub">비공개 채널이라 이 코드를 받은 사람만 팔로우할 수 있어요.</Text>
-      <View className="flex-row items-center gap-2">
-        <Text selectable className="flex-1 px-4 py-3 rounded-md bg-field text-base font-bold tracking-widest text-fg-strong">
-          {channel.inviteCode}
-        </Text>
-        <Button title="공유" onPress={() => Share.share({ message: `루프의 비공개 채널 '${channel.name}' 초대 코드: ${channel.inviteCode}` })} />
-      </View>
-      <Button
-        title="새 코드 만들기 (이전 코드는 못 써요)"
-        variant="ghost"
-        size="sm"
-        loading={regen.isPending}
-        onPress={() => regen.mutate(undefined, { onSuccess: () => toast('새 초대 코드를 만들었어요'), onError: (e) => toast(e.message) })}
-      />
+      <Text className="text-[17px] font-bold text-fg-strong">초대</Text>
+      <Text className="-mt-1.5 text-[13px] text-fg-sub">
+        {isPrivate
+          ? '비공개 채널은 이 링크 · 코드로만 팔로우할 수 있어요. 새로 만들면 예전 링크와 코드는 더 이상 쓸 수 없어요.'
+          : '공개 채널은 누구나 팔로우할 수 있지만, 링크로 초대할 수도 있어요.'}
+      </Text>
+      {code ? (
+        <>
+          <View className="flex-row items-center gap-2">
+            <Text selectable className="flex-1 px-4 py-3 rounded-md bg-field text-base font-bold tracking-widest text-fg-strong">
+              {code}
+            </Text>
+            <Button
+              title="공유"
+              onPress={() =>
+                Share.share({ message: `루프의 ${isPrivate ? '비공개 ' : ''}채널 '${channel.name}'에 초대해요\n${link}\n초대 코드: ${code}` }).catch(() =>
+                  toast('공유하지 못했어요'),
+                )
+              }
+            />
+          </View>
+          <Button
+            title="새 코드 만들기"
+            variant="ghost"
+            size="sm"
+            loading={regen.isPending}
+            onPress={() =>
+              Alert.alert('초대 코드를 새로 만들까요?', '예전 링크 · 코드로는 더 이상 팔로우할 수 없어요.', [
+                { text: '취소', style: 'cancel' },
+                { text: '새로 만들기', style: 'destructive', onPress: () => make('새 초대 코드를 만들었어요') },
+              ])
+            }
+          />
+        </>
+      ) : (
+        <Button title="초대 코드 만들기" variant="secondary" loading={regen.isPending} onPress={() => make('초대 코드를 만들었어요')} />
+      )}
     </View>
   );
 }
