@@ -124,6 +124,14 @@ function targets(kakaoKey: string | null | undefined): Target[] {
       bg: 'bg-[#FEE500]',
       run: async (c) => {
         const send = (kakao: KakaoSdk) => {
+          // PC 는 SDK 가 공유 창(팝업)을 연다. 브라우저가 막았는지(창이 null) 직접 보고 안내를 나눈다
+          let blocked = false;
+          const nativeOpen = window.open;
+          window.open = (...args: Parameters<typeof window.open>) => {
+            const w = nativeOpen.apply(window, args);
+            if (!w) blocked = true;
+            return w;
+          };
           try {
             kakao.Share.sendDefault({
               objectType: 'text',
@@ -131,16 +139,24 @@ function targets(kakaoKey: string | null | undefined): Target[] {
               link: { mobileWebUrl: c.url, webUrl: c.url },
               buttonTitle: c.buttonTitle ?? '루프 시작하기',
             });
-          } catch {
-            // PC 는 SDK 가 공유 창(팝업)을 여는데, 브라우저가 막으면 열린 창이 없어 SDK 안에서 오류가 난다
-            toast('카카오톡 공유 창이 막혔어요. 주소창 오른쪽에서 이 사이트의 팝업을 허용해 주세요');
+          } catch (e) {
+            console.error('[카카오톡 공유]', e);
+            toast(
+              blocked
+                ? '카카오톡 공유 창이 막혔어요. 주소창 오른쪽에서 이 사이트의 팝업을 허용하고 새로고침해 주세요'
+                : `카카오톡 공유를 열지 못했어요 (${(e as Error)?.message ?? e})`,
+            );
+          } finally {
+            window.open = nativeOpen;
           }
         };
         // 공유 창은 누른 순간에 바로 열어야 팝업으로 막히지 않는다: 공유 창을 열 때 미리 받아 둔 SDK 를 곧바로 쓴다
+        // 아직 못 받았으면 받는 동안 '누른 순간'이 지나 공유 창이 막히므로, 받아 두고 한 번 더 누르게 한다
         const ready = window.Kakao?.isInitialized() ? window.Kakao : undefined;
         if (ready) return send(ready);
+        toast('카카오톡을 준비하고 있어요. 잠시 후 다시 눌러 주세요');
         try {
-          send(await loadKakao(kakaoKey));
+          await loadKakao(kakaoKey);
         } catch (e) {
           toast((e as Error).message);
         }
