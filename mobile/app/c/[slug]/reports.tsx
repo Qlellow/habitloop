@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { REPORT_REASONS, timeAgo, useChannel, useChannelReports, useReportAction, type ReportAction, type ReportGroup } from '@loop/shared';
+import { REPORT_REASONS, timeAgo, useAuth, useChannel, useChannelReports, useReportAction, type ReportAction, type ReportGroup } from '@loop/shared';
 import { Button, Chip, Empty, Loading } from '../../../src/ui';
 import { toast } from '../../../src/Toast';
 
@@ -12,6 +12,7 @@ const reasonLabel = (r: string) => REPORT_REASONS.find((x) => x.value === r)?.la
 function Row({ slug, r }: { slug: string; r: ReportGroup }) {
   const act = useReportAction(slug);
   const what = r.commentId ? '댓글' : '글';
+  const { user: me } = useAuth();
   const run = (a: ReportAction) => {
     const go = () =>
       act.mutate(
@@ -64,7 +65,11 @@ function Row({ slug, r }: { slug: string; r: ReportGroup }) {
         ) : null}
         {r.status === 'open' ? <Button title="문제 없음" variant="ghost" size="sm" disabled={act.isPending} onPress={() => run('dismiss')} /> : null}
       </View>
-      {!r.canAct ? <Text className="text-[13px] text-fg-weak">나보다 높은 운영진의 {what}이라 숨기거나 지울 수 없어요</Text> : null}
+      {!r.canAct ? (
+        <Text className="text-[13px] text-fg-weak">
+          {r.author.id === me?.id ? `내 ${what}은 여기서 숨기거나 지울 수 없어요. ${what}에서 직접 고치거나 지워 주세요` : `나보다 높은 운영진의 ${what}이라 숨기거나 지울 수 없어요`}
+        </Text>
+      ) : null}
     </View>
   );
 }

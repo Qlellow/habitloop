@@ -6,7 +6,7 @@ import { Page } from '../components/Layout';
 import { MarkdownEditor } from '../components/MarkdownEditor';
 import { toast } from '../components/Toast';
 import { ui } from '../components/ui';
-import { toSquareIcon } from '../lib/image';
+import { toSquareIcon, revokeLater } from '../lib/image';
 import { CropModal } from '../components/CropModal';
 import s from './pages.styles';
 import { cn } from '../lib/cn';
@@ -49,7 +49,7 @@ function IconPicker({
   };
 
   const closeCrop = () => {
-    if (cropping) URL.revokeObjectURL(cropping.url);
+    if (cropping) revokeLater(cropping.url);
     setCropping(undefined);
   };
 

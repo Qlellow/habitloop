@@ -60,6 +60,10 @@ describe('excerpt', () => {
     expect([...makeExcerpt('가'.repeat(500))]).toHaveLength(EXCERPT_LENGTH);
   });
 
+  it('본문에 쓴 <script> 같은 HTML 은 내용째 요약에서 뺀다', () => {
+    expect(makeExcerpt('앞 <script>window.x=1</script> <style>a{}</style> <b>굵게</b> 뒤')).toBe('앞 굵게 뒤');
+  });
+
   it('마크다운 기호를 걷어낸다', () => {
     const markdown = [
       '# 제목',

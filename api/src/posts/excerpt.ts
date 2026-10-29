@@ -5,6 +5,8 @@ export function makeExcerpt(content: string, length = EXCERPT_LENGTH): string {
   const text = content
     // 블라인드(||가릴 내용||)는 목록 미리보기에서도 드러나지 않게
     .replace(/\|\|(?=\S)[\s\S]*?\S\|\|/g, '▒▒▒')
+    // 본문에 쓴 <script> · <style> 같은 HTML 은 화면에서 지워지므로 그 안의 글자도 요약에 넣지 않는다
+    .replace(/<(script|style|iframe|textarea)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
     .replace(/```[^\n]*\n?|~~~[^\n]*\n?/g, '')
     .replace(/!\[([^\]]*)]\([^)]*\)/g, '')
     .replace(/\[([^\]]*)]\([^)]*\)/g, '$1')

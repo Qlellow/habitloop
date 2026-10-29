@@ -19,7 +19,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CropModal } from '../../components/CropModal';
 import { ProfileBanner } from '../../components/ProfileBanner';
 import { UserAvatar } from '../../components/UserAvatar';
-import { cropToBlob, toSquareIcon } from '../../lib/image';
+import { cropToBlob, toSquareIcon, revokeLater } from '../../lib/image';
 import { PasswordStrength } from '../../components/Auth';
 import { EyeIcon, EyeOffIcon } from '../../components/Icons';
 import { toast } from '../../components/Toast';
@@ -205,7 +205,7 @@ function AvatarSection({ user }: { user: User }) {
   const [busy, setBusy] = useState(false);
   const pick = useImagePick((file) => setCropping({ file, url: URL.createObjectURL(file) }));
   const close = () => {
-    if (cropping) URL.revokeObjectURL(cropping.url);
+    if (cropping) revokeLater(cropping.url);
     setCropping(undefined);
   };
   const apply = async (crop: { x: number; y: number; w: number; h: number }) => {
@@ -273,7 +273,7 @@ function BannerSection({ user }: { user: User }) {
   const pick = useImagePick((file) => setCropping({ file, url: URL.createObjectURL(file) }));
   const points = user.points ?? 0;
   const close = () => {
-    if (cropping) URL.revokeObjectURL(cropping.url);
+    if (cropping) revokeLater(cropping.url);
     setCropping(undefined);
   };
   const choose = (banner: string | null) => setBanner.mutate(banner, { onError: (e) => toast(e.message) });
