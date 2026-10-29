@@ -4,6 +4,7 @@ import { createApp } from '../src/create-app';
 import { JwtService } from '../src/auth/jwt.service';
 import { Mailer } from '../src/mail/mailer';
 import { Database } from '../src/db/database';
+import { OAuthService } from '../src/auth/oauth.service';
 import { makeExcerpt, EXCERPT_LENGTH } from '../src/posts/excerpt';
 import { VillageService } from '../src/village/village.service';
 import { weatherOf } from '../src/community/weather.service';
@@ -2102,5 +2103,88 @@ describe('검색엔진', () => {
     expect(map.text).not.toContain('/c/seopriv</loc>');
     expect(map.text).toContain(`/posts/${pub}</loc>`);
     expect(map.text).not.toContain(`/posts/${priv}</loc>`);
+  });
+});
+
+describe('앱 소셜 로그인 교환 코드', () => {
+  it('맞는 비밀값으로 한 번만 바꿀 수 있고, 시작 실패는 앱 주소로 돌려보낸다', async () => {
+    const { createHash } = await import('node:crypto');
+    const oauth = app.get(OAuthService);
+    const verifier = 'v'.repeat(50);
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+    const code = await oauth.createAppCode(challenge, { token: 'tok-123' });
+
+    await http().post('/api/auth/oauth/app/exchange').send({ code, verifier: 'w'.repeat(50) }).expect(400);
+    // 틀린 비밀값으로 한 번 시도해도 코드는 사라진다 (다시 못 씀)
+    await http().post('/api/auth/oauth/app/exchange').send({ code, verifier }).expect(400);
+
+    const code2 = await oauth.createAppCode(challenge, { token: 'tok-456' });
+    expect((await http().post('/api/auth/oauth/app/exchange').send({ code: code2, verifier }).expect(200)).body).toEqual({ token: 'tok-456' });
+    await http().post('/api/auth/oauth/app/exchange').send({ code: code2, verifier }).expect(400);
+
+    // 키가 없는 제공자로 앱에서 시작 → 앱 주소로 이유를 돌려보낸다
+    const start = await http().get(`/api/auth/oauth/google/start?app=${challenge}`).expect(302);
+    expect(start.headers.location).toMatch(/^loop:\/\/oauth\?error=/);
+    const bad = await http().get('/api/auth/oauth/google/start?app=short').expect(302);
+    expect(bad.headers.location).toMatch(/^loop:\/\/oauth\?error=/);
+  });
+});
+
+describe('앱 푸시 알림', () => {
+  it('기기 토큰을 등록하면 새 댓글 알림이 Expo 푸시로 가고, 지운 앱의 토큰은 버린다', async () => {
+    const author = await signup('push-a@test.dev', '푸시글쓴이');
+    const other = await signup('push-b@test.dev', '푸시댓글러');
+    await http().post('/api/channels').set(bearer(author)).send({ slug: 'pushch', name: '푸시채널' }).expect(201);
+    const post = (await http().post('/api/posts').set(bearer(author)).send({ channel: 'pushch', title: '푸시 받을 글', content: '본문' }).expect(201)).body;
+
+    await http().post('/api/me/push-tokens').set(bearer(author)).send({ token: 'not-a-token', platform: 'android' }).expect(400);
+    await http().post('/api/me/push-tokens').send({ token: 'ExponentPushToken[abcdefghijklmn]', platform: 'android' }).expect(401);
+    await http().post('/api/me/push-tokens').set(bearer(author)).send({ token: 'ExponentPushToken[abcdefghijklmn]', platform: 'android' }).expect(204);
+
+    const sent: { to: string; title: string; body?: string; data: { url?: string } }[][] = [];
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (url, init) => {
+      if (String(url).includes('exp.host')) {
+        const batch = JSON.parse(String(init?.body));
+        sent.push(batch);
+        return new Response(JSON.stringify({ data: batch.map(() => ({ status: 'error', details: { error: 'DeviceNotRegistered' } })) }));
+      }
+      throw new Error('unexpected fetch ' + url);
+    });
+    try {
+      await http().post(`/api/posts/${post.id}/comments`).set(bearer(other)).send({ content: '푸시 확인 댓글' }).expect(201);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+    expect(sent).toHaveLength(1);
+    expect(sent[0]![0]).toMatchObject({ to: 'ExponentPushToken[abcdefghijklmn]', title: '푸시댓글러님이 내 글에 댓글을 달았어요', body: '푸시 확인 댓글', data: { url: `/post/${post.id}` } });
+
+    // DeviceNotRegistered → 토큰이 지워져 다음 알림은 보내지 않는다
+    const again = jest.spyOn(global, 'fetch');
+    try {
+      await http().post(`/api/posts/${post.id}/comments`).set(bearer(other)).send({ content: '두 번째' }).expect(201);
+      expect(again).not.toHaveBeenCalled();
+    } finally {
+      again.mockRestore();
+    }
+    // 로그아웃: 토큰만으로 지우기
+    await http().delete('/api/me/push-tokens').send({ token: 'ExponentPushToken[abcdefghijklmn]' }).expect(204);
+  });
+});
+
+describe('앱 링크 확인 파일', () => {
+  it('환경 변수가 있으면 assetlinks · apple-app-site-association 을, 없으면 404', async () => {
+    await http().get('/.well-known/assetlinks.json').expect(404);
+    process.env.ANDROID_APP_SHA256 = 'AA:BB, CC:DD';
+    process.env.IOS_APP_ID = 'TEAM123456.dev.loop.community';
+    try {
+      const android = (await http().get('/.well-known/assetlinks.json').expect(200)).body;
+      expect(android[0].target).toEqual({ namespace: 'android_app', package_name: 'dev.loop.community', sha256_cert_fingerprints: ['AA:BB', 'CC:DD'] });
+      const ios = (await http().get('/.well-known/apple-app-site-association').expect(200)).body;
+      expect(ios.applinks.details[0].appIDs).toEqual(['TEAM123456.dev.loop.community']);
+      expect(ios.applinks.details[0].components).toContainEqual({ '/': '/posts/*' });
+    } finally {
+      delete process.env.ANDROID_APP_SHA256;
+      delete process.env.IOS_APP_ID;
+    }
   });
 });

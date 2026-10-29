@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import { MAX_IMAGE_BYTES } from './images/images.service';
 import { installPostPreview } from './posts/post-preview';
 import { installSeo } from './common/seo';
+import { installAppLinks } from './common/app-links';
 
 /**
  * 앱 설정을 한곳에: 서버(main.ts) · 테스트가 같은 설정을 쓴다.
@@ -30,6 +31,8 @@ export async function createApp(): Promise<INestApplication> {
   installPostPreview(app);
   // 검색엔진용 /robots.txt · /sitemap.xml
   installSeo(app);
+  // 웹 링크를 앱으로 여는 확인 파일 /.well-known/assetlinks.json · apple-app-site-association
+  installAppLinks(app);
 
   const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:3001')
     .split(',')

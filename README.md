@@ -118,6 +118,20 @@ GitHub → Actions → **앱 설치 파일 (Android APK)** → Run workflow → 
 - 빌드 종류 (`mobile/eas.json`): **development**(개발용 앱) · **preview**(일반 앱처럼 main 업데이트를 받는 설치 파일) · production. development 와 preview 는 같은 앱 ID 라서 하나만 깔립니다 (바꾸면 덮어씀).
 - 서명 키는 첫 빌드 때 Expo 서버가 만들어 보관합니다. 스토어 배포는 production 프로필로 EAS Build(`npx eas build`)를 씁니다.
 
+**소셜 로그인 · 웹 링크로 앱 열기 · 푸시 알림** (이 기능들이 들어간 뒤 개발용 앱을 한 번 다시 빌드해야 합니다)
+
+| 기능 | 해야 할 일 | 안 하면 |
+| --- | --- | --- |
+| 소셜 로그인 | 따로 없음. 웹과 같은 키(`GOOGLE_*` · `KAKAO_*` · `NAVER_*`)와 같은 Redirect URI 를 씁니다 | 키가 없는 버튼은 안 보임 |
+| 웹 링크 → 앱 (안드로이드) | Vercel 환경 변수 `ANDROID_APP_SHA256` = 앱 서명 인증서 SHA-256 지문 (expo.dev → 프로젝트 → Credentials → Android → SHA-256, 여러 개면 쉼표) | 글 · 채널 · 초대 링크가 브라우저로 열림 |
+| 웹 링크 → 앱 (iOS) | Vercel 환경 변수 `IOS_APP_ID` = `팀ID.dev.loop.community` (Apple 개발자 계정의 Team ID) | 브라우저로 열림 |
+| 푸시 알림 (안드로이드) | Firebase 프로젝트에 안드로이드 앱(`dev.loop.community`)을 추가해 `google-services.json` 을 받고 → expo.dev → 프로젝트 → Environment variables 에 **파일형** 변수 `GOOGLE_SERVICES_JSON` 으로 올림 (저장소에는 올리지 않아요). 같은 Firebase 프로젝트의 서비스 계정 키(FCM V1)를 expo.dev → Credentials → Android → FCM V1 에 올림 | 앱은 되지만 안드로이드로 푸시가 안 옴 (앱 안 알림 목록은 그대로) |
+| 푸시 알림 (iOS) | iOS 빌드 때 EAS 가 APNs 키를 만들어 줌 | — |
+
+- 소셜 로그인: 앱이 휴대폰 브라우저 창으로 서버의 소셜 로그인을 열고, 끝나면 서버가 `loop://oauth?code=…` 로 앱에 돌려보냅니다. 주소에는 토큰 대신 한 번 쓰는 교환 코드만 실리고, 앱이 시작할 때 만든 비밀값이 있어야 토큰으로 바꿀 수 있습니다 (`mobile/src/socialLogin.ts`, `POST /api/auth/oauth/app/exchange`).
+- 웹 링크: 서버가 `/.well-known/assetlinks.json` · `/.well-known/apple-app-site-association` 을 위 환경 변수로 만들고, 앱은 `app.json` 의 `intentFilters` · `associatedDomains` 로 `/posts` · `/c` · `/u` · `/notices` · `/invite` 를 엽니다. 사이트 주소가 바뀌면 `app.json` 의 `habitloop-eight.vercel.app` 도 바꿔 주세요.
+- 푸시: 로그인하면 기기 토큰을 등록하고 로그아웃하면 지웁니다. 댓글 · 답글 · 첫 공감 · 공지 · 오늘의 발견 알림이 생길 때 Expo 푸시로 보내고, 누르면 그 글이 열립니다 (`api/src/notifications/push.service.ts`). Expo 의 푸시 보안을 켰다면 `EXPO_ACCESS_TOKEN` 도 넣어 주세요.
+
 ### Docker (Postgres + API + 웹)
 
 ```bash
@@ -165,6 +179,8 @@ Vercel 프로젝트에서 할 일:
 | `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | 채널 음성채팅 (LiveKit Cloud 프로젝트의 `wss://….livekit.cloud` 주소와 키, 시크릿은 **Secret 으로**). 셋 중 하나라도 비우면 음성채팅 꺼짐 |
 | `ADMIN_KEY` | 관리자 페이지 비밀 주소 키 (영문·숫자·`-`·`_` 32자 이상, **Secret 으로**). 사이트 주소/`ADMIN_KEY` 에서만 열림 |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | 관리자 계정 (회원 계정과 따로, 회원가입 필요 없음). 비밀번호는 12자 이상, **Secret 으로**. 로그인마다 이 이메일로 인증번호. 셋 중 하나라도 비우면 관리자 기능 꺼짐 |
+| `ANDROID_APP_SHA256` · `IOS_APP_ID` | (선택) 웹 링크를 앱으로 열기 (위 **모바일 앱** → 소셜 로그인 · 웹 링크 · 푸시 알림). 비우면 링크는 브라우저로 열림 |
+| `EXPO_ACCESS_TOKEN` | (선택) Expo 푸시 보안을 켰을 때만. **Secret 으로** |
 
 **카카오톡 공유 설정** ([Kakao Developers](https://developers.kakao.com) → 내 애플리케이션 → 루프 앱)
 

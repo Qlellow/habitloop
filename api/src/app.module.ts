@@ -30,6 +30,7 @@ import { Seeder } from './db/seed';
 import { Mailer } from './mail/mailer';
 import { NotificationsController } from './notifications/notifications.controller';
 import { NotificationsService } from './notifications/notifications.service';
+import { PushService } from './notifications/push.service';
 import { VerificationService } from './mail/verification.service';
 import { CommentsService } from './posts/comments.service';
 import { PostsController } from './posts/posts.controller';
@@ -90,6 +91,7 @@ class HealthController {
     RewardsService,
     BlocksService,
     NotificationsService,
+    PushService,
     ReportsService,
     AdminService,
     NoticesService,
