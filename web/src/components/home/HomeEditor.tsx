@@ -143,7 +143,12 @@ export function HomeEditor({
     setFuture((f) => f.slice(1));
   }, [future, layout]);
 
-  const dirty = !same(layout, initial) || reset;
+  // 비교 기준: 처음 값 + 열면서 자동으로 맞춘 위젯 높이. 사용자가 아직 아무것도 안 바꿨으면(되돌리기 끝까지 포함) 기준을 따라간다
+  const [baseline, setBaseline] = useState(initial);
+  useEffect(() => {
+    if (!past.length) setBaseline(layout);
+  }, [layout, past.length]);
+  const dirty = !same(layout, baseline) || reset;
 
   // 페이지를 떠나려 하면 저장 안 한 변경을 알려 준다
   useEffect(() => {

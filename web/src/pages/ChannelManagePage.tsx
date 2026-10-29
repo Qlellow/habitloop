@@ -437,7 +437,17 @@ function InviteSection({ channel }: { channel: ChannelDetail }) {
           </div>
         </div>
       ) : (
-        <p className={ui.help}>초대 코드가 아직 없어요. 채널 정보를 한 번 저장하면 만들어져요.</p>
+        <div className="flex flex-wrap items-center gap-3 mt-1">
+          <p className={cn(ui.help, 'mt-0')}>아직 초대 코드가 없어요.</p>
+          <button
+            type="button"
+            className={cn(ui.button, ui.secondary, ui.small)}
+            disabled={regenerate.isPending}
+            onClick={() => regenerate.mutate(undefined, { onSuccess: () => toast('초대 코드를 만들었어요'), onError: (e) => toast(e.message) })}
+          >
+            초대 코드 만들기
+          </button>
+        </div>
       )}
     </section>
   );

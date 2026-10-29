@@ -57,6 +57,9 @@ export function plainText(markdown: string): string {
     // 블라인드(||가릴 내용||)는 요약에서도 드러나지 않게
     .replace(/\|\|(?=\S)[\s\S]*?\S\|\|/g, '▒▒▒')
     .replace(/```[\s\S]*?```/g, ' ')
+    // HTML: 지워지는 태그(<script> 등)는 내용째, 나머지 태그는 기호만 걷어 낸다
+    .replace(/<(script|style|iframe|textarea)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+    .replace(/<[^>]+>/g, '')
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, '')

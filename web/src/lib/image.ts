@@ -64,3 +64,8 @@ export async function cropToBlob(file: File, crop: { x: number; y: number; w: nu
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('사진을 바꾸지 못했어요'))), 'image/jpeg', 0.88),
   );
 }
+
+/** 미리보기용 blob 주소를 조금 뒤에 지운다: 팝업이 사라지는 애니메이션(복제본)이 아직 그 이미지를 그리고 있어서 */
+export function revokeLater(url: string) {
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

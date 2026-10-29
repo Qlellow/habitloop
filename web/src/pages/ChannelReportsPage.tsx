@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { REPORT_REASONS, timeAgo, useChannel, useChannelReports, useReportAction, type ReportAction, type ReportGroup } from '@loop/shared';
+import { REPORT_REASONS, timeAgo, useAuth, useChannel, useChannelReports, useReportAction, type ReportAction, type ReportGroup } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { Page } from '../components/Layout';
 import { toast } from '../components/Toast';
@@ -18,6 +18,7 @@ const DONE_LABEL: Record<string, string> = { hidden: '숨김', dismissed: '문�
 function ReportRow({ report: r, slug, done }: { report: ReportGroup; slug: string; done: boolean }) {
   const action = useReportAction(slug);
   const what = r.commentId ? '댓글' : '글';
+  const { user: me } = useAuth();
   const run = async (a: ReportAction) => {
     if (a === 'delete' && !(await ask(`이 ${what}을 지울까요?`, { message: '지우면 되돌릴 수 없어요.', confirmLabel: '지우기', danger: true }))) return;
     action.mutate(
@@ -94,7 +95,11 @@ function ReportRow({ report: r, slug, done }: { report: ReportGroup; slug: strin
             <button type="button" className={cn(ui.button, ui.ghost, ui.small)} disabled={action.isPending} onClick={() => run('dismiss')}>
               문제 없음
             </button>
-            {!r.canAct && <span className="self-center text-[13px] text-fg-weak">나보다 높은 운영진의 {what}이라 숨기거나 지울 수 없어요</span>}
+            {!r.canAct && (
+              <span className="self-center text-[13px] text-fg-weak">
+                {r.author.id === me?.id ? `내 ${what}은 여기서 숨기거나 지울 수 없어요. ${what}에서 직접 고치거나 지워 주세요` : `나보다 높은 운영진의 ${what}이라 숨기거나 지울 수 없어요`}
+              </span>
+            )}
           </>
         )}
       </div>
