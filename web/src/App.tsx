@@ -9,6 +9,7 @@ import { TimeSky } from './components/TimeSky';
 import { DeferredUi } from './components/Deferred';
 import { loaders } from './lib/preload';
 import { useReturnTo } from './lib/authNav';
+import { useRouteTitle } from './lib/title';
 import HomePage from './pages/HomePage';
 
 // 첫 화면(홈)만 메인 번들에 넣고 나머지 화면은 라우트 단위로 쪼개서 필요할 때 받는다
@@ -69,6 +70,7 @@ function GuestOnly({ children }: { children: ReactNode }) {
 function Root() {
   useRunPendingSignOut();
   const { pathname } = useLocation();
+  useRouteTitle(pathname);
   const adminKey = pathname.match(ADMIN_PATH)?.[1];
   const [denied, setDenied] = useState<string>();
   const deny = useCallback(() => setDenied(adminKey), [adminKey]);

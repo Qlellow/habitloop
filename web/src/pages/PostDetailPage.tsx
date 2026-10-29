@@ -42,6 +42,7 @@ import { ui } from '../components/ui';
 import s from './pages.styles';
 import NotFoundPage from './NotFoundPage';
 import { cn } from '../lib/cn';
+import { usePageTitle } from '../lib/title';
 
 function useLoginRedirect(postId: number) {
   const navigate = useNavigate();
@@ -441,6 +442,7 @@ export default function PostDetailPage() {
   const summary = (useLocation().state as { summary?: PostSummary } | null)?.summary;
   const navigate = useNavigate();
   const { data: post, isPlaceholderData, error, refetch, isFetching } = usePost(id, summary?.id === id ? summary : undefined);
+  usePageTitle(post?.title);
   const del = useDeletePost();
   const { isLoggedIn } = useAuth();
   const [reporting, setReporting] = useState(false);

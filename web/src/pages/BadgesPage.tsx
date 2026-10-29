@@ -18,6 +18,7 @@ import { toast } from '../components/Toast';
 import { ui } from '../components/ui';
 import { cn } from '../lib/cn';
 import NotFoundPage from './NotFoundPage';
+import { usePageTitle } from '../lib/title';
 
 const CATEGORIES: [BadgeCategory | 'all', string][] = [
   ['all', '전체'],
@@ -175,6 +176,8 @@ export default function BadgesPage() {
     () => TIERS.map((t) => [t, (data?.badges ?? []).filter((b) => b.tier === t && b.earned).length, (data?.badges ?? []).filter((b) => b.tier === t).length] as const),
     [data],
   );
+  // /badges 는 주소 표에서 '배지 도감', 다른 사람 것은 받아 온 닉네임으로
+  usePageTitle(!mine && profile.data ? `${profile.data.nickname}의 배지 도감` : undefined);
 
   if ((id != null && !isUserId(id)) || (book.error instanceof ApiError && book.error.status === 404)) {
     return <NotFoundPage message="없는 사용자예요" />;

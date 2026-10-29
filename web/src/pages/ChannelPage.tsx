@@ -34,6 +34,7 @@ import { ui } from '../components/ui';
 import s from './pages.styles';
 import NotFoundPage from './NotFoundPage';
 import { cn } from '../lib/cn';
+import { usePageTitle } from '../lib/title';
 
 const SORT_OPTIONS: { value: PostSort; label: string }[] = [
   { value: 'latest', label: '최신순' },
@@ -170,6 +171,7 @@ export default function ChannelPage() {
   const [params, setParams] = useSearchParams();
   const { isLoggedIn } = useAuth();
   const { data: channel, error, isPlaceholderData } = useChannel(slug);
+  usePageTitle(channel?.name);
   const categories = channel?.categories ?? [];
   const raw = Number(params.get('category'));
   // 지워진 카테고리 주소로 들어오면 전체 탭으로 보여 준다

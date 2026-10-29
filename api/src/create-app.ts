@@ -5,6 +5,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import express from 'express';
 import { AppModule } from './app.module';
 import { MAX_IMAGE_BYTES } from './images/images.service';
+import { installPostPreview } from './posts/post-preview';
 
 /**
  * 앱 설정을 한곳에: 서버(main.ts) · 테스트가 같은 설정을 쓴다.
@@ -24,6 +25,8 @@ export async function createApp(): Promise<INestApplication> {
   // null 필드는 응답에서 뺀다 (예전 Spring 응답과 같은 모양)
   app.getHttpAdapter().getInstance().set('json replacer', (_key: string, value: unknown) => (value === null ? undefined : value));
   app.getHttpAdapter().getInstance().disable('x-powered-by');
+  // 링크 미리보기 봇이 여는 /posts/{번호} (api 접두어 밖): 글 제목 · 요약 카드
+  installPostPreview(app);
 
   const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:3001')
     .split(',')

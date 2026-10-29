@@ -50,7 +50,7 @@ export async function api<T>(
 
   if (res.status === 401 && token) {
     // 만료/위조 토큰은 즉시 버린다
-    authStore.signOut();
+    authStore.expire(token);
   }
   if (!res.ok) {
     let message = '잠시 후 다시 시도해 주세요';

@@ -8,12 +8,14 @@ import { authStore, configureApi, queryClient, useAuth, verifySession } from '@l
 import { API_URL } from '../src/config';
 import { secureStorage } from '../src/storage';
 import { useColors, useScheme, useThemeVars } from '../src/theme';
-import { ToastHost } from '../src/Toast';
+import { ToastHost, toast } from '../src/Toast';
 import { AppEffects } from '../src/AppEffects';
 
 // 앱이 뜰 때 한 번: 서버 주소 설정 + 보안 저장소에서 로그인 정보 읽기
 configureApi({ baseUrl: API_URL });
 void Promise.resolve(authStore.init(secureStorage)).then(verifySession);
+// 로그인이 풀리면 (만료 · 다른 곳에서 로그아웃) 조용히 넘어가지 않고 알린다
+authStore.onExpire(() => toast('로그인이 만료됐어요. 다시 로그인해 주세요'));
 
 export default function RootLayout() {
   const { ready } = useAuth();

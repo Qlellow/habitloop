@@ -1,4 +1,5 @@
-import { memo, useEffect, useMemo, useRef, type MouseEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, type MouseEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { marked, type Tokens } from 'marked';
 import DOMPurify from 'dompurify';
 import { applyImageStyles, parseImageSrc } from '../lib/postImage';
@@ -97,11 +98,30 @@ marked.use({
   ],
 });
 
+/** 이 사이트 안을 가리키는 링크면 경로(/c/free?x=1#y)를, 아니면 null */
+function internalPath(href: string | null): string | null {
+  if (!href) return null;
+  if (href.startsWith('/') && !href.startsWith('//')) return href;
+  try {
+    const url = new URL(href);
+    return url.origin === location.origin ? url.pathname + url.search + url.hash : null;
+  } catch {
+    return null;
+  }
+}
+
 // 사용자가 쓴 마크다운은 HTML 로 바뀌므로 반드시 sanitize 해서 스크립트 삽입(XSS)을 막는다
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   if (node.tagName === 'A') {
-    node.setAttribute('target', '_blank');
-    node.setAttribute('rel', 'noopener noreferrer nofollow');
+    // 이 사이트 안 링크(/posts/1 · 이 사이트 주소)는 지금 탭에서 바로 옮겨 가고, 바깥 링크만 새 탭으로 연다
+    const path = internalPath(node.getAttribute('href'));
+    if (path) {
+      node.setAttribute('href', path);
+      node.setAttribute('data-internal', '');
+    } else {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer nofollow');
+    }
   }
   if (node.tagName === 'IMG') {
     // 본문 이미지는 화면에 가까워질 때 받는다
@@ -129,8 +149,16 @@ export function renderMarkdown(source: string): string {
  * 본문 안의 누를 수 있는 것 (본문은 HTML 로 그리므로 눌린 곳을 찾아서 처리한다):
  * 블라인드는 드러내고(다시 누르면 가린다), 코드 블록의 '복사'는 복사한다
  */
-function onBodyClick(e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) {
+function onBodyClick(e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>, navigate: (to: string) => void) {
   if ('key' in e && e.key !== 'Enter' && e.key !== ' ') return;
+  // 사이트 안 링크: 새로 불러오지 않고 앱 안에서 옮겨 간다 (Ctrl · ⌘ · 가운데 버튼은 브라우저대로 새 탭)
+  const link = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-internal]');
+  if (link && !link.closest('.loop-blind:not(.is-open)')) {
+    if ('key' in e || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    navigate(link.getAttribute('href') ?? '/');
+    return;
+  }
   const blind = (e.target as HTMLElement).closest<HTMLElement>('.loop-blind');
   if (blind) {
     // 드러난 블라인드 안의 링크는 그대로 열린다
@@ -161,6 +189,8 @@ function onBodyClick(e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDiv
 export const Markdown = memo(function Markdown({ source, className }: { source: string; className?: string }) {
   const html = useMemo(() => renderMarkdown(source), [source]);
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const onClick = useCallback((e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => onBodyClick(e, navigate), [navigate]);
   useEffect(() => {
     if (ref.current) highlightIn(ref.current);
   }, [html]);
@@ -168,8 +198,8 @@ export const Markdown = memo(function Markdown({ source, className }: { source: 
     <div
       ref={ref}
       className={className ? `prose ${className}` : 'prose'}
-      onClick={onBodyClick}
-      onKeyDown={onBodyClick}
+      onClick={onClick}
+      onKeyDown={onClick}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
