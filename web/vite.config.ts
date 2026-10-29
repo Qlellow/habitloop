@@ -39,7 +39,8 @@ const CSP = [
   'frame-src https://*.kakao.com',
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // 카카오톡 공유: SDK 가 sharer.kakao.com 으로 폼을 보내 공유 창을 연다
+  "form-action 'self' https://*.kakao.com",
 ].join('; ');
 
 function contentSecurityPolicy(): Plugin {
