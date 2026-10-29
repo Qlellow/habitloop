@@ -597,7 +597,7 @@ export default function PostDetailPage() {
               {sharing && (
                 <ShareDialog
                   heading="글 공유하기"
-                  content={{ url: `${location.origin}/posts/${post.id}`, title: post.title, text: `${post.channel.name} · ${plainText(post.content).slice(0, 80)}` }}
+                  content={{ url: `${location.origin}/posts/${post.id}`, title: post.title, text: `${post.channel.name} · ${plainText(post.content).slice(0, 80)}`, buttonTitle: '글 보러 가기' }}
                   onClose={() => setSharing(false)}
                 />
               )}
