@@ -200,6 +200,7 @@ Vercel 프로젝트에서 할 일:
 | PR · main 푸시 | API 타입 체크 + 통합 테스트(진짜 Postgres), 웹 빌드, 앱 타입 체크·번들, Docker 이미지 빌드 확인 |
 | main 푸시 | Docker 이미지를 GHCR 에 올림: `ghcr.io/<owner>/habitloop-api`, `…-web` (태그 `latest`, `sha-xxxxxxx`) |
 | main 푸시 + 서버 설정 | (선택) Vercel 대신 직접 서버에도 올릴 때: SSH 로 접속해 새 이미지를 받아 재시작 |
+| 5분마다 (`keep-warm.yml`) | 배포한 사이트의 `/api/health` 를 불러 서버리스 API 가 잠들지 않게 (첫 요청 1~2초 지연 줄이기). DB 는 깨우지 않음. 주소는 Variable `EXPO_PUBLIC_API_URL` |
 
 Vercel 배포는 Vercel 의 GitHub 연동이 알아서 합니다. 직접 운영하는 서버에도 올리고 싶다면 GitHub 저장소
 **Settings → Secrets and variables → Actions** 에 아래를 넣으세요 (없으면 서버 배포 단계는 건너뜁니다).

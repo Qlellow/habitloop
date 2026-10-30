@@ -1,0 +1,25 @@
+name: 서버 깨워 두기
+
+# Vercel 의 API 는 한동안 요청이 없으면 잠들고, 그다음 첫 요청이 1~2초 늦어진다 (서버를 새로 띄우는 시간).
+# 5분마다 /api/health 를 불러 깨워 둔다. health 는 DB 를 쓰지 않아 DB(Neon)는 깨우지 않는다 (무료 사용 시간 아끼기).
+# 주소는 저장소 Variable EXPO_PUBLIC_API_URL (= 배포한 사이트 주소). 없으면 아무것도 하지 않는다.
+# GitHub 의 예약 실행은 몇 분씩 늦어질 수 있고, 저장소에 60일 동안 활동이 없으면 GitHub 가 멈춘다.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    name: /api/health
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: 깨우기
+        env:
+          SITE: ${{ vars.EXPO_PUBLIC_API_URL }}
+        run: |
+          if [ -z "$SITE" ]; then echo "EXPO_PUBLIC_API_URL 이 없어 건너뜀"; exit 0; fi
+          curl -sS -o /dev/null --max-time 20 -w "status %{http_code} · %{time_total}s\n" "${SITE%/}/api/health"
