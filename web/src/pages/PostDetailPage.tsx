@@ -19,6 +19,7 @@ import {
   useToggleCommentLike,
   plainText,
   type Comment,
+  type PostDetail,
   type PostSummary,
 } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
@@ -437,6 +438,17 @@ function ChannelCard({ slug }: { slug: string }) {
   );
 }
 
+/** 본문을 기다리는 동안 공감 줄이 차지할 자리 (보이지 않게 그려 두어 나중에 생기며 아래 댓글을 밀지 않게) */
+const RESERVE = { id: 0, likeCount: 0, liked: false, reactions: {}, myReactions: [] } as unknown as PostDetail;
+function ReactionsSpace() {
+  return (
+    <div className={cn(s.reactions, 'invisible')} aria-hidden inert>
+      <LikeButton post={RESERVE} />
+      <ReactionBar post={RESERVE} />
+    </div>
+  );
+}
+
 export default function PostDetailPage() {
   const id = Number(useParams().id);
   const summary = (useLocation().state as { summary?: PostSummary } | null)?.summary;
@@ -516,7 +528,9 @@ export default function PostDetailPage() {
           <>
             <div className={ui.skeleton} style={{ width: 80, height: 16 }} />
             <div className={ui.skeleton} style={{ width: '70%', height: 32, margin: '14px 0 24px' }} />
+            <div className={ui.skeleton} style={{ width: 160, height: 40, marginBottom: 24 }} />
             <div className={ui.skeleton} style={{ width: '100%', height: 160 }} />
+            <ReactionsSpace />
           </>
         ) : (
           <>
@@ -625,7 +639,9 @@ export default function PostDetailPage() {
                 </>
               )}
             </div>
-            {!isPlaceholderData && (
+            {isPlaceholderData ? (
+              <ReactionsSpace />
+            ) : (
               <div className={s.reactions}>
                 <LikeButton post={post} />
                 <ReactionBar post={post} />

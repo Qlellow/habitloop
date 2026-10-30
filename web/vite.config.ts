@@ -1,4 +1,5 @@
-import { copyFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
@@ -47,7 +48,22 @@ function contentSecurityPolicy(): Plugin {
   return {
     name: 'content-security-policy',
     apply: 'build',
-    transformIndexHtml: () => [{ tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: CSP }, injectTo: 'head-prepend' }],
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        // 테마 스크립트(public/theme-init.js)는 첫 화면 전에 막고 읽어야 해서, 파일로 한 번 더 받으러 가지 않게 HTML 에 넣는다.
+        // 인라인 스크립트는 CSP 가 막으므로 그 내용의 해시만 허용한다 (다른 인라인 스크립트는 여전히 막힌다)
+        const themeJs = readFileSync(resolve(__dirname, 'public/theme-init.js'), 'utf8');
+        const hash = createHash('sha256').update(themeJs).digest('base64');
+        const csp = CSP.replace("script-src 'self'", `script-src 'self' 'sha256-${hash}'`);
+        const tag = '<script src="/theme-init.js"></script>';
+        if (!html.includes(tag)) throw new Error('index.html 에 테마 스크립트 태그가 없어요');
+        return {
+          html: html.replace(tag, `<script>${themeJs}</script>`),
+          tags: [{ tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: csp }, injectTo: 'head-prepend' }],
+        };
+      },
+    },
   };
 }
 
