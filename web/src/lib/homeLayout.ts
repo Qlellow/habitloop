@@ -25,21 +25,24 @@ export interface Template {
   specs: (ctx: TemplateCtx) => Spec[];
 }
 
+/**
+ * 템플릿은 모두 첫 화면(1080p 모니터 기준 약 11줄) 안에 들어가게 짠다: 글 목록 옆 위젯들이 스크롤 없이 다 보이게.
+ * 높이 반응형 위젯은 열면 내용 높이로 다시 맞춰지므로 여기 높이는 그에 가깝게 적는다.
+ */
 export const TEMPLATES: Template[] = [
   {
     key: 'basic',
     label: '기본',
-    desc: '왼쪽 채널 · 날씨, 가운데 글, 오른쪽 오늘의 발견 · 인기글',
+    desc: '왼쪽 채널, 가운데 글, 오른쪽 오늘의 발견 · 인기글',
     compact: true,
     specs: ({ loggedIn }) => [
       ...(loggedIn ? ([['followed', 0, 0, 3, 4]] as Spec[]) : []),
-      ['hotChannels', 0, loggedIn ? 4 : 0, 3, 6],
-      ['weather', 0, loggedIn ? 10 : 6, 3, 4],
+      ['hotChannels', 0, loggedIn ? 4 : 0, 3, 4],
+      ...(loggedIn ? [] : ([['weather', 0, 4, 3, 4]] as Spec[])),
+      ['makeChannel', 0, 8, 3, 3],
       ['feed', 3, 0, 6, 12],
-      ['discovery', 9, 0, 3, 5],
-      ['popular', 9, 5, 3, 6],
-      ['makeChannel', 9, 11, 3, 3],
-      ...(loggedIn ? ([['bottle', 9, 14, 3, 3]] as Spec[]) : []),
+      ['discovery', 9, 0, 3, 4],
+      ['popular', 9, 4, 3, 6],
     ],
   },
   {
@@ -51,24 +54,22 @@ export const TEMPLATES: Template[] = [
       ['greeting', 0, 0, 8, 2],
       ['feed', 0, 2, 8, 12],
       ['popular', 8, 0, 4, 6],
-      ['notifications', 8, 6, 4, 5],
-      ['shortcuts', 8, 11, 4, 2],
+      ['notifications', 8, 6, 4, 3],
+      ['shortcuts', 8, 9, 4, 2],
     ],
   },
   {
     key: 'dashboard',
     label: '대시보드',
-    desc: '내 활동 · 알림 · 순위를 위에 모으고 글은 아래로',
+    desc: '내 활동 · 펫 · 알림을 위에 모으고 글은 아래로',
     compact: true,
     specs: () => [
       ['greeting', 0, 0, 12, 2, { align: 'side' }],
       ['activity', 0, 2, 4, 3],
       ['pet', 4, 2, 4, 3],
       ['shortcuts', 8, 2, 4, 3],
-      ['notifications', 0, 5, 4, 6],
-      ['popular', 4, 5, 4, 6],
-      ['hotChannels', 8, 5, 4, 6, { view: 'list' }],
-      ['feed', 0, 11, 12, 10],
+      ['feed', 0, 5, 8, 12],
+      ['notifications', 8, 5, 4, 6],
     ],
   },
   {
@@ -80,9 +81,7 @@ export const TEMPLATES: Template[] = [
       ['channel', 0, 0, 4, 7, { channel: channels[0] ?? '' }],
       ['channel', 4, 0, 4, 7, { channel: channels[1] ?? '' }],
       ['channel', 8, 0, 4, 7, { channel: channels[2] ?? '' }],
-      ['popular', 0, 7, 6, 5],
-      ['hotChannels', 6, 7, 6, 5, { view: 'grid', count: 10 }],
-      ['feed', 0, 12, 12, 10],
+      ['feed', 0, 7, 12, 10],
     ],
   },
   {
@@ -93,9 +92,8 @@ export const TEMPLATES: Template[] = [
     specs: ({ loggedIn }) => [
       ['feed', 0, 0, 8, 12],
       ...(loggedIn ? ([['followed', 8, 0, 4, 4, { view: 'grid' }]] as Spec[]) : []),
-      ['popular', 8, 4, 4, 6],
-      ['hotChannels', 8, 10, 4, 5],
-      ['makeChannel', 8, 15, 4, 3, { sticky: true }],
+      ['popular', 8, loggedIn ? 4 : 0, 4, 6],
+      ...(loggedIn ? [] : ([['hotChannels', 8, 6, 4, 4]] as Spec[])),
     ],
   },
   {
@@ -107,8 +105,7 @@ export const TEMPLATES: Template[] = [
       ['feed', 0, 0, 7, 12],
       ['memo', 7, 0, 5, 3, { color: 'yellow' }],
       ['shortcuts', 7, 3, 5, 2],
-      ['popular', 7, 5, 5, 5],
-      ['memo', 7, 10, 5, 3, { color: 'blue' }],
+      ['popular', 7, 5, 5, 6],
     ],
   },
   {
