@@ -90,12 +90,15 @@ function Root() {
       {/* 폰에서는 하단 탭바 높이만큼 아래를 비워 둔다 (--tabbar-h, global.css) */}
       <div className="flex flex-col min-h-dvh pb-[var(--tabbar-h)]">
         <SiteHeader />
-        {/* 화면 하나가 깨져도 헤더 · 탭바는 남고 그 자리에 안내가 뜬다. 주소가 바뀌면 다시 그려 본다 */}
-        <ErrorBoundary resetKey={pathname} name="page">
-          <Suspense fallback={null}>
-            <Outlet />
-          </Suspense>
-        </ErrorBoundary>
+        {/* 화면 하나가 깨져도 헤더 · 탭바는 남고 그 자리에 안내가 뜬다. 주소가 바뀌면 다시 그려 본다.
+            내용 칸은 적어도 화면 높이만큼: 꼬리말이 처음부터 화면 밖에 있어 글 · 댓글이 늦게 와도 보이는 화면이 밀리지 않는다 */}
+        <div className="flex flex-col min-h-[calc(100dvh-var(--header-h))]">
+          <ErrorBoundary resetKey={pathname} name="page">
+            <Suspense fallback={null}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
         <SiteFooter />
         <MobileTabBar />
       </div>
