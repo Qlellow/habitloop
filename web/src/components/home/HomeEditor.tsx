@@ -3,7 +3,7 @@ import { useAuth, useChannels, useMyChannels, type HomeLayout, type HomeWidget, 
 import { COMMON, WIDGET, WIDGETS, compactOptions, isAutoHeight, optionsOf, type OptionDef, type Options } from './widgets';
 import { WidgetFrame } from './HomeGrid';
 import { TEMPLATES, fromTemplate, type Template, type TemplateCtx } from '../../lib/homeLayout';
-import { COLS, GAP, MAX_WIDGETS, ROW, addWidget, newId, place, removeWidget, rowsOf, rowsPx, setCompact, type Box } from '../../lib/homeGrid';
+import { COLS, GAP, MAX_WIDGETS, ROW, addWidget, findSpotAbove, foldRows, newId, overflowRows, place, removeWidget, rowsOf, rowsPx, setCompact, type Box } from '../../lib/homeGrid';
 import { CloseIcon } from '../Icons';
 import { toast } from '../Toast';
 import { ui } from '../ui';
@@ -16,6 +16,8 @@ import { ask } from '../ConfirmHost';
  *  - 키보드: 위젯에 초점을 두고 방향키로 옮기기, Shift+방향키로 크기, Delete 로 빼기, Enter 로 설정
  *  - 위로 붙이기를 끄면 빈칸을 남기고 원하는 곳 어디에나 둘 수 있다
  *  - 되돌리기 · 다시 하기 (Ctrl+Z · Ctrl+Shift+Z), 템플릿, 위젯마다 설정
+ *  - 첫 화면 선: 이 창 높이에서 스크롤 없이 보이는 곳까지. 위젯을 그 아래로 밀어내는 옮기기 · 크기 · 더하기는 받지 않는다
+ *    (글 목록처럼 내용만큼 늘어나는 위젯은 첫 화면 안에서 시작하기만 하면 된다)
  * 화면 폭이 넓은(860px 이상) 곳에서만 연다.
  */
 
@@ -35,6 +37,8 @@ interface Drag {
   width: number;
   height: number;
   base: HomeLayout;
+  /** 시작할 때 첫 화면 밖으로 나가 있던 정도 (이보다 늘리는 자리 · 크기는 받지 않는다) */
+  baseOver: number;
 }
 
 const steps = (cw: number) => {
@@ -48,6 +52,9 @@ const pxBox = (b: Box, cw: number) => {
 };
 
 const same = (a: HomeLayout, b: HomeLayout) => JSON.stringify(a) === JSON.stringify(b);
+
+/** 내용만큼 늘어나는 긴 위젯 (글 목록): 스크롤해서 읽으므로 첫 화면 선을 넘어도 된다 */
+const isLong = (w: HomeWidget) => !!optionsOf(w).fit;
 
 export function HomeEditor({
   initial,
@@ -78,6 +85,19 @@ export function HomeEditor({
   const drag = useRef<Drag | undefined>(undefined);
   const previewRef = useRef<HomeLayout | undefined>(undefined);
   const pointer = useRef({ x: 0, y: 0 });
+  const [blocked, setBlocked] = useState(false);
+  const blockedRef = useRef(false);
+
+  // 첫 화면에 다 보이는 줄 수 (창 크기 · 확대 비율이 바뀌면 다시 잰다)
+  const [fold, setFold] = useState(() => foldRows(window.innerHeight));
+  const foldRef = useRef(fold);
+  foldRef.current = fold;
+  useEffect(() => {
+    const onResize = () => setFold(foldRows(window.innerHeight));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const overOf = (l: HomeLayout) => overflowRows(l.widgets, fold, isLong);
 
   const shown = preview ?? layout;
 
@@ -208,8 +228,14 @@ export function HomeEditor({
       if (west) box.x = Math.max(0, d.start.x + d.start.w - w);
     }
     setDragPx(px);
-    previewRef.current = place(d.base, d.id, box, min);
-    setPreview(previewRef.current);
+    const next = place(d.base, d.id, box, min);
+    // 첫 화면 밖으로 밀어내는 자리 · 크기는 받지 않는다: 그 상태로 놓으면 끌기 전 그대로
+    const over = overflowRows(next.widgets, foldRef.current, isLong) > d.baseOver;
+    blockedRef.current = over;
+    setBlocked(over);
+    if (over) return;
+    previewRef.current = next;
+    setPreview(next);
   }, [cw]);
 
   // 끄는 동안 화면 위 · 아래 끝에 가까우면 스크롤한다
@@ -235,7 +261,7 @@ export function HomeEditor({
     e.stopPropagation();
     setSelected(w.id);
     const box = pxBox(w, cw);
-    drag.current = { id: w.id, mode, px: e.clientX, py: e.clientY + window.scrollY, start: w, base: layout, ...box };
+    drag.current = { id: w.id, mode, px: e.clientX, py: e.clientY + window.scrollY, start: w, base: layout, baseOver: overOf(layout), ...box };
     pointer.current = { x: e.clientX, y: e.clientY };
     const move = (ev: PointerEvent) => {
       pointer.current = { x: ev.clientX, y: ev.clientY };
@@ -248,9 +274,12 @@ export function HomeEditor({
       document.body.classList.remove('home-dragging');
       drag.current = undefined;
       setDragPx(undefined);
+      setBlocked(false);
       setPreview(undefined);
-      if (previewRef.current) commit(previewRef.current);
+      if (blockedRef.current) toast('첫 화면 밖으로는 옮기거나 늘릴 수 없어요');
+      else if (previewRef.current) commit(previewRef.current);
       previewRef.current = undefined;
+      blockedRef.current = false;
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -269,6 +298,7 @@ export function HomeEditor({
       const min = WIDGET[w.type].min;
       const dh = isAutoHeight(w) ? 0 : a[1];
       const next = e.shiftKey ? place(layout, w.id, { w: w.w + a[0], h: w.h + dh }, min) : place(layout, w.id, { x: w.x + a[0], y: w.y + a[1] }, min);
+      if (overOf(next) > overOf(layout)) return setAnnounce('첫 화면 밖으로는 옮기거나 늘릴 수 없어요');
       commit(next);
       const n = next.widgets.find((x) => x.id === w.id)!;
       setAnnounce(`${WIDGET[w.type].label}: ${n.x + 1}번째 칸, ${n.y + 1}번째 줄, 가로 ${n.w}칸 세로 ${n.h}줄`);
@@ -288,7 +318,15 @@ export function HomeEditor({
     if (layout.widgets.length >= MAX_WIDGETS) return toast(`위젯은 ${MAX_WIDGETS}개까지 둘 수 있어요`);
     const def = WIDGET[type];
     const id = newId();
-    const next = addWidget(layout, { id, type, w: def.size.w, h: def.size.h, ...(o ? { o } : {}) });
+    // 첫 화면 안의 빈자리에 (기본 크기가 안 들어가면 가장 작은 크기로). 긴 위젯은 첫 화면에서 시작만 하면 된다
+    const long = isLong({ id, type, x: 0, y: 0, w: 1, h: 1, ...(o ? { o } : {}) });
+    const fit = (w: number, h: number) => {
+      const spot = findSpotAbove(layout.widgets, w, h, long ? fold + h - 1 : fold);
+      return spot && { ...spot, w, h };
+    };
+    const at = fit(def.size.w, def.size.h) ?? fit(def.min.w, def.min.h);
+    if (!at) return toast('첫 화면에 빈자리가 없어요. 다른 위젯을 줄이거나 빼고 넣어 주세요');
+    const next = addWidget(layout, { id, type, w: at.w, h: at.h, ...(o ? { o } : {}) }, at);
     commit(next);
     setSelected(id);
     setFlash(id);
@@ -328,8 +366,10 @@ export function HomeEditor({
   };
 
   const rows = rowsOf(shown.widgets);
-  // 아래에 빈 줄을 넉넉히 두어 맨 아래로도 끌어 놓을 수 있게
-  const height = rowsPx(Math.max(rows + 4, 10));
+  // 아래에 빈 줄을 넉넉히 두어 맨 아래로도 끌어 놓을 수 있게 (첫 화면 선은 늘 보이게)
+  const height = rowsPx(Math.max(rows + 4, fold + 2));
+  const over = overOf(layout) > 0;
+  const below = (w: HomeWidget) => (isLong(w) ? w.y >= fold : w.y + w.h > fold);
   const sel = layout.widgets.find((w) => w.id === selected);
   const dragging = drag.current?.id;
   const target = dragging ? shown.widgets.find((w) => w.id === dragging) : undefined;
@@ -379,6 +419,7 @@ export function HomeEditor({
       <p className="home-hint">
         위젯을 끌어 옮기고 가장자리를 끌어 크기를 바꿔요. 방향키로 옮기기 · Shift+방향키로 크기 · Delete 로 빼기.
         {!layout.compact && ' 지금은 빈칸을 남길 수 있어요.'}
+        {over && <b className="text-danger font-semibold"> 점선 아래로 내려간 위젯은 첫 화면에서 잘려 보여요. 줄이거나 옮겨 주세요.</b>}
       </p>
 
       <div
@@ -393,6 +434,10 @@ export function HomeEditor({
             <i key={i} />
           ))}
         </div>
+        {/* 첫 화면 선: 보기 화면에서 스크롤하지 않아도 보이는 곳까지 */}
+        <div className="home-fold" style={{ top: rowsPx(fold) + GAP / 2 }} aria-hidden>
+          <span>첫 화면은 여기까지</span>
+        </div>
         {target && (
           <div className="home-placeholder" style={{ transform: `translate(${pxBox(target, cw).left}px, ${pxBox(target, cw).top}px)`, ...sizeOf(pxBox(target, cw)) }} aria-hidden />
         )}
@@ -404,7 +449,14 @@ export function HomeEditor({
           return (
             <div
               key={w.id}
-              className={cn('home-item', isDrag && 'is-drag', selected === w.id && 'is-selected', flash === w.id && 'is-new')}
+              className={cn(
+                'home-item',
+                isDrag && 'is-drag',
+                isDrag && blocked && 'is-blocked',
+                !dragging && below(w) && 'is-below',
+                selected === w.id && 'is-selected',
+                flash === w.id && 'is-new',
+              )}
               style={{ transform: `translate(${box.left}px, ${box.top}px)`, ...sizeOf(box) }}
             >
               {/* 높이 반응형 위젯은 내용만큼 그리고, 그 높이를 재서 세로 줄 수를 맞춘다 */}

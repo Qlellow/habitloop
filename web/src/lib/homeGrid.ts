@@ -71,8 +71,7 @@ export function findSpot(widgets: Box[], w: number, h: number): { x: number; y: 
   }
 }
 
-export function addWidget(layout: HomeLayout, widget: Omit<HomeWidget, 'x' | 'y'>): HomeLayout {
-  const spot = findSpot(layout.widgets, widget.w, widget.h);
+export function addWidget(layout: HomeLayout, widget: Omit<HomeWidget, 'x' | 'y'>, spot = findSpot(layout.widgets, widget.w, widget.h)): HomeLayout {
   return { ...layout, widgets: settle([...layout.widgets, { ...widget, ...spot }], layout.compact) };
 }
 
@@ -156,6 +155,30 @@ export const rowsOf = (widgets: Box[]) => widgets.reduce((n, w) => Math.max(n, w
 
 /** 좁은 화면(한 줄로 쌓기)에서의 순서: 위 → 아래, 같은 줄이면 왼쪽부터 */
 export const stackOrder = <T extends Box>(widgets: T[]) => [...widgets].sort(byPosition);
+
+/** 보기 화면에서 격자 위쪽 끝 (헤더 · 위 여백 · '홈 꾸미기' 줄) 과 아래 여백 (px) */
+export const VIEW_TOP = 144;
+const VIEW_BOTTOM = 16;
+
+/** 이 창 높이에서 홈 첫 화면에 다 보이는 줄 수 (아주 낮은 창에서도 최소 6줄) */
+export const foldRows = (innerHeight: number) => Math.max(6, Math.floor((innerHeight - VIEW_TOP - VIEW_BOTTOM + GAP) / (ROW + GAP)));
+
+/**
+ * 첫 화면 밖으로 나간 정도 (줄 수 합). 0 이면 스크롤하지 않아도 모든 위젯이 다 보인다.
+ * 내용만큼 늘어나는 긴 위젯(글 목록)은 스크롤해서 읽는 것이라, 첫 화면 안에서 시작하기만 하면 된다.
+ */
+export function overflowRows<T extends Box>(widgets: T[], fold: number, isLong: (w: T) => boolean) {
+  return widgets.reduce((n, w) => n + Math.max(0, isLong(w) ? w.y + 1 - fold : w.y + w.h - fold), 0);
+}
+
+/** 이 크기의 위젯이 첫 화면 안에 들어갈 빈자리 (없으면 undefined) */
+export function findSpotAbove(widgets: Box[], w: number, h: number, fold: number): { x: number; y: number } | undefined {
+  for (let y = 0; y + h <= fold; y++) {
+    for (let x = 0; x + w <= COLS; x++) {
+      if (!widgets.some((o) => overlaps({ x, y, w, h }, o))) return { x, y };
+    }
+  }
+}
 
 /** 줄 수 → px 높이 */
 export const rowsPx = (h: number) => h * ROW + (h - 1) * GAP;

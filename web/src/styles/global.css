@@ -2301,6 +2301,37 @@ input[type='search']::-webkit-search-cancel-button:hover {
     box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 25%, transparent);
   }
 }
+/* 첫 화면 밖으로 밀어내는 자리 · 크기: 놓아도 받지 않는다 */
+.home-item.is-drag.is-blocked > .home-widget {
+  box-shadow:
+    0 0 0 2px var(--danger),
+    0 18px 40px rgba(0, 0, 0, 0.18);
+  opacity: 0.7;
+}
+/* 첫 화면 선 (HomeEditor 의 fold): 이 아래로 내려간 위젯은 보기 화면에서 스크롤해야 보인다 */
+.home-fold {
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  z-index: 15;
+  border-top: 2px dashed color-mix(in srgb, var(--danger) 70%, transparent);
+  pointer-events: none;
+}
+.home-fold > span {
+  position: absolute;
+  right: 0;
+  top: -11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--danger-text);
+  background: var(--bg);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.home-item.is-below > .home-widget {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 75%, transparent);
+}
 /* 놓일 자리 */
 .home-placeholder {
   z-index: 0;
