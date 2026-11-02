@@ -52,6 +52,13 @@ import type {
   WeatherReport,
   ActivityDna,
   WeeklyRecap,
+  BottleConversation,
+  BottleLetter,
+  DmConversation,
+  DmMessage,
+  DmPolicy,
+  DmThread,
+  FollowUser,
   SeaState,
   MyBottle,
   Badge,
@@ -83,6 +90,8 @@ export interface FeedFilter {
   q?: string;
   /** 작성자 UUID */
   authorId?: string;
+  /** 내가 팔로우한 사람의 글만 */
+  following?: boolean;
 }
 
 export const keys = {
@@ -112,7 +121,7 @@ export function useFeed(filter: FeedFilter, enabled = true) {
     queryKey: keys.feed(filter),
     queryFn: ({ pageParam, signal }) =>
       api<CursorPage<PostSummary>>('/api/posts', {
-        query: { ...filter, cursor: pageParam, size: PAGE_SIZE },
+        query: { ...filter, following: filter.following ? 'true' : undefined, cursor: pageParam, size: PAGE_SIZE },
         signal,
       }),
     initialPageParam: undefined as number | undefined,
@@ -1170,6 +1179,108 @@ export function useBottleAction() {
       api<void>(`/api/bottles/${id}/${action}`, { method: 'POST', body: action === 'reply' ? { content } : undefined }),
     // 손이 비었으니 다음 바다 보기에서 새 병을 건네받지 않게, 지금은 빈손으로만 바꿔 둔다
     onSuccess: () => qc.setQueryData<SeaState>(seaKey, (s) => (s ? { ...s, held: undefined } : s)),
+  });
+}
+
+/** 표류병 편지: 내가 답장한 병들 */
+export function useBottleConversations(enabled = true) {
+  return useQuery({ queryKey: ['bottles', 'conversations'] as const, queryFn: ({ signal }) => api<BottleConversation[]>('/api/bottles/conversations', { signal }), enabled });
+}
+
+/** 답장에 이어 편지 쓰기 (병 주인 ↔ 답장한 사람) */
+export function useSendLetter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ replyId, content }: { replyId: number; content: string }) =>
+      api<BottleLetter>(`/api/bottles/replies/${replyId}/letters`, { method: 'POST', body: { content } }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: myBottlesKey });
+      void qc.invalidateQueries({ queryKey: ['bottles', 'conversations'] });
+    },
+  });
+}
+
+/* ───────── 사용자 팔로우 ───────── */
+
+export function useFollowUser(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (on: boolean) =>
+      api<{ following: boolean; followerCount: number; followingCount: number }>(`/api/users/${encodeURIComponent(userId)}/follow`, { method: on ? 'PUT' : 'DELETE' }),
+    onSuccess: (res) => {
+      qc.setQueryData<UserProfile>(['user', userId], (u) => u && { ...u, following: res.following, followerCount: res.followerCount });
+      qc.invalidateQueries({ queryKey: ['user', userId, 'follows'] });
+      qc.invalidateQueries({ queryKey: keys.posts });
+    },
+  });
+}
+
+export function useFollowList(userId: string, kind: 'followers' | 'following', enabled = true) {
+  return useQuery({
+    queryKey: ['user', userId, 'follows', kind] as const,
+    queryFn: ({ signal }) => api<FollowUser[]>(`/api/users/${encodeURIComponent(userId)}/${kind}`, { signal }),
+    enabled: enabled && isUserId(userId),
+  });
+}
+
+/* ───────── 1:1 쪽지 ───────── */
+
+export function useDmThreads(enabled = true) {
+  return useQuery({ queryKey: ['dms'] as const, queryFn: ({ signal }) => api<DmThread[]>('/api/me/dms', { signal }), enabled, refetchInterval: 20_000 });
+}
+
+/** 안 읽은 쪽지 수 (헤더). 30초마다 · 창으로 돌아올 때 다시 센다 */
+export function useDmUnread(enabled = true) {
+  return useQuery({
+    queryKey: ['dms', 'unread'] as const,
+    queryFn: ({ signal }) => api<{ count: number }>('/api/me/dms/unread', { signal }),
+    enabled,
+    refetchInterval: 30_000,
+    select: (r) => r.count,
+  });
+}
+
+/** 한 사람과의 쪽지 (최근 것부터 30개씩, 보는 동안 10초마다 새 쪽지 확인) */
+export function useDmConversation(userId: string, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ['dms', 'with', userId] as const,
+    queryFn: ({ pageParam, signal }) =>
+      api<DmConversation>(`/api/me/dms/${encodeURIComponent(userId)}`, { query: { before: pageParam }, signal }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.nextCursor,
+    enabled: enabled && isUserId(userId),
+    refetchInterval: 10_000,
+  });
+}
+
+export function useSendDm(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (content: string) => api<DmMessage>(`/api/me/dms/${encodeURIComponent(userId)}`, { method: 'POST', body: { content } }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['dms', 'with', userId] });
+      void qc.invalidateQueries({ queryKey: ['dms'], exact: true });
+    },
+  });
+}
+
+export function useLeaveDm() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => api<void>(`/api/me/dms/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['dms'] }),
+  });
+}
+
+export function useDmPolicy(enabled = true) {
+  return useQuery({ queryKey: ['dm-policy'] as const, queryFn: ({ signal }) => api<{ policy: DmPolicy }>('/api/me/dm-policy', { signal }), enabled });
+}
+
+export function useSetDmPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (policy: DmPolicy) => api<{ policy: DmPolicy }>('/api/me/dm-policy', { method: 'PUT', body: { policy } }),
+    onSuccess: (res) => qc.setQueryData(['dm-policy'], res),
   });
 }
 

@@ -25,9 +25,11 @@ function Message({ n }: { n: NotificationItem }) {
         <>{b(name(n))}님이 내 글에 공감했어요</>
       );
     case 'notice':
-      return <>{b(n.post.channelName)}에 새 공지가 올라왔어요</>;
+      return <>{b(n.post?.channelName ?? '')}에 새 공지가 올라왔어요</>;
     case 'discovery':
       return <>내 글이 {b('오늘의 발견')}에 뽑혔어요 (+30P)</>;
+    case 'follow':
+      return <>{b(name(n))}님이 나를 팔로우했어요</>;
     case 'mention':
       return <>{b(name(n))}님이 {n.comment ? '댓글에서' : '글에서'} 나를 불렀어요</>;
   }
@@ -41,17 +43,17 @@ function Row({ n, onPress }: { n: NotificationItem; onPress: () => void }) {
           <Text className="text-primary text-lg">✦</Text>
         </View>
       ) : (
-        <Avatar name={n.type === 'notice' ? n.post.channelName : name(n)} uri={n.type === 'notice' ? undefined : n.actor?.avatarUrl} size={40} />
+        <Avatar name={n.type === 'notice' ? (n.post?.channelName ?? '') : name(n)} uri={n.type === 'notice' ? undefined : n.actor?.avatarUrl} size={40} />
       )}
       <View className="flex-1">
         <Text className="text-[15px] leading-[21px] text-fg">
           <Message n={n} />
         </Text>
         <Text className="mt-0.5 text-[13px] text-fg-weak" numberOfLines={1}>
-          {n.comment ? `“${n.comment.excerpt}”` : n.post.title}
+          {n.comment ? `“${n.comment.excerpt}”` : (n.post?.title ?? '프로필 보러 가기')}
         </Text>
         <Text className="mt-0.5 text-xs text-fg-weak">
-          {n.post.channelName} · {timeAgo(n.createdAt)}
+          {n.post ? `${n.post.channelName} · ` : ''}{timeAgo(n.createdAt)}
         </Text>
       </View>
       {!n.read ? <View className="mt-2 w-2 h-2 rounded-full bg-primary" accessibilityLabel="안 읽음" /> : null}
@@ -94,7 +96,7 @@ export default function NotificationsScreen() {
           n={item}
           onPress={() => {
             if (!item.read) read.mutate(item.id);
-            router.push(`/post/${item.post.id}`);
+            router.push(item.post ? `/post/${item.post.id}` : item.actor ? `/u/${item.actor.id}` : '/');
           }}
         />
       )}

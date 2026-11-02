@@ -34,6 +34,7 @@ const PointsPage = lazy(loaders.points);
 const PetPage = lazy(loaders.pet);
 const MyRecapPage = lazy(loaders.myRecap);
 const RecapPage = lazy(loaders.recap);
+const MessagesPage = lazy(loaders.messages);
 const ChannelPage = lazy(loaders.channel);
 const SeaPage = lazy(loaders.sea);
 const ChannelsPage = lazy(loaders.channels);
@@ -142,6 +143,9 @@ const router = createBrowserRouter([
       { path: '/posts/:id/edit', element: auth(<WritePage />) },
       { path: '/write', element: auth(<WritePage />) },
       { path: '/channels', element: <ChannelsPage /> },
+      // 1:1 쪽지
+      { path: '/messages', element: auth(<MessagesPage />) },
+      { path: '/messages/:id', element: auth(<MessagesPage />) },
       // 메시지 표류병
       { path: '/sea', element: auth(<SeaPage />) },
       { path: '/channels/new', element: auth(<ChannelFormPage />) },

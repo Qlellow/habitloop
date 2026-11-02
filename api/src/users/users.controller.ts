@@ -10,6 +10,8 @@ import { featuredBadge } from '../badges/catalog';
 import { PetsService } from '../pets/pets.service';
 import { DnaService } from './dna.service';
 import { RecapService } from './recap.service';
+import { FollowsService } from './follows.service';
+import { DmsService } from '../dms/dms.service';
 import { parseHomeLayout, type HomeLayout } from './home-layout';
 
 /** 작성자 프로필: 닉네임 · 가입일 · 쓴 글 / 댓글 수 · 배지 (이메일 같은 개인 정보는 주지 않는다) */
@@ -22,6 +24,8 @@ export class UsersController {
     private readonly pets: PetsService,
     private readonly dna: DnaService,
     private readonly recap: RecapService,
+    private readonly follows: FollowsService,
+    private readonly dms: DmsService,
   ) {}
 
   /** 닉네임으로 사용자 찾기 (커맨드 팔레트). 앞부분이 맞는 사람부터, 공개 정보만 */
@@ -59,10 +63,13 @@ export class UsersController {
           );
     if (!user) throw ApiError.notFound('없는 사용자예요');
     const { internalId, ...rest } = user;
-    const [badges, blocked, pet] = await Promise.all([
+    const [badges, blocked, pet, counts, following, canMessage] = await Promise.all([
       this.rewards.badges(internalId),
       this.blocks.isBlocked(viewer?.id, internalId),
       this.pets.shownOf(internalId),
+      this.follows.counts(internalId),
+      this.follows.isFollowing(viewer?.id, internalId),
+      this.dms.canMessage(viewer?.id, internalId),
     ]);
     return {
       ...rest,
@@ -74,6 +81,10 @@ export class UsersController {
       blocked,
       /** 프로필에 전시한 펫 */
       pet,
+      ...counts,
+      /** 내가 이 사람을 팔로우하는지 · 쪽지를 보낼 수 있는지 */
+      following,
+      canMessage,
     };
   }
 
@@ -83,6 +94,30 @@ export class UsersController {
   @Get('users/:id/dna')
   activityDna(@Param('id') raw: string) {
     return this.dna.of(raw);
+  }
+
+  /** 사용자 팔로우 · 언팔로우 */
+  @Put('users/:id/follow')
+  follow(@LoginUser() user: AuthUser, @Param('id') uid: string) {
+    return this.follows.follow(user.id, uid, true);
+  }
+
+  @Delete('users/:id/follow')
+  unfollow(@LoginUser() user: AuthUser, @Param('id') uid: string) {
+    return this.follows.follow(user.id, uid, false);
+  }
+
+  /** 팔로워 · 팔로잉 목록 (최근 100명) */
+  @Public()
+  @Get('users/:id/followers')
+  followers(@Param('id') uid: string) {
+    return this.follows.list(uid, 'followers');
+  }
+
+  @Public()
+  @Get('users/:id/following')
+  followingList(@Param('id') uid: string) {
+    return this.follows.list(uid, 'following');
   }
 
   /** 주간 회고: 한 주의 활동 요약 (공개 채널 활동만). week: 그 주의 아무 날, s: 공유 링크 서명(출석까지 보인다) */

@@ -21,6 +21,7 @@ export const loaders = {
   pet: () => import('../pages/my/PetPage'),
   myRecap: () => import('../pages/my/MyRecapPage'),
   recap: () => import('../pages/RecapPage'),
+  messages: () => import('../pages/MessagesPage'),
   settings: () => import('../pages/my/SettingsPage'),
   channel: () => import('../pages/ChannelPage'),
   channels: () => import('../pages/ChannelsPage'),

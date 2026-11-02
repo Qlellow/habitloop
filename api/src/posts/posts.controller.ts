@@ -50,6 +50,7 @@ export class PostsController {
         category: intParam(query.category),
         authorId: isUuid(query.authorId) ? query.authorId : query.authorId ? '00000000-0000-0000-0000-000000000000' : undefined,
         q: query.q,
+        following: query.following === 'true',
       },
       intParam(query.cursor),
       intParam(query.size) ?? 20,

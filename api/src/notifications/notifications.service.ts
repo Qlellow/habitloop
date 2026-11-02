@@ -3,7 +3,7 @@ import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
 import { PushService } from './push.service';
 
-export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery' | 'mention';
+export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery' | 'mention' | 'follow';
 
 export interface NotificationItem {
   id: number;
@@ -12,7 +12,8 @@ export interface NotificationItem {
   actor?: { id: string; nickname: string; avatarUrl?: string };
   /** 공감: 읽기 전까지 모인 사람 수 */
   count: number;
-  post: { id: number; title: string; channelSlug: string; channelName: string };
+  /** 글과 상관없는 알림(팔로우)은 비어 있다 */
+  post?: { id: number; title: string; channelSlug: string; channelName: string };
   /** 댓글 · 답글: 그 댓글 앞부분 */
   comment?: { id: number; excerpt: string };
   read: boolean;
@@ -26,7 +27,7 @@ interface Row {
   actorNickname: string | null;
   actorAvatar: string | null;
   count: number;
-  postId: number;
+  postId: number | null;
   postTitle: string;
   channelSlug: string;
   channelName: string;
@@ -97,6 +98,15 @@ export class NotificationsService {
     });
   }
 
+  /** 누가 나를 팔로우: 같은 사람이 끄고 켜기를 되풀이해도 읽기 전에는 하나만 */
+  async followed(userId: number, actorId: number) {
+    await this.safe(async () => {
+      const dup = await this.db.one("SELECT 1 FROM notifications WHERE user_id = $1 AND actor_id = $2 AND type = 'follow' AND read_at IS NULL", [userId, actorId]);
+      if (dup) return;
+      await this.pushFor(await this.insert(userId, 'follow', actorId, null, null));
+    });
+  }
+
   /** 처음 공감: 읽기 전 같은 글의 공감 알림이 있으면 한 줄로 모은다 */
   async liked(postId: number, actorId: number) {
     await this.safe(async () => {
@@ -145,8 +155,8 @@ export class NotificationsService {
               n.count, p.id AS "postId", p.title AS "postTitle", c.slug AS "channelSlug", c.name AS "channelName",
               n.comment_id AS "commentId", cm.content AS "commentContent", n.read_at AS "readAt", n.created_at AS "createdAt"
        FROM notifications n
-       JOIN posts p ON p.id = n.post_id
-       JOIN channels c ON c.id = p.channel_id
+       LEFT JOIN posts p ON p.id = n.post_id
+       LEFT JOIN channels c ON c.id = p.channel_id
        LEFT JOIN users a ON a.id = n.actor_id
        LEFT JOIN comments cm ON cm.id = n.comment_id
        WHERE n.user_id = $1 AND ($2::int IS NULL OR n.id < $2)
@@ -170,7 +180,7 @@ export class NotificationsService {
   }
 
   /** 받는 사람이 actor 를 차단했으면 보내지 않는다. 만든 알림 번호를 돌려준다 (푸시용) */
-  private async insert(userId: number, type: NotificationType, actorId: number, postId: number, commentId: number | null) {
+  private async insert(userId: number, type: NotificationType, actorId: number, postId: number | null, commentId: number | null) {
     const rows = await this.db.query<{ id: number }>(
       `INSERT INTO notifications (user_id, type, actor_id, post_id, comment_id)
        SELECT $1::int, $2::varchar, $3::int, $4::int, $5::int
@@ -184,9 +194,9 @@ export class NotificationsService {
   /** 방금 만든 알림을 그 사람의 앱으로 푸시 (알림 목록과 같은 문장) */
   private async pushFor(ids: number[]) {
     if (!ids.length) return;
-    const rows = await this.db.query<{ userId: number; type: NotificationType; actor: string | null; postId: number; postTitle: string; channelName: string; comment: string | null }>(
-      `SELECT n.user_id AS "userId", n.type, a.nickname AS actor, p.id AS "postId", p.title AS "postTitle", c.name AS "channelName", cm.content AS comment
-       FROM notifications n JOIN posts p ON p.id = n.post_id JOIN channels c ON c.id = p.channel_id
+    const rows = await this.db.query<{ userId: number; type: NotificationType; actor: string | null; actorUid: string | null; postId: number | null; postTitle: string; channelName: string; comment: string | null }>(
+      `SELECT n.user_id AS "userId", n.type, a.nickname AS actor, a.uid::text AS "actorUid", p.id AS "postId", p.title AS "postTitle", c.name AS "channelName", cm.content AS comment
+       FROM notifications n LEFT JOIN posts p ON p.id = n.post_id LEFT JOIN channels c ON c.id = p.channel_id
        LEFT JOIN users a ON a.id = n.actor_id LEFT JOIN comments cm ON cm.id = n.comment_id
        WHERE n.id = ANY($1)`,
       [ids],
@@ -201,8 +211,10 @@ export class NotificationsService {
           : r.type === 'like' ? `${who(r)}님이 내 글을 좋아해요`
           : r.type === 'notice' ? `${r.channelName} 새 공지`
           : r.type === 'mention' ? `${who(r)}님이 나를 불렀어요`
+          : r.type === 'follow' ? `${who(r)}님이 나를 팔로우했어요`
           : '내 글이 오늘의 발견에 뽑혔어요';
         const body = r.type === 'comment' || r.type === 'reply' || (r.type === 'mention' && r.comment) ? short(r.comment) || r.postTitle : r.postTitle;
+        if (r.type === 'follow') return { userId: r.userId, title, body: '프로필에서 어떤 글을 쓰는지 볼 수 있어요', url: `/u/${r.actorUid}` };
         return { userId: r.userId, title, body, url: `/post/${r.postId}` };
       }),
     );
@@ -224,7 +236,7 @@ function toItem(r: Row): NotificationItem {
     type: r.type,
     actor: r.actorUid ? { id: r.actorUid, nickname: r.actorNickname!, avatarUrl: r.actorAvatar ?? undefined } : undefined,
     count: r.count,
-    post: { id: r.postId, title: r.postTitle, channelSlug: r.channelSlug, channelName: r.channelName },
+    post: r.postId == null ? undefined : { id: r.postId, title: r.postTitle, channelSlug: r.channelSlug, channelName: r.channelName },
     comment:
       r.commentId != null && excerpt != null
         ? { id: r.commentId, excerpt: [...excerpt].length > EXCERPT ? `${[...excerpt].slice(0, EXCERPT).join('')}…` : excerpt }

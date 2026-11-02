@@ -213,6 +213,63 @@ export interface UserProfile {
   blocked?: boolean;
   /** 프로필에 전시한 펫 */
   pet?: PetPublic;
+  followerCount?: number;
+  followingCount?: number;
+  /** 내가 이 사람을 팔로우하는지 · 쪽지를 보낼 수 있는지 */
+  following?: boolean;
+  canMessage?: boolean;
+}
+
+/** 팔로워 · 팔로잉 목록의 한 사람 */
+export interface FollowUser {
+  id: string;
+  nickname: string;
+  avatarUrl?: string;
+}
+
+/** 1:1 쪽지 */
+export type DmPolicy = 'all' | 'following' | 'none';
+
+export interface DmThread {
+  user: FollowUser;
+  last: string;
+  lastMine: boolean;
+  lastAt: string;
+  unread: number;
+}
+
+export interface DmMessage {
+  id: number;
+  mine: boolean;
+  content: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface DmConversation {
+  user: FollowUser;
+  items: DmMessage[];
+  nextCursor?: number;
+  canSend: boolean;
+  /** 보낼 수 없으면 그 이유 */
+  reason?: string;
+}
+
+/** 표류병 답장에 이어 주고받는 편지 */
+export interface BottleLetter {
+  id: number;
+  mine: boolean;
+  content: string;
+  createdAt: string;
+}
+
+/** 내가 답장한 병 */
+export interface BottleConversation {
+  replyId: number;
+  bottle: { content: string; createdAt: string };
+  reply: { content: string; createdAt: string };
+  letters: BottleLetter[];
+  unread: number;
 }
 
 /** 내가 차단한 사용자 (설정) */
@@ -290,7 +347,7 @@ export interface PointLog {
 }
 
 /** 알림 종류: 내 글에 댓글 · 내 댓글에 답글 · 내 글에 공감 · 팔로우한 채널의 새 공지 */
-export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery' | 'mention';
+export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery' | 'mention' | 'follow';
 
 /** 메시지 표류병 */
 export type BottleStatus = 'drifting' | 'held' | 'ashore';
@@ -315,6 +372,8 @@ export interface SeaState {
   /** 지금 떠다니는 (남의) 병 수 */
   drifting: number;
   unreadReplies: number;
+  /** 내가 답장한 병의 주인이 새로 보낸 편지 수 */
+  unreadLetters?: number;
 }
 
 /** 내가 띄운 병: 상태 · 여정 · 답장 (답장한 사람은 모른다) */
@@ -325,7 +384,7 @@ export interface MyBottle {
   hops: number;
   createdAt: string;
   journey: { at: string; action: BottleHopAction | null }[];
-  replies: { id: number; content: string; createdAt: string; read: boolean }[];
+  replies: { id: number; content: string; createdAt: string; read: boolean; letters?: BottleLetter[] }[];
 }
 
 /** 활동 DNA: 다섯 성향 · 시간대 · 최근 활동 순서 */
@@ -412,7 +471,8 @@ export interface NotificationItem {
   actor?: { id: string; nickname: string; avatarUrl?: string };
   /** 공감: 읽기 전까지 모인 사람 수 */
   count: number;
-  post: { id: number; title: string; channelSlug: string; channelName: string };
+  /** 글과 상관없는 알림(팔로우)은 비어 있다 */
+  post?: { id: number; title: string; channelSlug: string; channelName: string };
   /** 댓글 · 답글 앞부분 */
   comment?: { id: number; excerpt: string };
   read: boolean;

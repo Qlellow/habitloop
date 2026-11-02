@@ -4,6 +4,9 @@ import {
   useBlockUser,
   useMyBlocks,
   useMutedWords,
+  useDmPolicy,
+  useSetDmPolicy,
+  type DmPolicy,
   useSetMutedWords,
   CODE_LENGTH,
   timeAgo,
@@ -557,6 +560,43 @@ function BlockedUsers() {
   );
 }
 
+const DM_CHOICES: [DmPolicy, string, string][] = [
+  ['all', '모두', '누구나 쪽지를 보낼 수 있어요 (차단한 사람 빼고)'],
+  ['following', '내가 팔로우한 사람만', '내가 팔로우한 사람에게서만 쪽지를 받아요'],
+  ['none', '받지 않기', '아무도 새 쪽지를 보낼 수 없어요'],
+];
+
+/** 쪽지 받기: 누구에게서 1:1 쪽지를 받을지 */
+function DmPolicyOption() {
+  const policy = useDmPolicy();
+  const save = useSetDmPolicy();
+  return (
+    <section className={cn(ui.card, s.section)}>
+      <h2 className={s.sectionTitle}>쪽지 받기</h2>
+      <p className={s.sectionDesc}>누구에게서 1:1 쪽지를 받을지 골라요. 이미 주고받던 대화도 이 설정을 따라요.</p>
+      <div role="radiogroup" aria-label="쪽지 받기" className="flex flex-col gap-1">
+        {DM_CHOICES.map(([value, label, help]) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={policy.data?.policy === value}
+            disabled={save.isPending || policy.isPending}
+            onClick={() => save.mutate(value, { onSuccess: () => toast(`쪽지 받기: ${label}`), onError: (e) => toast(e.message) })}
+            className={cn(
+              'flex flex-col items-start px-3 py-2.5 rounded-sm text-left transition-colors hover:bg-field',
+              policy.data?.policy === value && 'bg-primary-weak hover:bg-primary-weak',
+            )}
+          >
+            <span className={cn('text-[15px] font-semibold', policy.data?.policy === value ? 'text-primary' : 'text-fg-strong')}>{label}</span>
+            <span className="text-[13px] text-fg-sub">{help}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /** 키워드 뮤트: 이 단어가 제목 · 요약에 들어간 글은 목록 · 인기글에서 보이지 않는다 (글 주소로 들어가면 볼 수 있다) */
 function MutedWords() {
   const muted = useMutedWords();
@@ -739,6 +779,7 @@ export default function SettingsPage() {
       </section>
       <BlockedUsers />
       <MutedWords />
+      <DmPolicyOption />
       <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>화면</h2>
         <div className={s.option}>
