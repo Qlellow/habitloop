@@ -537,6 +537,8 @@ export function ImageEditLayer({
           initial={params.crop}
           initialShape={params.shape}
           onClose={() => setCropping(false)}
+          // 다른 사진: 본문의 이 이미지를 바꾸고 자르기 창은 그대로 (새 사진 기준으로 다시 고른다)
+          onReplace={(file) => void replaceImage(file)}
           onApply={({ crop, shape, naturalRatio: nr }) => {
             // 자르면 자른 영역의 원래 비율로 보이게 자유 변형(ar)은 지운다
             commit({ ...params, crop: crop.w > 0.999 && crop.h > 0.999 ? undefined : crop, shape, ar: undefined, nr });

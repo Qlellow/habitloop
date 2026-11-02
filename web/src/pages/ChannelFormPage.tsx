@@ -123,6 +123,11 @@ function IconPicker({
           applyLabel={busy ? '만드는 중…' : '이 영역으로 설정'}
           onApply={({ crop }) => void applyCrop(crop)}
           onClose={closeCrop}
+          onReplace={(file) => {
+            if (!file.type.startsWith('image/')) return toast('이미지 파일을 골라 주세요');
+            revokeLater(cropping.url);
+            setCropping({ file, url: URL.createObjectURL(file) });
+          }}
         />
       )}
     </div>
