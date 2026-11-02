@@ -723,4 +723,21 @@ CREATE TABLE bottle_letters (
 CREATE INDEX idx_bottle_letters_reply ON bottle_letters (reply_id, id);
 `,
   },
+  {
+    // 채널 자동 검열(금칙어 · 링크 제한) · 채널 랭킹 시즌(지난달 1~3위 기록)
+    name: '039_automod_seasons',
+    sql: `
+ALTER TABLE channels ADD COLUMN banned_words TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE channels ADD COLUMN link_policy VARCHAR(10) NOT NULL DEFAULT 'all';
+CREATE TABLE channel_season_winners (
+    channel_id  INTEGER       NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
+    season      CHAR(7)       NOT NULL,
+    rank        SMALLINT      NOT NULL,
+    user_id     INTEGER       REFERENCES users (id) ON DELETE SET NULL,
+    score       INTEGER       NOT NULL,
+    created_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    PRIMARY KEY (channel_id, season, rank)
+);
+`,
+  },
 ];

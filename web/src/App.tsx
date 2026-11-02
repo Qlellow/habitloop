@@ -35,6 +35,7 @@ const PetPage = lazy(loaders.pet);
 const MyRecapPage = lazy(loaders.myRecap);
 const RecapPage = lazy(loaders.recap);
 const MessagesPage = lazy(loaders.messages);
+const RankingPage = lazy(loaders.ranking);
 const ChannelPage = lazy(loaders.channel);
 const SeaPage = lazy(loaders.sea);
 const ChannelsPage = lazy(loaders.channels);
@@ -151,6 +152,8 @@ const router = createBrowserRouter([
       { path: '/channels/new', element: auth(<ChannelFormPage />) },
       { path: '/c/:slug', element: <ChannelPage /> },
       { path: '/c/:slug/edit', element: auth(<ChannelFormPage />) },
+      // 채널 랭킹 시즌
+      { path: '/c/:slug/ranking', element: <RankingPage /> },
       // 채널 마을
       { path: '/c/:slug/village', element: <VillagePage /> },
       { path: '/c/:slug/manage', element: auth(<ChannelManagePage />) },

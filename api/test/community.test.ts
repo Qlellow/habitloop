@@ -1484,6 +1484,56 @@ describe('커뮤니티', () => {
     expect(['dawn', 'morning', 'day', 'evening', 'night']).toContain(dna.type.period);
   });
 
+  it('채널 자동 검열 · 랭킹 시즌', async () => {
+    const owner = await signup('mod-owner@test.dev', '검열주인');
+    const user = await signup('mod-user@test.dev', '검열회원');
+    await http().post('/api/channels').set(bearer(owner)).send({ slug: 'automod', name: '검열채널' }).expect(201);
+    await http().post('/api/channels/automod/members').set(bearer(user)).expect((r) => expect([200, 201, 204]).toContain(r.status));
+    await http().get('/api/channels/automod/automod').set(bearer(user)).expect(403);
+    await http().put('/api/channels/automod/automod').set(bearer(owner)).send({ bannedWords: ['광고', ' 광고 '], linkPolicy: 'bad' }).expect(400);
+    expect((await http().put('/api/channels/automod/automod').set(bearer(owner)).send({ bannedWords: ['광고', ' 광고 ', '도배'], linkPolicy: 'staff' }).expect(200)).body).toEqual({
+      bannedWords: ['광고', '도배'],
+      linkPolicy: 'staff',
+    });
+    const write = (token: string, title: string, content: string) => http().post('/api/posts').set(bearer(token)).send({ channel: 'automod', title, content });
+    expect((await write(user, '좋은 광고 있어요', '내용').expect(400)).body.message).toContain("'광고'");
+    expect((await write(user, '링크', '여기 https://example.com 보세요').expect(400)).body.message).toContain('링크');
+    // 본문 이미지(사이트 안 주소)는 괜찮다, 운영진은 검열을 받지 않는다
+    const ok = (await write(user, '사진', '![](/api/images/abcdefghijklmnop) 멋져요').expect(201)).body;
+    await write(owner, '공지: 광고 금지', 'https://example.com 참고').expect(201);
+    await http().post(`/api/posts/${ok.id}/comments`).set(bearer(user)).send({ content: '도배합니다' }).expect(400);
+    const c = (await http().post(`/api/posts/${ok.id}/comments`).set(bearer(user)).send({ content: '좋네요' }).expect(201)).body;
+    await http().put(`/api/posts/${ok.id}/comments/${c.id}`).set(bearer(user)).send({ content: '광고예요' }).expect(400);
+    await http().put(`/api/posts/${ok.id}`).set(bearer(user)).send({ title: '사진', content: 'www.spam.com' }).expect(400);
+
+    // 랭킹: 이번 달 글 5점 · 댓글 2점 · 받은 공감 1점
+    await http().post(`/api/posts/${ok.id}/like`).set(bearer(owner)).expect(200);
+    let rank = (await http().get('/api/channels/automod/ranking').set(bearer(user)).expect(200)).body;
+    expect(rank.current).toBe(true);
+    expect(rank.ranks.map((r: { user: { nickname: string }; score: number }) => [r.user.nickname, r.score])).toEqual([
+      ['검열회원', 5 + 2 + 1],
+      ['검열주인', 5],
+    ]);
+    expect(rank.me).toMatchObject({ rank: 1 });
+    await http().get('/api/channels/automod/ranking?season=2999-01').expect(400);
+    await http().get('/api/channels/automod/ranking?season=abc').expect(400);
+    await http().get('/api/channels/automod/ranking?season=2000-01').expect(400);
+    // 지난 시즌: 채널을 한 달 앞당겨 만들고 글을 지난달로 옮기면, 열어 볼 때 1~3위가 기록되고 포인트를 받는다 (한 번만)
+    const db = app.get(Database);
+    await db.execute("UPDATE channels SET created_at = created_at - interval '40 days' WHERE slug = 'automod'");
+    const LAST_MONTH = "((date_trunc('month', now() AT TIME ZONE 'Asia/Seoul') - interval '5 days') AT TIME ZONE 'Asia/Seoul')";
+    await db.execute(`UPDATE posts SET created_at = ${LAST_MONTH} WHERE channel_id = (SELECT id FROM channels WHERE slug = 'automod')`);
+    await db.execute(`UPDATE comments SET created_at = ${LAST_MONTH} WHERE post_id = $1`, [ok.id]);
+    await db.execute(`UPDATE post_likes SET created_at = ${LAST_MONTH} WHERE post_id = $1`, [ok.id]);
+    const before = (await http().get('/api/me').set(bearer(user))).body.points as number;
+    rank = (await http().get('/api/channels/automod/ranking').expect(200)).body;
+    const prev = (await http().get(`/api/channels/automod/ranking?season=${(await db.one<{ s: string }>("SELECT to_char((now() AT TIME ZONE 'Asia/Seoul') - interval '1 month', 'YYYY-MM') AS s"))!.s}`).expect(200)).body;
+    expect(prev.ranks[0]).toMatchObject({ rank: 1, user: { nickname: '검열회원' } });
+    await http().get('/api/channels/automod/ranking').expect(200);
+    const after = (await http().get('/api/me').set(bearer(user))).body.points as number;
+    expect(after - before).toBe(300);
+  });
+
   it('사용자 팔로우 · 1:1 쪽지 · 표류병 편지', async () => {
     const a = await signup('dm-a@test.dev', '쪽지에이');
     const b = await signup('dm-b@test.dev', '쪽지비');
