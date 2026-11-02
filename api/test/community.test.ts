@@ -1484,6 +1484,53 @@ describe('커뮤니티', () => {
     expect(['dawn', 'morning', 'day', 'evening', 'night']).toContain(dna.type.period);
   });
 
+  it('투표 글 · 글 시리즈', async () => {
+    const me = await signup('poll-me@test.dev', '투표주인');
+    const voter = await signup('poll-voter@test.dev', '투표하는사람');
+    await http().post('/api/channels').set(bearer(me)).send({ slug: 'poll', name: '투표채널' }).expect(201);
+    const make = (poll: unknown) => http().post('/api/posts').set(bearer(me)).send({ channel: 'poll', title: '점심 뭐 먹지', content: '골라 주세요', poll });
+    await make({ options: ['하나'] }).expect(400);
+    await make({ options: ['a', 'b', 'c', 'd', 'e', 'f', 'g'] }).expect(400);
+    await make({ options: ['같음', '같음'] }).expect(400);
+    await make({ options: ['a', 'b'], closesInHours: 0 }).expect(400);
+    const post = (await make({ options: [' 짜장 ', '짬뽕', '볶음밥'], closesInHours: 24 }).expect(201)).body;
+    expect(post.poll).toMatchObject({ multiple: false, closed: false, revealed: true, total: 0, myVotes: [] });
+    const [jja, jjam, rice] = post.poll.options.map((o: { id: number }) => o.id);
+    expect(post.poll.options[0]).toMatchObject({ label: '짜장', votes: 0 });
+
+    // 투표 전에는 결과를 숨긴다 (글쓴이 빼고)
+    let seen = (await http().get(`/api/posts/${post.id}`).set(bearer(voter))).body.poll;
+    expect(seen.revealed).toBe(false);
+    expect(seen.options[0].votes).toBeUndefined();
+    await http().put(`/api/posts/${post.id}/poll`).set(bearer(voter)).send({ optionIds: [jja, jjam] }).expect(400);
+    await http().put(`/api/posts/${post.id}/poll`).set(bearer(voter)).send({ optionIds: [99999] }).expect(400);
+    seen = (await http().put(`/api/posts/${post.id}/poll`).set(bearer(voter)).send({ optionIds: [jjam] }).expect(200)).body;
+    expect(seen).toMatchObject({ revealed: true, total: 1, voters: 1, myVotes: [jjam] });
+    // 바꾸기
+    seen = (await http().put(`/api/posts/${post.id}/poll`).set(bearer(voter)).send({ optionIds: [rice] }).expect(200)).body;
+    expect(seen.options.map((o: { votes: number }) => o.votes)).toEqual([0, 0, 1]);
+    // 마감되면 더는 못 바꾼다
+    await app.get(Database).execute("UPDATE polls SET closes_at = now() - interval '1 minute' WHERE post_id = $1", [post.id]);
+    await http().put(`/api/posts/${post.id}/poll`).set(bearer(voter)).send({ optionIds: [jja] }).expect(400);
+    expect((await http().get(`/api/posts/${post.id}`)).body.poll).toMatchObject({ closed: true, revealed: true, total: 1 });
+    await http().put('/api/posts/999999/poll').set(bearer(voter)).send({ optionIds: [] }).expect(404);
+
+    // 시리즈: 새로 만들어 넣고, 다음 글은 그 시리즈를 골라 넣는다
+    const ep1 = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'poll', title: '1화', content: '시작', newSeries: '달의 도서관' }).expect(201)).body;
+    expect(ep1.series).toMatchObject({ title: '달의 도서관', index: 0, posts: [{ id: ep1.id, title: '1화' }] });
+    const seriesId = ep1.series.id;
+    const ep2 = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'poll', title: '2화', content: '이어서', seriesId }).expect(201)).body;
+    expect(ep2.series).toMatchObject({ index: 1 });
+    expect((await http().get('/api/me/series').set(bearer(me))).body).toEqual([{ id: seriesId, title: '달의 도서관', count: 2 }]);
+    // 남의 시리즈에는 못 넣는다
+    await http().post('/api/channels/poll/members').set(bearer(voter)).expect((r) => expect([200, 201, 204]).toContain(r.status));
+    await http().post('/api/posts').set(bearer(voter)).send({ channel: 'poll', title: '끼어들기', content: 'x', seriesId }).expect(400);
+    // 수정에서 빼기
+    const out = (await http().put(`/api/posts/${ep2.id}`).set(bearer(me)).send({ title: '2화', content: '이어서', seriesId: null }).expect(200)).body;
+    expect(out.series).toBeUndefined();
+    expect((await http().get(`/api/posts/${ep1.id}`)).body.series.posts).toHaveLength(1);
+  });
+
   it('글 저장 · 키워드 뮤트 · @멘션 알림', async () => {
     const me = await signup('save-me@test.dev', '저장주인');
     const friend = await signup('save-friend@test.dev', '멘션친구');

@@ -14,6 +14,7 @@ import { makeExcerpt } from './excerpt';
 import { featuredBadge, type FeaturedBadge } from '../badges/catalog';
 import type { CreatePostInput, UpdatePostInput } from './posts.dto';
 import { checkPostRate } from '../common/write-limit';
+import { PostExtrasService } from './post-extras.service';
 
 export interface PostSummary {
   id: number;
@@ -122,6 +123,7 @@ interface PostRow {
   createdAt: Date;
   updatedAt: Date;
   hidden: boolean;
+  seriesId: number | null;
 }
 
 @Injectable()
@@ -137,6 +139,7 @@ export class PostsService {
     private readonly rewards: RewardsService,
     private readonly notifications: NotificationsService,
     private readonly blocks: BlocksService,
+    private readonly extras: PostExtrasService,
   ) {}
 
   /**
@@ -335,12 +338,15 @@ export class PostsService {
       throw ApiError.badRequest('카테고리를 골라 주세요');
     }
     await this.requireAdultCategory(categoryId, userId);
+    const poll = this.extras.parsePoll(input.poll);
     const id = await this.db.transaction(async () => {
+      const seriesId = (await this.extras.resolveSeries(userId, input)) ?? null;
       const row = await this.db.one<{ id: number }>(
-        `INSERT INTO posts (author_id, channel_id, category_id, title, content, excerpt)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [userId, channel.id, categoryId, input.title.trim(), input.content, makeExcerpt(input.content)],
+        `INSERT INTO posts (author_id, channel_id, category_id, title, content, excerpt, series_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [userId, channel.id, categoryId, input.title.trim(), input.content, makeExcerpt(input.content), seriesId],
       );
+      if (poll) await this.extras.createPoll(row!.id, poll);
       await this.db.execute('UPDATE channels SET post_count = post_count + 1 WHERE id = $1', [channel.id]);
       return row!.id;
     });
@@ -368,6 +374,8 @@ export class PostsService {
       makeExcerpt(input.content),
       postId,
     ]);
+    const seriesId = await this.extras.resolveSeries(userId, input);
+    if (seriesId !== undefined) await this.db.execute('UPDATE posts SET series_id = $1 WHERE id = $2', [seriesId, postId]);
     const liked = !!(await this.db.one('SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2', [postId, userId]));
     return this.toDetail(await this.find(postId), userId, liked);
   }
@@ -511,7 +519,8 @@ export class PostsService {
               c.slug AS "channelSlug", c.name AS "channelName", c.icon_version AS "iconVersion", c.color AS "channelColor",
               p.category_id AS "categoryId", cat.name AS "categoryName", p.title, p.content,
               p.like_count AS "likeCount", p.comment_count AS "commentCount", p.view_count AS "viewCount",
-              p.created_at AS "createdAt", p.updated_at AS "updatedAt", p.hidden_at IS NOT NULL AS hidden
+              p.created_at AS "createdAt", p.updated_at AS "updatedAt", p.hidden_at IS NOT NULL AS hidden,
+              p.series_id AS "seriesId"
        FROM posts p JOIN users a ON a.id = p.author_id JOIN channels c ON c.id = p.channel_id
        LEFT JOIN channel_categories cat ON cat.id = p.category_id
        WHERE p.id = $1`,
@@ -519,6 +528,13 @@ export class PostsService {
     );
     if (!row) throw notFound();
     return row;
+  }
+
+  /** 투표하기 · 바꾸기 · 취소 */
+  async vote(userId: number, postId: number, optionIds: unknown) {
+    await this.requirePostAccess(postId, userId);
+    const post = await this.find(postId);
+    return this.extras.vote(postId, userId, optionIds, post.authorId);
   }
 
   /* ───── 글 저장 (스크랩) ───── */
@@ -571,11 +587,13 @@ export class PostsService {
 
   /** canModerate: 보는 사람이 작성자보다 높은 채널 운영진이라 이 글을 지울 수 있는지 */
   private async toDetail(post: PostRow, viewerId: number | undefined, liked: boolean) {
-    const [authorRole, viewerRole, blockedAuthor, reactions] = await Promise.all([
+    const [authorRole, viewerRole, blockedAuthor, reactions, poll, series] = await Promise.all([
       this.channels.roleOf(post.channelId, post.authorId),
       this.channels.roleOf(post.channelId, viewerId),
       this.blocks.isBlocked(viewerId, post.authorId),
       this.reactions(post.id, viewerId),
+      this.extras.poll(post.id, viewerId, post.authorId),
+      this.extras.series(post.id, post.seriesId, viewerId),
     ]);
     const mine = viewerId === post.authorId;
     return {
@@ -598,6 +616,8 @@ export class PostsService {
       hidden: post.hidden,
       /** 내가 차단한 사람의 글 (웹은 내용을 접어 두고 '보기'를 누르면 보여 준다) */
       blockedAuthor,
+      poll,
+      series,
     };
   }
 }

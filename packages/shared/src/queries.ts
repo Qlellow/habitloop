@@ -45,6 +45,7 @@ import type {
   CursorPage,
   LikeResponse,
   PostDetail,
+  Poll,
   PostInput,
   PostSummary,
   Discovery,
@@ -846,12 +847,13 @@ export function useSavePost(id?: number) {
       id
         ? api<PostDetail>(`/api/posts/${id}`, {
             method: 'PUT',
-            body: { categoryId: input.categoryId ?? null, title: input.title, content: input.content },
+            body: { categoryId: input.categoryId ?? null, title: input.title, content: input.content, seriesId: input.seriesId, newSeries: input.newSeries },
           })
         : api<PostDetail>('/api/posts', { method: 'POST', body: input }),
     onSuccess: (post) => {
       qc.setQueryData(keys.post(post.id), post);
       markListsStale(qc);
+      qc.invalidateQueries({ queryKey: ['series', 'mine'] });
     },
   });
 }
@@ -905,6 +907,24 @@ export function useToggleLike(postId: number) {
       qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, ...res });
       qc.invalidateQueries({ queryKey: keys.posts, refetchType: 'none' });
     },
+  });
+}
+
+/** 투표하기 · 바꾸기 (빈 배열이면 취소). 결과를 받으면 글 캐시의 투표를 바꾼다 */
+export function useVote(postId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (optionIds: number[]) => api<Poll>(`/api/posts/${postId}/poll`, { method: 'PUT', body: { optionIds } }),
+    onSuccess: (poll) => qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, poll }),
+  });
+}
+
+/** 내 시리즈 (글쓰기에서 고르기) */
+export function useMySeries(enabled = true) {
+  return useQuery({
+    queryKey: ['series', 'mine'] as const,
+    queryFn: ({ signal }) => api<{ id: number; title: string; count: number }[]>('/api/me/series', { signal }),
+    enabled,
   });
 }
 
