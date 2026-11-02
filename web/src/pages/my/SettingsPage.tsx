@@ -3,6 +3,8 @@ import { useState, type FormEvent } from 'react';
 import {
   useBlockUser,
   useMyBlocks,
+  useMutedWords,
+  useSetMutedWords,
   CODE_LENGTH,
   timeAgo,
   useAuth,
@@ -555,6 +557,55 @@ function BlockedUsers() {
   );
 }
 
+/** 키워드 뮤트: 이 단어가 제목 · 요약에 들어간 글은 목록 · 인기글에서 보이지 않는다 (글 주소로 들어가면 볼 수 있다) */
+function MutedWords() {
+  const muted = useMutedWords();
+  const save = useSetMutedWords();
+  const [word, setWord] = useState('');
+  const words = muted.data?.words ?? [];
+  const update = (next: string[], done: string) => save.mutate(next, { onSuccess: () => toast(done), onError: (e) => toast(e.message) });
+  const add = (e: FormEvent) => {
+    e.preventDefault();
+    const w = word.trim().toLowerCase();
+    if (!w) return;
+    if (words.includes(w)) return toast('이미 뮤트한 단어예요');
+    update([...words, w], `'${w}' 이(가) 들어간 글을 숨길게요`);
+    setWord('');
+  };
+  return (
+    <section className={cn(ui.card, s.section)}>
+      <h2 className={s.sectionTitle}>키워드 뮤트</h2>
+      <p className={s.sectionDesc}>보기 싫은 단어를 넣어 두면 제목이나 본문 앞부분에 그 단어가 들어간 글을 목록 · 인기글에서 숨겨요. 최대 30개.</p>
+      <form className="flex gap-2 mb-3" onSubmit={add}>
+        <input className={cn(ui.input, 'flex-1')} value={word} maxLength={20} placeholder="예: 스포, 정치" aria-label="뮤트할 단어" onChange={(e) => setWord(e.target.value)} />
+        <button type="submit" className={cn(ui.button, ui.secondary, ui.small, 'self-end')} disabled={!word.trim() || save.isPending}>
+          추가
+        </button>
+      </form>
+      {words.length === 0 ? (
+        <p className="m-0 text-sm text-fg-weak">뮤트한 단어가 없어요</p>
+      ) : (
+        <ul className="flex flex-wrap gap-2 m-0 p-0 list-none">
+          {words.map((w) => (
+            <li key={w} className="inline-flex items-center gap-1 h-8 pl-3 pr-1 rounded-sm bg-field text-sm font-semibold text-fg">
+              {w}
+              <button
+                type="button"
+                className="w-6 h-6 grid place-items-center rounded-sm text-fg-weak hover:text-fg-strong hover:bg-field-hover"
+                aria-label={`${w} 뮤트 풀기`}
+                disabled={save.isPending}
+                onClick={() => update(words.filter((x) => x !== w), `'${w}' 뮤트를 풀었어요`)}
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /** 시간대 테마: 자동(지금 시각) 또는 한 시간대로 고정 */
 /** 인터랙티브 커서 디자인: 이름 · 설명 */
 const FX_DESIGNS: [FxDesign, string, string][] = [
@@ -687,6 +738,7 @@ export default function SettingsPage() {
         <LoginSessions />
       </section>
       <BlockedUsers />
+      <MutedWords />
       <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>화면</h2>
         <div className={s.option}>

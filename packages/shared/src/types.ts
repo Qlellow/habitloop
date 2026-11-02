@@ -290,7 +290,7 @@ export interface PointLog {
 }
 
 /** 알림 종류: 내 글에 댓글 · 내 댓글에 답글 · 내 글에 공감 · 팔로우한 채널의 새 공지 */
-export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery';
+export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery' | 'mention';
 
 /** 메시지 표류병 */
 export type BottleStatus = 'drifting' | 'held' | 'ashore';
@@ -432,6 +432,8 @@ export interface PostDetail {
   createdAt: string;
   updatedAt: string;
   liked: boolean;
+  /** 내가 저장(스크랩)한 글 */
+  bookmarked?: boolean;
   /** 감정 반응 종류별 수 */
   reactions?: Partial<Record<ReactionKind, number>>;
   /** 내가 누른 감정 반응 */

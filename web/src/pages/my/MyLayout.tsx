@@ -16,7 +16,7 @@ const MENU = [
   { to: '/me/pet', label: '펫', preload: preload.pet },
   { to: '/me/recap', label: '주간 회고', preload: preload.myRecap },
   { to: '/me/channels', label: '내 채널', preload: preload.myChannels },
-  { to: '/me/posts', label: '내가 쓴 글', preload: preload.myPosts },
+  { to: '/me/posts', label: '내 글 · 저장한 글', preload: preload.myPosts },
   { to: '/me/settings', label: '설정', preload: preload.settings },
 ];
 

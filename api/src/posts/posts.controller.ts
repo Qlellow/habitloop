@@ -123,6 +123,34 @@ export class PostsController {
     return this.posts.remove(user.id, id(postId));
   }
 
+  /** 글 저장 (스크랩) · 저장 취소 */
+  @Put('posts/:id/bookmark')
+  saveBookmark(@LoginUser() user: AuthUser, @Param('id') postId: string) {
+    return this.posts.bookmark(user.id, id(postId), true);
+  }
+
+  @Delete('posts/:id/bookmark')
+  removeBookmark(@LoginUser() user: AuthUser, @Param('id') postId: string) {
+    return this.posts.bookmark(user.id, id(postId), false);
+  }
+
+  /** 내가 저장한 글 (최근에 저장한 것부터) */
+  @Get('me/bookmarks/posts')
+  myBookmarks(@LoginUser() user: AuthUser, @Query('cursor') cursor?: string, @Query('size') size?: string) {
+    return this.posts.bookmarks(user.id, intParam(cursor), intParam(size) ?? 20);
+  }
+
+  /** 키워드 뮤트: 이 단어가 제목 · 요약에 들어간 글은 목록에서 숨긴다 */
+  @Get('me/muted-words')
+  async mutedWords(@LoginUser() user: AuthUser) {
+    return { words: await this.posts.mutedWords(user.id) };
+  }
+
+  @Put('me/muted-words')
+  setMutedWords(@LoginUser() user: AuthUser, @Body() body: { words?: unknown }) {
+    return this.posts.setMutedWords(user.id, body?.words);
+  }
+
   @Post('posts/:id/like')
   @HttpCode(HttpStatus.OK)
   async like(@LoginUser() user: AuthUser, @Param('id') postId: string) {

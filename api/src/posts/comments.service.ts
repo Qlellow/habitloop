@@ -103,6 +103,7 @@ export class CommentsService {
     if ((await this.weather.now().catch(() => undefined))?.weather === 'rain') await this.badges.bump(userId, 'rain_comment');
     await this.rewards.checkBadges(userId);
     await this.notifications.commented(postId, id, userId, parentId ?? null);
+    await this.notifications.mentioned(content, userId, postId, id);
     const row = await this.db.one<CommentRow>(`${SELECT_COMMENT} WHERE c.id = $1`, [id]);
     const role = await this.channels.roleOf(channelId, userId);
     return this.toResponse(row!, userId, false, role, role);

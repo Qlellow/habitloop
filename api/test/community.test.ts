@@ -1484,6 +1484,53 @@ describe('커뮤니티', () => {
     expect(['dawn', 'morning', 'day', 'evening', 'night']).toContain(dna.type.period);
   });
 
+  it('글 저장 · 키워드 뮤트 · @멘션 알림', async () => {
+    const me = await signup('save-me@test.dev', '저장주인');
+    const friend = await signup('save-friend@test.dev', '멘션친구');
+    await http().post('/api/channels').set(bearer(me)).send({ slug: 'save', name: '저장채널' }).expect(201);
+    const a = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'save', title: '고양이 사진', content: '귀여워요' }).expect(201)).body;
+    const b = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'save', title: '오늘 경기 스포 있음', content: '결과는…' }).expect(201)).body;
+
+    // 저장: 글 보기에 표시되고, 최근에 저장한 것부터
+    await http().put(`/api/posts/${a.id}/bookmark`).set(bearer(friend)).expect(200);
+    await http().put(`/api/posts/${b.id}/bookmark`).set(bearer(friend)).expect(200);
+    await http().put(`/api/posts/${b.id}/bookmark`).set(bearer(friend)).expect(200);
+    expect((await http().get(`/api/posts/${a.id}`).set(bearer(friend))).body.bookmarked).toBe(true);
+    expect((await http().get(`/api/posts/${a.id}`).set(bearer(me))).body.bookmarked).toBe(false);
+    let saved = (await http().get('/api/me/bookmarks/posts').set(bearer(friend)).expect(200)).body;
+    expect(saved.items.map((p: { id: number }) => p.id)).toEqual([b.id, a.id]);
+    await http().delete(`/api/posts/${b.id}/bookmark`).set(bearer(friend)).expect(200);
+    saved = (await http().get('/api/me/bookmarks/posts').set(bearer(friend)).expect(200)).body;
+    expect(saved.items.map((p: { id: number }) => p.id)).toEqual([a.id]);
+    await http().put('/api/posts/999999/bookmark').set(bearer(friend)).expect(404);
+
+    // 뮤트: 그 단어가 들어간 글은 목록에서 빠진다 (대소문자 · 공백 정리, 30개 · 20자 제한)
+    expect((await http().put('/api/me/muted-words').set(bearer(friend)).send({ words: ['  스포 ', '스포'] }).expect(200)).body).toEqual({ words: ['스포'] });
+    const ids = async (path: string) => (await http().get(path).set(bearer(friend)).expect(200)).body.items.map((p: { id: number }) => p.id);
+    expect(await ids('/api/posts?channel=save')).toEqual([a.id]);
+    expect(await ids('/api/posts/page?channel=save')).toEqual([a.id]);
+    expect((await http().get('/api/posts?channel=save').set(bearer(me))).body.items).toHaveLength(2);
+    await http().put('/api/me/muted-words').set(bearer(friend)).send({ words: Array.from({ length: 31 }, (_, i) => `w${i}`) }).expect(400);
+    await http().put('/api/me/muted-words').set(bearer(friend)).send({ words: ['가'.repeat(21)] }).expect(400);
+    await http().put('/api/me/muted-words').set(bearer(friend)).send({ words: 'x' }).expect(400);
+    await http().put('/api/me/muted-words').set(bearer(friend)).send({ words: [] }).expect(200);
+    expect(await ids('/api/posts?channel=save')).toHaveLength(2);
+
+    // @멘션: 댓글에서 부르면 알림 (문장부호가 붙어도), 자기 자신 · 없는 닉네임은 무시
+    await http().post(`/api/posts/${a.id}/comments`).set(bearer(me)).send({ content: '@멘션친구, 이거 봐요! @저장주인 @없는사람' }).expect(201);
+    const list = (await http().get('/api/me/notifications').set(bearer(friend)).expect(200)).body.items;
+    expect(list[0]).toMatchObject({ type: 'mention', actor: { nickname: '저장주인' }, post: { id: a.id } });
+    expect(list[0].comment.excerpt).toContain('이거 봐요');
+    // 글쓴이가 받는 '댓글' 알림과 겹치면 멘션 알림은 따로 만들지 않는다
+    await http().post(`/api/posts/${a.id}/comments`).set(bearer(friend)).send({ content: '@저장주인 고마워요' }).expect(201);
+    const mine = (await http().get('/api/me/notifications').set(bearer(me)).expect(200)).body.items;
+    expect(mine.filter((n: { type: string }) => n.type === 'mention')).toHaveLength(0);
+    expect(mine[0].type).toBe('comment');
+    // 글 본문에서 불러도
+    await http().post('/api/posts').set(bearer(me)).send({ channel: 'save', title: '공지', content: '@멘션친구 님 확인 부탁해요' }).expect(201);
+    expect((await http().get('/api/me/notifications').set(bearer(friend))).body.items[0]).toMatchObject({ type: 'mention' });
+  });
+
   it('주간 회고: 이번 주 활동 · 받은 공감 · 지난주와 비교, 출석은 본인 · 서명된 공유 링크에만', async () => {
     const me = await signup('recap-me@test.dev', '회고주인');
     const fan = await signup('recap-fan@test.dev', '회고팬');

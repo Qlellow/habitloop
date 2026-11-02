@@ -154,8 +154,10 @@ export class PostsService {
     if (cursor != null) add('p.id < ?', cursor);
     // 운영진이 숨긴 글은 목록에 나오지 않는다 (글 보기에서 쓴 사람 · 운영진만)
     where.push('p.hidden_at IS NULL');
-    // 내가 차단한 사람의 글은 빼고 보여 준다
+    // 내가 차단한 사람의 글 · 뮤트한 단어가 들어간 글은 빼고 보여 준다
     if (viewerId != null) add(notBlockedPost('?'), viewerId);
+    const muted = await this.mutedPatterns(viewerId);
+    if (muted.length) add(NOT_MUTED, muted);
     if (search.channel) {
       // 채널 안: 볼 수 없는 채널(비공개·19세 이상)이면 403
       await this.channels.requireAccess(await this.channels.findBySlug(search.channel), viewerId);
@@ -193,6 +195,8 @@ export class PostsService {
     };
     if (query.category != null) add('p.category_id = ?', query.category);
     if (viewerId != null) add(notBlockedPost('?'), viewerId);
+    const muted = await this.mutedPatterns(viewerId);
+    if (muted.length) add(NOT_MUTED, muted);
     if (query.excludeNotices) where.push('(cat.owner_only IS NOT TRUE)');
     if (!adult) where.push('cat.adult IS NOT TRUE');
     const q = query.q?.trim().toLowerCase();
@@ -226,8 +230,8 @@ export class PostsService {
   }
 
   async popular(channel?: string, viewerId?: number): Promise<PostSummary[]> {
-    const [all, blocked] = await Promise.all([this.popularAll(channel), this.blocks.blockedUids(viewerId)]);
-    return all.filter((p) => !blocked.has(p.authorId)).slice(0, POPULAR_SIZE);
+    const [all, blocked, words] = await Promise.all([this.popularAll(channel), this.blocks.blockedUids(viewerId), this.mutedWords(viewerId)]);
+    return all.filter((p) => !blocked.has(p.authorId) && !hasMutedWord(`${p.title} ${p.excerpt}`, words)).slice(0, POPULAR_SIZE);
   }
 
   private popularAll(channel?: string): Promise<PostSummary[]> {
@@ -312,11 +316,12 @@ export class PostsService {
         [postId, viewer],
       );
     }
-    const [post, liked] = await Promise.all([
+    const [post, liked, bookmarked] = await Promise.all([
       this.find(postId),
       viewerId != null && this.db.one('SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2', [postId, viewerId]).then(Boolean),
+      viewerId != null && this.db.one('SELECT 1 FROM post_bookmarks WHERE post_id = $1 AND user_id = $2', [postId, viewerId]).then(Boolean),
     ]);
-    return this.toDetail(post, viewerId, !!liked);
+    return { ...(await this.toDetail(post, viewerId, !!liked)), bookmarked: !!bookmarked };
   }
 
   async create(userId: number, input: CreatePostInput) {
@@ -341,6 +346,7 @@ export class PostsService {
     });
     this.channels.popularCache.clear();
     await this.rewards.postWritten(userId);
+    await this.notifications.mentioned(`${input.title}\n${input.content}`, userId, id, null);
     // 운영진 전용 카테고리 글은 공지: 채널 팔로워에게 알린다
     if (categoryId != null && (await this.db.one('SELECT 1 FROM channel_categories WHERE id = $1 AND owner_only', [categoryId]))) {
       await this.notifications.noticePosted(id, channel.id, userId);
@@ -515,6 +521,54 @@ export class PostsService {
     return row;
   }
 
+  /* ───── 글 저장 (스크랩) ───── */
+
+  async bookmark(userId: number, postId: number, on: boolean) {
+    if (on) {
+      await this.requirePostAccess(postId, userId);
+      await this.db.execute('INSERT INTO post_bookmarks (user_id, post_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [userId, postId]);
+    } else {
+      await this.db.execute('DELETE FROM post_bookmarks WHERE user_id = $1 AND post_id = $2', [userId, postId]);
+    }
+    return { bookmarked: on };
+  }
+
+  /** 저장한 글 (최근에 저장한 것부터). 지금 볼 수 없게 된 글(비공개로 바뀐 채널 · 숨긴 글)은 빼고 */
+  async bookmarks(userId: number, cursor: number | undefined, size: number): Promise<CursorPage<PostSummary & { savedId: number }>> {
+    const pageSize = clamp(size, 1, MAX_PAGE_SIZE);
+    const rows = await this.db.query<Parameters<typeof toSummary>[0] & { savedId: number }>(
+      `${SELECT_SUMMARY.replace('FROM posts p', 'FROM post_bookmarks b JOIN posts p ON p.id = b.post_id').replace('SELECT p.id,', 'SELECT b.id AS "savedId", p.id,')}
+       WHERE b.user_id = $1 AND ($2::int IS NULL OR b.id < $2) AND p.hidden_at IS NULL
+         AND (c.visibility = 'public' OR EXISTS (SELECT 1 FROM channel_members mm WHERE mm.channel_id = c.id AND mm.user_id = $1))
+       ORDER BY b.id DESC LIMIT $3`,
+      [userId, cursor ?? null, pageSize + 1],
+    );
+    const items = rows.map((r) => ({ ...toSummary(r), savedId: r.savedId }));
+    return items.length > pageSize ? { items: items.slice(0, pageSize), nextCursor: items[pageSize - 1].savedId } : { items };
+  }
+
+  /* ───── 키워드 뮤트 ───── */
+
+  async mutedWords(userId?: number): Promise<string[]> {
+    if (userId == null) return [];
+    const row = await this.db.one<{ words: string[] }>('SELECT muted_words AS words FROM users WHERE id = $1', [userId]);
+    return row?.words ?? [];
+  }
+
+  async setMutedWords(userId: number, words: unknown): Promise<{ words: string[] }> {
+    if (!Array.isArray(words) || words.some((w) => typeof w !== 'string')) throw ApiError.badRequest('단어 목록을 보내 주세요');
+    const clean = [...new Set((words as string[]).map((w) => w.trim().toLowerCase()).filter(Boolean))];
+    if (clean.length > MAX_MUTED_WORDS) throw ApiError.badRequest(`뮤트 단어는 ${MAX_MUTED_WORDS}개까지예요`);
+    if (clean.some((w) => w.length > 20)) throw ApiError.badRequest('뮤트 단어는 20자까지예요');
+    await this.db.execute('UPDATE users SET muted_words = $2 WHERE id = $1', [userId, clean]);
+    return { words: clean };
+  }
+
+  /** 목록 SQL 용 LIKE 패턴 */
+  private async mutedPatterns(userId?: number) {
+    return (await this.mutedWords(userId)).map((w) => `%${escapeLike(w)}%`);
+  }
+
   /** canModerate: 보는 사람이 작성자보다 높은 채널 운영진이라 이 글을 지울 수 있는지 */
   private async toDetail(post: PostRow, viewerId: number | undefined, liked: boolean) {
     const [authorRole, viewerRole, blockedAuthor, reactions] = await Promise.all([
@@ -549,3 +603,11 @@ export class PostsService {
 }
 
 export const notFound = () => ApiError.notFound('게시글을 찾을 수 없어요');
+
+export const MAX_MUTED_WORDS = 30;
+/** 제목 · 요약에 뮤트 단어가 하나도 없는 글 (? = LIKE 패턴 배열) */
+const NOT_MUTED = "NOT (lower(p.title || ' ' || p.excerpt) LIKE ANY (?::text[]))";
+export const hasMutedWord = (text: string, words: string[]) => {
+  const t = text.toLowerCase();
+  return words.some((w) => t.includes(w));
+};

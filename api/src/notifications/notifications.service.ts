@@ -3,7 +3,7 @@ import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
 import { PushService } from './push.service';
 
-export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery';
+export type NotificationType = 'comment' | 'reply' | 'like' | 'notice' | 'discovery' | 'mention';
 
 export interface NotificationItem {
   id: number;
@@ -37,6 +37,18 @@ interface Row {
 }
 
 const MAX_PAGE_SIZE = 50;
+
+/** 글에서 @닉네임 후보 (뒤에 붙은 문장부호는 떼어 본 것도 함께, 최대 10개) */
+export function mentionsIn(text: string): string[] {
+  const out = new Set<string>();
+  for (const m of text.matchAll(/(?:^|[^\w@])@([^\s@]{2,20})/g)) {
+    out.add(m[1]);
+    const bare = m[1].replace(/[.,!?~)\]}…:;'"’”]+$/u, '');
+    if (bare.length >= 2) out.add(bare);
+    if (out.size >= 10) break;
+  }
+  return [...out].slice(0, 10);
+}
 const EXCERPT = 60;
 
 /**
@@ -59,6 +71,28 @@ export class NotificationsService {
       const ids: number[] = [];
       if (parent && parent.authorId !== actorId) ids.push(...(await this.insert(parent.authorId, 'reply', actorId, postId, commentId)));
       if (post && post.authorId !== actorId && post.authorId !== parent?.authorId) ids.push(...(await this.insert(post.authorId, 'comment', actorId, postId, commentId)));
+      await this.pushFor(ids);
+    });
+  }
+
+  /**
+   * @멘션: 글 · 댓글에서 @닉네임 으로 부른 사람에게 (한 번에 최대 5명).
+   * 그 글을 볼 수 없는 사람(비공개 채널 밖)과, 같은 댓글로 이미 댓글 · 답글 알림을 받은 사람은 빼고
+   */
+  async mentioned(text: string, actorId: number, postId: number, commentId: number | null) {
+    const names = mentionsIn(text);
+    if (!names.length) return;
+    await this.safe(async () => {
+      const rows = await this.db.query<{ id: number }>(
+        `SELECT u.id FROM users u, posts p JOIN channels c ON c.id = p.channel_id
+         WHERE p.id = $2 AND u.nickname = ANY($1) AND u.id <> $3 AND u.withdrawn_at IS NULL
+           AND (c.visibility = 'public' OR EXISTS (SELECT 1 FROM channel_members m WHERE m.channel_id = c.id AND m.user_id = u.id))
+           AND ($4::int IS NULL OR NOT EXISTS (SELECT 1 FROM notifications n WHERE n.comment_id = $4 AND n.user_id = u.id))
+         LIMIT 5`,
+        [names, postId, actorId, commentId],
+      );
+      const ids: number[] = [];
+      for (const r of rows) ids.push(...(await this.insert(r.id, 'mention', actorId, postId, commentId)));
       await this.pushFor(ids);
     });
   }
@@ -166,8 +200,9 @@ export class NotificationsService {
           : r.type === 'reply' ? `${who(r)}님이 내 댓글에 답글을 달았어요`
           : r.type === 'like' ? `${who(r)}님이 내 글을 좋아해요`
           : r.type === 'notice' ? `${r.channelName} 새 공지`
+          : r.type === 'mention' ? `${who(r)}님이 나를 불렀어요`
           : '내 글이 오늘의 발견에 뽑혔어요';
-        const body = r.type === 'comment' || r.type === 'reply' ? short(r.comment) || r.postTitle : r.postTitle;
+        const body = r.type === 'comment' || r.type === 'reply' || (r.type === 'mention' && r.comment) ? short(r.comment) || r.postTitle : r.postTitle;
         return { userId: r.userId, title, body, url: `/post/${r.postId}` };
       }),
     );
