@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { PollEditor, SeriesPicker, type PollDraft } from '../components/PostExtras';
 import { Link, Navigate, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, timeAgo, useAuth, useChannel, usePost, useSavePost, type ChannelDetail, type PostDetail } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
@@ -45,6 +46,12 @@ function PostForm({
   const [content, setContent] = useState(saved?.content ?? start.content);
   const [restoredNote, setRestoredNote] = useState(!!saved);
   const draft = usePostDraft(target, { title, content, categoryId }, start);
+  // 시리즈 (수정에서는 지금 시리즈) · 투표 (새 글만)
+  const [series, setSeries] = useState<number | null | 'new'>(initial?.series?.id ?? null);
+  const [seriesName, setSeriesName] = useState('');
+  const [poll, setPoll] = useState<PollDraft>();
+  const pollOptions = poll?.options.map((o) => o.trim()).filter(Boolean) ?? [];
+  const pollOk = !poll || (pollOptions.length >= 2 && new Set(pollOptions).size === pollOptions.length);
 
   // 쓰던 글이 있으면 떠나기 전에 한 번 묻는다 (새로고침 · 창 닫기는 브라우저 기본 확인창).
   // 올리는 중 · 로그인이 풀려 로그인 화면으로 가는 중에는 묻지 않는다 (임시저장이 남아 있어 다시 로그인하면 이어서 쓴다)
@@ -68,7 +75,8 @@ function PostForm({
   };
 
   // 카테고리가 있는 채널은 카테고리를 골라야 글을 올릴 수 있다
-  const valid = title.trim().length > 0 && content.trim().length > 0 && (!needsCategory || categoryId != null);
+  const valid =
+    title.trim().length > 0 && content.trim().length > 0 && (!needsCategory || categoryId != null) && pollOk && (series !== 'new' || seriesName.trim().length > 0);
 
   const options: DropdownOption<number | null>[] = ordered.map((c) => ({
     value: c.id,
@@ -85,7 +93,14 @@ function PostForm({
     e.preventDefault();
     if (!valid) return;
     save.mutate(
-      { channel: channel.slug, categoryId, title: title.trim(), content },
+      {
+        channel: channel.slug,
+        categoryId,
+        title: title.trim(),
+        content,
+        ...(series === 'new' ? { newSeries: seriesName.trim() } : series !== (initial?.series?.id ?? null) || !initial ? { seriesId: series } : {}),
+        ...(poll && !initial ? { poll: { options: pollOptions, multiple: poll.multiple, closesInHours: poll.hours } } : {}),
+      },
       {
         onSuccess: (post) => {
           draft.clear();
@@ -141,8 +156,20 @@ function PostForm({
           />
         </div>
         <MarkdownEditor value={content} onChange={setContent} />
+        <div className="flex flex-col gap-3 px-5 pt-3 max-[520px]:px-4">
+          {poll && <PollEditor value={poll} onChange={setPoll} />}
+          <div className="flex flex-wrap items-center gap-3">
+            <SeriesPicker value={series} name={seriesName} onChange={setSeries} onName={setSeriesName} />
+            {!poll && !initial && (
+              <button type="button" className={cn(ui.button, ui.ghost, ui.small, 'ml-auto')} onClick={() => setPoll({ options: ['', ''], multiple: false, hours: null })}>
+                + 투표 넣기
+              </button>
+            )}
+          </div>
+        </div>
         <div className={s.formFoot}>
           {needsCategory && categoryId == null && <span className="mr-auto text-sm text-fg-weak">카테고리를 골라 주세요</span>}
+          {!pollOk && <span className="mr-auto text-sm text-fg-weak">투표 선택지를 서로 다르게 2개 이상 넣어 주세요</span>}
           <button type="button" className={cn(ui.button, ui.ghost)} onClick={() => navigate(-1)}>
             취소
           </button>

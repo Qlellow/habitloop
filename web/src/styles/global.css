@@ -3934,3 +3934,303 @@ a.recap-top:hover {
 .mention-list button.is-active {
   background: var(--field);
 }
+
+/* ───────── 투표 · 시리즈 (components/PostExtras) ───────── */
+.poll {
+  margin: 20px 0 4px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.poll-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.poll-choice:hover {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+.poll-choice.is-picked {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 7%, transparent);
+}
+.poll-choice input {
+  accent-color: var(--primary);
+}
+.poll-result {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--field);
+  font-size: 15px;
+}
+.poll-result > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: color-mix(in srgb, var(--fg-weak, #8b95a1) 18%, transparent);
+  transition: width 0.4s ease;
+}
+.poll-result.is-top > i {
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+.poll-result.is-mine {
+  box-shadow: inset 0 0 0 1.5px var(--primary);
+}
+.poll-editor {
+  margin: 0;
+  padding: 14px 16px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+.series-box {
+  margin: 0 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--primary) 4%, var(--surface));
+}
+.series-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  color: var(--fg-strong);
+  text-align: left;
+}
+.series-tag {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-text);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.series-list {
+  margin: 0;
+  padding: 2px 14px 10px 14px;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+.series-list li {
+  padding: 5px 0;
+}
+.series-list a {
+  color: var(--fg-sub);
+}
+.series-list a:hover {
+  color: var(--primary-text);
+}
+.series-list [aria-current] {
+  font-weight: 700;
+  color: var(--primary-text);
+}
+.series-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border);
+}
+.series-nav a {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-strong);
+}
+.series-nav a small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-weak);
+}
+.series-nav a:hover span {
+  color: var(--primary-text);
+}
+
+/* ───────── 이미지 갤러리 (Markdown 의 .loop-gallery) · 크게 보기 (ImageViewer) ───────── */
+.prose .loop-img[role='button'] {
+  cursor: zoom-in;
+}
+.prose .loop-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin: 1.4em 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.prose .loop-gallery[data-count='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.prose .loop-gallery > .loop-img {
+  position: relative;
+  width: auto !important;
+  margin: 0 !important;
+}
+.prose .loop-gallery > .loop-img.is-extra,
+.prose .loop-gallery .loop-img-cap {
+  display: none;
+}
+.prose .loop-gallery .loop-img-frame {
+  aspect-ratio: 1 !important;
+  border-radius: 0 !important;
+}
+.prose .loop-gallery .loop-img img {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
+  transition: transform 0.25s;
+}
+.prose .loop-gallery .loop-img:hover img {
+  transform: scale(1.03);
+}
+.prose .loop-gallery > .loop-img[data-more]::after {
+  content: attr(data-more);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+.image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 10, 14, 0.94);
+  color: #fff;
+  touch-action: pan-y;
+  animation: fade-in 0.15s ease;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.image-viewer-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.image-viewer-top a {
+  color: rgba(255, 255, 255, 0.85);
+}
+.image-viewer-top button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: #fff;
+}
+.image-viewer-top button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.image-viewer-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0 64px;
+}
+.image-viewer-stage img {
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  user-select: none;
+}
+.image-viewer-stage figcaption {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+.image-viewer-nav {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+.image-viewer-nav:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.image-viewer-nav.is-prev {
+  left: 12px;
+}
+.image-viewer-nav.is-next {
+  right: 12px;
+}
+.image-viewer-thumbs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px 16px;
+  overflow-x: auto;
+}
+.image-viewer-thumbs button {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  overflow: hidden;
+  opacity: 0.5;
+  outline: 2px solid transparent;
+}
+.image-viewer-thumbs button[aria-current] {
+  opacity: 1;
+  outline-color: #fff;
+}
+.image-viewer-thumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (max-width: 640px) {
+  .image-viewer-stage {
+    padding: 0 8px;
+  }
+  .image-viewer-nav {
+    display: none;
+  }
+}

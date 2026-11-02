@@ -1,4 +1,5 @@
-import { memo, useCallback, useEffect, useMemo, useRef, type MouseEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { ImageViewer, type ViewerImage } from './ImageViewer';
 import { useNavigate } from 'react-router-dom';
 import { marked, type Tokens } from 'marked';
 import DOMPurify from 'dompurify';
@@ -131,6 +132,39 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   }
 });
 
+/** 이미지만 든 문단인지 (줄바꿈 · 빈칸은 괜찮다) */
+const onlyImages = (p: Element) =>
+  p.tagName === 'P' &&
+  p.querySelector(':scope > .loop-img') != null &&
+  [...p.childNodes].every((n) => (n instanceof Element ? n.classList.contains('loop-img') || n.tagName === 'BR' : !n.textContent?.trim()));
+
+/** 갤러리에 바로 보이는 칸 수 (나머지는 마지막 칸에 +N 으로) */
+const GALLERY_TILES = 4;
+
+/**
+ * 이미지 여러 장 갤러리: 이미지만 이어진 문단(한 문단 안 · 붙은 문단들)에 2장 이상이면 격자로 모은다.
+ * 4장까지 보이고 더 있으면 마지막 칸에 +N. 누르면 ImageViewer 로 넘겨 본다
+ */
+function groupImages(body: HTMLElement) {
+  for (const p of [...body.querySelectorAll(':scope > p')]) {
+    if (!p.isConnected || !onlyImages(p)) continue;
+    // 바로 뒤에 붙은 이미지 문단도 합친다
+    for (let next = p.nextElementSibling; next && onlyImages(next); next = p.nextElementSibling) {
+      p.append(...next.childNodes);
+      next.remove();
+    }
+    const images = [...p.querySelectorAll<HTMLElement>(':scope > .loop-img')];
+    if (images.length < 2) continue;
+    p.querySelectorAll(':scope > br').forEach((br) => br.remove());
+    p.classList.add('loop-gallery');
+    p.setAttribute('data-count', String(Math.min(images.length, GALLERY_TILES)));
+    images.forEach((im, i) => {
+      if (i >= GALLERY_TILES) im.classList.add('is-extra');
+      if (i === GALLERY_TILES - 1 && images.length > GALLERY_TILES) im.setAttribute('data-more', `+${images.length - GALLERY_TILES}`);
+    });
+  }
+}
+
 export function renderMarkdown(source: string): string {
   imageIndex = 0;
   const body = DOMPurify.sanitize(marked.parse(source, { async: false }), {
@@ -142,6 +176,7 @@ export function renderMarkdown(source: string): string {
   body.querySelectorAll<HTMLElement>('.loop-img[data-src]').forEach((el) => {
     applyImageStyles(el, parseImageSrc(el.dataset.src ?? '').params);
   });
+  groupImages(body);
   return body.innerHTML;
 }
 
@@ -190,18 +225,47 @@ export const Markdown = memo(function Markdown({ source, className }: { source: 
   const html = useMemo(() => renderMarkdown(source), [source]);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const onClick = useCallback((e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => onBodyClick(e, navigate), [navigate]);
+  const [viewer, setViewer] = useState<{ images: ViewerImage[]; start: number }>();
+  const onClick = useCallback(
+    (e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
+      // 이미지: 이 본문의 모든 이미지를 크게 넘겨 본다 (링크로 감싼 이미지 · 가려진 블라인드 안은 빼고)
+      const target = (e.target as HTMLElement).closest<HTMLElement>('.loop-img');
+      if (target && ref.current && !target.closest('a, .loop-blind:not(.is-open)') && (!('key' in e) || e.key === 'Enter')) {
+        const all = [...ref.current.querySelectorAll<HTMLElement>('.loop-img')].filter((el) => !el.closest('a, .loop-blind:not(.is-open)'));
+        const images = all.map((el) => {
+          const img = el.querySelector('img')!;
+          return { src: img.currentSrc || img.src, alt: img.alt };
+        });
+        e.preventDefault();
+        setViewer({ images, start: Math.max(0, all.indexOf(target)) });
+        return;
+      }
+      onBodyClick(e, navigate);
+    },
+    [navigate],
+  );
   useEffect(() => {
-    if (ref.current) highlightIn(ref.current);
+    if (!ref.current) return;
+    highlightIn(ref.current);
+    // 이미지를 키보드로도 열 수 있게
+    ref.current.querySelectorAll<HTMLElement>('.loop-img').forEach((el) => {
+      if (el.closest('a')) return;
+      el.tabIndex = 0;
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', `${el.querySelector('img')?.alt || '이미지'} 크게 보기`);
+    });
   }, [html]);
   return (
-    <div
-      ref={ref}
-      className={className ? `prose ${className}` : 'prose'}
-      onClick={onClick}
-      onKeyDown={onClick}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <>
+      <div
+        ref={ref}
+        className={className ? `prose ${className}` : 'prose'}
+        onClick={onClick}
+        onKeyDown={onClick}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      {viewer && <ImageViewer images={viewer.images} start={viewer.start} onClose={() => setViewer(undefined)} />}
+    </>
   );
 });
 

@@ -44,6 +44,7 @@ import { BadgesController } from './badges/badges.controller';
 import { BadgesService } from './badges/badges.service';
 import { DiscoveryService } from './posts/discovery.service';
 import { PostsService } from './posts/posts.service';
+import { PostExtrasService } from './posts/post-extras.service';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
 import { BlocksService } from './users/blocks.service';
@@ -82,6 +83,7 @@ class HealthController {
     IconsService,
     CategoriesService,
     PostsService,
+    PostExtrasService,
     WeatherService,
     DnaService,
     RecapService,

@@ -434,6 +434,8 @@ export interface PostDetail {
   liked: boolean;
   /** 내가 저장(스크랩)한 글 */
   bookmarked?: boolean;
+  poll?: Poll;
+  series?: PostSeries;
   /** 감정 반응 종류별 수 */
   reactions?: Partial<Record<ReactionKind, number>>;
   /** 내가 누른 감정 반응 */
@@ -453,6 +455,31 @@ export interface PostInput {
   categoryId?: number | null;
   title: string;
   content: string;
+  /** 시리즈: 내 시리즈 번호 (null 이면 빼기) 또는 새 시리즈 이름 */
+  seriesId?: number | null;
+  newSeries?: string;
+  /** 투표 (새 글일 때만) */
+  poll?: { options: string[]; multiple?: boolean; closesInHours?: number | null };
+}
+
+/** 투표 글의 투표. 결과(votes)는 투표했거나 · 마감됐거나 · 글쓴이일 때만 온다 */
+export interface Poll {
+  multiple: boolean;
+  closesAt: string | null;
+  closed: boolean;
+  revealed: boolean;
+  total: number;
+  voters: number;
+  options: { id: number; label: string; votes?: number }[];
+  myVotes: number[];
+}
+
+/** 글 시리즈 (연재): 같은 시리즈의 글 목록과 지금 글의 위치 */
+export interface PostSeries {
+  id: number;
+  title: string;
+  posts: { id: number; title: string }[];
+  index: number;
 }
 
 export interface Comment {

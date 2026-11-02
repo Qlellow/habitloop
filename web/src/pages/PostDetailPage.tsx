@@ -25,6 +25,7 @@ import {
 } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
 import { useMention, withMentions } from '../components/Mention';
+import { PollCard, SeriesBox } from '../components/PostExtras';
 import { BookmarkIcon, ExpandIcon, HeartIcon, ImageIcon, MinimizeIcon, PictureInPictureIcon, ShareIcon } from '../components/Icons';
 import { ShareDialog } from '../components/ShareDialog';
 import { prepareUpload } from '../lib/postImage';
@@ -670,9 +671,11 @@ export default function PostDetailPage() {
                 </div>
               ) : (
                 <>
+                  {post.series && <SeriesBox series={post.series} />}
                   <CollapsibleBody key={post.id}>
                     <Markdown source={post.content} />
                   </CollapsibleBody>
+                  {post.poll && <PollCard key={`poll${post.id}`} postId={post.id} poll={post.poll} />}
                   <ReadingProgress key={`read${post.id}`} postId={post.id} />
                 </>
               )}

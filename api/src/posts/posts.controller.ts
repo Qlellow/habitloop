@@ -9,6 +9,7 @@ import { CommentsService } from './comments.service';
 import { DiscoveryService } from './discovery.service';
 import { CommentInput, CommentUpdateInput, CreatePostInput, UpdatePostInput } from './posts.dto';
 import { PostsService, SORTS, type PostSort } from './posts.service';
+import { PostExtrasService } from './post-extras.service';
 
 /** UUID 모양인지 (사용자 id) */
 export const isUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -37,6 +38,7 @@ export class PostsController {
     private readonly posts: PostsService,
     private readonly comments: CommentsService,
     private readonly discoveries: DiscoveryService,
+    private readonly extras: PostExtrasService,
   ) {}
 
   @Public()
@@ -121,6 +123,18 @@ export class PostsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@LoginUser() user: AuthUser, @Param('id') postId: string) {
     return this.posts.remove(user.id, id(postId));
+  }
+
+  /** 투표하기 · 바꾸기 (빈 배열이면 취소) */
+  @Put('posts/:id/poll')
+  vote(@LoginUser() user: AuthUser, @Param('id') postId: string, @Body() body: { optionIds?: unknown }) {
+    return this.posts.vote(user.id, id(postId), body?.optionIds);
+  }
+
+  /** 내 시리즈 (글쓰기에서 고르기) */
+  @Get('me/series')
+  mySeries(@LoginUser() user: AuthUser) {
+    return this.extras.mySeries(user.id);
   }
 
   /** 글 저장 (스크랩) · 저장 취소 */
