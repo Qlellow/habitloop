@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import jwt from 'jsonwebtoken';
 
@@ -34,6 +34,11 @@ export class JwtService {
       throw new Error('JWT_SECRET 환경 변수를 설정해 주세요 (32바이트 이상)');
     }
     this.secret = secret ?? DEV_SECRET;
+  }
+
+  /** 서버만 만들 수 있는 짧은 서명 (공유 링크 등). purpose 로 쓰임새를 나눠 다른 곳의 서명을 돌려쓰지 못하게 */
+  mac(purpose: string, text: string): string {
+    return createHmac('sha256', this.secret).update(`${purpose}:${text}`).digest('base64url').slice(0, 16);
   }
 
   /** 로그인 토큰과 만료 시각(세션도 같이 끝난다) */

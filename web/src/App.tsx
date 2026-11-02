@@ -32,6 +32,8 @@ const ProfilePage = lazy(loaders.profile);
 const SettingsPage = lazy(loaders.settings);
 const PointsPage = lazy(loaders.points);
 const PetPage = lazy(loaders.pet);
+const MyRecapPage = lazy(loaders.myRecap);
+const RecapPage = lazy(loaders.recap);
 const ChannelPage = lazy(loaders.channel);
 const SeaPage = lazy(loaders.sea);
 const ChannelsPage = lazy(loaders.channels);
@@ -130,6 +132,8 @@ const router = createBrowserRouter([
       // 배지 도감: 내 것 · 다른 사람 것
       { path: '/badges', element: auth(<BadgesPage />) },
       { path: '/u/:id/badges', element: <BadgesPage /> },
+      // 주간 회고 (공유 링크로도 열린다)
+      { path: '/u/:id/recap', element: <RecapPage /> },
       // 사이트 공지사항 · 업데이트 소식
       { path: '/notices', element: <NoticesPage /> },
       { path: '/notices/:id', element: <NoticeDetailPage /> },
@@ -163,6 +167,7 @@ const router = createBrowserRouter([
           { path: 'profile', element: <ProfilePage /> },
           { path: 'points', element: <PointsPage /> },
           { path: 'pet', element: <PetPage /> },
+          { path: 'recap', element: <MyRecapPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },
