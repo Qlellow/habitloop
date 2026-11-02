@@ -9,6 +9,7 @@ import { makeExcerpt, EXCERPT_LENGTH } from '../src/posts/excerpt';
 import { VillageService } from '../src/village/village.service';
 import { weatherOf } from '../src/community/weather.service';
 import { DnaService, periodOf, topTrait, traitsOf } from '../src/users/dna.service';
+import { RecapService } from '../src/users/recap.service';
 import { longestRun } from '../src/badges/badges.service';
 import { BADGES } from '../src/badges/catalog';
 import jwtLib from 'jsonwebtoken';
@@ -1481,6 +1482,53 @@ describe('커뮤니티', () => {
     expect(dna.channels[0]).toMatchObject({ slug: 'dna', count: 3 });
     expect(dna.hours.reduce((a: number, b: number) => a + b, 0)).toBe(3);
     expect(['dawn', 'morning', 'day', 'evening', 'night']).toContain(dna.type.period);
+  });
+
+  it('주간 회고: 이번 주 활동 · 받은 공감 · 지난주와 비교, 출석은 본인 · 서명된 공유 링크에만', async () => {
+    const me = await signup('recap-me@test.dev', '회고주인');
+    const fan = await signup('recap-fan@test.dev', '회고팬');
+    const meId = (await http().get('/api/me').set(bearer(me))).body.id;
+    await http().get('/api/users/not-a-uuid/recap').expect(404);
+    await http().get(`/api/users/${meId}/recap?week=abc`).expect(400);
+    await http().get(`/api/users/${meId}/recap?week=2999-01-01`).expect(400);
+
+    await http().post('/api/channels').set(bearer(me)).send({ slug: 'recap', name: '회고채널' }).expect(201);
+    const post = (await http().post('/api/posts').set(bearer(me)).send({ channel: 'recap', title: '회고 글', content: '내용입니다' }).expect(201)).body;
+    await http().post(`/api/posts/${post.id}/comments`).set(bearer(me)).send({ content: '내 댓글' }).expect(201);
+    await http().post(`/api/posts/${post.id}/comments`).set(bearer(fan)).send({ content: '좋아요' }).expect(201);
+    await http().post(`/api/posts/${post.id}/like`).set(bearer(fan)).expect(200);
+    // 내가 내 글에 누른 공감은 '받은 공감' 이 아니다
+    await http().post(`/api/posts/${post.id}/like`).set(bearer(me)).expect(200);
+    await http().post('/api/me/attendance').set(bearer(me)).expect(200);
+
+    const today = (await app.get(Database).one<{ d: string }>("SELECT to_char((now() AT TIME ZONE 'Asia/Seoul')::date, 'YYYY-MM-DD') AS d"))!.d;
+    const mine = (await http().get(`/api/users/${meId}/recap?week=${today}`).set(bearer(me)).expect(200)).body;
+    expect(mine.week.current).toBe(true);
+    expect(new Date(`${mine.week.start}T00:00:00Z`).getUTCDay()).toBe(1);
+    expect(mine.stats).toMatchObject({ posts: 1, comments: 1, likesReceived: 1 });
+    expect(mine.prev).toEqual({ posts: 0, comments: 0, likesReceived: 0 });
+    expect(mine.topPost).toMatchObject({ id: post.id, likes: 1, comments: 1, channel: { slug: 'recap' } });
+    expect(mine.topChannel).toMatchObject({ slug: 'recap', count: 2 });
+    expect(mine.attendance.filter(Boolean)).toHaveLength(1);
+    expect(mine.shareKey).toMatch(/^[\w-]{16}$/);
+    expect(mine.badges.map((b: { code: string }) => b.code)).toContain('first_post');
+
+    // 다른 사람: 숫자는 보이고 출석 · 서명은 없다. 서명이 맞으면 출석까지
+    const seen = (await http().get(`/api/users/${meId}/recap?week=${today}`).set(bearer(fan)).expect(200)).body;
+    expect(seen.stats).toEqual(mine.stats);
+    expect(seen.attendance).toBeUndefined();
+    expect(seen.shareKey).toBeUndefined();
+    const wrong = (await http().get(`/api/users/${meId}/recap?week=${today}&s=AAAAAAAAAAAAAAAA`).expect(200)).body;
+    expect(wrong.attendance).toBeUndefined();
+    const shared = (await http().get(`/api/users/${meId}/recap?week=${mine.week.start}&s=${mine.shareKey}`).expect(200)).body;
+    expect(shared.attendance).toEqual(mine.attendance);
+
+    // 아무 주도 주지 않으면 지난주 (활동 없음 → 이번 주와 비교하면 0)
+    (app.get(RecapService) as unknown as { cache: { clear(): void } }).cache.clear();
+    const last = (await http().get(`/api/users/${meId}/recap`).expect(200)).body;
+    expect(last.week.current).toBe(false);
+    expect(last.stats.posts).toBe(0);
+    expect(last.topPost).toBeUndefined();
   });
 
   it('메시지 표류병: 띄우기 · 줍기 · 답장 · 다시 띄우기 · 신고 · 하루 제한 · 손에 오래 든 병은 바다로', async () => {

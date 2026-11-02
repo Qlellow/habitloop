@@ -9,6 +9,7 @@ import { RewardsService } from './rewards.service';
 import { featuredBadge } from '../badges/catalog';
 import { PetsService } from '../pets/pets.service';
 import { DnaService } from './dna.service';
+import { RecapService } from './recap.service';
 import { parseHomeLayout, type HomeLayout } from './home-layout';
 
 /** 작성자 프로필: 닉네임 · 가입일 · 쓴 글 / 댓글 수 · 배지 (이메일 같은 개인 정보는 주지 않는다) */
@@ -20,6 +21,7 @@ export class UsersController {
     private readonly blocks: BlocksService,
     private readonly pets: PetsService,
     private readonly dna: DnaService,
+    private readonly recap: RecapService,
   ) {}
 
   /** 닉네임으로 사용자 찾기 (커맨드 팔레트). 앞부분이 맞는 사람부터, 공개 정보만 */
@@ -81,6 +83,13 @@ export class UsersController {
   @Get('users/:id/dna')
   activityDna(@Param('id') raw: string) {
     return this.dna.of(raw);
+  }
+
+  /** 주간 회고: 한 주의 활동 요약 (공개 채널 활동만). week: 그 주의 아무 날, s: 공유 링크 서명(출석까지 보인다) */
+  @Public()
+  @Get('users/:id/recap')
+  weeklyRecap(@Param('id') raw: string, @Query('week') week: string | undefined, @Query('s') key: string | undefined, @CurrentUser() viewer?: AuthUser) {
+    return this.recap.of(raw, week, viewer?.id, key);
   }
 
   @Put('users/:id/block')

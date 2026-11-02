@@ -347,6 +347,38 @@ export interface ActivityDna {
   stats: { posts: number; comments: number; likesGiven: number; reactionsGiven: number; likesReceived: number };
 }
 
+/** 주간 회고: 한 주(한국 시각 월 ~ 일)의 활동 요약. 공개 채널 활동만 */
+export interface RecapStats {
+  posts: number;
+  comments: number;
+  /** 받은 공감 (글 + 댓글) */
+  likesReceived: number;
+  reactionsReceived: number;
+  /** 내 글이 새로 읽힌 수 */
+  views: number;
+  /** 보낸 응원 (공감 + 반응) */
+  cheersGiven: number;
+}
+
+export interface WeeklyRecap {
+  user: { id: string; nickname: string; avatarUrl?: string | null };
+  /** YYYY-MM-DD (월요일 · 일요일). current: 아직 진행 중인 이번 주 */
+  week: { start: string; end: string; current: boolean };
+  /** 볼 수 있는 가장 앞 주의 월요일 */
+  firstWeek: string;
+  stats: RecapStats;
+  prev: Pick<RecapStats, 'posts' | 'comments' | 'likesReceived'>;
+  /** 월 ~ 일 출석 (본인 · 본인이 만든 공유 링크로 연 사람에게만) */
+  attendance?: boolean[];
+  topPost?: { id: number; title: string; likes: number; comments: number; channel: { slug: string; name: string } };
+  topChannel?: { slug: string; name: string; count: number };
+  /** 가장 활발했던 시각 (한국 시각 0~23) */
+  peakHour?: number;
+  badges: FeaturedBadge[];
+  /** 본인에게만: 출석까지 보이는 공유 링크용 서명 */
+  shareKey?: string;
+}
+
 /** 커뮤니티 감정 날씨 (최근 24시간의 반응으로) */
 export type CommunityWeather = 'calm' | 'sunny' | 'hot' | 'partly' | 'windy' | 'cloudy' | 'rain';
 

@@ -37,6 +37,7 @@ import { PostsController } from './posts/posts.controller';
 import { CommunityController } from './community/community.controller';
 import { WeatherService } from './community/weather.service';
 import { DnaService } from './users/dna.service';
+import { RecapService } from './users/recap.service';
 import { BottlesController } from './bottles/bottles.controller';
 import { BottlesService } from './bottles/bottles.service';
 import { BadgesController } from './badges/badges.controller';
@@ -83,6 +84,7 @@ class HealthController {
     PostsService,
     WeatherService,
     DnaService,
+    RecapService,
     BottlesService,
     BadgesService,
     DiscoveryService,

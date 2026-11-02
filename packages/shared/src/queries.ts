@@ -50,6 +50,7 @@ import type {
   Discovery,
   WeatherReport,
   ActivityDna,
+  WeeklyRecap,
   SeaState,
   MyBottle,
   Badge,
@@ -262,6 +263,21 @@ export function useActivityDna(id: string) {
     queryFn: ({ signal }) => api<ActivityDna>(`/api/users/${encodeURIComponent(id)}/dna`, { signal }),
     enabled: isUserId(id),
     staleTime: 5 * 60_000,
+  });
+}
+
+/** 주간 회고. week: 그 주의 아무 날 (없으면 지난주), key: 공유 링크 서명 */
+export function useWeeklyRecap(id: string, week?: string, key?: string) {
+  const q = new URLSearchParams();
+  if (week) q.set('week', week);
+  if (key) q.set('s', key);
+  const qs = q.toString();
+  return useQuery({
+    queryKey: ['user', id, 'recap', week ?? '', key ?? ''] as const,
+    queryFn: ({ signal }) => api<WeeklyRecap>(`/api/users/${encodeURIComponent(id)}/recap${qs ? `?${qs}` : ''}`, { signal }),
+    enabled: isUserId(id),
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
   });
 }
 
