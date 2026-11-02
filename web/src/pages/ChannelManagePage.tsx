@@ -28,6 +28,7 @@ import { Modal } from '../components/Modal';
 import { cn } from '../lib/cn';
 import { usePageTitle } from '../lib/title';
 import { ask } from '../components/ConfirmHost';
+import { AutomodSection } from '../components/ChannelTools';
 
 const MAX = 20;
 const ADULT_HINT = '설정에서 나이를 확인한 만 19세 이상만 이 카테고리를 보고 쓸 수 있어요';
@@ -651,6 +652,7 @@ export default function ChannelManagePage() {
         <AddCategory slug={slug} disabled={categories.length >= MAX} />
         {deleting && <DeleteCategoryDialog slug={slug} category={deleting} categories={categories} onClose={() => setDeleting(undefined)} />}
       </section>
+      <AutomodSection slug={slug} />
       <StaffSection slug={slug} isOwner={channel.mine} />
       {channel.mine && <DangerSection channel={channel} />}
     </Page>

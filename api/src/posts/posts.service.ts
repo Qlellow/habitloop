@@ -15,6 +15,7 @@ import { featuredBadge, type FeaturedBadge } from '../badges/catalog';
 import type { CreatePostInput, UpdatePostInput } from './posts.dto';
 import { checkPostRate } from '../common/write-limit';
 import { PostExtrasService } from './post-extras.service';
+import { ChannelToolsService } from '../channels/channel-tools.service';
 
 export interface PostSummary {
   id: number;
@@ -142,6 +143,7 @@ export class PostsService {
     private readonly notifications: NotificationsService,
     private readonly blocks: BlocksService,
     private readonly extras: PostExtrasService,
+    private readonly tools: ChannelToolsService,
   ) {}
 
   /**
@@ -342,6 +344,7 @@ export class PostsService {
       throw ApiError.badRequest('카테고리를 골라 주세요');
     }
     await this.requireAdultCategory(categoryId, userId);
+    await this.tools.check(channel.id, userId, `${input.title}\n${input.content}`);
     const poll = this.extras.parsePoll(input.poll);
     const id = await this.db.transaction(async () => {
       const seriesId = (await this.extras.resolveSeries(userId, input)) ?? null;
@@ -371,6 +374,7 @@ export class PostsService {
     // 이미 들어 있던 카테고리는 (운영진 전용이 됐더라도) 그대로 둘 수 있다
     const categoryId =
       requested === post.categoryId ? post.categoryId : await this.categories.resolveForPost({ id: post.channelId }, requested, userId);
+    await this.tools.check(post.channelId, userId, `${input.title}\n${input.content}`);
     await this.db.execute('UPDATE posts SET category_id = $1, title = $2, content = $3, excerpt = $4, updated_at = now() WHERE id = $5', [
       categoryId,
       input.title.trim(),

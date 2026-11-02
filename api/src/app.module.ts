@@ -48,6 +48,7 @@ import { BadgesService } from './badges/badges.service';
 import { DiscoveryService } from './posts/discovery.service';
 import { PostsService } from './posts/posts.service';
 import { PostExtrasService } from './posts/post-extras.service';
+import { ChannelToolsService } from './channels/channel-tools.service';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
 import { BlocksService } from './users/blocks.service';
@@ -87,6 +88,7 @@ class HealthController {
     CategoriesService,
     PostsService,
     PostExtrasService,
+    ChannelToolsService,
     WeatherService,
     DnaService,
     RecapService,

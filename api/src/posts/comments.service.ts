@@ -4,6 +4,7 @@ import { badge, canModerate, isStaff, type ChannelRole } from '../channels/roles
 import { ApiError } from '../common/api-error';
 import { clamp, cursorPage, type CursorPage } from '../common/cursor-page';
 import { Database } from '../db/database';
+import { ChannelToolsService } from '../channels/channel-tools.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BlocksService } from '../users/blocks.service';
 import { BadgesService } from '../badges/badges.service';
@@ -48,6 +49,7 @@ export class CommentsService {
     private readonly weather: WeatherService,
     private readonly badges: BadgesService,
     private readonly blocks: BlocksService,
+    private readonly tools: ChannelToolsService,
   ) {}
 
   /**
@@ -82,6 +84,7 @@ export class CommentsService {
   async create(userId: number, postId: number, content: string, parentId?: number) {
     const channelId = await this.channelOf(postId);
     await checkCommentRate(this.db, userId);
+    await this.tools.check(channelId, userId, content);
     let parent: number | null = null;
     if (parentId != null) {
       const p = await this.db.one<{ id: number; parentId: number | null }>(
@@ -132,6 +135,7 @@ export class CommentsService {
   async update(userId: number, postId: number, commentId: number, content: string) {
     const comment = await this.find(postId, commentId);
     if (comment.authorId !== userId) throw ApiError.forbidden('내가 쓴 댓글만 고칠 수 있어요');
+    await this.tools.check(await this.channelOf(postId), userId, content);
     await this.db.execute('UPDATE comments SET content = $1, updated_at = now() WHERE id = $2', [content, commentId]);
     const row = await this.db.one<CommentRow>(`${SELECT_COMMENT} WHERE c.id = $1`, [commentId]);
     const [res] = await this.toResponses(postId, [row!], userId);

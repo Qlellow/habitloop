@@ -11,6 +11,7 @@ import { IconsService } from './icons.service';
 import { MembershipService } from './membership.service';
 import { PreviewsService } from './previews.service';
 import { StaffService } from './staff.service';
+import { ChannelToolsService } from './channel-tools.service';
 
 const id = (value: string) => {
   const n = intParam(value);
@@ -27,7 +28,26 @@ export class ChannelsController {
     private readonly staff: StaffService,
     private readonly icons: IconsService,
     private readonly categories: CategoriesService,
+    private readonly tools: ChannelToolsService,
   ) {}
+
+  /** 자동 검열 설정 (소유자 · 관리자): 금칙어 · 링크 제한 */
+  @Get('channels/:slug/automod')
+  automod(@LoginUser() user: AuthUser, @Param('slug') slug: string) {
+    return this.tools.automod(slug, user.id);
+  }
+
+  @Put('channels/:slug/automod')
+  setAutomod(@LoginUser() user: AuthUser, @Param('slug') slug: string, @Body() body: { bannedWords?: unknown; linkPolicy?: unknown }) {
+    return this.tools.setAutomod(slug, user.id, body ?? {});
+  }
+
+  /** 채널 랭킹 시즌 (한 달). season: YYYY-MM, 없으면 이번 달 */
+  @Public()
+  @Get('channels/:slug/ranking')
+  ranking(@Param('slug') slug: string, @Query('season') season: string | undefined, @CurrentUser() user?: AuthUser) {
+    return this.tools.ranking(slug, season, user?.id);
+  }
 
   /** q 가 없으면 인기 채널, 있으면 채널 이름 검색 */
   @Public()

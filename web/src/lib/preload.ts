@@ -22,6 +22,7 @@ export const loaders = {
   myRecap: () => import('../pages/my/MyRecapPage'),
   recap: () => import('../pages/RecapPage'),
   messages: () => import('../pages/MessagesPage'),
+  ranking: () => import('../pages/RankingPage'),
   settings: () => import('../pages/my/SettingsPage'),
   channel: () => import('../pages/ChannelPage'),
   channels: () => import('../pages/ChannelsPage'),

@@ -817,3 +817,31 @@ export interface Village {
   festival: boolean;
   contributors: { id: string; nickname: string; avatarUrl?: string; bricks: number }[];
 }
+
+/** 채널 자동 검열: 금칙어 · 링크 제한(운영진만 바깥 링크) */
+export interface ChannelAutomod {
+  bannedWords: string[];
+  linkPolicy: 'all' | 'staff';
+}
+
+/** 채널 랭킹 시즌 (한 달) */
+export interface ChannelRankRow {
+  rank: number;
+  user: { id: string; nickname: string; avatarUrl?: string };
+  score: number;
+  posts: number;
+  comments: number;
+  likes: number;
+}
+
+export interface ChannelRanking {
+  /** YYYY-MM */
+  season: string;
+  current: boolean;
+  firstSeason: string;
+  ranks: ChannelRankRow[];
+  /** 로그인했으면 내 순위 (20위 밖이면 null) */
+  me?: ChannelRankRow | null;
+  /** 1~3위 포인트 */
+  prizes: number[];
+}

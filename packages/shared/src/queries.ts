@@ -52,6 +52,8 @@ import type {
   WeatherReport,
   ActivityDna,
   WeeklyRecap,
+  ChannelAutomod,
+  ChannelRanking,
   BottleConversation,
   BottleLetter,
   DmConversation,
@@ -1281,6 +1283,35 @@ export function useSetDmPolicy() {
   return useMutation({
     mutationFn: (policy: DmPolicy) => api<{ policy: DmPolicy }>('/api/me/dm-policy', { method: 'PUT', body: { policy } }),
     onSuccess: (res) => qc.setQueryData(['dm-policy'], res),
+  });
+}
+
+/* ───────── 채널 운영 도구 ───────── */
+
+export function useChannelAutomod(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: ['channel', slug, 'automod'] as const,
+    queryFn: ({ signal }) => api<ChannelAutomod>(`/api/channels/${encodeURIComponent(slug)}/automod`, { signal }),
+    enabled: enabled && !!slug,
+  });
+}
+
+export function useSetChannelAutomod(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ChannelAutomod) => api<ChannelAutomod>(`/api/channels/${encodeURIComponent(slug)}/automod`, { method: 'PUT', body: input }),
+    onSuccess: (res) => qc.setQueryData(['channel', slug, 'automod'], res),
+  });
+}
+
+/** 채널 랭킹 (season: YYYY-MM, 없으면 이번 달) */
+export function useChannelRanking(slug: string, season?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['channel', slug, 'ranking', season ?? ''] as const,
+    queryFn: ({ signal }) => api<ChannelRanking>(`/api/channels/${encodeURIComponent(slug)}/ranking`, { query: { season }, signal }),
+    enabled: enabled && !!slug,
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
   });
 }
 
