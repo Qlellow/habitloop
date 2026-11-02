@@ -49,6 +49,8 @@ import { DiscoveryService } from './posts/discovery.service';
 import { PostsService } from './posts/posts.service';
 import { PostExtrasService } from './posts/post-extras.service';
 import { ChannelToolsService } from './channels/channel-tools.service';
+import { HabitsService } from './habits/habits.service';
+import { HabitsController } from './habits/habits.controller';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
 import { BlocksService } from './users/blocks.service';
@@ -70,7 +72,7 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController, CommunityController, BottlesController, BadgesController, NoticesController, VillageController, ClientErrorsController, DmsController],
+  controllers: [HealthController, AuthController, OAuthController, ChannelsController, PostsController, ImagesController, UsersController, NotificationsController, ReportsController, AdminController, PetsController, VoiceController, CommunityController, BottlesController, BadgesController, NoticesController, VillageController, ClientErrorsController, DmsController, HabitsController],
   providers: [
     Database,
     PetsService,
@@ -89,6 +91,7 @@ class HealthController {
     PostsService,
     PostExtrasService,
     ChannelToolsService,
+    HabitsService,
     WeatherService,
     DnaService,
     RecapService,

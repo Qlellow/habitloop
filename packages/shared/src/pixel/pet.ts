@@ -4,7 +4,7 @@ import type { PetPublic, PetSpecies, PetStage } from '../types';
  * 커뮤니티 펫 도트(픽셀) 그림. 종 · 자란 단계 · 표정으로 그때그때 만든다 (18 × 18 칸). 웹 · 앱이 함께 쓴다
  *   몸: 자랄수록 커지는 타원 (슬라임은 바닥이 납작) + 테두리 · 그림자 · 하이라이트
  *   종마다: 고양이 귀 · 꼬리 · 하얀 배, 병아리 부리 · 날개 · 발 · 볏, 슬라임 새싹
- *   표정: 눈(깜빡 · 졸림), 볼, 입 / 꾸미기: 리본(Lv15) · 왕관(Lv20)
+ *   표정: 눈(깜빡 · 졸림), 볼, 입 / 꾸미기: 모자(리본 · 왕관 · 고깔 · 꽃핀 · 털모자 · 안경) · 몸 색 (api/src/pets/pet-items.ts)
  */
 
 export const PET_GRID = 18;
@@ -16,7 +16,15 @@ const PALETTE: Record<PetSpecies, Record<string, string>> = {
   cat: { o: '#5b3a1e', b: '#f4a35b', d: '#d07a33', l: '#ffd2a0', w: '#fff3e3', e: '#2b1d12', c: '#ff9ab0', m: '#2b1d12', n: '#ff7a9a', g: '#2f7d2a' },
   chick: { o: '#7a5a00', b: '#ffd84a', d: '#f0b400', l: '#fff3a8', w: '#ffffff', e: '#2b2310', c: '#ffab9a', m: '#2b2310', n: '#ff8a1f', g: '#2f7d2a' },
 };
-const COMMON = { r: '#e8404a', k: '#a8202a', y: '#ffc21a', Y: '#fff1a0' };
+const COMMON = { r: '#e8404a', k: '#a8202a', y: '#ffc21a', Y: '#fff1a0', P: '#7c5cff', F: '#ff7ab6', B: '#4a7dff', W: '#ffffff', G: '#2b2b33' };
+
+/** 몸 색 바꾸기 (테두리 · 몸 · 그늘 · 하이라이트) */
+const COLORS: Record<string, Record<string, string>> = {
+  mint: { o: '#1d6b62', b: '#6fe0cf', d: '#3fbfac', l: '#c6fbf2' },
+  pink: { o: '#8a2d55', b: '#ff9cc6', d: '#f06aa4', l: '#ffd8ea' },
+  purple: { o: '#45307f', b: '#a98bff', d: '#8064f0', l: '#ddd1ff' },
+  gold: { o: '#7a5300', b: '#ffcf3d', d: '#e8a800', l: '#fff0a8' },
+};
 const EGG = { o: '#5b4b3a', s: '#fff4dc', d: '#e8d6b4', x: '#5b4b3a' };
 
 const SIZE: Record<Exclude<PetStage, 'egg'>, [number, number]> = { baby: [10, 8], junior: [12, 10], adult: [14, 12] };
@@ -28,6 +36,7 @@ export interface PetLook {
   eyesClosed?: boolean;
   happy?: boolean;
   accessory?: PetPublic['accessory'];
+  color?: PetPublic['color'];
   /** 걸을 때 두 장을 번갈아 */
   frame?: 0 | 1;
   /** 알: 부화까지 얼마나 왔는지 (0 ~ 1) → 금이 간다 */
@@ -180,8 +189,36 @@ export function buildPet(look: PetLook): { grid: Grid; colors: Record<string, st
     set(a + 2, top - 1, 'r');
     set(a, top, 'r');
     set(a + 2, top, 'r');
+  } else if (look.accessory === 'party') {
+    // 고깔모자: 줄무늬 원뿔 + 꼭대기 방울
+    for (let x = 7; x <= 10; x++) set(x, top - 1, x % 2 ? 'P' : 'Y');
+    for (let x = 8; x <= 9; x++) set(x, top - 2, 'P');
+    set(8, top - 3, 'Y');
+    set(8, top - 4, 'y');
+  } else if (look.accessory === 'flower') {
+    const a = exR + 1;
+    set(a, top - 1, 'y');
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) set(a + dx, top - 1 + dy, 'F');
+  } else if (look.accessory === 'beanie') {
+    for (let x = 6; x <= 11; x++) {
+      set(x, top, 'B');
+      set(x, top - 1, x % 2 ? 'B' : 'W');
+    }
+    for (let x = 7; x <= 10; x++) set(x, top - 2, 'B');
+    set(8, top - 3, 'W');
+    set(9, top - 3, 'W');
+  } else if (look.accessory === 'glasses') {
+    for (const ex of [exL, exR]) {
+      set(ex - 1, ey, 'G');
+      set(ex + 1, ey, 'G');
+      set(ex - 1, ey + 1, 'G');
+      set(ex + 1, ey + 1, 'G');
+      set(ex, ey - 1, 'G');
+      set(ex, ey + 2, 'G');
+    }
+    for (let x = exL + 2; x <= exR - 2; x++) set(x, ey, 'G');
   }
-  return { grid, colors: { ...PALETTE[look.species], ...COMMON } };
+  return { grid, colors: { ...PALETTE[look.species], ...(look.color ? COLORS[look.color] : {}), ...COMMON } };
 }
 
 /** 몸 가장자리(바깥과 닿은 칸)를 테두리로 */

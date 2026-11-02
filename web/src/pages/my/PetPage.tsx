@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { PET_SPECIES, PET_STAGES, useAdoptPet, useMyPet, usePatPet, useUpdatePet, type Pet, type PetSpecies } from '@loop/shared';
-import { PetActor } from '../../components/Pet';
+import { PET_SPECIES, PET_STAGES, useAdoptPet, useMyPet, usePatPet, usePetShop, usePetShopAction, useUpdatePet, type Pet, type PetColor, type PetHat, type PetSpecies } from '@loop/shared';
+import { PetActor, PetSprite } from '../../components/Pet';
 import { toast } from '../../components/Toast';
 import { updateSettings, useSettings } from '../../lib/settings';
 import { ui } from '../../components/ui';
@@ -166,6 +166,8 @@ function PetHome({ pet }: { pet: Pet }) {
         </div>
       </section>
 
+      <PetDecor pet={pet} />
+
       <section className={cn(ui.card, s.section)}>
         <h2 className={s.sectionTitle}>펫 설정</h2>
         <form
@@ -215,6 +217,57 @@ function PetHome({ pet }: { pet: Pet }) {
         </div>
       </section>
     </>
+  );
+}
+
+/** 꾸미기: 포인트로 모자 · 몸 색을 사서 입힌다. 아이템 칸마다 입혔을 때 모습을 미리 보여 준다 */
+function PetDecor({ pet }: { pet: Pet }) {
+  const shop = usePetShop();
+  const act = usePetShopAction();
+  if (!shop.data) return null;
+  const { items, points, hat, color } = shop.data;
+  const run = (a: Parameters<typeof act.mutate>[0], done: string) => act.mutate(a, { onSuccess: () => toast(done), onError: (e) => toast(e.message) });
+  return (
+    <section className={cn(ui.card, s.section)}>
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className={s.sectionTitle}>꾸미기</h2>
+        <span className="text-sm text-fg-sub">
+          내 포인트 <b className="text-fg-strong tabular-nums">{points.toLocaleString()}P</b>
+        </span>
+      </div>
+      <p className="mt-1 mb-3 text-sm text-fg-sub">모자 하나와 몸 색 하나를 골라 입힐 수 있어요. 리본 · 왕관은 Lv15 · Lv20 이 되면 공짜로 열려요.</p>
+      <ul className="pet-shop">
+        {items.map((it) => {
+          const preview = it.kind === 'hat' ? { accessory: it.id as PetHat, color: color ?? undefined } : { accessory: hat ?? pet.accessory, color: it.id as PetColor };
+          return (
+            <li key={it.id} className={cn('pet-shop-item', it.equipped && 'is-on')}>
+              <PetSprite size={3} species={pet.species} stage={pet.stage === 'egg' ? 'baby' : pet.stage} happy {...preview} />
+              <b className="text-[14px] text-fg-strong">{it.name}</b>
+              {it.equipped ? (
+                <button type="button" className={cn(ui.button, ui.ghost, ui.small, 'w-full')} disabled={act.isPending} onClick={() => run(it.kind === 'hat' ? { hat: null } : { color: null }, `${it.name}을(를) 벗겼어요`)}>
+                  벗기기
+                </button>
+              ) : it.owned ? (
+                <button type="button" className={cn(ui.button, ui.secondary, ui.small, 'w-full')} disabled={act.isPending} onClick={() => run(it.kind === 'hat' ? { hat: it.id } : { color: it.id }, `${it.name}을(를) 입혔어요`)}>
+                  입히기
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={cn(ui.button, ui.primary, ui.small, 'w-full')}
+                  disabled={act.isPending || points < it.price}
+                  title={points < it.price ? '포인트가 모자라요' : undefined}
+                  onClick={() => run({ buy: it.id }, `${it.name}을(를) 샀어요 · '입히기'를 눌러 보세요`)}
+                >
+                  {it.price.toLocaleString()}P
+                </button>
+              )}
+              {it.freeAt && !it.owned && <span className="text-[11px] text-fg-weak">Lv{it.freeAt} 무료</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

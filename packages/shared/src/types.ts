@@ -593,8 +593,51 @@ export interface PetPublic {
   level: number;
   stage: PetStage;
   mood: PetMood;
-  /** 레벨 15 리본, 20 왕관 */
-  accessory?: 'ribbon' | 'crown';
+  /** 모자 · 장식: 고른 아이템, 고르지 않았으면 레벨 15 리본 · 20 왕관 */
+  accessory?: PetHat;
+  /** 몸 색 (꾸미기) */
+  color?: PetColor;
+}
+
+export type PetHat = 'ribbon' | 'crown' | 'party' | 'flower' | 'beanie' | 'glasses';
+export type PetColor = 'mint' | 'pink' | 'purple' | 'gold';
+
+/** 펫 꾸미기 가게 */
+export interface PetShop {
+  points: number;
+  hat: PetHat | null;
+  color: PetColor | null;
+  items: { id: string; kind: 'hat' | 'color'; name: string; price: number; freeAt?: number; owned: boolean; equipped: boolean }[];
+}
+
+/** 습관 체크인 */
+export interface Habit {
+  id: number;
+  title: string;
+  emoji: string;
+  streak: number;
+  best: number;
+  total: number;
+  checkedToday: boolean;
+  /** 최근 84일 (오래된 날 → 오늘) */
+  grass: boolean[];
+  challenge?: { id: number; title: string; channelSlug: string; channelName: string; startsOn: string; endsOn: string };
+}
+
+/** 채널 챌린지 */
+export interface Challenge {
+  id: number;
+  title: string;
+  emoji: string;
+  startsOn: string;
+  endsOn: string;
+  days: number;
+  participants: number;
+  ended: boolean;
+  joined: boolean;
+  /** 참여했으면 기간 안에 체크한 날 수 */
+  myDone?: number;
+  top: { id: string; nickname: string; avatarUrl: string | null; done: number }[];
 }
 
 export interface Pet extends PetPublic {
@@ -689,7 +732,8 @@ export type HomeWidgetType =
   | 'makeChannel'
   | 'greeting'
   | 'memo'
-  | 'shortcuts';
+  | 'shortcuts'
+  | 'habits';
 
 /** 12칸 격자 위의 위젯 하나. x · w 는 칸(0~12), y · h 는 줄 */
 export interface HomeWidget {

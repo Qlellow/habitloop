@@ -348,6 +348,7 @@ function Roamer({ pet }: { pet: Pet }) {
           species={pet.species}
           stage={pet.stage}
           accessory={pet.accessory}
+          color={pet.color}
           eyesClosed={look.blink || look.mode === 'sleep'}
           happy={look.mode === 'chase' || look.mode === 'land' || hearts.length > 0}
           frame={look.frame}

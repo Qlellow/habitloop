@@ -21,6 +21,7 @@ export const WIDGET_TYPES = [
   'greeting',
   'memo',
   'shortcuts',
+  'habits',
 ] as const;
 
 export const GRID_COLS = 12;

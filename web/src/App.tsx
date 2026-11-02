@@ -33,6 +33,7 @@ const SettingsPage = lazy(loaders.settings);
 const PointsPage = lazy(loaders.points);
 const PetPage = lazy(loaders.pet);
 const MyRecapPage = lazy(loaders.myRecap);
+const HabitsPage = lazy(loaders.habits);
 const RecapPage = lazy(loaders.recap);
 const MessagesPage = lazy(loaders.messages);
 const RankingPage = lazy(loaders.ranking);
@@ -175,6 +176,7 @@ const router = createBrowserRouter([
           { path: 'points', element: <PointsPage /> },
           { path: 'pet', element: <PetPage /> },
           { path: 'recap', element: <MyRecapPage /> },
+          { path: 'habits', element: <HabitsPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },

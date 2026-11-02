@@ -7,13 +7,13 @@ import { cn } from '../lib/cn';
  * 그림은 종 · 자란 단계 · 표정으로 그때그때 만든다 (18 × 18 칸).
  *   몸: 자랄수록 커지는 타원 (슬라임은 바닥이 납작) + 테두리 · 그림자 · 하이라이트
  *   종마다: 고양이 귀 · 꼬리 · 하얀 배, 병아리 부리 · 날개 · 발 · 볏, 슬라임 새싹
- *   표정: 눈(깜빡 · 졸림), 볼, 입 / 꾸미기: 리본(Lv15) · 왕관(Lv20)
+ *   표정: 눈(깜빡 · 졸림), 볼, 입 / 꾸미기: 모자 · 몸 색 (마이페이지 > 펫 > 꾸미기)
  */
 
 /** 도트 그림 (SVG, 같은 색이 이어지는 칸은 한 사각형으로) */
 export function PetSprite({ size = 6, className, ...look }: Look & { size?: number; className?: string }) {
   // look 은 매번 새 객체라 값들로 다시 만들지 정한다
-  const rects = useMemo(() => petRects(look), [look.species, look.stage, look.eyesClosed, look.happy, look.accessory, look.frame, look.progress]);
+  const rects = useMemo(() => petRects(look), [look.species, look.stage, look.eyesClosed, look.happy, look.accessory, look.color, look.frame, look.progress]);
   return (
     <svg className={className} width={G * size} height={G * size} viewBox={`0 0 ${G} ${G}`} shapeRendering="crispEdges" aria-hidden>
       {rects.map((r, i) => (
@@ -136,6 +136,7 @@ export function PetActor({
         species={pet.species}
         stage={pet.stage}
         accessory={pet.accessory}
+        color={pet.color}
         eyesClosed={blink || action === 'sleep'}
         happy={pet.mood === 'happy' || action === 'hop'}
         frame={frame}
