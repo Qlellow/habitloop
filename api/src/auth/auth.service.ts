@@ -393,7 +393,7 @@ export class AuthService {
         'UPDATE channels c SET member_count = greatest(c.member_count - 1, 0) FROM channel_members m WHERE m.channel_id = c.id AND m.user_id = $1',
         [userId],
       );
-      for (const table of ['channel_members', 'channel_bookmarks', 'post_bookmarks', 'push_tokens', 'user_identities', 'sessions', 'user_badges', 'attendance', 'point_logs', 'notifications']) {
+      for (const table of ['channel_members', 'channel_bookmarks', 'post_bookmarks', 'push_tokens', 'habits', 'pet_items', 'user_identities', 'sessions', 'user_badges', 'attendance', 'point_logs', 'notifications']) {
         await this.db.execute(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
       }
       await this.db.execute('DELETE FROM user_blocks WHERE blocker_id = $1', [userId]);

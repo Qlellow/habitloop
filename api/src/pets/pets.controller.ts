@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Put } from '@nestjs/common';
 import { LoginUser } from '../auth/auth.guard';
 import type { AuthUser } from '../auth/jwt.service';
 import { BadgesService } from '../badges/badges.service';
@@ -25,6 +25,23 @@ export class PetsController {
   @Patch('me/pet')
   update(@LoginUser() user: AuthUser, @Body() body: { name?: string; shown?: boolean }) {
     return this.pets.update(user.id, body ?? {});
+  }
+
+  /** 꾸미기 가게 · 사기 · 입히기 */
+  @Get('me/pet/shop')
+  shop(@LoginUser() user: AuthUser) {
+    return this.pets.shop(user.id);
+  }
+
+  @Post('me/pet/items/:id')
+  @HttpCode(HttpStatus.OK)
+  buy(@LoginUser() user: AuthUser, @Param('id') id: string) {
+    return this.pets.buy(user.id, id);
+  }
+
+  @Put('me/pet/equip')
+  equip(@LoginUser() user: AuthUser, @Body() body: { hat?: unknown; color?: unknown }) {
+    return this.pets.equip(user.id, body ?? {});
   }
 
   @Post('me/pet/pat')

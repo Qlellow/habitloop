@@ -87,8 +87,8 @@ export const PetView = memo(function PetView({ pet, size = 6, progress = 0, pats
   }, [pats]);
 
   const rects = useMemo(
-    () => petRects({ species: pet.species, stage: pet.stage, accessory: pet.accessory, eyesClosed: blink || sleeping, happy: pet.mood === 'happy', progress }),
-    [pet.species, pet.stage, pet.accessory, pet.mood, blink, sleeping, progress],
+    () => petRects({ species: pet.species, stage: pet.stage, accessory: pet.accessory, color: pet.color, eyesClosed: blink || sleeping, happy: pet.mood === 'happy', progress }),
+    [pet.species, pet.stage, pet.accessory, pet.color, pet.mood, blink, sleeping, progress],
   );
   const px = PET_GRID * size;
   const transform =

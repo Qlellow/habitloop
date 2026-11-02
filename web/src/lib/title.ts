@@ -29,6 +29,7 @@ const STATIC: [RegExp, string][] = [
   [/^\/me\/points\/?$/, '포인트'],
   [/^\/me\/pet\/?$/, '펫'],
   [/^\/me\/recap\/?$/, '주간 회고'],
+  [/^\/me\/habits\/?$/, '습관'],
   [/^\/u\/[^/]+\/recap\/?$/, '주간 회고'],
   [/^\/me\/settings\/?$/, '설정'],
 ];

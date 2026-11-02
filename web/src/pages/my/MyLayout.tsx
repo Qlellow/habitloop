@@ -12,6 +12,7 @@ import { cn } from '../../lib/cn';
 
 const MENU = [
   { to: '/me/profile', label: '내 정보 수정', preload: preload.profile },
+  { to: '/me/habits', label: '습관', preload: preload.habits },
   { to: '/me/points', label: '포인트', preload: preload.points },
   { to: '/me/pet', label: '펫', preload: preload.pet },
   { to: '/me/recap', label: '주간 회고', preload: preload.myRecap },

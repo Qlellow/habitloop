@@ -29,6 +29,7 @@ import { Page } from '../components/Layout';
 import { PostItem, PostListSkeleton } from '../components/PostList';
 import { PopularCard } from '../components/Sidebar';
 import { RankingCard } from '../components/ChannelTools';
+import { ChallengesCard } from '../components/Habits';
 import { VillageCard } from '../components/village/VillageCard';
 import { preload } from '../lib/preload';
 import { ui } from '../components/ui';
@@ -248,6 +249,7 @@ export default function ChannelPage() {
           {open && !stacked && <VoiceRooms slug={slug} />}
           {open && <VillageCard slug={slug} />}
           {open && <PopularCard channel={slug} title="이 채널 인기글" />}
+          {open && <ChallengesCard slug={slug} staff={!!channel?.staff} joined={!!channel?.joined} />}
           {open && <RankingCard slug={slug} />}
         </>
       }

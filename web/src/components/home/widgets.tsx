@@ -28,6 +28,7 @@ import { PostList } from '../PostList';
 import { RankMark } from '../Sidebar';
 import { SlideHover } from '../SlideHover';
 import { PetActor } from '../Pet';
+import { HabitsWidgetBody } from '../Habits';
 import { NotificationAvatar, notificationLink, notificationMessage } from '../NotificationBell';
 import { WeatherSummary } from '../Weather';
 import { toast } from '../Toast';
@@ -803,6 +804,18 @@ export const WIDGETS: WidgetDef[] = [
     title: () => '바로가기',
     options: SHORTCUTS.map((s, i) => ({ key: s.key, label: s.label, kind: 'switch' as const, def: i < 4 })),
     Body: ShortcutsBody,
+  },
+  {
+    type: 'habits',
+    label: '오늘의 습관',
+    desc: '내 습관을 홈에서 바로 체크해요',
+    glyph: '✓',
+    size: { w: 3, h: 4 },
+    min: { w: 3, h: 3 },
+    login: true,
+    title: () => '오늘의 습관',
+    more: () => '/me/habits',
+    Body: HabitsWidgetBody,
   },
 ];
 

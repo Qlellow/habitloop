@@ -1484,6 +1484,70 @@ describe('커뮤니티', () => {
     expect(['dawn', 'morning', 'day', 'evening', 'night']).toContain(dna.type.period);
   });
 
+  it('습관 체크인 · 채널 챌린지 · 펫 꾸미기', async () => {
+    const me = await signup('habit-me@test.dev', '습관주인');
+    const member = await signup('habit-member@test.dev', '습관회원');
+    const db = app.get(Database);
+    await http().post('/api/me/habits').set(bearer(me)).send({ title: '' }).expect(400);
+    let habits = (await http().post('/api/me/habits').set(bearer(me)).send({ title: '물 2L 마시기', emoji: '💧' }).expect(201)).body;
+    expect(habits[0]).toMatchObject({ title: '물 2L 마시기', emoji: '💧', streak: 0, total: 0, checkedToday: false });
+    expect(habits[0].grass).toHaveLength(84);
+    const hid = habits[0].id;
+    const today = (await db.one<{ d: string }>("SELECT to_char((now() AT TIME ZONE 'Asia/Seoul')::date, 'YYYY-MM-DD') AS d"))!.d;
+    const ago = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) - n * 86400_000).toISOString().slice(0, 10);
+    await http().put(`/api/me/habits/${hid}/check?day=${ago(3)}`).set(bearer(me)).expect(400);
+    await http().put(`/api/me/habits/${hid}/check?day=${ago(-1)}`).set(bearer(me)).expect(400);
+    await http().put(`/api/me/habits/${hid}/check?day=${ago(2)}`).set(bearer(me)).expect(200);
+    await http().put(`/api/me/habits/${hid}/check?day=${ago(1)}`).set(bearer(me)).expect(200);
+    let h = (await http().put(`/api/me/habits/${hid}/check`).set(bearer(me)).expect(200)).body;
+    expect(h).toMatchObject({ streak: 3, best: 3, total: 3, checkedToday: true });
+    expect(h.grass.slice(-3)).toEqual([true, true, true]);
+    h = (await http().delete(`/api/me/habits/${hid}/check?day=${ago(1)}`).set(bearer(me)).expect(200)).body;
+    expect(h).toMatchObject({ streak: 1, best: 1, total: 2 });
+    await http().put(`/api/me/habits/${hid}/check`).set(bearer(member)).expect(404);
+    habits = (await http().put(`/api/me/habits/${hid}`).set(bearer(me)).send({ title: '물 마시기', emoji: '🥤' }).expect(200)).body;
+    expect(habits[0].title).toBe('물 마시기');
+
+    // 채널 챌린지: 운영진만 열고, 팔로워가 참여하면 습관이 생긴다
+    await http().post('/api/channels').set(bearer(me)).send({ slug: 'habit', name: '습관채널' }).expect(201);
+    await http().post('/api/channels/habit/challenges').set(bearer(me)).send({ title: '30일 걷기', emoji: '🚶', days: 3 }).expect(400);
+    let list = (await http().post('/api/channels/habit/challenges').set(bearer(me)).send({ title: '30일 걷기', emoji: '🚶', days: 30 }).expect(201)).body;
+    expect(list[0]).toMatchObject({ title: '30일 걷기', days: 30, participants: 0, joined: false, ended: false });
+    await http().post('/api/channels/habit/challenges').set(bearer(member)).send({ title: 'x', days: 7 }).expect(403);
+    const cid = list[0].id;
+    await http().post(`/api/challenges/${cid}/join`).set(bearer(member)).expect(403);
+    await http().post('/api/channels/habit/members').set(bearer(member)).expect((r) => expect([200, 201, 204]).toContain(r.status));
+    list = (await http().post(`/api/challenges/${cid}/join`).set(bearer(member)).expect(201)).body;
+    expect(list[0]).toMatchObject({ participants: 1, joined: true, myDone: 0 });
+    await http().post(`/api/challenges/${cid}/join`).set(bearer(member)).expect(201);
+    const mh = (await http().get('/api/me/habits').set(bearer(member))).body;
+    expect(mh).toHaveLength(1);
+    expect(mh[0].challenge).toMatchObject({ id: cid, channelSlug: 'habit' });
+    await http().put(`/api/me/habits/${mh[0].id}/check`).set(bearer(member)).expect(200);
+    list = (await http().get('/api/channels/habit/challenges').set(bearer(member))).body;
+    expect(list[0]).toMatchObject({ myDone: 1, top: [{ nickname: '습관회원', done: 1 }] });
+
+    // 펫 꾸미기: 습관 체크도 경험치, 포인트로 아이템을 사서 입힌다
+    await http().get('/api/me/pet/shop').set(bearer(me)).expect(404);
+    await http().post('/api/me/pet').set(bearer(me)).send({ species: 'cat', name: '나비' }).expect(201);
+    await db.execute("UPDATE pets SET adopted_at = now() - interval '5 days' WHERE user_id = (SELECT id FROM users WHERE email = 'habit-me@test.dev')");
+    expect((await http().get('/api/me/pet').set(bearer(me))).body.pet.stats.habits).toBe(2);
+    let shop = (await http().get('/api/me/pet/shop').set(bearer(me)).expect(200)).body;
+    expect(shop.items.find((i: { id: string }) => i.id === 'party')).toMatchObject({ price: 150, owned: false });
+    await http().post('/api/me/pet/items/party').set(bearer(me)).expect(400);
+    await db.execute("UPDATE users SET points = 1000 WHERE email = 'habit-me@test.dev'");
+    shop = (await http().post('/api/me/pet/items/party').set(bearer(me)).expect(200)).body;
+    expect(shop.points).toBe(850);
+    await http().post('/api/me/pet/items/party').set(bearer(me)).expect(409);
+    await http().post('/api/me/pet/items/nope').set(bearer(me)).expect(404);
+    await http().put('/api/me/pet/equip').set(bearer(me)).send({ color: 'gold' }).expect(400);
+    shop = (await http().put('/api/me/pet/equip').set(bearer(me)).send({ hat: 'party' }).expect(200)).body;
+    expect(shop.hat).toBe('party');
+    expect((await http().get('/api/me/pet').set(bearer(me))).body.pet.accessory).toBe('party');
+    await http().put('/api/me/pet/equip').set(bearer(me)).send({ hat: null }).expect(200);
+    expect((await http().get('/api/me/pet').set(bearer(me))).body.pet.accessory).toBeUndefined();
+  });
+
   it('채널 자동 검열 · 랭킹 시즌', async () => {
     const owner = await signup('mod-owner@test.dev', '검열주인');
     const user = await signup('mod-user@test.dev', '검열회원');

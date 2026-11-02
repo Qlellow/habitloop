@@ -52,6 +52,9 @@ import type {
   WeatherReport,
   ActivityDna,
   WeeklyRecap,
+  Challenge,
+  Habit,
+  PetShop,
   ChannelAutomod,
   ChannelRanking,
   BottleConversation,
@@ -1312,6 +1315,88 @@ export function useChannelRanking(slug: string, season?: string, enabled = true)
     enabled: enabled && !!slug,
     staleTime: 60_000,
     placeholderData: (prev) => prev,
+  });
+}
+
+/* ───────── 펫 꾸미기 ───────── */
+
+export function usePetShop(enabled = true) {
+  return useQuery({ queryKey: ['pet', 'shop'] as const, queryFn: ({ signal }) => api<PetShop>('/api/me/pet/shop', { signal }), enabled });
+}
+
+/** 사기 · 입히기 (가게 상태를 받아 바꾸고, 펫 모습 · 포인트를 다시 받는다) */
+export function usePetShopAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (a: { buy: string } | { hat?: string | null; color?: string | null }) =>
+      'buy' in a ? api<PetShop>(`/api/me/pet/items/${encodeURIComponent(a.buy)}`, { method: 'POST' }) : api<PetShop>('/api/me/pet/equip', { method: 'PUT', body: a }),
+    onSuccess: (shop) => {
+      qc.setQueryData(['pet', 'shop'], shop);
+      // 펫 모습 · 포인트
+      void qc.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+}
+
+/* ───────── 습관 체크인 ───────── */
+
+export function useHabits(enabled = true) {
+  return useQuery({ queryKey: ['habits'] as const, queryFn: ({ signal }) => api<Habit[]>('/api/me/habits', { signal }), enabled });
+}
+
+export function useHabitMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (a: { create: { title: string; emoji: string } } | { update: number; title: string; emoji: string } | { archive: number }) =>
+      'create' in a
+        ? api<Habit[]>('/api/me/habits', { method: 'POST', body: a.create })
+        : 'update' in a
+          ? api<Habit[]>(`/api/me/habits/${a.update}`, { method: 'PUT', body: { title: a.title, emoji: a.emoji } })
+          : api<Habit[]>(`/api/me/habits/${a.archive}`, { method: 'DELETE' }),
+    onSuccess: (list) => qc.setQueryData(['habits'], list),
+  });
+}
+
+/** 체크 · 취소 (누르는 즉시 바꾸고, 서버 결과로 덮는다) */
+export function useCheckHabit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, on, day }: { id: number; on: boolean; day?: string }) =>
+      api<Habit>(`/api/me/habits/${id}/check`, { method: on ? 'PUT' : 'DELETE', query: { day } }),
+    onMutate: ({ id, on, day }) => {
+      if (day) return;
+      qc.setQueryData<Habit[]>(['habits'], (list) =>
+        list?.map((h) => (h.id === id ? { ...h, checkedToday: on, grass: [...h.grass.slice(0, -1), on], streak: Math.max(0, h.streak + (on ? 1 : -1)) } : h)),
+      );
+    },
+    onSuccess: (h) => {
+      qc.setQueryData<Habit[]>(['habits'], (list) => list?.map((x) => (x.id === h.id ? h : x)));
+      void qc.invalidateQueries({ queryKey: petKey });
+      if (h.challenge) void qc.invalidateQueries({ queryKey: ['channel', h.challenge.channelSlug, 'challenges'] });
+    },
+    onError: () => void qc.invalidateQueries({ queryKey: ['habits'] }),
+  });
+}
+
+export function useChallenges(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: ['channel', slug, 'challenges'] as const,
+    queryFn: ({ signal }) => api<Challenge[]>(`/api/channels/${encodeURIComponent(slug)}/challenges`, { signal }),
+    enabled: enabled && !!slug,
+  });
+}
+
+export function useChallengeAction(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (a: { join: number } | { open: { title: string; emoji: string; days: number } }) =>
+      'join' in a
+        ? api<Challenge[]>(`/api/challenges/${a.join}/join`, { method: 'POST' })
+        : api<Challenge[]>(`/api/channels/${encodeURIComponent(slug)}/challenges`, { method: 'POST', body: a.open }),
+    onSuccess: (list) => {
+      qc.setQueryData(['channel', slug, 'challenges'], list);
+      void qc.invalidateQueries({ queryKey: ['habits'] });
+    },
   });
 }
 

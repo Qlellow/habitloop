@@ -20,6 +20,7 @@ export const loaders = {
   points: () => import('../pages/my/PointsPage'),
   pet: () => import('../pages/my/PetPage'),
   myRecap: () => import('../pages/my/MyRecapPage'),
+  habits: () => import('../pages/my/HabitsPage'),
   recap: () => import('../pages/RecapPage'),
   messages: () => import('../pages/MessagesPage'),
   ranking: () => import('../pages/RankingPage'),
