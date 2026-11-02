@@ -37,6 +37,7 @@ export function CropModal({
   applyLabel = '적용',
   onApply,
   onClose,
+  onReplace,
 }: {
   src: string;
   title?: string;
@@ -49,7 +50,12 @@ export function CropModal({
   applyLabel?: string;
   onApply: (result: { crop: CropRect; shape: ImageShape; naturalRatio: number }) => void;
   onClose: () => void;
+  /** 있으면 '다른 사진' 버튼: 자르기 화면을 닫지 않고 사진을 바꾼다 (부모가 src 를 새 사진으로) */
+  onReplace?: (file: File) => void;
 }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  // 처음 연 사진 (처음 영역 initial 은 이 사진에만 맞다)
+  const firstSrcAtOpen = useRef(src);
   const stageRef = useRef<HTMLDivElement>(null);
   const [natural, setNatural] = useState<{ w: number; h: number }>();
   const [crop, setCrop] = useState<CropRect>(initial ?? { x: 0, y: 0, w: 1, h: 1 });
@@ -71,14 +77,24 @@ export function CropModal({
 
   const stageRatio = natural ? natural.w / natural.h : 1;
 
+  // 사진을 바꾸면 크기를 다시 재고 영역을 처음으로 (비율 고정이면 새 사진의 가운데로)
+  const firstSrc = useRef(src);
+  useEffect(() => {
+    if (src === firstSrc.current) return;
+    firstSrc.current = src;
+    setNatural(undefined);
+    setCrop({ x: 0, y: 0, w: 1, h: 1 });
+    if (!aspect) setRatio(undefined);
+  }, [src, aspect]);
+
   // 비율을 고르면(또는 처음부터 고정이면) 그 비율의 가장 큰 가운데 영역으로
   const pickRatio = (r: number | undefined) => {
     setRatio(r);
     if (r) setCrop(fitAspect(r, stageRatio));
   };
   useEffect(() => {
-    if (natural && aspect && !initial) setCrop(fitAspect(aspect, natural.w / natural.h));
-  }, [natural, aspect, initial]);
+    if (natural && aspect && (!initial || src !== firstSrcAtOpen.current)) setCrop(fitAspect(aspect, natural.w / natural.h));
+  }, [natural, aspect, initial, src]);
 
   const onPointerDown = (handle: Handle) => (e: ReactPointerEvent) => {
     e.preventDefault();
@@ -251,6 +267,26 @@ export function CropModal({
                 </button>
               ))}
             </div>
+          )}
+          {onReplace && (
+            <>
+              <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => fileRef.current?.click()}>
+                다른 사진
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) onReplace(file);
+                }}
+              />
+            </>
           )}
           <button
             type="button"

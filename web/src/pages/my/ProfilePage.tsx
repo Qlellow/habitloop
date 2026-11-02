@@ -255,6 +255,10 @@ function AvatarSection({ user }: { user: User }) {
           applyLabel={busy ? '올리는 중…' : '이 영역으로 설정'}
           onApply={({ crop }) => void apply(crop)}
           onClose={close}
+          onReplace={(file) => {
+            revokeLater(cropping.url);
+            setCropping({ file, url: URL.createObjectURL(file) });
+          }}
         />
       )}
     </section>
@@ -370,6 +374,10 @@ function BannerSection({ user }: { user: User }) {
           applyLabel={busy ? '올리는 중…' : '이 영역으로 설정'}
           onApply={({ crop }) => void apply(crop)}
           onClose={close}
+          onReplace={(file) => {
+            revokeLater(cropping.url);
+            setCropping({ file, url: URL.createObjectURL(file) });
+          }}
         />
       )}
     </section>
