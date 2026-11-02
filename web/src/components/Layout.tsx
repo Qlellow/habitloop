@@ -6,6 +6,7 @@ import { UserAvatar } from './UserAvatar';
 import { toast } from './Toast';
 import { ChannelSearch } from './ChannelSearch';
 import { NotificationBell } from './NotificationBell';
+import { MessagesLink } from './MessagesLink';
 import { preload } from '../lib/preload';
 import { GridIcon, HomeIcon, SearchIcon, UserIcon } from './Icons';
 import { openCommandPalette } from '../lib/commandPalette';
@@ -164,6 +165,7 @@ export function SiteHeader() {
             {/* 글은 채널 안에서만 쓰므로 글쓰기 버튼은 각 채널 페이지에 있다 */}
             {isLoggedIn ? (
               <>
+                <MessagesLink />
                 <NotificationBell />
                 <UserMenu />
               </>

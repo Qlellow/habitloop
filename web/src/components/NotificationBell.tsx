@@ -27,9 +27,11 @@ export function notificationMessage(n: NotificationItem) {
     case 'notice':
       return (
         <>
-          <b className="font-semibold text-fg-strong">{n.post.channelName}</b>에 새 공지가 올라왔어요
+          <b className="font-semibold text-fg-strong">{n.post?.channelName}</b>에 새 공지가 올라왔어요
         </>
       );
+    case 'follow':
+      return <>{who}님이 나를 팔로우했어요</>;
     case 'mention':
       return <>{who}님이 {n.comment ? '댓글에서' : '글에서'} 나를 불렀어요</>;
     case 'discovery':
@@ -41,6 +43,9 @@ export function notificationMessage(n: NotificationItem) {
   }
 }
 
+/** 알림을 누르면 갈 곳: 글 알림은 그 글, 팔로우는 그 사람 프로필 */
+export const notificationLink = (n: NotificationItem) => (n.post ? `/posts/${n.post.id}` : n.actor ? `/u/${n.actor.id}` : '/');
+
 /** 알림 왼쪽 그림: 보낸 사람 (공지는 채널, 오늘의 발견은 반짝이 표시) */
 export function NotificationAvatar({ n, size }: { n: NotificationItem; size: number }) {
   if (n.type === 'discovery')
@@ -49,7 +54,7 @@ export function NotificationAvatar({ n, size }: { n: NotificationItem; size: num
         ✦
       </span>
     );
-  return <UserAvatar nickname={n.type === 'notice' ? n.post.channelName : name(n)} avatarUrl={n.actor?.avatarUrl} size={size} className="mt-0.5" />;
+  return <UserAvatar nickname={n.type === 'notice' ? (n.post?.channelName ?? '') : name(n)} avatarUrl={n.actor?.avatarUrl} size={size} className="mt-0.5" />;
 }
 
 /**
@@ -89,7 +94,7 @@ export function NotificationBell() {
   const go = (n: NotificationItem) => {
     if (!n.read) read.mutate(n.id);
     setOpen(false);
-    navigate(`/posts/${n.post.id}`);
+    navigate(notificationLink(n));
   };
 
   return (
@@ -159,7 +164,7 @@ export function NotificationBell() {
                         <span className="block text-[14px] leading-[1.45] text-fg">{notificationMessage(n)}</span>
                         {n.comment && <span className="block mt-0.5 text-[13px] text-fg-sub truncate">“{n.comment.excerpt}”</span>}
                         <span className="block mt-0.5 text-[12px] text-fg-weak truncate">
-                          {n.post.title} · {timeAgo(n.createdAt)}
+                          {n.post?.title ?? '프로필 보러 가기'} · {timeAgo(n.createdAt)}
                         </span>
                       </span>
                       {!n.read && <span className="flex-none mt-2 w-2 h-2 rounded-full bg-primary" aria-label="안 읽음" />}

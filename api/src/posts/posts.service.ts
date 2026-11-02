@@ -44,6 +44,8 @@ export interface PostSearch {
   /** 작성자 UUID */
   authorId?: string;
   q?: string;
+  /** 내가 팔로우한 사람의 글만 */
+  following?: boolean;
 }
 
 export const MAX_PAGE_SIZE = 50;
@@ -173,6 +175,8 @@ export class PostsService {
     if (!adult) where.push('cat.adult IS NOT TRUE');
     if (search.category != null) add('p.category_id = ?', search.category);
     if (search.authorId != null) add('p.author_id = (SELECT id FROM users WHERE uid::text = ?)', search.authorId);
+    // 홈 '팔로우한 사람 새 글'
+    if (search.following) add('p.author_id IN (SELECT followee_id FROM user_follows WHERE follower_id = ?)', viewerId ?? 0);
     if (search.q?.trim()) add("lower(p.title) LIKE ? ESCAPE '\\'", `%${escapeLike(search.q.trim().toLowerCase())}%`);
     params.push(pageSize + 1);
     const rows = await this.db.query(

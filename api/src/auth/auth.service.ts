@@ -393,10 +393,13 @@ export class AuthService {
         'UPDATE channels c SET member_count = greatest(c.member_count - 1, 0) FROM channel_members m WHERE m.channel_id = c.id AND m.user_id = $1',
         [userId],
       );
-      for (const table of ['channel_members', 'channel_bookmarks', 'user_identities', 'sessions', 'user_badges', 'attendance', 'point_logs', 'notifications']) {
+      for (const table of ['channel_members', 'channel_bookmarks', 'post_bookmarks', 'push_tokens', 'user_identities', 'sessions', 'user_badges', 'attendance', 'point_logs', 'notifications']) {
         await this.db.execute(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
       }
       await this.db.execute('DELETE FROM user_blocks WHERE blocker_id = $1', [userId]);
+      // 팔로우 관계 · 쪽지(상대 쪽 대화방도 함께)는 남기지 않는다
+      await this.db.execute('DELETE FROM user_follows WHERE follower_id = $1 OR followee_id = $1', [userId]);
+      await this.db.execute('DELETE FROM dm_threads WHERE user_a = $1 OR user_b = $1', [userId]);
       const tag = randomBytes(2).toString('hex');
       await this.db.execute(
         `UPDATE users SET email = $2, password = $3, has_password = FALSE, nickname = $4, two_factor_enabled = FALSE,

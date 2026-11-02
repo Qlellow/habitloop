@@ -43,8 +43,28 @@ export interface MyBottle {
   createdAt: Date;
   /** 거쳐 간 사람들이 한 일 (누군지는 없이) */
   journey: { at: Date; action: HopAction | null }[];
-  replies: { id: number; content: string; createdAt: Date; read: boolean }[];
+  replies: { id: number; content: string; createdAt: Date; read: boolean; letters: Letter[] }[];
 }
+
+/** 답장 뒤에 이어 주고받는 편지 (병 주인 ↔ 답장한 사람, 서로 누군지는 여전히 모른다) */
+export interface Letter {
+  id: number;
+  mine: boolean;
+  content: string;
+  createdAt: Date;
+}
+
+/** 내가 답장한 병: 원래 병 · 내 답장 · 이어진 편지 */
+export interface Conversation {
+  replyId: number;
+  bottle: { content: string; createdAt: Date };
+  reply: { content: string; createdAt: Date };
+  letters: Letter[];
+  unread: number;
+}
+
+/** 답장 하나에 이어 주고받을 수 있는 편지 수 */
+export const MAX_LETTERS = 30;
 
 export interface Sea {
   /** 지금 손에 든 병 (없으면 비어 있다) */
@@ -54,8 +74,10 @@ export interface Sea {
   catchesLeft: number;
   /** 지금 바다를 떠다니는 병 수 (나를 뺀 모두의) */
   drifting: number;
-  /** 내 병에 새로 온 답장 수 */
+  /** 내 병에 새로 온 답장 · 편지 수 */
   unreadReplies: number;
+  /** 내가 답장한 병의 주인이 새로 보낸 편지 수 */
+  unreadLetters: number;
 }
 
 @Injectable()
@@ -97,11 +119,20 @@ export class BottlesService {
       held = await this.catchOne(userId);
       if (held) catches++;
     }
-    const [throws, drifting, unread] = await Promise.all([
+    const [throws, drifting, unread, letters, toAuthor] = await Promise.all([
       this.todayCount(`SELECT count(*) AS n FROM bottles WHERE author_id = $1 AND (created_at AT TIME ZONE 'Asia/Seoul')::date = ${TODAY}`, userId),
       this.todayCount(`SELECT count(*) AS n FROM bottles WHERE status = 'drifting' AND author_id <> $1`, userId),
       this.todayCount(
         `SELECT count(*) AS n FROM bottle_replies r JOIN bottles b ON b.id = r.bottle_id WHERE b.author_id = $1 AND r.read_at IS NULL`,
+        userId,
+      ),
+      this.todayCount(
+        `SELECT count(*) AS n FROM bottle_letters l JOIN bottle_replies r ON r.id = l.reply_id WHERE r.author_id = $1 AND l.from_author AND l.read_at IS NULL`,
+        userId,
+      ),
+      this.todayCount(
+        `SELECT count(*) AS n FROM bottle_letters l JOIN bottle_replies r ON r.id = l.reply_id JOIN bottles b ON b.id = r.bottle_id
+         WHERE b.author_id = $1 AND NOT l.from_author AND l.read_at IS NULL`,
         userId,
       ),
     ]);
@@ -110,7 +141,8 @@ export class BottlesService {
       throwsLeft: Math.max(0, DAILY_THROWS - throws),
       catchesLeft: Math.max(0, DAILY_CATCHES - catches),
       drifting,
-      unreadReplies: unread,
+      unreadReplies: unread + toAuthor,
+      unreadLetters: letters,
     };
   }
 
@@ -215,7 +247,7 @@ export class BottlesService {
     );
     if (!bottles.length) return [];
     const ids = bottles.map((b) => b.id);
-    const [hops, replies] = await Promise.all([
+    const [hops, replies, letters] = await Promise.all([
       this.db.query<{ bottleId: number; at: Date; action: HopAction | null }>(
         `SELECT bottle_id AS "bottleId", received_at AS at, action FROM bottle_hops WHERE bottle_id = ANY($1) ORDER BY received_at`,
         [ids],
@@ -227,7 +259,17 @@ export class BottlesService {
          ORDER BY r.id`,
         [ids, userId],
       ),
+      this.db.query<{ replyId: number; id: number; fromAuthor: boolean; content: string; createdAt: Date }>(
+        `SELECT l.reply_id AS "replyId", l.id, l.from_author AS "fromAuthor", l.content, l.created_at AS "createdAt"
+         FROM bottle_letters l JOIN bottle_replies r ON r.id = l.reply_id WHERE r.bottle_id = ANY($1) ORDER BY l.id`,
+        [ids],
+      ),
     ]);
+    await this.db.execute(
+      `UPDATE bottle_letters l SET read_at = now() FROM bottle_replies r
+       WHERE r.id = l.reply_id AND r.bottle_id = ANY($1) AND NOT l.from_author AND l.read_at IS NULL`,
+      [ids],
+    );
     await this.db.execute(
       'UPDATE bottle_replies SET read_at = now() WHERE read_at IS NULL AND bottle_id = ANY($1)',
       [ids],
@@ -242,7 +284,70 @@ export class BottlesService {
       // 신고로 건져 낸 병은 '해변에 닿음'으로만 보인다 (신고 사실은 알리지 않는다)
       status: b.status === 'removed' ? 'ashore' : b.status,
       journey: hops.filter((h) => h.bottleId === b.id).map(({ at, action }) => ({ at, action: action === 'report' ? 'release' : action })),
-      replies: replies.filter((r) => r.bottleId === b.id).map(({ id, content, createdAt, readAt }) => ({ id, content, createdAt, read: !!readAt })),
+      replies: replies
+        .filter((r) => r.bottleId === b.id)
+        .map(({ id, content, createdAt, readAt }) => ({
+          id,
+          content,
+          createdAt,
+          read: !!readAt,
+          letters: letters.filter((l) => l.replyId === id).map((l) => ({ id: l.id, mine: l.fromAuthor, content: l.content, createdAt: l.createdAt })),
+        })),
     }));
+  }
+
+  /**
+   * 답장에 이어 편지 쓰기: 병 주인과 그 답장을 쓴 사람만. 둘 중 누가 차단했으면 막는다.
+   * 서로 이름은 끝까지 보이지 않는다 (병 주인 → '병을 띄운 사람', 답장한 사람 → '어느 바닷가의 누군가')
+   */
+  async letter(userId: number, replyId: number, raw: string): Promise<Letter> {
+    const content = (raw ?? '').trim();
+    if (content.length < 2) throw ApiError.badRequest('편지를 적어 주세요');
+    if (content.length > BOTTLE_MAX_LENGTH) throw ApiError.badRequest(`편지는 ${BOTTLE_MAX_LENGTH}자까지 쓸 수 있어요`);
+    const r = await this.db.one<{ replier: number; owner: number; letters: number }>(
+      `SELECT r.author_id AS replier, b.author_id AS owner, (SELECT count(*)::int FROM bottle_letters l WHERE l.reply_id = r.id) AS letters
+       FROM bottle_replies r JOIN bottles b ON b.id = r.bottle_id WHERE r.id = $1`,
+      [replyId],
+    );
+    if (!r || (userId !== r.owner && userId !== r.replier)) throw ApiError.notFound('주고받을 수 없는 편지예요');
+    const other = userId === r.owner ? r.replier : r.owner;
+    const blocked = await this.db.one('SELECT 1 FROM user_blocks WHERE (blocker_id = $1 AND blocked_id = $2) OR (blocker_id = $2 AND blocked_id = $1)', [userId, other]);
+    if (blocked) throw ApiError.forbidden('더는 편지를 주고받을 수 없어요');
+    if (r.letters >= MAX_LETTERS) throw ApiError.badRequest(`편지는 한 답장에 ${MAX_LETTERS}통까지 주고받을 수 있어요`);
+    const row = await this.db.one<{ id: number; createdAt: Date }>(
+      'INSERT INTO bottle_letters (reply_id, from_author, content) VALUES ($1, $2, $3) RETURNING id, created_at AS "createdAt"',
+      [replyId, userId === r.owner, content],
+    );
+    return { id: row!.id, mine: true, content, createdAt: row!.createdAt };
+  }
+
+  /** 내가 답장한 병들: 원래 병 · 내 답장 · 이어진 편지 (열면 병 주인의 편지는 읽음) */
+  async conversations(userId: number): Promise<Conversation[]> {
+    const rows = await this.db.query<{ replyId: number; bottle: string; bottleAt: Date; reply: string; replyAt: Date }>(
+      `SELECT r.id AS "replyId", b.content AS bottle, b.created_at AS "bottleAt", r.content AS reply, r.created_at AS "replyAt"
+       FROM bottle_replies r JOIN bottles b ON b.id = r.bottle_id
+       WHERE r.author_id = $1 AND b.status <> 'removed'
+         AND NOT EXISTS (SELECT 1 FROM user_blocks k WHERE k.blocker_id = $1 AND k.blocked_id = b.author_id)
+       ORDER BY coalesce((SELECT max(l.id) FROM bottle_letters l WHERE l.reply_id = r.id), 0) DESC, r.id DESC LIMIT 30`,
+      [userId],
+    );
+    if (!rows.length) return [];
+    const ids = rows.map((r) => r.replyId);
+    const letters = await this.db.query<{ replyId: number; id: number; fromAuthor: boolean; content: string; createdAt: Date; readAt: Date | null }>(
+      `SELECT reply_id AS "replyId", id, from_author AS "fromAuthor", content, created_at AS "createdAt", read_at AS "readAt"
+       FROM bottle_letters WHERE reply_id = ANY($1) ORDER BY id`,
+      [ids],
+    );
+    await this.db.execute('UPDATE bottle_letters SET read_at = now() WHERE reply_id = ANY($1) AND from_author AND read_at IS NULL', [ids]);
+    return rows.map((r) => {
+      const mine = letters.filter((l) => l.replyId === r.replyId);
+      return {
+        replyId: r.replyId,
+        bottle: { content: r.bottle, createdAt: r.bottleAt },
+        reply: { content: r.reply, createdAt: r.replyAt },
+        letters: mine.map((l) => ({ id: l.id, mine: !l.fromAuthor, content: l.content, createdAt: l.createdAt })),
+        unread: mine.filter((l) => l.fromAuthor && !l.readAt).length,
+      };
+    });
   }
 }

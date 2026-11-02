@@ -28,7 +28,7 @@ import { PostList } from '../PostList';
 import { RankMark } from '../Sidebar';
 import { SlideHover } from '../SlideHover';
 import { PetActor } from '../Pet';
-import { NotificationAvatar, notificationMessage } from '../NotificationBell';
+import { NotificationAvatar, notificationLink, notificationMessage } from '../NotificationBell';
 import { WeatherSummary } from '../Weather';
 import { toast } from '../Toast';
 import { preload } from '../../lib/preload';
@@ -113,9 +113,18 @@ const rowLink = 'flex items-center gap-2.5 px-2.5 py-2 rounded-sm min-w-0';
 /* ───────── 위젯 ───────── */
 
 function FeedBody({ o }: WidgetProps) {
-  const feed = useFeed({});
+  const following = o.source === 'following';
+  const { isLoggedIn } = useAuth();
+  const feed = useFeed(following ? { following: true } : {}, !following || isLoggedIn);
   const { showExcerpt } = useSettings();
-  return <PostList query={feed} empty="아직 글이 없어요. 첫 글을 남겨 보세요!" excerpt={o.excerpt === 'auto' ? showExcerpt : o.excerpt === 'on'} />;
+  if (following && !isLoggedIn) return <NeedLogin what="팔로우한 사람의 글" />;
+  return (
+    <PostList
+      query={feed}
+      empty={following ? '팔로우한 사람의 글이 아직 없어요. 마음에 드는 작성자의 프로필에서 팔로우해 보세요!' : '아직 글이 없어요. 첫 글을 남겨 보세요!'}
+      excerpt={o.excerpt === 'auto' ? showExcerpt : o.excerpt === 'on'}
+    />
+  );
 }
 
 function PopularBody({ o }: WidgetProps) {
@@ -310,7 +319,7 @@ function NotificationsBody({ o }: WidgetProps) {
             type="button"
             onClick={() => {
               if (!n.read) read.mutate(n.id);
-              navigate(`/posts/${n.post.id}`);
+              navigate(notificationLink(n));
             }}
             className={cn('w-full flex gap-2.5 px-2.5 py-2 rounded-sm text-left transition-colors hover:bg-field', !n.read && 'bg-primary-weak')}
           >
@@ -318,7 +327,7 @@ function NotificationsBody({ o }: WidgetProps) {
             <span className="flex-1 min-w-0">
               <span className="block text-[13px] leading-[1.45] text-fg">{notificationMessage(n)}</span>
               <span className="block truncate text-[12px] text-fg-weak">
-                {n.post.title} · {timeAgo(n.createdAt)}
+                {n.post?.title ?? '프로필 보러 가기'} · {timeAgo(n.createdAt)}
               </span>
             </span>
           </button>
@@ -562,8 +571,18 @@ export const WIDGETS: WidgetDef[] = [
     size: { w: 6, h: 10 },
     min: { w: 4, h: 4 },
     fit: true,
-    title: () => '전체 글',
+    title: (o) => (o.source === 'following' ? '팔로우한 사람 글' : '전체 글'),
     options: [
+      {
+        key: 'source',
+        label: '보여 줄 글',
+        kind: 'select',
+        def: 'all',
+        choices: [
+          { value: 'all', label: '모든 채널의 새 글' },
+          { value: 'following', label: '내가 팔로우한 사람의 글' },
+        ],
+      },
       {
         key: 'excerpt',
         label: '본문 미리보기',

@@ -26,6 +26,18 @@ export class BottlesController {
     return this.bottles.mine(user.id);
   }
 
+  /** 내가 답장한 병 · 이어진 편지 */
+  @Get('conversations')
+  conversations(@LoginUser() user: AuthUser) {
+    return this.bottles.conversations(user.id);
+  }
+
+  /** 답장에 이어 편지 쓰기 (병 주인 ↔ 답장한 사람) */
+  @Post('replies/:id/letters')
+  letter(@LoginUser() user: AuthUser, @Param('id') raw: string, @Body() body: { content?: string }) {
+    return this.bottles.letter(user.id, id(raw), String(body?.content ?? ''));
+  }
+
   @Post()
   throw(@LoginUser() user: AuthUser, @Body() body: { content?: string }) {
     return this.bottles.throw(user.id, String(body?.content ?? ''));

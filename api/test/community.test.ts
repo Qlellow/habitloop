@@ -1484,6 +1484,80 @@ describe('커뮤니티', () => {
     expect(['dawn', 'morning', 'day', 'evening', 'night']).toContain(dna.type.period);
   });
 
+  it('사용자 팔로우 · 1:1 쪽지 · 표류병 편지', async () => {
+    const a = await signup('dm-a@test.dev', '쪽지에이');
+    const b = await signup('dm-b@test.dev', '쪽지비');
+    const aId = (await http().get('/api/me').set(bearer(a))).body.id;
+    const bId = (await http().get('/api/me').set(bearer(b))).body.id;
+
+    // 팔로우: 숫자 · 알림 · 팔로우한 사람 글 모아 보기
+    await http().put(`/api/users/${aId}/follow`).set(bearer(a)).expect(400);
+    expect((await http().put(`/api/users/${bId}/follow`).set(bearer(a)).expect(200)).body).toMatchObject({ following: true, followerCount: 1 });
+    await http().put(`/api/users/${bId}/follow`).set(bearer(a)).expect(200);
+    const prof = (await http().get(`/api/users/${bId}`).set(bearer(a))).body;
+    expect(prof).toMatchObject({ followerCount: 1, followingCount: 0, following: true, canMessage: true });
+    expect((await http().get(`/api/users/${bId}/followers`)).body.map((u: { nickname: string }) => u.nickname)).toEqual(['쪽지에이']);
+    expect((await http().get(`/api/users/${aId}/following`)).body.map((u: { id: string }) => u.id)).toEqual([bId]);
+    const note = (await http().get('/api/me/notifications').set(bearer(b))).body.items[0];
+    expect(note).toMatchObject({ type: 'follow', actor: { id: aId } });
+    expect(note.post).toBeUndefined();
+    await http().post('/api/channels').set(bearer(b)).send({ slug: 'follow', name: '팔로우채널' }).expect(201);
+    const post = (await http().post('/api/posts').set(bearer(b)).send({ channel: 'follow', title: '비의 글', content: '안녕' }).expect(201)).body;
+    expect((await http().get('/api/posts?following=true').set(bearer(a))).body.items.map((p: { id: number }) => p.id)).toEqual([post.id]);
+    expect((await http().get('/api/posts?following=true').set(bearer(b))).body.items).toEqual([]);
+
+    // 쪽지: 보내기 · 목록 · 안 읽은 수 · 열면 읽음
+    await http().post(`/api/me/dms/${aId}`).set(bearer(a)).send({ content: '나에게' }).expect(403);
+    await http().post(`/api/me/dms/${bId}`).set(bearer(a)).send({ content: '   ' }).expect(400);
+    const sent = (await http().post(`/api/me/dms/${bId}`).set(bearer(a)).send({ content: '안녕하세요!' }).expect(201)).body;
+    expect(sent).toMatchObject({ mine: true, content: '안녕하세요!' });
+    expect((await http().get('/api/me/dms/unread').set(bearer(b))).body).toEqual({ count: 1 });
+    const threads = (await http().get('/api/me/dms').set(bearer(b))).body;
+    expect(threads[0]).toMatchObject({ user: { id: aId, nickname: '쪽지에이' }, last: '안녕하세요!', lastMine: false, unread: 1 });
+    const convo = (await http().get(`/api/me/dms/${aId}`).set(bearer(b))).body;
+    expect(convo).toMatchObject({ canSend: true, items: [{ mine: false, content: '안녕하세요!' }] });
+    expect((await http().get('/api/me/dms/unread').set(bearer(b))).body).toEqual({ count: 0 });
+    await http().post(`/api/me/dms/${aId}`).set(bearer(b)).send({ content: '반가워요' }).expect(201);
+    expect((await http().get(`/api/me/dms/${bId}`).set(bearer(a))).body.items.map((m: { content: string }) => m.content)).toEqual(['반가워요', '안녕하세요!']);
+    // 받기 설정: 내가 팔로우한 사람만 → b 는 a 를 팔로우하지 않았으니 a 는 못 보낸다
+    await http().put('/api/me/dm-policy').set(bearer(b)).send({ policy: 'nope' }).expect(400);
+    await http().put('/api/me/dm-policy').set(bearer(b)).send({ policy: 'following' }).expect(200);
+    await http().post(`/api/me/dms/${bId}`).set(bearer(a)).send({ content: '또 왔어요' }).expect(403);
+    expect((await http().get(`/api/users/${bId}`).set(bearer(a))).body.canMessage).toBe(false);
+    await http().put(`/api/users/${aId}/follow`).set(bearer(b)).expect(200);
+    await http().post(`/api/me/dms/${bId}`).set(bearer(a)).send({ content: '또 왔어요' }).expect(201);
+    // 나가기: 내 쪽에서만 지워진다
+    await http().delete(`/api/me/dms/${aId}`).set(bearer(b)).expect(204);
+    expect((await http().get('/api/me/dms').set(bearer(b))).body).toEqual([]);
+    expect((await http().get('/api/me/dms').set(bearer(a))).body).toHaveLength(1);
+    // 차단하면 쪽지 · 팔로우 모두 막힌다
+    await http().put(`/api/users/${aId}/block`).set(bearer(b)).expect((r) => expect([200, 204]).toContain(r.status));
+    await http().post(`/api/me/dms/${bId}`).set(bearer(a)).send({ content: '차단 뒤' }).expect(403);
+    await http().put(`/api/users/${bId}/follow`).set(bearer(a)).expect(403);
+    await http().delete(`/api/users/${aId}/block`).set(bearer(b)).expect((r) => expect([200, 204]).toContain(r.status));
+
+    // 표류병 편지: 병 주인 ↔ 답장한 사람만 이어 쓴다
+    const db = app.get(Database);
+    const ids = async (token: string) => (await db.one<{ id: number }>('SELECT id FROM users WHERE uid::text = $1', [(await http().get('/api/me').set(bearer(token))).body.id]))!.id;
+    const [ai, bi] = [await ids(a), await ids(b)];
+    const bottle = (await db.one<{ id: number }>("INSERT INTO bottles (author_id, content, status) VALUES ($1, '편지 테스트 병', 'drifting') RETURNING id", [ai]))!;
+    const reply = (await db.one<{ id: number }>("INSERT INTO bottle_replies (bottle_id, author_id, content) VALUES ($1, $2, '답장이에요') RETURNING id", [bottle.id, bi]))!;
+    const c = await signup('dm-c@test.dev', '쪽지씨');
+    await http().post(`/api/bottles/replies/${reply.id}/letters`).set(bearer(c)).send({ content: '끼어들기' }).expect(404);
+    await http().post(`/api/bottles/replies/${reply.id}/letters`).set(bearer(a)).send({ content: '답장 고마워요' }).expect(201);
+    expect((await http().get('/api/bottles/sea').set(bearer(b))).body.unreadLetters).toBe(1);
+    const conv = (await http().get('/api/bottles/conversations').set(bearer(b))).body;
+    expect(conv[0]).toMatchObject({ replyId: reply.id, bottle: { content: '편지 테스트 병' }, reply: { content: '답장이에요' }, unread: 1, letters: [{ mine: false, content: '답장 고마워요' }] });
+    expect((await http().get('/api/bottles/sea').set(bearer(b))).body.unreadLetters).toBe(0);
+    await http().post(`/api/bottles/replies/${reply.id}/letters`).set(bearer(b)).send({ content: '저도요!' }).expect(201);
+    expect((await http().get('/api/bottles/sea').set(bearer(a))).body.unreadReplies).toBeGreaterThanOrEqual(1);
+    const mineB = (await http().get('/api/bottles/mine').set(bearer(a))).body.find((x: { id: number }) => x.id === bottle.id);
+    expect(mineB.replies[0].letters.map((l: { mine: boolean; content: string }) => [l.mine, l.content])).toEqual([
+      [true, '답장 고마워요'],
+      [false, '저도요!'],
+    ]);
+  });
+
   it('투표 글 · 글 시리즈', async () => {
     const me = await signup('poll-me@test.dev', '투표주인');
     const voter = await signup('poll-voter@test.dev', '투표하는사람');

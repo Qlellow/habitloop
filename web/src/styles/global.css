@@ -4234,3 +4234,70 @@ a.recap-top:hover {
     display: none;
   }
 }
+
+/* ───────── 1:1 쪽지 (pages/MessagesPage) ───────── */
+.dm-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  height: calc(100dvh - var(--header-h) - 64px);
+  min-height: 420px;
+}
+.dm-threads {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+@media (max-width: 859px) {
+  .dm-layout {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(100dvh - var(--header-h) - var(--tabbar-h, 0px) - 32px);
+  }
+  .dm-threads {
+    border-right: 0;
+  }
+}
+.dm-bubble {
+  max-width: min(78%, 520px);
+  align-self: flex-start;
+}
+.dm-bubble.is-mine {
+  align-self: flex-end;
+  text-align: right;
+}
+.dm-bubble p {
+  display: inline-block;
+  margin: 0;
+  padding: 9px 13px;
+  border-radius: 16px 16px 16px 4px;
+  background: var(--field);
+  color: var(--fg);
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.dm-bubble.is-mine p {
+  border-radius: 16px 16px 4px 16px;
+  background: var(--primary-solid);
+  color: #fff;
+}
+.dm-bubble time {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-weak);
+}
+
+/* 표류병 편지 (SeaPage 의 Letters) */
+.sea-letter {
+  max-width: 92%;
+  padding: 7px 11px;
+  border-radius: 12px 12px 12px 4px;
+  background: color-mix(in srgb, #4aa3c7 12%, var(--surface));
+  justify-self: start;
+}
+.sea-letter.is-mine {
+  border-radius: 12px 12px 4px 12px;
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  justify-self: end;
+}

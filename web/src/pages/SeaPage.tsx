@@ -1,5 +1,16 @@
 import { useState, type FormEvent } from 'react';
-import { timeAgo, useBottleAction, useMyBottles, useSea, useThrowBottle, type BottleHopAction, type MyBottle } from '@loop/shared';
+import {
+  timeAgo,
+  useBottleAction,
+  useBottleConversations,
+  useMyBottles,
+  useSea,
+  useSendLetter,
+  useThrowBottle,
+  type BottleHopAction,
+  type BottleLetter,
+  type MyBottle,
+} from '@loop/shared';
 import { Page } from '../components/Layout';
 import { toast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -155,6 +166,94 @@ function Journey({ bottle }: { bottle: MyBottle }) {
   );
 }
 
+/**
+ * 답장에 이어 주고받는 편지 (병 주인 ↔ 답장한 사람). 서로 이름은 끝까지 모른다.
+ * other: 상대를 부르는 말 (병 주인에게는 '어느 바닷가의 누군가', 답장한 사람에게는 '병을 띄운 사람')
+ */
+function Letters({ replyId, letters, other }: { replyId: number; letters: BottleLetter[]; other: string }) {
+  const send = useSendLetter();
+  const [text, setText] = useState('');
+  const [open, setOpen] = useState(false);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const content = text.trim();
+    if (content.length < 2) return toast('두 글자 이상 적어 주세요');
+    send.mutate(
+      { replyId, content },
+      {
+        onSuccess: () => {
+          setText('');
+          setOpen(false);
+          toast('편지를 보냈어요 💌');
+        },
+        onError: (err) => toast(err.message),
+      },
+    );
+  };
+  return (
+    <div className="mt-1.5 grid gap-1.5">
+      {letters.map((l) => (
+        <div key={l.id} className={cn('sea-letter', l.mine && 'is-mine')}>
+          <span className="text-[11px] text-fg-weak">
+            {l.mine ? '나' : other} · {timeAgo(l.createdAt)}
+          </span>
+          <p className="m-0 text-[14px] whitespace-pre-wrap">{l.content}</p>
+        </div>
+      ))}
+      {open ? (
+        <form className="grid gap-1.5" onSubmit={submit}>
+          <textarea
+            className={cn(ui.textarea, 'min-h-[64px] text-[14px]')}
+            maxLength={MAX}
+            value={text}
+            autoFocus
+            placeholder={`${other}에게 편지 이어 쓰기`}
+            onChange={(e) => setText(e.target.value)}
+            aria-label="편지"
+          />
+          <div className="flex justify-end gap-1.5">
+            <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => setOpen(false)}>
+              취소
+            </button>
+            <button type="submit" className={cn(ui.button, ui.primary, ui.small)} disabled={send.isPending || text.trim().length < 2}>
+              보내기
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className={cn(ui.button, ui.text, ui.small, 'justify-self-start')} onClick={() => setOpen(true)}>
+          💌 편지 이어 쓰기
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** 내가 답장한 병: 원래 병 · 내 답장 · 병 주인과 이어 주고받은 편지 */
+function MyReplies() {
+  const { data } = useBottleConversations();
+  if (!data) return <div className={ui.spinner} />;
+  if (!data.length) return <p className="m-0 px-6 pb-6 text-sm text-fg-weak">주운 병에 답장하면 여기서 병 주인과 편지를 이어 주고받을 수 있어요.</p>;
+  return (
+    <ul className="list-none m-0 px-4 pb-4 grid gap-3">
+      {data.map((c) => (
+        <li key={c.replyId} className="sea-mine">
+          <div className="flex items-center gap-2 text-[12px] text-fg-weak">
+            <span>🍾 주운 병 · {timeAgo(c.bottle.createdAt)} 띄움</span>
+            {c.unread > 0 && <span className="ml-auto font-bold text-primary">새 편지 {c.unread}</span>}
+          </div>
+          <p className="m-0 mt-1.5 text-[14px] text-fg line-clamp-3 whitespace-pre-wrap">{c.bottle.content}</p>
+          <div className="sea-letter is-mine mt-2">
+            <span className="text-[11px] text-fg-weak">내 답장 · {timeAgo(c.reply.createdAt)}</span>
+            <p className="m-0 text-[14px] whitespace-pre-wrap">{c.reply.content}</p>
+          </div>
+          <Letters replyId={c.replyId} letters={c.letters} other="병을 띄운 사람" />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function MyBottles() {
   const { data } = useMyBottles();
   if (!data) return <div className={ui.spinner} />;
@@ -181,6 +280,7 @@ function MyBottles() {
                     {!r.read && <span className="ml-auto font-bold text-primary">새 답장</span>}
                   </div>
                   <p className="m-0 mt-0.5 text-[14px] text-fg-strong whitespace-pre-wrap">{r.content}</p>
+                  <Letters replyId={r.id} letters={r.letters ?? []} other="어느 바닷가의 누군가" />
                 </li>
               ))}
             </ul>
@@ -236,6 +336,15 @@ export default function SeaPage() {
           </h2>
         </div>
         <MyBottles />
+      </section>
+      <section className={ui.card}>
+        <div className={ui.cardHead}>
+          <h2 className={ui.sectionTitle}>
+            내가 답장한 병
+            {!!sea?.unreadLetters && <span className="ml-2 align-[2px] text-[12px] font-bold text-primary">새 편지 {sea.unreadLetters}</span>}
+          </h2>
+        </div>
+        <MyReplies />
       </section>
     </Page>
   );

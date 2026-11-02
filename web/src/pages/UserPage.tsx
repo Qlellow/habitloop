@@ -8,6 +8,7 @@ import { PostList } from '../components/PostList';
 import { ui } from '../components/ui';
 import { ProfileBanner } from '../components/ProfileBanner';
 import { ActivityDnaCard } from '../components/ActivityDna';
+import { FollowActions, FollowCounts } from '../components/Follow';
 import { PetActor } from '../components/Pet';
 import { UserAvatar } from '../components/UserAvatar';
 import { cn } from '../lib/cn';
@@ -121,13 +122,17 @@ export default function UserPage() {
                 <span className="truncate">{user.nickname}</span>
                 <BadgeMark badge={user.featuredBadge} size={24} />
               </h1>
-              <p className="mt-1 mb-0 text-sm text-fg-sub">
-                글 {compact(user.postCount)} · 댓글 {compact(user.commentCount)}
+              <p className="mt-1 mb-0 flex flex-wrap gap-x-3 text-sm text-fg-sub">
+                <span>
+                  글 {compact(user.postCount)} · 댓글 {compact(user.commentCount)}
+                </span>
+                <FollowCounts user={user} />
               </p>
               <p className="mt-0.5 mb-0 text-[13px] text-fg-weak">{joinedAt(user.createdAt)}</p>
             </div>
             {me && me.id !== user.id && (
-              <div className="ml-auto self-center pt-3">
+              <div className="ml-auto self-center pt-3 flex flex-wrap justify-end gap-1.5">
+                <FollowActions user={user} />
                 <BlockButton user={user} />
               </div>
             )}
