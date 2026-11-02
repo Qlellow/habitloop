@@ -285,6 +285,12 @@ export const ShareIcon = (p: P) => (
   </svg>
 );
 
+export const BookmarkIcon = ({ filled, ...p }: P & { filled?: boolean }) => (
+  <svg {...base} data-icon="bookmark" {...p}>
+    <path d="M6.5 3.5h11a1 1 0 011 1v16l-6.5-4.2-6.5 4.2v-16a1 1 0 011-1z" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+  </svg>
+);
+
 export const ExpandIcon = (p: P) => (
   <svg {...base} data-icon="expand" {...p}>
     <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />

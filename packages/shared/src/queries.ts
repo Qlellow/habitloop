@@ -908,6 +908,55 @@ export function useToggleLike(postId: number) {
   });
 }
 
+/** 글 저장 (스크랩) 켜기 · 끄기 (누르는 즉시 반영) */
+export function useSavePostBookmark(postId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (on: boolean) => api<{ bookmarked: boolean }>(`/api/posts/${postId}/bookmark`, { method: on ? 'PUT' : 'DELETE' }),
+    onMutate: (on) => {
+      const prev = qc.getQueryData<PostDetail>(keys.post(postId));
+      qc.setQueryData<PostDetail>(keys.post(postId), (p) => p && { ...p, bookmarked: on });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(keys.post(postId), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['bookmarks', 'posts'] }),
+  });
+}
+
+/** 내가 저장한 글 (최근에 저장한 것부터) */
+export function useSavedPosts(enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ['bookmarks', 'posts'] as const,
+    queryFn: ({ pageParam, signal }) => api<CursorPage<PostSummary>>('/api/me/bookmarks/posts', { query: { cursor: pageParam, size: PAGE_SIZE }, signal }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.nextCursor,
+    enabled,
+  });
+}
+
+/** 키워드 뮤트: 이 단어가 들어간 글은 목록에서 숨긴다 */
+export function useMutedWords(enabled = true) {
+  return useQuery({
+    queryKey: ['muted-words'] as const,
+    queryFn: ({ signal }) => api<{ words: string[] }>('/api/me/muted-words', { signal }),
+    enabled,
+  });
+}
+
+export function useSetMutedWords() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (words: string[]) => api<{ words: string[] }>('/api/me/muted-words', { method: 'PUT', body: { words } }),
+    onSuccess: (res) => {
+      qc.setQueryData(['muted-words'], res);
+      // 목록을 새 뮤트 단어로 다시 받는다
+      qc.invalidateQueries({ queryKey: keys.posts });
+    },
+  });
+}
+
 /** 감정 반응 달기 · 취소 (화면은 바로 바꾸고, 실패하면 되돌린다) */
 export function useToggleReaction(postId: number) {
   const qc = useQueryClient();

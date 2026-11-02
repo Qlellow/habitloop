@@ -30,6 +30,8 @@ export function notificationMessage(n: NotificationItem) {
           <b className="font-semibold text-fg-strong">{n.post.channelName}</b>에 새 공지가 올라왔어요
         </>
       );
+    case 'mention':
+      return <>{who}님이 {n.comment ? '댓글에서' : '글에서'} 나를 불렀어요</>;
     case 'discovery':
       return (
         <>

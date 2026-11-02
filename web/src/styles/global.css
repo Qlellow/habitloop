@@ -3899,3 +3899,38 @@ a.recap-top:hover {
     font-size: 22px;
   }
 }
+
+/* ───────── @멘션 (components/Mention) ───────── */
+.mention {
+  color: var(--primary-text);
+  font-weight: 600;
+}
+/* 후보 목록: 입력칸 바로 아래 (top 을 비워 두면 입력칸 다음 자리에 뜬다) */
+.mention-list {
+  position: absolute;
+  z-index: 30;
+  min-width: 200px;
+  max-width: 280px;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+}
+.mention-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  text-align: left;
+}
+.mention-list button.is-active {
+  background: var(--field);
+}

@@ -28,6 +28,8 @@ function Message({ n }: { n: NotificationItem }) {
       return <>{b(n.post.channelName)}에 새 공지가 올라왔어요</>;
     case 'discovery':
       return <>내 글이 {b('오늘의 발견')}에 뽑혔어요 (+30P)</>;
+    case 'mention':
+      return <>{b(name(n))}님이 {n.comment ? '댓글에서' : '글에서'} 나를 불렀어요</>;
   }
 }
 

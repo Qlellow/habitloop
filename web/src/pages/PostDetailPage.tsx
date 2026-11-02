@@ -16,6 +16,7 @@ import {
   useEditComment,
   useDeletePost,
   usePost,
+  useSavePostBookmark,
   useToggleCommentLike,
   plainText,
   type Comment,
@@ -23,7 +24,8 @@ import {
   type PostSummary,
 } from '@loop/shared';
 import { ChannelIcon } from '../components/ChannelIcon';
-import { ExpandIcon, HeartIcon, ImageIcon, MinimizeIcon, PictureInPictureIcon, ShareIcon } from '../components/Icons';
+import { useMention, withMentions } from '../components/Mention';
+import { BookmarkIcon, ExpandIcon, HeartIcon, ImageIcon, MinimizeIcon, PictureInPictureIcon, ShareIcon } from '../components/Icons';
 import { ShareDialog } from '../components/ShareDialog';
 import { prepareUpload } from '../lib/postImage';
 import { Page } from '../components/Layout';
@@ -74,7 +76,7 @@ function CommentBody({ content }: { content: string }) {
   const text = parts.join('').replace(/\n{3,}/g, '\n\n').trim();
   return (
     <>
-      {text && <p className={s.commentBody}>{text}</p>}
+      {text && <p className={s.commentBody}>{withMentions(text)}</p>}
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2 mb-3">
           {images.map((src, i) => (
@@ -105,22 +107,31 @@ function InlineComposer({
   onCancel: () => void;
 }) {
   const [text, setText] = useState(initial);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const mention = useMention(text, setText, ref);
   const submit = () => text.trim() && onSubmit(text.trim());
   return (
-    <div className="mt-2 mb-1">
+    <div className="mt-2 mb-1 relative">
       <textarea
+        ref={ref}
         className={cn(ui.textarea, 'min-h-[72px] text-[15px]')}
         maxLength={1000}
         placeholder={placeholder}
         value={text}
         autoFocus
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          mention.track();
+        }}
+        onSelect={mention.track}
         onKeyDown={(e) => {
+          if (mention.onKeyDown(e)) return;
           if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submit();
           if (e.key === 'Escape') onCancel();
         }}
         aria-label={placeholder}
       />
+      {mention.popup}
       <div className="flex justify-end gap-1.5 mt-1.5">
         <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={onCancel}>
           취소
@@ -258,6 +269,8 @@ export function Comments({ postId, count, embedded }: { postId: number; count?: 
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const mention = useMention(text, setText, inputRef);
 
   const attach = (files: File[]) => {
     const picked = files.filter((f) => f.type.startsWith('image/')).slice(0, MAX_COMMENT_IMAGES - images.length);
@@ -297,12 +310,18 @@ export function Comments({ postId, count, embedded }: { postId: number; count?: 
       {isLoggedIn ? (
         <form className={s.composer} onSubmit={submit}>
           <textarea
+            ref={inputRef}
             className={ui.textarea}
             maxLength={1000}
-            placeholder="댓글을 남겨 보세요"
+            placeholder="댓글을 남겨 보세요 (@닉네임 으로 부를 수 있어요)"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              mention.track();
+            }}
+            onSelect={mention.track}
             onKeyDown={(e) => {
+              if (mention.onKeyDown(e)) return;
               if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submit();
             }}
             onPaste={(e) => {
@@ -321,6 +340,7 @@ export function Comments({ postId, count, embedded }: { postId: number; count?: 
             }}
             aria-label="댓글"
           />
+          {mention.popup}
           {(images.length > 0 || uploading > 0) && (
             <div className="flex flex-wrap gap-2 mt-2">
               {images.map((url) => (
@@ -459,6 +479,7 @@ export default function PostDetailPage() {
   const { isLoggedIn } = useAuth();
   const [reporting, setReporting] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const save = useSavePostBookmark(id);
   // 내가 차단한 사람의 글은 내용을 접어 두고, 누르면 보여 준다
   const [shownBlocked, setShownBlocked] = useState<number>();
   const mini = useMiniEnabled();
@@ -584,6 +605,23 @@ export default function PostDetailPage() {
                     <ShareIcon />
                     공유
                   </button>
+                  {isLoggedIn && (
+                    <button
+                      type="button"
+                      className={cn(ui.button, ui.text, ui.small, 'gap-1 [&>svg]:w-4 [&>svg]:h-4', post.bookmarked && 'text-primary')}
+                      title={post.bookmarked ? '저장 취소' : '나중에 다시 보게 저장 (마이페이지 > 내가 쓴 글 > 저장한 글)'}
+                      aria-pressed={!!post.bookmarked}
+                      onClick={() =>
+                        save.mutate(!post.bookmarked, {
+                          onSuccess: (r) => toast(r.bookmarked ? '글을 저장했어요 · 마이페이지에서 다시 볼 수 있어요' : '저장을 취소했어요'),
+                          onError: (e) => toast(e.message),
+                        })
+                      }
+                    >
+                      <BookmarkIcon filled={post.bookmarked} />
+                      {post.bookmarked ? '저장됨' : '저장'}
+                    </button>
+                  )}
                   {mini && (
                     <button type="button" className={cn(ui.button, ui.text, ui.small, 'gap-1 [&>svg]:w-4 [&>svg]:h-4')} title="작은 창으로 띄우고 다른 글 보기" onClick={toMini}>
                       <PictureInPictureIcon />
