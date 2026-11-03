@@ -96,7 +96,7 @@ export function RecapCard({ recap: r }: { recap: WeeklyRecap }) {
             주간 회고 · {rangeLabel(r.week)}
             {r.week.current && ' (진행 중)'}
           </p>
-          <h2 className="m-0 text-[17px] font-bold truncate">{r.user.nickname}님의 한 주</h2>
+          <h1 className="m-0 text-[17px] font-bold truncate">{r.user.nickname}님의 한 주</h1>
         </div>
       </header>
       <p className="recap-headline">{headline(r)}</p>

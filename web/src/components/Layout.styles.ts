@@ -20,7 +20,7 @@ const s = {
   userButton:
     'flex items-center gap-2 h-10 pl-1 pr-2.5 rounded-md font-semibold whitespace-nowrap text-fg-strong transition-colors ' +
     'hover:bg-field aria-expanded:bg-field',
-  userName: 'max-[520px]:hidden',
+  userName: 'max-[520px]:sr-only',
   avatar: 'flex-none grid place-items-center w-8 h-8 rounded-full bg-primary-weak text-primary text-sm font-bold',
   menu:
     'absolute right-0 top-[calc(100%+8px)] min-w-[200px] p-1.5 rounded-md border border-border bg-surface ' +

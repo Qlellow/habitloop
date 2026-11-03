@@ -221,7 +221,8 @@ function onBodyClick(e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDiv
 }
 
 /** 같은 본문이면 다시 파싱하지 않도록 memo + useMemo */
-export const Markdown = memo(function Markdown({ source, className }: { source: string; className?: string }) {
+/** zoom: 이미지를 누르면 크게 보기 (글쓰기 미리보기에서는 끈다: 누르면 이미지 편집이 열린다) */
+export const Markdown = memo(function Markdown({ source, className, zoom = true }: { source: string; className?: string; zoom?: boolean }) {
   const html = useMemo(() => renderMarkdown(source), [source]);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -230,7 +231,7 @@ export const Markdown = memo(function Markdown({ source, className }: { source: 
     (e: MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
       // 이미지: 이 본문의 모든 이미지를 크게 넘겨 본다 (링크로 감싼 이미지 · 가려진 블라인드 안은 빼고)
       const target = (e.target as HTMLElement).closest<HTMLElement>('.loop-img');
-      if (target && ref.current && !target.closest('a, .loop-blind:not(.is-open)') && (!('key' in e) || e.key === 'Enter')) {
+      if (zoom && target && ref.current && !target.closest('a, .loop-blind:not(.is-open)') && (!('key' in e) || e.key === 'Enter')) {
         const all = [...ref.current.querySelectorAll<HTMLElement>('.loop-img')].filter((el) => !el.closest('a, .loop-blind:not(.is-open)'));
         const images = all.map((el) => {
           const img = el.querySelector('img')!;
@@ -242,11 +243,12 @@ export const Markdown = memo(function Markdown({ source, className }: { source: 
       }
       onBodyClick(e, navigate);
     },
-    [navigate],
+    [navigate, zoom],
   );
   useEffect(() => {
     if (!ref.current) return;
     highlightIn(ref.current);
+    if (!zoom) return;
     // 이미지를 키보드로도 열 수 있게
     ref.current.querySelectorAll<HTMLElement>('.loop-img').forEach((el) => {
       if (el.closest('a')) return;
@@ -254,7 +256,7 @@ export const Markdown = memo(function Markdown({ source, className }: { source: 
       el.setAttribute('role', 'button');
       el.setAttribute('aria-label', `${el.querySelector('img')?.alt || '이미지'} 크게 보기`);
     });
-  }, [html]);
+  }, [html, zoom]);
   return (
     <>
       <div

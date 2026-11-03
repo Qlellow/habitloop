@@ -144,7 +144,9 @@ export function ChannelSearch() {
       <SearchIcon className={s.icon} />
       {/* 비어 있을 때만: 누르면 커맨드 팔레트 */}
       {!input && (
-        <button type="button" className={s.shortcut} onClick={openCommandPalette} title="커맨드 팔레트 열기" aria-label="커맨드 팔레트 열기">
+        <button type="button" className={s.shortcut} onClick={openCommandPalette} title="커맨드 팔레트 열기">
+          {/* 이름은 보이는 글자(단축키)를 품어야 한다 (음성 명령으로 '컨트롤 K' 라고 불러도 눌리게) */}
+          <span className="sr-only">커맨드 팔레트 열기 </span>
           <kbd className="cmdk-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
           <kbd className="cmdk-kbd">K</kbd>
         </button>

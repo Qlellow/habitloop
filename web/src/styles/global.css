@@ -4288,15 +4288,15 @@ a.recap-top:hover {
   color: var(--text-weak);
 }
 
-/* 표류병 편지 (SeaPage 의 Letters) */
-.sea-letter {
+/* 표류병 편지 (SeaPage 의 Letters). 주운 병의 종이(.sea-letter) · 병 그림(.sea-note)과 이름이 겹치지 않게 */
+.sea-msg {
   max-width: 92%;
   padding: 7px 11px;
   border-radius: 12px 12px 12px 4px;
   background: color-mix(in srgb, #4aa3c7 12%, var(--surface));
   justify-self: start;
 }
-.sea-letter.is-mine {
+.sea-msg.is-mine {
   border-radius: 12px 12px 4px 12px;
   background: color-mix(in srgb, var(--primary) 10%, var(--surface));
   justify-self: end;
