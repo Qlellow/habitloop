@@ -46,7 +46,7 @@ function CheckButton({ habit, size = 'large' }: { habit: Habit; size?: 'large' |
 /** 12주 잔디: 열 = 주, 행 = 요일 (오래된 날 → 오늘) */
 function Grass({ grass }: { grass: boolean[] }) {
   return (
-    <div className="habit-grass" aria-label={`최근 12주 동안 ${grass.filter(Boolean).length}일 체크`}>
+    <div className="habit-grass" role="img" aria-label={`최근 12주 동안 ${grass.filter(Boolean).length}일 체크`}>
       {grass.map((on, i) => (
         <i key={i} data-on={on || undefined} />
       ))}

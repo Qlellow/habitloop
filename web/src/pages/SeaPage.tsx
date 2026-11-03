@@ -105,7 +105,7 @@ function HeldLetter({ id, content, hops, releaseAt }: { id: number; content: str
   const hoursLeft = Math.max(1, Math.round((new Date(releaseAt).getTime() - Date.now()) / 3600_000));
   return (
     <article className="sea-letter sea-unfold" aria-label="주운 병의 쪽지">
-      <div className="flex items-center gap-2 text-[12px] text-[#9a7b4e]">
+      <div className="flex items-center gap-2 text-[12px] text-[#7a5c30]">
         <span>🍾 이 병을 주운 {hops}번째 사람이에요</span>
         <span className="ml-auto whitespace-nowrap">{hoursLeft}시간 뒤 바다로</span>
       </div>
@@ -193,7 +193,7 @@ function Letters({ replyId, letters, other }: { replyId: number; letters: Bottle
   return (
     <div className="mt-1.5 grid gap-1.5">
       {letters.map((l) => (
-        <div key={l.id} className={cn('sea-letter', l.mine && 'is-mine')}>
+        <div key={l.id} className={cn('sea-msg', l.mine && 'is-mine')}>
           <span className="text-[11px] text-fg-weak">
             {l.mine ? '나' : other} · {timeAgo(l.createdAt)}
           </span>
@@ -243,7 +243,7 @@ function MyReplies() {
             {c.unread > 0 && <span className="ml-auto font-bold text-primary">새 편지 {c.unread}</span>}
           </div>
           <p className="m-0 mt-1.5 text-[14px] text-fg line-clamp-3 whitespace-pre-wrap">{c.bottle.content}</p>
-          <div className="sea-letter is-mine mt-2">
+          <div className="sea-msg is-mine mt-2">
             <span className="text-[11px] text-fg-weak">내 답장 · {timeAgo(c.reply.createdAt)}</span>
             <p className="m-0 text-[14px] whitespace-pre-wrap">{c.reply.content}</p>
           </div>

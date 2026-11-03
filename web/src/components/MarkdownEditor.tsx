@@ -256,7 +256,7 @@ export function MarkdownEditor({
               // 미리보기 안의 이미지는 바로 편집할 수 있다 (크기 조절 · 자르기 · 모서리 · 캡션 …)
               <div ref={previewHostRef} className="relative">
                 <Suspense fallback={<div className={ui.spinner} />}>
-                  <Preview source={value} />
+                  <Preview source={value} zoom={false} />
                 </Suspense>
                 <ImageEditLayer hostRef={previewHostRef} source={value} onChange={onChange} uploadFile={uploadImageFile} />
               </div>

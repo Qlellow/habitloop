@@ -99,7 +99,7 @@ function Conversation({ userId }: { userId: string }) {
         </Link>
         <Link to={`/u/${first.user.id}`} className="flex items-center gap-2.5 min-w-0">
           <UserAvatar nickname={first.user.nickname} avatarUrl={first.user.avatarUrl} size={32} />
-          <b className="truncate text-fg-strong">{first.user.nickname}</b>
+          <h1 className="m-0 truncate text-[16px] font-bold text-fg-strong">{first.user.nickname}</h1>
         </Link>
         <button
           type="button"
@@ -147,7 +147,8 @@ function Conversation({ userId }: { userId: string }) {
             className={cn(ui.textarea, 'min-h-[44px] max-h-40 py-2.5 resize-none')}
             rows={1}
             maxLength={1000}
-            placeholder="쪽지 보내기 (Enter 로 보내기, Shift+Enter 줄바꿈)"
+            placeholder="쪽지 보내기"
+            title="Enter 로 보내기, Shift+Enter 줄바꿈"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
@@ -181,7 +182,8 @@ export default function MessagesPage() {
       <section className={cn(ui.card, 'dm-layout')}>
         {(wide || !valid) && (
           <aside className="dm-threads">
-            <h1 className="m-0 px-5 pt-4 pb-1 text-[17px] font-bold text-fg-strong">쪽지</h1>
+            {/* 대화를 열었으면 제목(h1)은 상대 이름 */}
+            {valid ? <h2 className="m-0 px-5 pt-4 pb-1 text-[17px] font-bold text-fg-strong">쪽지</h2> : <h1 className="m-0 px-5 pt-4 pb-1 text-[17px] font-bold text-fg-strong">쪽지</h1>}
             <Threads current={valid} />
           </aside>
         )}
