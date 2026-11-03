@@ -124,7 +124,12 @@ function HeldLetter({ id, content, hops, releaseAt }: { id: number; content: str
           신고
         </button>
         <span className="ml-auto" />
-        <button type="button" className={cn(ui.button, ui.ghost, ui.small)} disabled={act.isPending} onClick={() => run('release', '병을 다시 바다에 띄웠어요')}>
+        <button
+          type="button"
+          className={cn(ui.button, ui.ghost, ui.small)}
+          disabled={act.isPending}
+          onClick={() => run('release', '병을 다시 바다에 띄웠어요')}
+        >
           그냥 다시 띄우기
         </button>
         <button
@@ -170,7 +175,20 @@ function Journey({ bottle }: { bottle: MyBottle }) {
  * 답장에 이어 주고받는 편지 (병 주인 ↔ 답장한 사람). 서로 이름은 끝까지 모른다.
  * other: 상대를 부르는 말 (병 주인에게는 '어느 바닷가의 누군가', 답장한 사람에게는 '병을 띄운 사람')
  */
-function Letters({ replyId, letters, other }: { replyId: number; letters: BottleLetter[]; other: string }) {
+function Letters({
+  replyId,
+  first,
+  letters,
+  other,
+  isNew,
+}: {
+  replyId: number;
+  /** 대화의 첫 말: 답장 (병 주인에게는 상대가, 답장한 사람에게는 내가 쓴 것) */
+  first: { content: string; createdAt: string; mine: boolean };
+  letters: BottleLetter[];
+  other: string;
+  isNew?: boolean;
+}) {
   const send = useSendLetter();
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
@@ -191,13 +209,15 @@ function Letters({ replyId, letters, other }: { replyId: number; letters: Bottle
     );
   };
   return (
-    <div className="mt-1.5 grid gap-1.5">
-      {letters.map((l) => (
+    <div className="sea-thread">
+      {[{ id: 0, ...first }, ...letters].map((l, i) => (
         <div key={l.id} className={cn('sea-msg', l.mine && 'is-mine')}>
-          <span className="text-[11px] text-fg-weak">
-            {l.mine ? '나' : other} · {timeAgo(l.createdAt)}
+          <span className="sea-msg-who">
+            {l.mine ? '나' : `${other === '병을 띄운 사람' ? '🍾' : '🐚'} ${other}`}
+            {i === 0 && ' · 답장'} · {timeAgo(l.createdAt)}
+            {i === 0 && isNew && <b className="ml-1.5 text-primary">새 답장</b>}
           </span>
-          <p className="m-0 text-[14px] whitespace-pre-wrap">{l.content}</p>
+          <p className="sea-msg-body">{l.content}</p>
         </div>
       ))}
       {open ? (
@@ -221,8 +241,8 @@ function Letters({ replyId, letters, other }: { replyId: number; letters: Bottle
           </div>
         </form>
       ) : (
-        <button type="button" className={cn(ui.button, ui.text, ui.small, 'justify-self-start')} onClick={() => setOpen(true)}>
-          💌 편지 이어 쓰기
+        <button type="button" className={cn(ui.button, ui.secondary, ui.small, 'justify-self-start')} onClick={() => setOpen(true)}>
+          💌 {other}에게 편지 이어 쓰기
         </button>
       )}
     </div>
@@ -242,12 +262,8 @@ function MyReplies() {
             <span>🍾 주운 병 · {timeAgo(c.bottle.createdAt)} 띄움</span>
             {c.unread > 0 && <span className="ml-auto font-bold text-primary">새 편지 {c.unread}</span>}
           </div>
-          <p className="m-0 mt-1.5 text-[14px] text-fg line-clamp-3 whitespace-pre-wrap">{c.bottle.content}</p>
-          <div className="sea-msg is-mine mt-2">
-            <span className="text-[11px] text-fg-weak">내 답장 · {timeAgo(c.reply.createdAt)}</span>
-            <p className="m-0 text-[14px] whitespace-pre-wrap">{c.reply.content}</p>
-          </div>
-          <Letters replyId={c.replyId} letters={c.letters} other="병을 띄운 사람" />
+          <blockquote className="sea-quote">{c.bottle.content}</blockquote>
+          <Letters replyId={c.replyId} first={{ ...c.reply, mine: true }} letters={c.letters} other="병을 띄운 사람" />
         </li>
       ))}
     </ul>
@@ -270,20 +286,25 @@ function MyBottles() {
           </div>
           <p className="m-0 mt-2 text-[14px] text-fg line-clamp-3 whitespace-pre-wrap">{b.content}</p>
           <Journey bottle={b} />
-          {b.replies.length > 0 && (
-            <ul className="list-none m-0 p-0 mt-2 grid gap-1.5">
+          <h3 className="sea-replies-title">
+            💬 답장 {b.replies.length}개{b.replies.some((r) => !r.read) && <span className="ml-1.5 text-primary">· 새 답장</span>}
+          </h3>
+          {b.replies.length > 0 ? (
+            <ul className="list-none m-0 p-0 grid gap-2.5">
               {b.replies.map((r) => (
                 <li key={r.id} className={cn('sea-reply', !r.read && 'is-new')}>
-                  <div className="flex items-center gap-1.5 text-[12px] text-fg-weak">
-                    <span>🐚 어느 바닷가의 누군가</span>
-                    <span>· {timeAgo(r.createdAt)}</span>
-                    {!r.read && <span className="ml-auto font-bold text-primary">새 답장</span>}
-                  </div>
-                  <p className="m-0 mt-0.5 text-[14px] text-fg-strong whitespace-pre-wrap">{r.content}</p>
-                  <Letters replyId={r.id} letters={r.letters ?? []} other="어느 바닷가의 누군가" />
+                  <Letters
+                    replyId={r.id}
+                    first={{ content: r.content, createdAt: r.createdAt, mine: false }}
+                    letters={r.letters ?? []}
+                    other="어느 바닷가의 누군가"
+                    isNew={!r.read}
+                  />
                 </li>
               ))}
             </ul>
+          ) : (
+            <p className="m-0 text-[13px] text-fg-weak">아직 답장이 없어요. 누군가 주워 답장하면 여기 보여요.</p>
           )}
         </li>
       ))}
@@ -322,7 +343,12 @@ export default function SeaPage() {
           {composing ? (
             <Compose left={sea?.throwsLeft ?? 0} onDone={() => setComposing(false)} />
           ) : (
-            <button type="button" className={cn(ui.button, ui.primary, ui.large, 'w-full')} disabled={!sea || sea.throwsLeft === 0} onClick={() => setComposing(true)}>
+            <button
+              type="button"
+              className={cn(ui.button, ui.primary, ui.large, 'w-full')}
+              disabled={!sea || sea.throwsLeft === 0}
+              onClick={() => setComposing(true)}
+            >
               {sea && sea.throwsLeft === 0 ? '오늘은 병을 다 띄웠어요' : '🍾 병 띄우기'}
             </button>
           )}
@@ -331,8 +357,7 @@ export default function SeaPage() {
       <section className={ui.card}>
         <div className={ui.cardHead}>
           <h2 className={ui.sectionTitle}>
-            내가 띄운 병
-            {!!sea?.unreadReplies && <span className="ml-2 align-[2px] text-[12px] font-bold text-primary">새 답장 {sea.unreadReplies}</span>}
+            내가 띄운 병{!!sea?.unreadReplies && <span className="ml-2 align-[2px] text-[12px] font-bold text-primary">새 답장 {sea.unreadReplies}</span>}
           </h2>
         </div>
         <MyBottles />
@@ -340,8 +365,7 @@ export default function SeaPage() {
       <section className={ui.card}>
         <div className={ui.cardHead}>
           <h2 className={ui.sectionTitle}>
-            내가 답장한 병
-            {!!sea?.unreadLetters && <span className="ml-2 align-[2px] text-[12px] font-bold text-primary">새 편지 {sea.unreadLetters}</span>}
+            내가 답장한 병{!!sea?.unreadLetters && <span className="ml-2 align-[2px] text-[12px] font-bold text-primary">새 편지 {sea.unreadLetters}</span>}
           </h2>
         </div>
         <MyReplies />
