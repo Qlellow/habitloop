@@ -202,48 +202,66 @@ function Letters({
         onSuccess: () => {
           setText('');
           setOpen(false);
-          toast('편지를 보냈어요 💌');
+          toast('답글을 남겼어요');
         },
         onError: (err) => toast(err.message),
       },
     );
   };
+  // 게시글 댓글처럼: 답장이 댓글, 이어 주고받은 편지는 그 아래 한 단계 들인 답글
+  const who = (mine: boolean) => (mine ? '나' : other);
+  const mark = (mine: boolean) => (mine ? '🙂' : other === '병을 띄운 사람' ? '🍾' : '🐚');
+  const Head = ({ mine, at, small }: { mine: boolean; at: string; small?: boolean }) => (
+    <div className="flex items-center gap-2 text-sm">
+      <span className={cn('sea-avatar', small && 'is-small')} aria-hidden>
+        {mark(mine)}
+      </span>
+      <b className="font-semibold text-fg-strong">{who(mine)}</b>
+      <time className="text-[13px] text-fg-weak" dateTime={at} title={new Date(at).toLocaleString()}>
+        {timeAgo(at)}
+      </time>
+    </div>
+  );
   return (
-    <div className="sea-thread">
-      {[{ id: 0, ...first }, ...letters].map((l, i) => (
-        <div key={l.id} className={cn('sea-msg', l.mine && 'is-mine')}>
-          <span className="sea-msg-who">
-            {l.mine ? '나' : `${other === '병을 띄운 사람' ? '🍾' : '🐚'} ${other}`}
-            {i === 0 && ' · 답장'} · {timeAgo(l.createdAt)}
-            {i === 0 && isNew && <b className="ml-1.5 text-primary">새 답장</b>}
-          </span>
-          <p className="sea-msg-body">{l.content}</p>
-        </div>
-      ))}
-      {open ? (
-        <form className="grid gap-1.5" onSubmit={submit}>
+    <div className="sea-comment">
+      <Head mine={first.mine} at={first.createdAt} />
+      <p className="mt-1 mb-1.5 text-[15px] text-fg whitespace-pre-wrap break-words">
+        {isNew && <span className={cn(ui.badge, 'mr-1.5 align-[1px]')}>새 답장</span>}
+        {first.content}
+      </p>
+      <button type="button" className="px-2 py-1 -ml-2 rounded-sm text-[13px] text-fg-weak hover:bg-field hover:text-fg-sub" onClick={() => setOpen((o) => !o)}>
+        답글{letters.length > 0 && ` ${letters.length}`}
+      </button>
+      {letters.length > 0 && (
+        <ul className="list-none m-0 mt-2 ml-3 pl-4 border-l-2 border-line" aria-label="이어 주고받은 편지">
+          {letters.map((l) => (
+            <li key={l.id} className="pt-2.5 first:pt-0.5">
+              <Head mine={l.mine} at={l.createdAt} small />
+              <p className="mt-1 mb-0 text-[15px] text-fg whitespace-pre-wrap break-words">{l.content}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {open && (
+        <form className="grid gap-1.5 mt-2" onSubmit={submit}>
           <textarea
             className={cn(ui.textarea, 'min-h-[64px] text-[14px]')}
             maxLength={MAX}
             value={text}
             autoFocus
-            placeholder={`${other}에게 편지 이어 쓰기`}
+            placeholder={`${other}에게 답글 (서로 누군지는 끝까지 몰라요)`}
             onChange={(e) => setText(e.target.value)}
-            aria-label="편지"
+            aria-label="답글"
           />
           <div className="flex justify-end gap-1.5">
             <button type="button" className={cn(ui.button, ui.ghost, ui.small)} onClick={() => setOpen(false)}>
               취소
             </button>
             <button type="submit" className={cn(ui.button, ui.primary, ui.small)} disabled={send.isPending || text.trim().length < 2}>
-              보내기
+              답글 등록
             </button>
           </div>
         </form>
-      ) : (
-        <button type="button" className={cn(ui.button, ui.secondary, ui.small, 'justify-self-start')} onClick={() => setOpen(true)}>
-          💌 {other}에게 편지 이어 쓰기
-        </button>
       )}
     </div>
   );
@@ -290,9 +308,9 @@ function MyBottles() {
             💬 답장 {b.replies.length}개{b.replies.some((r) => !r.read) && <span className="ml-1.5 text-primary">· 새 답장</span>}
           </h3>
           {b.replies.length > 0 ? (
-            <ul className="list-none m-0 p-0 grid gap-2.5">
+            <ul className="sea-comments">
               {b.replies.map((r) => (
-                <li key={r.id} className={cn('sea-reply', !r.read && 'is-new')}>
+                <li key={r.id}>
                   <Letters
                     replyId={r.id}
                     first={{ content: r.content, createdAt: r.createdAt, mine: false }}
